@@ -33,7 +33,7 @@ const DeliveryEntryPage = () => {
       phone: form.phone,
       documentType: 'other',
       documentNumber: '',
-      visitorPhotos: [],
+      visitorPhotos: personPhotos,
       flatNumber: form.flatNumber,
       purpose: tab === 'delivery' ? `Delivery - ${form.company}` : `Service - ${form.company}`,
       entryTime: new Date().toISOString(),
