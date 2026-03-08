@@ -74,7 +74,9 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const renderContent = () => {
     switch (activeTab) {
       case 'guards': return <AdminGuardManager />;
+      case 'residents': return <AdminResidentManager />;
       case 'geofence': return <GeofenceSetup adminName={admin.name} />;
+      case 'password': return <AdminPasswordChange adminId={admin.id} />;
       case 'report': return <ReportPage />;
       case 'logs': return <LogsPage />;
       case 'visitor': return <VisitorEntryPage onDone={() => setActiveTab('overview')} />;
