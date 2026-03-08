@@ -19,6 +19,7 @@ const DeliveryEntryPage = () => {
     flatNumber: '',
     vehicleNumber: '',
   });
+  const [personPhotos, setPersonPhotos] = useState<string[]>([]);
 
   const update = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }));
 
