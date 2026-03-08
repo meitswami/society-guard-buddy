@@ -38,7 +38,19 @@ const Index = () => {
 
   // Apply theme
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    const resolved = theme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : theme;
+    document.documentElement.setAttribute('data-theme', resolved);
+
+    if (theme === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = (e: MediaQueryListEvent) => {
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      };
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
+    }
   }, [theme]);
 
   if (!loaded) {
