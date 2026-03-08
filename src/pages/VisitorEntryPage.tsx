@@ -66,7 +66,7 @@ const VisitorEntryPage = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.phone || !form.flatNumber) return;
 
@@ -88,7 +88,7 @@ const VisitorEntryPage = () => {
       vehicleEntryTime: hasVehicle && form.vehicleNumber ? new Date().toISOString() : undefined,
     };
 
-    addVisitor(visitor);
+    await addVisitor(visitor);
     setSuccess(true);
     setForm({ name: '', phone: '', documentType: 'aadhaar', documentNumber: '', flatNumber: '', purpose: 'Visit', vehicleNumber: '' });
     setHasVehicle(false);

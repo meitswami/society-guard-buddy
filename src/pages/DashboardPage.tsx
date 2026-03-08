@@ -1,5 +1,6 @@
 import { useStore } from '@/store/useStore';
 import { Users, Car, Truck, LogIn, ShieldAlert, LogOut, Clock } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 
@@ -51,6 +52,7 @@ const DashboardPage = () => {
             <p className="text-xs text-primary font-mono">{currentGuard?.id}</p>
             <p className="text-xs text-muted-foreground">{currentGuard?.name}</p>
           </div>
+          <ThemeToggle />
           <button onClick={logout} className="p-2 rounded-lg bg-secondary text-muted-foreground">
             <LogOut className="w-4 h-4" />
           </button>

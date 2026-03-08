@@ -9,14 +9,18 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const login = useStore(s => s.login);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!guardId || !password) {
       setError('Enter Guard ID and Password');
       return;
     }
-    const success = login(guardId.toUpperCase(), password);
+    setLoading(true);
+    const success = await login(guardId.toUpperCase(), password);
+    setLoading(false);
     if (!success) setError('Invalid credentials');
   };
 
@@ -66,8 +70,8 @@ const LoginPage = () => {
             <p className="text-destructive text-sm text-center">{error}</p>
           )}
 
-          <button type="submit" className="btn-primary mt-2">
-            Start Shift
+          <button type="submit" className="btn-primary mt-2" disabled={loading}>
+            {loading ? 'Logging in...' : 'Start Shift'}
           </button>
 
           <p className="text-xs text-muted-foreground text-center mt-4">
