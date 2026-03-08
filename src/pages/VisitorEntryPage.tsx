@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import type { Visitor } from '@/types';
-import { UserPlus, Camera, ShieldAlert, Search } from 'lucide-react';
+import { UserPlus, Camera, ShieldAlert, Search, Send, KeyRound } from 'lucide-react';
 import { format } from 'date-fns';
 import PhotoCapture from '@/components/PhotoCapture';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { showSuccess } from '@/lib/swal';
+import ApprovalRequestModal from '@/components/ApprovalRequestModal';
+import OTPVerifyModal from '@/components/OTPVerifyModal';
 
 const DOC_TYPES = [
   { value: 'aadhaar', label: 'Aadhaar' },
@@ -27,6 +29,8 @@ const VisitorEntryPage = ({ onDone }: Props) => {
   const [hasVehicle, setHasVehicle] = useState(false);
   const [visitorPhotos, setVisitorPhotos] = useState<string[]>([]);
   const [documentPhoto, setDocumentPhoto] = useState<string[]>([]);
+  const [showApproval, setShowApproval] = useState(false);
+  const [showOTP, setShowOTP] = useState(false);
   const [form, setForm] = useState({
     name: '', phone: '', documentType: 'aadhaar' as Visitor['documentType'],
     documentNumber: '', flatNumber: '', purpose: 'Visit', vehicleNumber: '',
@@ -51,13 +55,16 @@ const VisitorEntryPage = ({ onDone }: Props) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.phone || !form.flatNumber) return;
+  const registerVisitor = async (overrideName?: string, overrideFlat?: string, overridePhone?: string) => {
+    const name = overrideName || form.name;
+    const flatNumber = overrideFlat || form.flatNumber;
+    const phone = overridePhone || form.phone;
+    if (!name || !phone || !flatNumber) return;
+
     const visitor: Visitor = {
-      id: `V${Date.now()}`, name: form.name, phone: form.phone,
+      id: `V${Date.now()}`, name, phone,
       documentType: form.documentType, documentNumber: form.documentNumber,
-      documentPhoto: documentPhoto[0], visitorPhotos, flatNumber: form.flatNumber,
+      documentPhoto: documentPhoto[0], visitorPhotos, flatNumber,
       purpose: form.purpose, entryTime: new Date().toISOString(),
       guardId: currentGuard?.id || '', guardName: currentGuard?.name || '',
       category: 'visitor', vehicleNumber: hasVehicle ? form.vehicleNumber : undefined,
@@ -71,6 +78,26 @@ const VisitorEntryPage = ({ onDone }: Props) => {
     if (onDone) setTimeout(() => onDone(), 1600);
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await registerVisitor();
+  };
+
+  const handleApprovalResult = (status: 'approved' | 'rejected' | 'timeout') => {
+    setShowApproval(false);
+    if (status === 'approved') {
+      registerVisitor();
+    }
+  };
+
+  const handleOTPResult = (valid: boolean, passData?: { guestName: string; flatNumber: string; guestPhone: string }) => {
+    setShowOTP(false);
+    if (valid && passData) {
+      showSuccess(t('swal.success'), t('otp.validPass'));
+      registerVisitor(passData.guestName, passData.flatNumber, passData.guestPhone || '0000000000');
+    }
+  };
+
   const suggestions = useMemo(() => {
     if (form.phone.length < 4) return [];
     const seen = new Set<string>();
@@ -81,14 +108,37 @@ const VisitorEntryPage = ({ onDone }: Props) => {
 
   return (
     <div className="page-container">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <UserPlus className="w-5 h-5 text-primary" />
+      {showApproval && (
+        <ApprovalRequestModal
+          visitorName={form.name}
+          visitorPhone={form.phone}
+          flatNumber={form.flatNumber}
+          purpose={form.purpose}
+          onResult={handleApprovalResult}
+          onCancel={() => setShowApproval(false)}
+        />
+      )}
+      {showOTP && (
+        <OTPVerifyModal
+          onResult={handleOTPResult}
+          onCancel={() => setShowOTP(false)}
+        />
+      )}
+
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <UserPlus className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="page-title">{t('visitor.title')}</h1>
+            <p className="text-xs text-muted-foreground">{t('visitor.subtitle')}</p>
+          </div>
         </div>
-        <div>
-          <h1 className="page-title">{t('visitor.title')}</h1>
-          <p className="text-xs text-muted-foreground">{t('visitor.subtitle')}</p>
-        </div>
+        <button onClick={() => setShowOTP(true)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
+          <KeyRound className="w-3.5 h-3.5" /> {t('otp.verifyPass')}
+        </button>
       </div>
 
       {blacklistAlert && (
@@ -174,9 +224,18 @@ const VisitorEntryPage = ({ onDone }: Props) => {
           </div>
         )}
 
-        <button type="submit" className="btn-primary flex items-center justify-center gap-2 mt-2">
-          <Camera className="w-4 h-4" /> {t('visitor.logEntry')}
-        </button>
+        {/* Action buttons */}
+        <div className="flex gap-2 mt-2">
+          {form.name && form.flatNumber && (
+            <button type="button" onClick={() => setShowApproval(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-accent-foreground font-medium text-sm">
+              <Send className="w-4 h-4" /> {t('approval.askPermission')}
+            </button>
+          )}
+          <button type="submit" className="flex-1 btn-primary flex items-center justify-center gap-2">
+            <Camera className="w-4 h-4" /> {t('visitor.logEntry')}
+          </button>
+        </div>
       </form>
     </div>
   );
