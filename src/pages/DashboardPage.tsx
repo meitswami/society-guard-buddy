@@ -41,7 +41,7 @@ const DashboardPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">Dashboard</h1>
+          <h1 className="page-title">Evergreen Heights</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             <Clock className="w-3 h-3 inline mr-1" />
             {format(new Date(), 'dd MMM yyyy, hh:mm a')}
