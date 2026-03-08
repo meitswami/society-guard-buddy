@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
-import type { Guard, Visitor, ResidentVehicle, BlacklistEntry } from '@/types';
+import type { Guard, Visitor, ResidentVehicle, BlacklistEntry, Flat, Member } from '@/types';
 
 interface AppState {
   // Auth
@@ -31,6 +31,15 @@ interface AppState {
   removeFromBlacklist: (id: string) => Promise<void>;
   isBlacklisted: (phone?: string, vehicleNumber?: string) => boolean;
 
+  // Flats & Members
+  flats: Flat[];
+  members: Member[];
+  loadFlats: () => Promise<void>;
+  loadMembers: () => Promise<void>;
+
+  // Data management
+  clearAllData: () => Promise<void>;
+
   // Theme
   theme: 'dark' | 'light' | 'system';
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
@@ -43,18 +52,14 @@ export const useStore = create<AppState>()((set, get) => ({
   visitors: [],
   residentVehicles: [],
   blacklist: [],
+  flats: [],
+  members: [],
   theme: (localStorage.getItem('gate-theme') as 'dark' | 'light' | 'system') || 'system',
 
   loadGuards: async () => {
     const { data } = await supabase.from('guards').select('*');
     if (data) {
-      set({
-        guards: data.map(g => ({
-          id: g.guard_id,
-          name: g.name,
-          password: g.password,
-        })),
-      });
+      set({ guards: data.map(g => ({ id: g.guard_id, name: g.name, password: g.password })) });
     }
   },
 
@@ -63,11 +68,8 @@ export const useStore = create<AppState>()((set, get) => ({
     const guard = guards.find(g => g.id === id && g.password === password);
     if (guard) {
       const loggedIn = { ...guard, loginTime: new Date().toISOString() };
-      // Record shift
       const { data } = await supabase.from('guard_shifts').insert({
-        guard_id: guard.id,
-        guard_name: guard.name,
-        login_time: new Date().toISOString(),
+        guard_id: guard.id, guard_name: guard.name, login_time: new Date().toISOString(),
       }).select().single();
       set({ currentGuard: loggedIn, shiftId: data?.id || null });
       return true;
@@ -78,9 +80,7 @@ export const useStore = create<AppState>()((set, get) => ({
   logout: async () => {
     const { shiftId } = get();
     if (shiftId) {
-      await supabase.from('guard_shifts').update({
-        logout_time: new Date().toISOString(),
-      }).eq('id', shiftId);
+      await supabase.from('guard_shifts').update({ logout_time: new Date().toISOString() }).eq('id', shiftId);
     }
     set({ currentGuard: null, shiftId: null });
   },
@@ -90,25 +90,15 @@ export const useStore = create<AppState>()((set, get) => ({
     if (data) {
       set({
         visitors: data.map(v => ({
-          id: v.id,
-          name: v.name,
-          phone: v.phone,
+          id: v.id, name: v.name, phone: v.phone,
           documentType: v.document_type as Visitor['documentType'],
-          documentNumber: v.document_number || '',
-          documentPhoto: v.document_photo || undefined,
-          visitorPhotos: v.visitor_photos || [],
-          flatNumber: v.flat_number,
-          purpose: v.purpose,
-          entryTime: v.entry_time,
-          exitTime: v.exit_time || undefined,
-          guardId: v.guard_id,
-          guardName: v.guard_name,
-          category: v.category as Visitor['category'],
-          company: v.company || undefined,
-          vehicleNumber: v.vehicle_number || undefined,
-          vehiclePhoto: v.vehicle_photo || undefined,
-          vehicleEntryTime: v.vehicle_entry_time || undefined,
-          vehicleExitTime: v.vehicle_exit_time || undefined,
+          documentNumber: v.document_number || '', documentPhoto: v.document_photo || undefined,
+          visitorPhotos: v.visitor_photos || [], flatNumber: v.flat_number,
+          purpose: v.purpose, entryTime: v.entry_time, exitTime: v.exit_time || undefined,
+          guardId: v.guard_id, guardName: v.guard_name,
+          category: v.category as Visitor['category'], company: v.company || undefined,
+          vehicleNumber: v.vehicle_number || undefined, vehiclePhoto: v.vehicle_photo || undefined,
+          vehicleEntryTime: v.vehicle_entry_time || undefined, vehicleExitTime: v.vehicle_exit_time || undefined,
           isBlacklisted: v.is_blacklisted || false,
         })),
       });
@@ -117,23 +107,13 @@ export const useStore = create<AppState>()((set, get) => ({
 
   addVisitor: async (visitor) => {
     await supabase.from('visitors').insert({
-      name: visitor.name,
-      phone: visitor.phone,
-      document_type: visitor.documentType,
-      document_number: visitor.documentNumber || null,
-      document_photo: visitor.documentPhoto || null,
-      visitor_photos: visitor.visitorPhotos,
-      flat_number: visitor.flatNumber,
-      purpose: visitor.purpose,
-      entry_time: visitor.entryTime,
-      guard_id: visitor.guardId,
-      guard_name: visitor.guardName,
-      category: visitor.category,
-      company: visitor.company || null,
-      vehicle_number: visitor.vehicleNumber || null,
-      vehicle_entry_time: visitor.vehicleEntryTime || null,
+      name: visitor.name, phone: visitor.phone, document_type: visitor.documentType,
+      document_number: visitor.documentNumber || null, document_photo: visitor.documentPhoto || null,
+      visitor_photos: visitor.visitorPhotos, flat_number: visitor.flatNumber, purpose: visitor.purpose,
+      entry_time: visitor.entryTime, guard_id: visitor.guardId, guard_name: visitor.guardName,
+      category: visitor.category, company: visitor.company || null,
+      vehicle_number: visitor.vehicleNumber || null, vehicle_entry_time: visitor.vehicleEntryTime || null,
     });
-    // Reload from DB
     get().loadVisitors();
   },
 
@@ -145,8 +125,7 @@ export const useStore = create<AppState>()((set, get) => ({
     const now = new Date().toISOString();
     const visitor = get().visitors.find(v => v.id === id);
     await supabase.from('visitors').update({
-      exit_time: now,
-      vehicle_exit_time: visitor?.vehicleNumber ? now : null,
+      exit_time: now, vehicle_exit_time: visitor?.vehicleNumber ? now : null,
     }).eq('id', id);
     set(s => ({
       visitors: s.visitors.map(v =>
@@ -160,11 +139,8 @@ export const useStore = create<AppState>()((set, get) => ({
     if (data) {
       set({
         residentVehicles: data.map(v => ({
-          id: v.id,
-          flatNumber: v.flat_number,
-          residentName: v.resident_name,
-          vehicleNumber: v.vehicle_number,
-          vehicleType: v.vehicle_type as ResidentVehicle['vehicleType'],
+          id: v.id, flatNumber: v.flat_number, residentName: v.resident_name,
+          vehicleNumber: v.vehicle_number, vehicleType: v.vehicle_type as ResidentVehicle['vehicleType'],
           vehiclePhoto: v.vehicle_photo || undefined,
         })),
       });
@@ -173,10 +149,8 @@ export const useStore = create<AppState>()((set, get) => ({
 
   addResidentVehicle: async (vehicle) => {
     await supabase.from('resident_vehicles').insert({
-      flat_number: vehicle.flatNumber,
-      resident_name: vehicle.residentName,
-      vehicle_number: vehicle.vehicleNumber,
-      vehicle_type: vehicle.vehicleType,
+      flat_number: vehicle.flatNumber, resident_name: vehicle.residentName,
+      vehicle_number: vehicle.vehicleNumber, vehicle_type: vehicle.vehicleType,
     });
     get().loadResidentVehicles();
   },
@@ -191,14 +165,9 @@ export const useStore = create<AppState>()((set, get) => ({
     if (data) {
       set({
         blacklist: data.map(e => ({
-          id: e.id,
-          type: e.type as BlacklistEntry['type'],
-          name: e.name || undefined,
-          phone: e.phone || undefined,
-          vehicleNumber: e.vehicle_number || undefined,
-          reason: e.reason,
-          addedAt: e.added_at,
-          addedBy: e.added_by,
+          id: e.id, type: e.type as BlacklistEntry['type'], name: e.name || undefined,
+          phone: e.phone || undefined, vehicleNumber: e.vehicle_number || undefined,
+          reason: e.reason, addedAt: e.added_at, addedBy: e.added_by,
         })),
       });
     }
@@ -206,12 +175,8 @@ export const useStore = create<AppState>()((set, get) => ({
 
   addToBlacklist: async (entry) => {
     await supabase.from('blacklist').insert({
-      type: entry.type,
-      name: entry.name || null,
-      phone: entry.phone || null,
-      vehicle_number: entry.vehicleNumber || null,
-      reason: entry.reason,
-      added_by: entry.addedBy,
+      type: entry.type, name: entry.name || null, phone: entry.phone || null,
+      vehicle_number: entry.vehicleNumber || null, reason: entry.reason, added_by: entry.addedBy,
     });
     get().loadBlacklist();
   },
@@ -223,10 +188,49 @@ export const useStore = create<AppState>()((set, get) => ({
 
   isBlacklisted: (phone, vehicleNumber) => {
     const bl = get().blacklist;
-    return bl.some(e =>
-      (phone && e.phone === phone) ||
-      (vehicleNumber && e.vehicleNumber === vehicleNumber)
-    );
+    return bl.some(e => (phone && e.phone === phone) || (vehicleNumber && e.vehicleNumber === vehicleNumber));
+  },
+
+  loadFlats: async () => {
+    const { data } = await supabase.from('flats').select('*').order('flat_number');
+    if (data) {
+      set({
+        flats: data.map(f => ({
+          id: f.id, flatNumber: f.flat_number, floor: f.floor, wing: f.wing,
+          flatType: f.flat_type || 'residential', ownerName: f.owner_name || undefined,
+          ownerPhone: f.owner_phone || undefined, intercom: f.intercom || undefined,
+          isOccupied: f.is_occupied ?? true,
+        })),
+      });
+    }
+  },
+
+  loadMembers: async () => {
+    const { data } = await supabase.from('members').select('*').order('is_primary', { ascending: false });
+    if (data) {
+      set({
+        members: data.map(m => ({
+          id: m.id, flatId: m.flat_id, name: m.name, phone: m.phone || undefined,
+          relation: m.relation || 'owner', age: m.age || undefined, gender: m.gender || undefined,
+          photo: m.photo || undefined, isPrimary: m.is_primary ?? false,
+        })),
+      });
+    }
+  },
+
+  clearAllData: async () => {
+    await supabase.from('visitors').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('blacklist').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('resident_vehicles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('members').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('flats').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('guard_shifts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    // Reload all
+    get().loadVisitors();
+    get().loadBlacklist();
+    get().loadResidentVehicles();
+    get().loadFlats();
+    get().loadMembers();
   },
 
   setTheme: (theme) => {
