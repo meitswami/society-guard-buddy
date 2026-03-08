@@ -124,7 +124,17 @@
 
   .status-inside {
     @apply status-badge bg-success/20 text-[hsl(var(--success))];
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
 
   .status-exited {
     @apply status-badge bg-muted text-muted-foreground;
