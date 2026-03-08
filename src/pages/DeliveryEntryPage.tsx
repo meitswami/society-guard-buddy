@@ -125,6 +125,9 @@ const DeliveryEntryPage = () => {
           <input className="input-field font-mono uppercase" placeholder="e.g. MH02AB1234" value={form.vehicleNumber} onChange={e => update('vehicleNumber', e.target.value.toUpperCase())} />
         </div>
 
+        {/* Photo Capture */}
+        <PhotoCapture photos={personPhotos} onChange={setPersonPhotos} maxPhotos={2} label="Person Photo" />
+
         <button type="submit" className="btn-primary flex items-center justify-center gap-2 mt-2">
           <Camera className="w-4 h-4" />
           Log Entry
