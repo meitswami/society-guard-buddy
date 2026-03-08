@@ -5,7 +5,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useMemo, useState } from 'react';
 import { format, subDays } from 'date-fns';
-import { confirmAction } from '@/lib/swal';
+import { confirmAction, showSuccess } from '@/lib/swal';
 
 type StatFilter = 'all' | 'visitor' | 'vehicle' | 'delivery' | 'inside';
 
