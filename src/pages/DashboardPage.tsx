@@ -1,5 +1,6 @@
 import { useStore } from '@/store/useStore';
 import { Users, Car, Truck, LogIn, ShieldAlert, LogOut, Clock } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 
