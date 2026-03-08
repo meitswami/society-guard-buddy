@@ -14,7 +14,198 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      blacklist: {
+        Row: {
+          added_at: string
+          added_by: string
+          created_at: string
+          id: string
+          name: string | null
+          phone: string | null
+          reason: string
+          type: string
+          vehicle_number: string | null
+        }
+        Insert: {
+          added_at?: string
+          added_by: string
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          reason: string
+          type?: string
+          vehicle_number?: string | null
+        }
+        Update: {
+          added_at?: string
+          added_by?: string
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          reason?: string
+          type?: string
+          vehicle_number?: string | null
+        }
+        Relationships: []
+      }
+      guard_shifts: {
+        Row: {
+          created_at: string
+          guard_id: string
+          guard_name: string
+          id: string
+          login_time: string
+          logout_time: string | null
+        }
+        Insert: {
+          created_at?: string
+          guard_id: string
+          guard_name: string
+          id?: string
+          login_time?: string
+          logout_time?: string | null
+        }
+        Update: {
+          created_at?: string
+          guard_id?: string
+          guard_name?: string
+          id?: string
+          login_time?: string
+          logout_time?: string | null
+        }
+        Relationships: []
+      }
+      guards: {
+        Row: {
+          created_at: string
+          guard_id: string
+          id: string
+          name: string
+          password: string
+        }
+        Insert: {
+          created_at?: string
+          guard_id: string
+          id?: string
+          name: string
+          password: string
+        }
+        Update: {
+          created_at?: string
+          guard_id?: string
+          id?: string
+          name?: string
+          password?: string
+        }
+        Relationships: []
+      }
+      resident_vehicles: {
+        Row: {
+          created_at: string
+          flat_number: string
+          id: string
+          resident_name: string
+          vehicle_number: string
+          vehicle_photo: string | null
+          vehicle_type: string
+        }
+        Insert: {
+          created_at?: string
+          flat_number: string
+          id?: string
+          resident_name: string
+          vehicle_number: string
+          vehicle_photo?: string | null
+          vehicle_type?: string
+        }
+        Update: {
+          created_at?: string
+          flat_number?: string
+          id?: string
+          resident_name?: string
+          vehicle_number?: string
+          vehicle_photo?: string | null
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
+      visitors: {
+        Row: {
+          category: string
+          company: string | null
+          created_at: string
+          document_number: string | null
+          document_photo: string | null
+          document_type: string
+          entry_time: string
+          exit_time: string | null
+          flat_number: string
+          guard_id: string
+          guard_name: string
+          id: string
+          is_blacklisted: boolean | null
+          name: string
+          phone: string
+          purpose: string
+          updated_at: string
+          vehicle_entry_time: string | null
+          vehicle_exit_time: string | null
+          vehicle_number: string | null
+          vehicle_photo: string | null
+          visitor_photos: string[] | null
+        }
+        Insert: {
+          category?: string
+          company?: string | null
+          created_at?: string
+          document_number?: string | null
+          document_photo?: string | null
+          document_type?: string
+          entry_time?: string
+          exit_time?: string | null
+          flat_number: string
+          guard_id: string
+          guard_name: string
+          id?: string
+          is_blacklisted?: boolean | null
+          name: string
+          phone: string
+          purpose?: string
+          updated_at?: string
+          vehicle_entry_time?: string | null
+          vehicle_exit_time?: string | null
+          vehicle_number?: string | null
+          vehicle_photo?: string | null
+          visitor_photos?: string[] | null
+        }
+        Update: {
+          category?: string
+          company?: string | null
+          created_at?: string
+          document_number?: string | null
+          document_photo?: string | null
+          document_type?: string
+          entry_time?: string
+          exit_time?: string | null
+          flat_number?: string
+          guard_id?: string
+          guard_name?: string
+          id?: string
+          is_blacklisted?: boolean | null
+          name?: string
+          phone?: string
+          purpose?: string
+          updated_at?: string
+          vehicle_entry_time?: string | null
+          vehicle_exit_time?: string | null
+          vehicle_number?: string | null
+          vehicle_photo?: string | null
+          visitor_photos?: string[] | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
