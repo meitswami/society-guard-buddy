@@ -5,6 +5,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useBiometric } from '@/hooks/useBiometric';
+import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 
 interface Props {
   onLogin: (resident: { id: string; name: string; phone: string; flatId: string; flatNumber: string }) => void;
