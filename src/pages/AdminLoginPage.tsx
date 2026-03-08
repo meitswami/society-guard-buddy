@@ -6,6 +6,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
+import PasswordResetFlow from '@/components/PasswordResetFlow';
 
 interface Props {
   onLogin: (admin: { id: string; name: string; adminId: string }) => void;
@@ -14,6 +15,7 @@ interface Props {
 
 const AdminLoginPage = ({ onLogin, onBack }: Props) => {
   const { t } = useLanguage();
+  const [showResetFlow, setShowResetFlow] = useState(false);
   const [adminId, setAdminId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
