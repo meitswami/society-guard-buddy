@@ -36,6 +36,7 @@ export interface ResidentVehicle {
   vehicleNumber: string;
   vehicleType: 'car' | 'bike' | 'delivery' | 'other';
   vehiclePhoto?: string;
+  flatId?: string;
 }
 
 export interface BlacklistEntry {
@@ -49,4 +50,28 @@ export interface BlacklistEntry {
   addedBy: string;
 }
 
-export type TabType = 'dashboard' | 'visitor' | 'vehicle' | 'delivery' | 'logs' | 'quick' | 'directory' | 'blacklist' | 'report';
+export interface Flat {
+  id: string;
+  flatNumber: string;
+  floor?: string;
+  wing?: string;
+  flatType: string;
+  ownerName?: string;
+  ownerPhone?: string;
+  intercom?: string;
+  isOccupied: boolean;
+}
+
+export interface Member {
+  id: string;
+  flatId: string;
+  name: string;
+  phone?: string;
+  relation: string;
+  age?: number;
+  gender?: string;
+  photo?: string;
+  isPrimary: boolean;
+}
+
+export type TabType = 'dashboard' | 'visitor' | 'vehicle' | 'delivery' | 'logs' | 'quick' | 'directory' | 'blacklist' | 'report' | 'settings';

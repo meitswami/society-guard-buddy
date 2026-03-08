@@ -1,5 +1,5 @@
 import type { TabType } from '@/types';
-import { LayoutDashboard, UserPlus, Car, Truck, FileText, Zap, BookUser, ShieldAlert, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, UserPlus, Car, Truck, FileText, Zap, BookUser, ShieldAlert, BarChart3, Settings } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
@@ -17,6 +17,7 @@ const tabKeys: { id: TabType; labelKey: string; icon: React.ElementType }[] = [
   { id: 'directory', labelKey: 'nav.directory', icon: BookUser },
   { id: 'report', labelKey: 'nav.report', icon: BarChart3 },
   { id: 'logs', labelKey: 'nav.logs', icon: FileText },
+  { id: 'settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
 const BottomNav = ({ activeTab, onTabChange }: Props) => {

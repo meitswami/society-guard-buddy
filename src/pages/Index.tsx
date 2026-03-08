@@ -11,11 +11,12 @@ import QuickEntryPage from '@/pages/QuickEntryPage';
 import DirectoryPage from '@/pages/DirectoryPage';
 import BlacklistPage from '@/pages/BlacklistPage';
 import ReportPage from '@/pages/ReportPage';
+import SettingsPage from '@/pages/SettingsPage';
 import BottomNav from '@/components/BottomNav';
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
 
 const AppContent = () => {
-  const { currentGuard, theme, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist } = useStore();
+  const { currentGuard, theme, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loaded, setLoaded] = useState(false);
@@ -35,6 +36,8 @@ const AppContent = () => {
       loadVisitors();
       loadResidentVehicles();
       loadBlacklist();
+      loadFlats();
+      loadMembers();
     }
   }, [currentGuard]);
 
@@ -75,6 +78,7 @@ const AppContent = () => {
       {activeTab === 'directory' && <DirectoryPage />}
       {activeTab === 'report' && <ReportPage />}
       {activeTab === 'logs' && <LogsPage />}
+      {activeTab === 'settings' && <SettingsPage />}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
