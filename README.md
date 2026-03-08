@@ -1,73 +1,110 @@
-# Welcome to your Lovable project
+# 🏢 Evergreen Heights — Society Management System
 
-## Project info
+A comprehensive, mobile-first society gate management application built for security guards to manage visitor entries, vehicle tracking, resident directories, and daily reporting.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## ✨ Features
 
-## How can I edit this code?
+### 🔐 Guard Authentication
+- Guard login with ID & password
+- Shift tracking with login/logout timestamps
+- Multi-guard support
 
-There are several ways of editing your application.
+### 👤 Visitor Management
+- Full visitor registration (name, phone, document, photos)
+- Auto-fill from previous visits (phone-based lookup)
+- Repeat visitor alerts & blacklist checking on entry
+- Vehicle tracking per visit
+- Quick re-entry for frequent visitors (2+ visits)
 
-**Use Lovable**
+### 🚗 Vehicle Registry
+- Resident vehicle registration linked to flats
+- Vehicle type categorization (car, bike, delivery, other)
+- Search by vehicle number, flat, or resident name
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### 📦 Delivery & Service Entry
+- Quick logging for delivery partners (Amazon, Flipkart, Swiggy, etc.)
+- Service staff tracking (electrician, plumber, etc.)
+- Photo capture support
 
-Changes made via Lovable will be committed automatically to this repo.
+### 🏠 Flat & Member Directory
+- Complete flat registry with wing, floor, and owner details
+- Member profiles with relation, age, gender
+- Vehicle linking per flat
+- Visitor history directory with visit counts
 
-**Use your preferred IDE**
+### 🚫 Blacklist Management
+- Flag visitors by phone number or vehicles by registration
+- Reason tracking and guard attribution
+- Real-time blacklist alerts during entry
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 📊 Daily Reports
+- Date-wise visitor statistics
+- Guard shift logs
+- CSV export & print-ready HTML reports
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### ⚙️ Settings & Data Management
+- One-click clear all dummy data for production readiness
+- Data summary dashboard
+- Theme & language settings
 
-Follow these steps:
+### 🎨 UI/UX
+- **Dual theme**: Light / Dark / System auto-detect
+- **Bilingual**: English 🇬🇧 & Hindi 🇮🇳 with instant toggle
+- **Mobile-first**: Optimized for guard phones with bottom navigation
+- **SweetAlert2**: Beautiful confirmation dialogs for all destructive actions
+- **Interactive dashboard**: Clickable stat cards filter entries, today/yesterday toggle
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🛠 Tech Stack
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript, Vite |
+| Styling | Tailwind CSS, CSS variables (HSL tokens) |
+| State | Zustand |
+| Backend | Lovable Cloud |
+| UI Components | shadcn/ui, Lucide icons |
+| Alerts | SweetAlert2 |
+| i18n | Custom context-based translation system |
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 📱 Navigation Modules
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+| # | Module | Description |
+|---|--------|-------------|
+| 1 | 🏠 Home | Dashboard with stats, alerts, recent entries |
+| 2 | ⚡ Quick | One-tap re-entry for frequent visitors |
+| 3 | 👤 Visitor | Full visitor registration form |
+| 4 | 📦 Delivery | Delivery & service staff entry |
+| 5 | 🚗 Vehicles | Resident vehicle registry |
+| 6 | 🚫 Blacklist | Flagged visitors & vehicles |
+| 7 | 📒 Directory | Flats, members & visitor history |
+| 8 | 📊 Report | Daily reports with export |
+| 9 | 📄 Logs | Searchable entry/exit records |
+| 10 | ⚙️ Settings | Theme, language, data management |
+
+## 🗄 Database Schema
+
+- **guards** — Guard credentials and IDs
+- **guard_shifts** — Login/logout timestamps per shift
+- **visitors** — Complete visitor entry records
+- **resident_vehicles** — Registered resident vehicles
+- **flats** — Flat details (number, wing, floor, owner)
+- **members** — Family members linked to flats
+- **blacklist** — Flagged visitors and vehicles
+
+## 🚀 Getting Started
+
+### Demo Login
+```
+Guard ID: G001
+Password: guard123
 ```
 
-**Edit a file directly in GitHub**
+### Going to Production
+1. Navigate to **Settings** (⚙️ tab)
+2. Click **"Clear All Data & Go Production"**
+3. All dummy data will be permanently removed
+4. Start entering real visitor and resident data
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📄 License
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Copyright © 2026. Developed by **MCSPL** with ❤️
