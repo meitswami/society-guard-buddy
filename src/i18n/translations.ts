@@ -41,6 +41,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'nav.directory': { en: 'Directory', hi: 'डायरेक्टरी' },
   'nav.report': { en: 'Report', hi: 'रिपोर्ट' },
   'nav.logs': { en: 'Logs', hi: 'लॉग्स' },
+  'nav.settings': { en: 'Settings', hi: 'सेटिंग्स' },
 
   // Dashboard
   'dashboard.visitors': { en: 'Visitors', hi: 'आगंतुक' },
