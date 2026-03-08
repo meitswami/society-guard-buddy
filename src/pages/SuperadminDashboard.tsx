@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image } from 'lucide-react';
-import { confirmAction } from '@/lib/swal';
+import { useStore } from '@/store/useStore';
+import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield } from 'lucide-react';
+import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import BiometricSetup from '@/components/BiometricSetup';
 
@@ -23,15 +24,17 @@ interface Admin {
   society_id: string | null; role_id: string | null; email: string | null;
 }
 
-type Tab = 'societies' | 'admins' | 'roles' | 'settings';
+type Tab = 'societies' | 'admins' | 'roles' | 'maintenance' | 'settings';
 
 const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const { t } = useLanguage();
+  const { clearAllData } = useStore();
   const [tab, setTab] = useState<Tab>('societies');
   const [societies, setSocieties] = useState<Society[]>([]);
   const [roles, setRoles] = useState<SocietyRole[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [selectedSociety, setSelectedSociety] = useState<string>('');
+  const [exporting, setExporting] = useState(false);
 
   const [showSocietyForm, setShowSocietyForm] = useState(false);
   const [sf, setSf] = useState({ name: '', address: '', city: '', state: '', pincode: '', contact_person: '', contact_email: '', contact_phone: '', logo_url: '' });
@@ -114,6 +117,44 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     if (ok) onLogout();
   };
 
+  const handleClearAll = async () => {
+    const confirmed = await confirmAction(
+      '⚠️ Clear All Data?',
+      'This will permanently delete ALL visitors, flats, members, vehicles, blacklist entries, and shift logs. This cannot be undone!',
+      'Yes, clear everything',
+      t('swal.no')
+    );
+    if (confirmed) {
+      await clearAllData();
+      showSuccess(t('swal.success'), 'All dummy data has been cleared. Ready for production!');
+    }
+  };
+
+  const handleExportBackup = async (societyId?: string) => {
+    setExporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('backup-export', {
+        body: { society_id: societyId || null },
+      });
+      if (error) throw error;
+
+      // Download the JSON
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const socName = societies.find(s => s.id === societyId)?.name || 'AllSocieties';
+      a.download = `backup_${socName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Backup exported successfully!');
+    } catch (e) {
+      toast.error('Backup export failed');
+      console.error(e);
+    }
+    setExporting(false);
+  };
+
   const filteredRoles = roles.filter(r => r.society_id === selectedSociety);
   const filteredAdmins = selectedSociety ? admins.filter(a => a.society_id === selectedSociety) : admins;
 
@@ -121,6 +162,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     { id: 'societies', label: t('superadmin.societies'), icon: Building2 },
     { id: 'roles', label: t('superadmin.roles'), icon: Tag },
     { id: 'admins', label: t('superadmin.admins'), icon: Users },
+    { id: 'maintenance', label: 'Maintenance', icon: Database },
     { id: 'settings', label: t('nav.settings'), icon: Crown },
   ];
 
@@ -285,6 +327,57 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
               );
             })}
             {filteredAdmins.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">{t('superadmin.noAdmins')}</p>}
+          </div>
+        )}
+
+        {tab === 'maintenance' && (
+          <div className="space-y-4">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Database className="w-4 h-4 text-primary" /> Data Maintenance
+            </h2>
+
+            {/* Backup Export */}
+            <div className="card-section p-4">
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <Download className="w-4 h-4 text-primary" /> Backup Export
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Download a complete JSON backup of all data. Auto-backup runs every 15 days and is emailed to meit10swami@gmail.com.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button onClick={() => handleExportBackup()} disabled={exporting}
+                  className="btn-primary w-full flex items-center justify-center gap-2">
+                  <Download className="w-4 h-4" />
+                  {exporting ? 'Exporting...' : 'Export All Societies Backup'}
+                </button>
+                {selectedSociety && (
+                  <button onClick={() => handleExportBackup(selectedSociety)} disabled={exporting}
+                    className="btn-secondary w-full flex items-center justify-center gap-2">
+                    <Download className="w-4 h-4" />
+                    Export {societies.find(s => s.id === selectedSociety)?.name || 'Selected'} Only
+                  </button>
+                )}
+              </div>
+              <div className="mt-3 p-2 bg-muted/50 rounded-lg">
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  Auto-backup: Every 15 days → meit10swami@gmail.com
+                </p>
+              </div>
+            </div>
+
+            {/* Danger Zone - Clear All Data */}
+            <div className="card-section border-destructive/30 p-4">
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-destructive">
+                <AlertTriangle className="w-4 h-4" /> Danger Zone
+              </h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Clear all dummy/test data to start fresh with real production data. This will delete all visitors, flats, members, vehicles, blacklist entries, and guard shift logs. This cannot be undone!
+              </p>
+              <button onClick={handleClearAll} className="w-full py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium flex items-center justify-center gap-2">
+                <Trash2 className="w-4 h-4" /> Clear All Data & Go Production
+              </button>
+            </div>
           </div>
         )}
 
