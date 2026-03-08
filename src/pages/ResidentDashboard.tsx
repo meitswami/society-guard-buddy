@@ -174,7 +174,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
   const handleLogout = async () => {
-    const confirmed = await confirmAction(t('swal.confirmLogout'), t('swal.confirmLogoutText'), t);
+    const confirmed = await confirmAction(t('swal.confirmLogout'), t('swal.confirmLogoutText'), t('swal.yes'), t('swal.no'));
     if (confirmed) onLogout();
   };
 
