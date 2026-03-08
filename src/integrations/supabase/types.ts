@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      approval_requests: {
+        Row: {
+          created_at: string
+          flat_id: string
+          flat_number: string
+          guard_id: string
+          guard_name: string
+          id: string
+          purpose: string | null
+          responded_at: string | null
+          status: string
+          visitor_name: string
+          visitor_phone: string | null
+          visitor_photo: string | null
+        }
+        Insert: {
+          created_at?: string
+          flat_id: string
+          flat_number: string
+          guard_id: string
+          guard_name: string
+          id?: string
+          purpose?: string | null
+          responded_at?: string | null
+          status?: string
+          visitor_name: string
+          visitor_phone?: string | null
+          visitor_photo?: string | null
+        }
+        Update: {
+          created_at?: string
+          flat_id?: string
+          flat_number?: string
+          guard_id?: string
+          guard_name?: string
+          id?: string
+          purpose?: string | null
+          responded_at?: string | null
+          status?: string
+          visitor_name?: string
+          visitor_phone?: string | null
+          visitor_photo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_requests_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blacklist: {
         Row: {
           added_at: string
@@ -187,6 +240,44 @@ export type Database = {
           },
         ]
       }
+      resident_users: {
+        Row: {
+          created_at: string
+          flat_id: string
+          flat_number: string
+          id: string
+          name: string
+          password: string
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          flat_id: string
+          flat_number: string
+          id?: string
+          name: string
+          password: string
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          flat_id?: string
+          flat_number?: string
+          id?: string
+          name?: string
+          password?: string
+          phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resident_users_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resident_vehicles: {
         Row: {
           created_at: string
@@ -221,6 +312,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "resident_vehicles_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visitor_passes: {
+        Row: {
+          created_at: string
+          created_by_id: string
+          created_by_name: string
+          created_by_type: string
+          flat_id: string
+          flat_number: string
+          guest_name: string | null
+          guest_phone: string | null
+          id: string
+          otp_code: string
+          status: string
+          time_slot_end: string | null
+          time_slot_start: string | null
+          used_at: string | null
+          valid_date: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_id: string
+          created_by_name: string
+          created_by_type: string
+          flat_id: string
+          flat_number: string
+          guest_name?: string | null
+          guest_phone?: string | null
+          id?: string
+          otp_code: string
+          status?: string
+          time_slot_end?: string | null
+          time_slot_start?: string | null
+          used_at?: string | null
+          valid_date: string
+        }
+        Update: {
+          created_at?: string
+          created_by_id?: string
+          created_by_name?: string
+          created_by_type?: string
+          flat_id?: string
+          flat_number?: string
+          guest_name?: string | null
+          guest_phone?: string | null
+          id?: string
+          otp_code?: string
+          status?: string
+          time_slot_end?: string | null
+          time_slot_start?: string | null
+          used_at?: string | null
+          valid_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitor_passes_flat_id_fkey"
             columns: ["flat_id"]
             isOneToOne: false
             referencedRelation: "flats"
