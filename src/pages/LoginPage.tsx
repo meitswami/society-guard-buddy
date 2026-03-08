@@ -9,14 +9,18 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const login = useStore(s => s.login);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!guardId || !password) {
       setError('Enter Guard ID and Password');
       return;
     }
-    const success = login(guardId.toUpperCase(), password);
+    setLoading(true);
+    const success = await login(guardId.toUpperCase(), password);
+    setLoading(false);
     if (!success) setError('Invalid credentials');
   };
 
