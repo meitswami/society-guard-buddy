@@ -220,6 +220,391 @@ export type Database = {
         }
         Relationships: []
       }
+      donation_campaigns: {
+        Row: {
+          collected_amount: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          society_id: string | null
+          status: string
+          target_amount: number | null
+          title: string
+        }
+        Insert: {
+          collected_amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          society_id?: string | null
+          status?: string
+          target_amount?: number | null
+          title: string
+        }
+        Update: {
+          collected_amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          society_id?: string | null
+          status?: string
+          target_amount?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donation_campaigns_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donation_payments: {
+        Row: {
+          amount: number
+          campaign_id: string | null
+          created_at: string
+          flat_id: string | null
+          flat_number: string
+          id: string
+          notes: string | null
+          payment_method: string
+          resident_name: string | null
+          screenshot_url: string | null
+          transaction_id: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          amount: number
+          campaign_id?: string | null
+          created_at?: string
+          flat_id?: string | null
+          flat_number: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          resident_name?: string | null
+          screenshot_url?: string | null
+          transaction_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string | null
+          created_at?: string
+          flat_id?: string | null
+          flat_number?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          resident_name?: string | null
+          screenshot_url?: string | null
+          transaction_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donation_payments_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "donation_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donation_payments_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_contributions: {
+        Row: {
+          amount: number
+          created_at: string
+          event_id: string | null
+          flat_id: string | null
+          flat_number: string
+          id: string
+          payment_method: string
+          resident_name: string | null
+          screenshot_url: string | null
+          transaction_id: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          event_id?: string | null
+          flat_id?: string | null
+          flat_number: string
+          id?: string
+          payment_method?: string
+          resident_name?: string | null
+          screenshot_url?: string | null
+          transaction_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          event_id?: string | null
+          flat_id?: string | null
+          flat_number?: string
+          id?: string
+          payment_method?: string
+          resident_name?: string | null
+          screenshot_url?: string | null
+          transaction_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_contributions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_contributions_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_rsvps: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          flat_id: string | null
+          flat_number: string
+          id: string
+          members_count: number | null
+          resident_name: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          flat_id?: string | null
+          flat_number: string
+          id?: string
+          members_count?: number | null
+          resident_name?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          flat_id?: string | null
+          flat_number?: string
+          id?: string
+          members_count?: number | null
+          resident_name?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvps_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          contribution_amount: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string
+          event_time: string | null
+          id: string
+          location: string | null
+          society_id: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          contribution_amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date: string
+          event_time?: string | null
+          id?: string
+          location?: string | null
+          society_id?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          contribution_amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string
+          event_time?: string | null
+          id?: string
+          location?: string | null
+          society_id?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          society_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          society_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          society_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_groups_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_splits: {
+        Row: {
+          amount: number
+          created_at: string
+          expense_id: string | null
+          flat_number: string
+          id: string
+          is_settled: boolean
+          resident_name: string | null
+          settled_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          expense_id?: string | null
+          flat_number: string
+          id?: string
+          is_settled?: boolean
+          resident_name?: string | null
+          settled_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          expense_id?: string | null
+          flat_number?: string
+          id?: string
+          is_settled?: boolean
+          resident_name?: string | null
+          settled_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_splits_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          created_at: string
+          group_id: string | null
+          id: string
+          paid_by_flat: string
+          paid_by_name: string | null
+          split_type: string
+          title: string
+          total_amount: number
+        }
+        Insert: {
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          paid_by_flat: string
+          paid_by_name?: string | null
+          split_type?: string
+          title: string
+          total_amount: number
+        }
+        Update: {
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          paid_by_flat?: string
+          paid_by_name?: string | null
+          split_type?: string
+          title?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "expense_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flats: {
         Row: {
           created_at: string
@@ -362,6 +747,122 @@ export type Database = {
           },
         ]
       }
+      maintenance_charges: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_day: number
+          frequency: string
+          id: string
+          is_active: boolean
+          society_id: string | null
+          title: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_day?: number
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          society_id?: string | null
+          title: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_day?: number
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          society_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_charges_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_payments: {
+        Row: {
+          amount: number
+          charge_id: string | null
+          created_at: string
+          due_date: string
+          flat_id: string | null
+          flat_number: string
+          id: string
+          notes: string | null
+          payment_date: string | null
+          payment_method: string
+          payment_status: string
+          resident_name: string | null
+          screenshot_url: string | null
+          transaction_id: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          amount: number
+          charge_id?: string | null
+          created_at?: string
+          due_date: string
+          flat_id?: string | null
+          flat_number: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string
+          payment_status?: string
+          resident_name?: string | null
+          screenshot_url?: string | null
+          transaction_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          amount?: number
+          charge_id?: string | null
+          created_at?: string
+          due_date?: string
+          flat_id?: string | null
+          flat_number?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string
+          payment_status?: string
+          resident_name?: string | null
+          screenshot_url?: string | null
+          transaction_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_payments_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_payments_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           age: number | null
@@ -405,6 +906,264 @@ export type Database = {
             columns: ["flat_id"]
             isOneToOne: false
             referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_read: boolean
+          message: string
+          society_id: string | null
+          target_id: string | null
+          target_type: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_read?: boolean
+          message: string
+          society_id?: string | null
+          target_id?: string | null
+          target_type?: string
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          society_id?: string | null
+          target_id?: string | null
+          target_type?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parking_spaces: {
+        Row: {
+          allocated_flat_id: string | null
+          allocated_flat_number: string | null
+          allocated_vehicle_number: string | null
+          created_at: string
+          floor_level: string | null
+          id: string
+          is_allocated: boolean
+          notes: string | null
+          society_id: string | null
+          space_number: string
+          space_type: string
+        }
+        Insert: {
+          allocated_flat_id?: string | null
+          allocated_flat_number?: string | null
+          allocated_vehicle_number?: string | null
+          created_at?: string
+          floor_level?: string | null
+          id?: string
+          is_allocated?: boolean
+          notes?: string | null
+          society_id?: string | null
+          space_number: string
+          space_type?: string
+        }
+        Update: {
+          allocated_flat_id?: string | null
+          allocated_flat_number?: string | null
+          allocated_vehicle_number?: string | null
+          created_at?: string
+          floor_level?: string | null
+          id?: string
+          is_allocated?: boolean
+          notes?: string | null
+          society_id?: string | null
+          space_number?: string
+          space_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parking_spaces_allocated_flat_id_fkey"
+            columns: ["allocated_flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parking_spaces_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      password_reset_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          used: boolean
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          token: string
+          used?: boolean
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used?: boolean
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
+      poll_options: {
+        Row: {
+          created_at: string
+          id: string
+          option_text: string
+          poll_id: string | null
+          votes_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_text: string
+          poll_id?: string | null
+          votes_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_text?: string
+          poll_id?: string | null
+          votes_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_votes: {
+        Row: {
+          created_at: string
+          flat_number: string | null
+          id: string
+          option_id: string | null
+          poll_id: string | null
+          voter_id: string
+          voter_type: string
+        }
+        Insert: {
+          created_at?: string
+          flat_number?: string | null
+          id?: string
+          option_id?: string | null
+          poll_id?: string | null
+          voter_id: string
+          voter_type?: string
+        }
+        Update: {
+          created_at?: string
+          flat_number?: string | null
+          id?: string
+          option_id?: string | null
+          poll_id?: string | null
+          voter_id?: string
+          voter_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          allow_multiple: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          question: string
+          society_id: string | null
+        }
+        Insert: {
+          allow_multiple?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          question: string
+          society_id?: string | null
+        }
+        Update: {
+          allow_multiple?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          question?: string
+          society_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polls_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
             referencedColumns: ["id"]
           },
         ]
