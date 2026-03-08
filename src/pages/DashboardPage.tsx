@@ -1,16 +1,16 @@
 import { useStore } from '@/store/useStore';
-import { Users, Car, Truck, LogIn, ShieldAlert, LogOut, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Car, Truck, LogIn, ShieldAlert, LogOut, Clock, ChevronLeft, ChevronRight, DoorOpen } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useMemo, useState } from 'react';
 import { format, subDays } from 'date-fns';
-import { confirmAction } from '@/lib/swal';
+import { confirmAction, showSuccess } from '@/lib/swal';
 
 type StatFilter = 'all' | 'visitor' | 'vehicle' | 'delivery' | 'inside';
 
 const DashboardPage = () => {
-  const { visitors, currentGuard, logout } = useStore();
+  const { visitors, currentGuard, logout, markExit } = useStore();
   const { t } = useLanguage();
   const [dayOffset, setDayOffset] = useState(0); // 0 = today, 1 = yesterday
   const [activeFilter, setActiveFilter] = useState<StatFilter>('all');
@@ -58,6 +58,19 @@ const DashboardPage = () => {
 
   const toggleFilter = (filter: StatFilter) => {
     setActiveFilter(prev => prev === filter ? 'all' : filter);
+  };
+
+  const handleMarkExit = async (visitorId: string, visitorName: string) => {
+    const confirmed = await confirmAction(
+      '🚪 Mark Exit?',
+      `Are you sure you want to mark "${visitorName}" as exited?`,
+      'Yes, mark exit',
+      'Cancel'
+    );
+    if (confirmed) {
+      await markExit(visitorId);
+      showSuccess('Exit Recorded', `${visitorName} has been marked as exited.`);
+    }
   };
 
   return (
@@ -178,7 +191,9 @@ const DashboardPage = () => {
         ) : (
           <div className="flex flex-col gap-2">
             {filteredEntries.map(v => (
-              <div key={v.id} className="card-section flex items-center gap-3">
+              <div key={v.id}
+                onClick={() => !v.exitTime && handleMarkExit(v.id, v.name)}
+                className={`card-section flex items-center gap-3 ${!v.exitTime ? 'cursor-pointer hover:bg-primary/5 active:scale-[0.98] transition-all' : ''}`}>
                 <div className={`w-2 h-2 rounded-full ${v.exitTime ? 'bg-muted-foreground' : 'bg-success animate-pulse'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{v.name}</p>
@@ -187,7 +202,13 @@ const DashboardPage = () => {
                     {v.vehicleNumber && ` · ${v.vehicleNumber}`}
                   </p>
                 </div>
-                {!v.exitTime && <span className="status-inside text-[10px]">{t('common.inside')}</span>}
+                {!v.exitTime ? (
+                  <button className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium">
+                    <DoorOpen className="w-3 h-3" /> EXIT
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">{format(new Date(v.exitTime), 'hh:mm a')}</span>
+                )}
               </div>
             ))}
           </div>
