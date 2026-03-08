@@ -1,17 +1,28 @@
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Monitor } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 
 const ThemeToggle = () => {
-  const { theme, toggleTheme } = useStore();
+  const { theme, setTheme } = useStore();
+
+  const options = [
+    { value: 'light' as const, icon: Sun },
+    { value: 'system' as const, icon: Monitor },
+    { value: 'dark' as const, icon: Moon },
+  ];
 
   return (
-    <button
-      onClick={toggleTheme}
-      className="p-2 rounded-lg bg-secondary text-secondary-foreground transition-colors"
-      aria-label="Toggle theme"
-    >
-      {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-    </button>
+    <div className="flex bg-secondary rounded-lg p-0.5 gap-0.5">
+      {options.map(({ value, icon: Icon }) => (
+        <button
+          key={value}
+          onClick={() => setTheme(value)}
+          className={`p-1.5 rounded-md transition-colors ${theme === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+          aria-label={`${value} theme`}
+        >
+          <Icon className="w-3.5 h-3.5" />
+        </button>
+      ))}
+    </div>
   );
 };
 

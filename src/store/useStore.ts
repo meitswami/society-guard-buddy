@@ -32,8 +32,8 @@ interface AppState {
   isBlacklisted: (phone?: string, vehicleNumber?: string) => boolean;
 
   // Theme
-  theme: 'dark' | 'light';
-  toggleTheme: () => void;
+  theme: 'dark' | 'light' | 'system';
+  setTheme: (theme: 'dark' | 'light' | 'system') => void;
 }
 
 export const useStore = create<AppState>()((set, get) => ({
@@ -43,7 +43,7 @@ export const useStore = create<AppState>()((set, get) => ({
   visitors: [],
   residentVehicles: [],
   blacklist: [],
-  theme: (localStorage.getItem('gate-theme') as 'dark' | 'light') || 'dark',
+  theme: (localStorage.getItem('gate-theme') as 'dark' | 'light' | 'system') || 'system',
 
   loadGuards: async () => {
     const { data } = await supabase.from('guards').select('*');
@@ -229,9 +229,8 @@ export const useStore = create<AppState>()((set, get) => ({
     );
   },
 
-  toggleTheme: () => {
-    const newTheme = get().theme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('gate-theme', newTheme);
-    set({ theme: newTheme });
+  setTheme: (theme) => {
+    localStorage.setItem('gate-theme', theme);
+    set({ theme });
   },
 }));
