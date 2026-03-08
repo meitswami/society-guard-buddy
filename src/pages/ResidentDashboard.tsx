@@ -131,7 +131,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
   const handleApproval = async (id: string, status: 'approved' | 'rejected') => {
     const label = status === 'approved' ? t('resident.approve') : t('resident.reject');
-    const confirmed = await confirmAction(label + '?', t('resident.confirmApprovalText'), t);
+    const confirmed = await confirmAction(label + '?', t('resident.confirmApprovalText'), t('swal.yes'), t('swal.no'));
     if (!confirmed) return;
     await supabase.from('approval_requests').update({
       status, responded_at: new Date().toISOString(),
