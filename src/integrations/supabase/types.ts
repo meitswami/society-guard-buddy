@@ -50,6 +50,45 @@ export type Database = {
         }
         Relationships: []
       }
+      flats: {
+        Row: {
+          created_at: string
+          flat_number: string
+          flat_type: string | null
+          floor: string | null
+          id: string
+          intercom: string | null
+          is_occupied: boolean | null
+          owner_name: string | null
+          owner_phone: string | null
+          wing: string | null
+        }
+        Insert: {
+          created_at?: string
+          flat_number: string
+          flat_type?: string | null
+          floor?: string | null
+          id?: string
+          intercom?: string | null
+          is_occupied?: boolean | null
+          owner_name?: string | null
+          owner_phone?: string | null
+          wing?: string | null
+        }
+        Update: {
+          created_at?: string
+          flat_number?: string
+          flat_type?: string | null
+          floor?: string | null
+          id?: string
+          intercom?: string | null
+          is_occupied?: boolean | null
+          owner_name?: string | null
+          owner_phone?: string | null
+          wing?: string | null
+        }
+        Relationships: []
+      }
       guard_shifts: {
         Row: {
           created_at: string
@@ -101,9 +140,57 @@ export type Database = {
         }
         Relationships: []
       }
+      members: {
+        Row: {
+          age: number | null
+          created_at: string
+          flat_id: string
+          gender: string | null
+          id: string
+          is_primary: boolean | null
+          name: string
+          phone: string | null
+          photo: string | null
+          relation: string | null
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          flat_id: string
+          gender?: string | null
+          id?: string
+          is_primary?: boolean | null
+          name: string
+          phone?: string | null
+          photo?: string | null
+          relation?: string | null
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          flat_id?: string
+          gender?: string | null
+          id?: string
+          is_primary?: boolean | null
+          name?: string
+          phone?: string | null
+          photo?: string | null
+          relation?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resident_vehicles: {
         Row: {
           created_at: string
+          flat_id: string | null
           flat_number: string
           id: string
           resident_name: string
@@ -113,6 +200,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          flat_id?: string | null
           flat_number: string
           id?: string
           resident_name: string
@@ -122,6 +210,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          flat_id?: string | null
           flat_number?: string
           id?: string
           resident_name?: string
@@ -129,7 +218,15 @@ export type Database = {
           vehicle_photo?: string | null
           vehicle_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "resident_vehicles_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       visitors: {
         Row: {
