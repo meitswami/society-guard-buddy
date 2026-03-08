@@ -6,6 +6,8 @@ import ResidentLoginPage from '@/pages/ResidentLoginPage';
 import ResidentDashboard from '@/pages/ResidentDashboard';
 import AdminLoginPage from '@/pages/AdminLoginPage';
 import AdminDashboard from '@/pages/AdminDashboard';
+import SuperadminLoginPage from '@/pages/SuperadminLoginPage';
+import SuperadminDashboard from '@/pages/SuperadminDashboard';
 import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
@@ -18,7 +20,7 @@ import SettingsPage from '@/pages/SettingsPage';
 import BottomNav from '@/components/BottomNav';
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
 
-type UserMode = 'choosing' | 'guard' | 'resident' | 'admin';
+type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 
 const AppContent = () => {
   const { currentGuard, theme, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
@@ -28,6 +30,7 @@ const AppContent = () => {
   const [userMode, setUserMode] = useState<UserMode>('choosing');
   const [residentUser, setResidentUser] = useState<{ id: string; name: string; phone: string; flatId: string; flatNumber: string } | null>(null);
   const [adminUser, setAdminUser] = useState<{ id: string; name: string; adminId: string } | null>(null);
+  const [superadminUser, setSuperadminUser] = useState<{ id: string; name: string; username: string } | null>(null);
 
   const goHome = useCallback(() => setActiveTab('dashboard'), []);
 
@@ -73,6 +76,11 @@ const AppContent = () => {
     );
   }
 
+  // Superadmin logged in
+  if (superadminUser) {
+    return <SuperadminDashboard superadmin={superadminUser} onLogout={() => { setSuperadminUser(null); setUserMode('choosing'); }} />;
+  }
+
   // Admin logged in
   if (adminUser) {
     return <AdminDashboard admin={adminUser} onLogout={() => { setAdminUser(null); setUserMode('choosing'); }} />;
@@ -105,6 +113,10 @@ const AppContent = () => {
               className="w-full py-3 text-sm rounded-xl border border-border text-muted-foreground font-medium hover:bg-muted transition-colors">
               ⚙️ {t('login.adminLogin')}
             </button>
+            <button onClick={() => setUserMode('superadmin')}
+              className="w-full py-2 text-xs rounded-xl text-muted-foreground/60 font-medium hover:text-muted-foreground transition-colors">
+              👑 {t('login.superadminLogin')}
+            </button>
           </div>
           <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">
             {t('app.footer')}
@@ -115,6 +127,10 @@ const AppContent = () => {
 
     if (userMode === 'admin') {
       return <AdminLoginPage onLogin={setAdminUser} onBack={() => setUserMode('choosing')} />;
+    }
+
+    if (userMode === 'superadmin') {
+      return <SuperadminLoginPage onLogin={setSuperadminUser} onBack={() => setUserMode('choosing')} />;
     }
 
     if (userMode === 'resident') {
