@@ -229,9 +229,8 @@ export const useStore = create<AppState>()((set, get) => ({
     );
   },
 
-  toggleTheme: () => {
-    const newTheme = get().theme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('gate-theme', newTheme);
-    set({ theme: newTheme });
+  setTheme: (theme) => {
+    localStorage.setItem('gate-theme', theme);
+    set({ theme });
   },
 }));
