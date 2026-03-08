@@ -10,7 +10,7 @@ import { confirmAction } from '@/lib/swal';
 type StatFilter = 'all' | 'visitor' | 'vehicle' | 'delivery' | 'inside';
 
 const DashboardPage = () => {
-  const { visitors, currentGuard, logout } = useStore();
+  const { visitors, currentGuard, logout, markExit } = useStore();
   const { t } = useLanguage();
   const [dayOffset, setDayOffset] = useState(0); // 0 = today, 1 = yesterday
   const [activeFilter, setActiveFilter] = useState<StatFilter>('all');
