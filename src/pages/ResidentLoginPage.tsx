@@ -95,10 +95,18 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
           <button type="button" className="text-xs text-muted-foreground text-center mt-2 underline" onClick={onSwitchToGuard}>
             {t('resident.switchToGuard')}
           </button>
+          <button type="button" className="text-xs text-primary text-center mt-1 underline" onClick={() => setShowResetFlow(true)}>
+            Forgot Password?
+          </button>
           <p className="text-xs text-muted-foreground text-center mt-2">{t('resident.demo')}</p>
         </form>
       </div>
       <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">{t('app.footer')}</p>
+      {showResetFlow && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <PasswordResetFlow userType="resident" onBack={() => setShowResetFlow(false)} />
+        </div>
+      )}
     </div>
   );
 };
