@@ -191,7 +191,9 @@ const DashboardPage = () => {
         ) : (
           <div className="flex flex-col gap-2">
             {filteredEntries.map(v => (
-              <div key={v.id} className="card-section flex items-center gap-3">
+              <div key={v.id}
+                onClick={() => !v.exitTime && handleMarkExit(v.id, v.name)}
+                className={`card-section flex items-center gap-3 ${!v.exitTime ? 'cursor-pointer hover:bg-primary/5 active:scale-[0.98] transition-all' : ''}`}>
                 <div className={`w-2 h-2 rounded-full ${v.exitTime ? 'bg-muted-foreground' : 'bg-success animate-pulse'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{v.name}</p>
@@ -200,7 +202,13 @@ const DashboardPage = () => {
                     {v.vehicleNumber && ` · ${v.vehicleNumber}`}
                   </p>
                 </div>
-                {!v.exitTime && <span className="status-inside text-[10px]">{t('common.inside')}</span>}
+                {!v.exitTime ? (
+                  <button className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium">
+                    <DoorOpen className="w-3 h-3" /> EXIT
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">{format(new Date(v.exitTime), 'hh:mm a')}</span>
+                )}
               </div>
             ))}
           </div>
