@@ -1,13 +1,13 @@
 # 🏢 Evergreen Heights — Society Management System
 
-A comprehensive, mobile-first society gate management application built for security guards to manage visitor entries, vehicle tracking, resident directories, and daily reporting.
+A comprehensive, mobile-first society gate management application built for security guards and residents to manage visitor entries, approvals, vehicle tracking, resident directories, and daily reporting.
 
 ## ✨ Features
 
-### 🔐 Guard Authentication
-- Guard login with ID & password
-- Shift tracking with login/logout timestamps
-- Multi-guard support
+### 🔐 Dual Authentication
+- **Guard login** with ID & password — shift tracking with timestamps
+- **Resident login** with phone & password — manage approvals & visitor passes
+- Role-based dashboards for guards and residents
 
 ### 👤 Visitor Management
 - Full visitor registration (name, phone, document, photos)
@@ -15,6 +15,20 @@ A comprehensive, mobile-first society gate management application built for secu
 - Repeat visitor alerts & blacklist checking on entry
 - Vehicle tracking per visit
 - Quick re-entry for frequent visitors (2+ visits)
+
+### ✅ Resident Approval System
+- Guard sends **real-time approval request** to resident's dashboard
+- Resident receives **sound notification** for pending approvals
+- One-tap **Approve / Reject** with 2-minute timeout
+- Full approval history for residents
+- Powered by real-time database subscriptions
+
+### 🔑 OTP Visitor Pass System
+- Residents (or guards) generate **6-digit OTP passes** for expected guests
+- Passes include **date + time slot** restrictions
+- Guard verifies OTP at the gate — auto-registers the visitor if valid
+- Pass status tracking: active → used → expired
+- Copy-to-clipboard for easy sharing
 
 ### 🚗 Vehicle Registry
 - Resident vehicle registration linked to flats
@@ -61,7 +75,7 @@ A comprehensive, mobile-first society gate management application built for secu
 | Frontend | React 18, TypeScript, Vite |
 | Styling | Tailwind CSS, CSS variables (HSL tokens) |
 | State | Zustand |
-| Backend | Lovable Cloud |
+| Backend | Lovable Cloud (real-time subscriptions) |
 | UI Components | shadcn/ui, Lucide icons |
 | Alerts | SweetAlert2 |
 | i18n | Custom context-based translation system |
@@ -72,7 +86,7 @@ A comprehensive, mobile-first society gate management application built for secu
 |---|--------|-------------|
 | 1 | 🏠 Home | Dashboard with stats, alerts, recent entries |
 | 2 | ⚡ Quick | One-tap re-entry for frequent visitors |
-| 3 | 👤 Visitor | Full visitor registration form |
+| 3 | 👤 Visitor | Full registration + Ask Permission + OTP Verify |
 | 4 | 📦 Delivery | Delivery & service staff entry |
 | 5 | 🚗 Vehicles | Resident vehicle registry |
 | 6 | 🚫 Blacklist | Flagged visitors & vehicles |
@@ -90,14 +104,37 @@ A comprehensive, mobile-first society gate management application built for secu
 - **flats** — Flat details (number, wing, floor, owner)
 - **members** — Family members linked to flats
 - **blacklist** — Flagged visitors and vehicles
+- **resident_users** — Resident login credentials linked to flats
+- **approval_requests** — Guard → Resident approval flow (real-time)
+- **visitor_passes** — OTP-based pre-approved visitor passes
 
 ## 🚀 Getting Started
 
-### Demo Login
+### Demo Logins
+
+**Guard:**
 ```
 Guard ID: G001
 Password: guard123
 ```
+
+**Resident:**
+```
+Phone: 9876543210
+Password: resident123
+```
+
+### Approval Flow
+1. Guard fills visitor details → clicks **"Ask Permission"**
+2. Resident sees real-time notification with sound alert
+3. Resident taps **Approve** or **Reject**
+4. Guard screen updates instantly — auto-registers visitor if approved
+
+### OTP Pass Flow
+1. Resident creates a pass with guest name, date & time slot
+2. System generates a **6-digit OTP** — resident shares with guest
+3. Guest arrives → Guard clicks **"Verify OTP"** → enters code
+4. System validates date/time → auto-registers entry
 
 ### Going to Production
 1. Navigate to **Settings** (⚙️ tab)
