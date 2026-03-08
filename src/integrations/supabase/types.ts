@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admins: {
+        Row: {
+          admin_id: string
+          created_at: string
+          id: string
+          name: string
+          password: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          id?: string
+          name: string
+          password: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          password?: string
+        }
+        Relationships: []
+      }
       approval_requests: {
         Row: {
           created_at: string
@@ -139,6 +163,36 @@ export type Database = {
           owner_name?: string | null
           owner_phone?: string | null
           wing?: string | null
+        }
+        Relationships: []
+      }
+      geofence_settings: {
+        Row: {
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          radius_meters: number
+          set_by: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          radius_meters?: number
+          set_by: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          radius_meters?: number
+          set_by?: string
+          updated_at?: string
         }
         Relationships: []
       }
