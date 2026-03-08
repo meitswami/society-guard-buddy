@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           admin_id: string
           created_at: string
+          email: string | null
           id: string
           name: string
           password: string
@@ -27,6 +28,7 @@ export type Database = {
         Insert: {
           admin_id: string
           created_at?: string
+          email?: string | null
           id?: string
           name: string
           password: string
@@ -36,6 +38,7 @@ export type Database = {
         Update: {
           admin_id?: string
           created_at?: string
+          email?: string | null
           id?: string
           name?: string
           password?: string
@@ -111,6 +114,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      biometric_credentials: {
+        Row: {
+          created_at: string
+          credential_id: string
+          id: string
+          public_key: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          created_at?: string
+          credential_id: string
+          id?: string
+          public_key: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          created_at?: string
+          credential_id?: string
+          id?: string
+          public_key?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
       }
       blacklist: {
         Row: {
@@ -340,6 +370,7 @@ export type Database = {
       resident_users: {
         Row: {
           created_at: string
+          email: string | null
           flat_id: string
           flat_number: string
           id: string
@@ -349,6 +380,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email?: string | null
           flat_id: string
           flat_number: string
           id?: string
@@ -358,6 +390,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email?: string | null
           flat_id?: string
           flat_number?: string
           id?: string
@@ -420,9 +453,13 @@ export type Database = {
         Row: {
           address: string | null
           city: string | null
+          contact_email: string | null
+          contact_person: string | null
+          contact_phone: string | null
           created_at: string
           id: string
           is_active: boolean
+          logo_url: string | null
           name: string
           pincode: string | null
           state: string | null
@@ -430,9 +467,13 @@ export type Database = {
         Insert: {
           address?: string | null
           city?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
+          logo_url?: string | null
           name: string
           pincode?: string | null
           state?: string | null
@@ -440,9 +481,13 @@ export type Database = {
         Update: {
           address?: string | null
           city?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
+          logo_url?: string | null
           name?: string
           pincode?: string | null
           state?: string | null
