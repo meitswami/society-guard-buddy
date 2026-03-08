@@ -3,6 +3,7 @@ import { useStore } from '@/store/useStore';
 import type { BlacklistEntry } from '@/types';
 import { ShieldAlert, Plus, Trash2, Search, User, Car } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { confirmAction, showSuccess } from '@/lib/swal';
 
 const BlacklistPage = () => {
   const { blacklist, addToBlacklist, removeFromBlacklist, currentGuard } = useStore();
@@ -10,7 +11,6 @@ const BlacklistPage = () => {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ type: 'visitor' as 'visitor' | 'vehicle', name: '', phone: '', vehicleNumber: '', reason: '' });
-  const [success, setSuccess] = useState(false);
 
   const filtered = blacklist.filter(e => {
     if (!search) return true;
@@ -32,12 +32,13 @@ const BlacklistPage = () => {
     };
     await addToBlacklist(entry);
     setForm({ type: 'visitor', name: '', phone: '', vehicleNumber: '', reason: '' });
-    setShowForm(false); setSuccess(true);
-    setTimeout(() => setSuccess(false), 2000);
+    setShowForm(false);
+    showSuccess(t('swal.success'), t('blacklist.addedSuccess'));
   };
 
   const handleRemove = async (id: string) => {
-    if (confirm(t('blacklist.removeConfirm'))) await removeFromBlacklist(id);
+    const confirmed = await confirmAction(t('swal.confirmDelete'), t('swal.confirmDeleteText'), t('swal.yes'), t('swal.no'));
+    if (confirmed) await removeFromBlacklist(id);
   };
 
   return (
@@ -56,12 +57,6 @@ const BlacklistPage = () => {
           <Plus className="w-3.5 h-3.5" /> {t('common.add')}
         </button>
       </div>
-
-      {success && (
-        <div className="card-section border-success/30 mb-4 text-center">
-          <p className="text-[hsl(var(--success))] text-sm font-semibold">✓ {t('blacklist.addedSuccess')}</p>
-        </div>
-      )}
 
       {showForm && (
         <form onSubmit={handleSubmit} className="card-section border-destructive/30 mb-4 flex flex-col gap-3">

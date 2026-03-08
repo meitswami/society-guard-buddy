@@ -4,15 +4,17 @@ import type { Visitor } from '@/types';
 import { Truck, Camera } from 'lucide-react';
 import PhotoCapture from '@/components/PhotoCapture';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { showSuccess } from '@/lib/swal';
 
 const COMPANIES = ['Amazon', 'Flipkart', 'Swiggy', 'Zomato', 'BigBasket', 'Blinkit', 'Dunzo', 'Other'];
 const SERVICE_TYPES = ['Housekeeping', 'Electrician', 'Plumber', 'Carpenter', 'Painter', 'AC Service', 'Other'];
 
-const DeliveryEntryPage = () => {
+interface Props { onDone?: () => void; }
+
+const DeliveryEntryPage = ({ onDone }: Props) => {
   const { addVisitor, currentGuard } = useStore();
   const { t } = useLanguage();
   const [tab, setTab] = useState<'delivery' | 'service'>('delivery');
-  const [success, setSuccess] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', company: 'Amazon', flatNumber: '', vehicleNumber: '' });
   const [personPhotos, setPersonPhotos] = useState<string[]>([]);
 
@@ -31,10 +33,10 @@ const DeliveryEntryPage = () => {
       vehicleEntryTime: form.vehicleNumber ? new Date().toISOString() : undefined,
     };
     await addVisitor(entry);
-    setSuccess(true);
+    showSuccess(t('swal.success'), t('swal.deliveryRegistered'));
     setForm({ name: '', phone: '', company: tab === 'delivery' ? 'Amazon' : 'Housekeeping', flatNumber: '', vehicleNumber: '' });
     setPersonPhotos([]);
-    setTimeout(() => setSuccess(false), 2000);
+    if (onDone) setTimeout(() => onDone(), 1600);
   };
 
   return (
@@ -59,12 +61,6 @@ const DeliveryEntryPage = () => {
           {t('delivery.tab.service')}
         </button>
       </div>
-
-      {success && (
-        <div className="card-section border-success/30 mb-4 text-center">
-          <p className="text-success text-sm font-semibold">✓ {t('delivery.success')}</p>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>

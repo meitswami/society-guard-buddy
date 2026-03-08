@@ -166,9 +166,9 @@ const translations: Record<string, Record<Lang, string>> = {
   'swal.deliveryRegistered': { en: 'Entry registered successfully', hi: 'एंट्री सफलतापूर्वक पंजीकृत' },
   'swal.exitMarked': { en: 'Exit marked successfully', hi: 'बाहर जाना सफलतापूर्वक दर्ज' },
 
-  // Dashboard
+  // Dashboard date filter
   'dashboard.yesterday': { en: 'Yesterday', hi: 'कल' },
-  'dashboard.today': { en: 'Today', hi: 'आज' },
+  'dashboard.todayLabel': { en: 'Today', hi: 'आज' },
   'dashboard.all': { en: 'All', hi: 'सभी' },
 };
 

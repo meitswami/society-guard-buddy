@@ -5,6 +5,7 @@ import { UserPlus, Camera, ShieldAlert, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import PhotoCapture from '@/components/PhotoCapture';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { showSuccess } from '@/lib/swal';
 
 const DOC_TYPES = [
   { value: 'aadhaar', label: 'Aadhaar' },
@@ -16,10 +17,11 @@ const DOC_TYPES = [
 const PURPOSE_KEYS = ['purpose.visit', 'purpose.delivery', 'purpose.meeting', 'purpose.maintenance', 'purpose.guest', 'purpose.other'];
 const PURPOSE_VALUES = ['Visit', 'Delivery', 'Meeting', 'Maintenance', 'Guest', 'Other'];
 
-const VisitorEntryPage = () => {
+interface Props { onDone?: () => void; }
+
+const VisitorEntryPage = ({ onDone }: Props) => {
   const { addVisitor, visitors, currentGuard, isBlacklisted } = useStore();
   const { t } = useLanguage();
-  const [success, setSuccess] = useState(false);
   const [blacklistAlert, setBlacklistAlert] = useState(false);
   const [repeatAlert, setRepeatAlert] = useState<string | null>(null);
   const [hasVehicle, setHasVehicle] = useState(false);
@@ -62,11 +64,11 @@ const VisitorEntryPage = () => {
       vehicleEntryTime: hasVehicle && form.vehicleNumber ? new Date().toISOString() : undefined,
     };
     await addVisitor(visitor);
-    setSuccess(true);
+    showSuccess(t('swal.success'), t('swal.visitorRegistered'));
     setForm({ name: '', phone: '', documentType: 'aadhaar', documentNumber: '', flatNumber: '', purpose: 'Visit', vehicleNumber: '' });
     setHasVehicle(false); setBlacklistAlert(false); setRepeatAlert(null);
     setVisitorPhotos([]); setDocumentPhoto([]);
-    setTimeout(() => setSuccess(false), 2000);
+    if (onDone) setTimeout(() => onDone(), 1600);
   };
 
   const suggestions = useMemo(() => {
@@ -89,11 +91,6 @@ const VisitorEntryPage = () => {
         </div>
       </div>
 
-      {success && (
-        <div className="card-section border-success/30 mb-4 text-center">
-          <p className="text-success text-sm font-semibold">✓ {t('visitor.loggedSuccess')}</p>
-        </div>
-      )}
       {blacklistAlert && (
         <div className="card-section border-destructive/50 mb-4 flex items-center gap-3">
           <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0" />

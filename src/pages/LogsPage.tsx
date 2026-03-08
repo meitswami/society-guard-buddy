@@ -3,6 +3,7 @@ import { useStore } from '@/store/useStore';
 import { Search, FileText, LogOut, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { confirmAction, showToast } from '@/lib/swal';
 
 const LogsPage = () => {
   const { visitors, markExit } = useStore();
@@ -23,6 +24,14 @@ const LogsPage = () => {
       return matchSearch && matchCategory && matchDate;
     });
   }, [visitors, search, categoryFilter, dateFilter]);
+
+  const handleExit = async (id: string) => {
+    const confirmed = await confirmAction(t('swal.confirmExit'), t('swal.confirmExitText'), t('swal.yes'), t('swal.no'));
+    if (confirmed) {
+      await markExit(id);
+      showToast(t('swal.exitMarked'));
+    }
+  };
 
   const exportCSV = () => {
     const headers = ['Name', 'Phone', 'Flat', 'Category', 'Purpose', 'Entry', 'Exit', 'Guard', 'Vehicle'];
@@ -107,7 +116,7 @@ const LogsPage = () => {
                   <p className="text-[10px] text-muted-foreground mt-1">{t('logs.guard')}: {v.guardName}</p>
                 </div>
                 {!v.exitTime && (
-                  <button onClick={() => markExit(v.id)} className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => handleExit(v.id)} className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1 flex-shrink-0">
                     <LogOut className="w-3 h-3" /> {t('common.exit')}
                   </button>
                 )}
