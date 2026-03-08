@@ -15,6 +15,7 @@ interface Props {
 
 const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
   const { t } = useLanguage();
+  const [showResetFlow, setShowResetFlow] = useState(false);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
