@@ -70,8 +70,8 @@ const LoginPage = () => {
             <p className="text-destructive text-sm text-center">{error}</p>
           )}
 
-          <button type="submit" className="btn-primary mt-2">
-            Start Shift
+          <button type="submit" className="btn-primary mt-2" disabled={loading}>
+            {loading ? 'Logging in...' : 'Start Shift'}
           </button>
 
           <p className="text-xs text-muted-foreground text-center mt-4">
