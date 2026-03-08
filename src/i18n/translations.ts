@@ -294,6 +294,25 @@ const translations: Record<string, Record<Lang, string>> = {
   'superadmin.updated': { en: 'Updated successfully', hi: 'सफलतापूर्वक अपडेट किया गया' },
   'superadmin.added': { en: 'Added successfully', hi: 'सफलतापूर्वक जोड़ा गया' },
   'login.superadminLogin': { en: 'Super Admin', hi: 'सुपर एडमिन' },
+
+  // Superadmin branding
+  'superadmin.branding': { en: 'Society Branding & Contact', hi: 'सोसाइटी ब्रांडिंग और संपर्क' },
+  'superadmin.contactPerson': { en: 'Contact Person Name', hi: 'संपर्क व्यक्ति का नाम' },
+  'superadmin.contactEmail': { en: 'Contact Email', hi: 'संपर्क ईमेल' },
+  'superadmin.contactPhone': { en: 'Contact Phone', hi: 'संपर्क फोन' },
+  'superadmin.logoUrl': { en: 'Logo URL', hi: 'लोगो URL' },
+  'superadmin.adminEmail': { en: 'Admin Email (for password reset)', hi: 'एडमिन ईमेल (पासवर्ड रीसेट के लिए)' },
+
+  // Biometric
+  'biometric.title': { en: 'Biometric', hi: 'बायोमेट्रिक' },
+  'biometric.subtitle': { en: 'Use fingerprint for quick login', hi: 'त्वरित लॉगिन के लिए फ़िंगरप्रिंट उपयोग करें' },
+  'biometric.loginButton': { en: 'Login with Fingerprint', hi: 'फ़िंगरप्रिंट से लॉगिन' },
+  'biometric.enable': { en: 'Enable Fingerprint Login', hi: 'फ़िंगरप्रिंट लॉगिन सक्षम करें' },
+  'biometric.enabled': { en: 'Fingerprint login enabled ✓', hi: 'फ़िंगरप्रिंट लॉगिन सक्षम ✓' },
+  'biometric.registered': { en: 'Biometric registered successfully', hi: 'बायोमेट्रिक सफलतापूर्वक पंजीकृत' },
+  'biometric.registerFailed': { en: 'Biometric registration failed', hi: 'बायोमेट्रिक पंजीकरण विफल' },
+  'biometric.registering': { en: 'Registering...', hi: 'पंजीकरण हो रहा है...' },
+  'biometric.notRegistered': { en: 'No biometric registered. Login with password first, then enable biometric from settings.', hi: 'कोई बायोमेट्रिक पंजीकृत नहीं। पहले पासवर्ड से लॉगिन करें, फिर सेटिंग्स से बायोमेट्रिक सक्षम करें।' },
 };
 
 export default translations;

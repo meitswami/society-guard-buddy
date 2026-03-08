@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Home, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Home, Eye, EyeOff, Fingerprint } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useBiometric } from '@/hooks/useBiometric';
 
 interface Props {
   onLogin: (resident: { id: string; name: string; phone: string; flatId: string; flatNumber: string }) => void;
@@ -17,33 +18,29 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { isAvailable, authenticate, loading: bioLoading } = useBiometric();
+  const [bioAvailable, setBioAvailable] = useState(false);
+
+  useEffect(() => { isAvailable().then(setBioAvailable); }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!phone || !password) {
-      setError(t('resident.enterBoth'));
-      return;
-    }
+    if (!phone || !password) { setError(t('resident.enterBoth')); return; }
     setLoading(true);
-    const { data, error: err } = await supabase
-      .from('resident_users')
-      .select('*')
-      .eq('phone', phone)
-      .eq('password', password)
-      .single();
+    const { data, error: err } = await supabase.from('resident_users').select('*').eq('phone', phone).eq('password', password).single();
     setLoading(false);
-    if (err || !data) {
-      setError(t('login.invalidCredentials'));
-      return;
-    }
-    onLogin({
-      id: data.id,
-      name: data.name,
-      phone: data.phone,
-      flatId: data.flat_id,
-      flatNumber: data.flat_number,
-    });
+    if (err || !data) { setError(t('login.invalidCredentials')); return; }
+    onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
+  };
+
+  const handleBiometricLogin = async () => {
+    setError('');
+    const result = await authenticate('resident');
+    if (!result) { setError(t('biometric.notRegistered')); return; }
+    const { data } = await supabase.from('resident_users').select('*').eq('id', result.userId).single();
+    if (!data) { setError(t('login.invalidCredentials')); return; }
+    onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 
   return (
@@ -61,52 +58,42 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
           <p className="text-muted-foreground text-sm mt-1">{t('resident.loginSubtitle')}</p>
         </div>
 
+        {bioAvailable && (
+          <button onClick={handleBiometricLogin} disabled={bioLoading}
+            className="w-full mb-4 py-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-2 hover:bg-primary/10 transition-colors">
+            <Fingerprint className="w-8 h-8 text-primary" />
+            <span className="text-sm font-medium text-primary">{t('biometric.loginButton')}</span>
+          </button>
+        )}
+
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('common.phone')}</label>
-            <input
-              className="input-field font-mono"
-              placeholder="10-digit number"
-              type="tel"
-              maxLength={10}
-              value={phone}
-              onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
-            />
+            <input className="input-field font-mono" placeholder="10-digit number" type="tel" maxLength={10}
+              value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ''))} />
           </div>
-
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('login.password')}</label>
             <div className="relative">
-              <input
-                className="input-field pr-10"
-                type={showPassword ? 'text' : 'password'}
-                placeholder={t('login.passwordPlaceholder')}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
+              <input className="input-field pr-10" type={showPassword ? 'text' : 'password'}
+                placeholder={t('login.passwordPlaceholder')} value={password} onChange={e => setPassword(e.target.value)} />
               <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
-
           {error && <p className="text-destructive text-sm text-center">{error}</p>}
-
           <button type="submit" className="btn-primary mt-2" disabled={loading}>
             {loading ? t('login.loggingIn') : t('resident.login')}
           </button>
-
           <button type="button" className="text-xs text-muted-foreground text-center mt-2 underline" onClick={onSwitchToGuard}>
             {t('resident.switchToGuard')}
           </button>
-
           <p className="text-xs text-muted-foreground text-center mt-2">{t('resident.demo')}</p>
         </form>
       </div>
-      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">
-        {t('app.footer')}
-      </p>
+      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">{t('app.footer')}</p>
     </div>
   );
 };

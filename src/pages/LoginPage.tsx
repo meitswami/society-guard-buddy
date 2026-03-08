@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Eye, EyeOff } from 'lucide-react';
+import { Shield, Eye, EyeOff, Fingerprint } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useBiometric } from '@/hooks/useBiometric';
 
 interface Props {
   onSwitchToResident?: () => void;
@@ -26,34 +27,26 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
   const [error, setError] = useState('');
   const login = useStore(s => s.login);
   const [loading, setLoading] = useState(false);
+  const { isAvailable, authenticate, loading: bioLoading } = useBiometric();
+  const [bioAvailable, setBioAvailable] = useState(false);
+
+  useEffect(() => {
+    isAvailable().then(setBioAvailable);
+  }, []);
 
   const checkGeofence = (): Promise<boolean> => {
     return new Promise(async (resolve) => {
       const { data: geoData } = await supabase.from('geofence_settings').select('*').order('created_at', { ascending: false }).limit(1);
-      if (!geoData || geoData.length === 0) {
-        resolve(true); // No geofence set, allow login
-        return;
-      }
+      if (!geoData || geoData.length === 0) { resolve(true); return; }
       const geo = geoData[0];
-      if (!navigator.geolocation) {
-        setError(t('admin.geofenceBlocked'));
-        resolve(false);
-        return;
-      }
+      if (!navigator.geolocation) { setError(t('admin.geofenceBlocked')); resolve(false); return; }
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const dist = getDistanceMeters(pos.coords.latitude, pos.coords.longitude, geo.latitude, geo.longitude);
-          if (dist <= geo.radius_meters) {
-            resolve(true);
-          } else {
-            setError(`${t('admin.geofenceBlocked')} (${Math.round(dist)}m away)`);
-            resolve(false);
-          }
+          if (dist <= geo.radius_meters) resolve(true);
+          else { setError(`${t('admin.geofenceBlocked')} (${Math.round(dist)}m away)`); resolve(false); }
         },
-        () => {
-          setError(t('admin.geofenceBlocked'));
-          resolve(false);
-        },
+        () => { setError(t('admin.geofenceBlocked')); resolve(false); },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     });
@@ -62,21 +55,30 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!guardId || !password) {
-      setError(t('login.enterBoth'));
-      return;
-    }
+    if (!guardId || !password) { setError(t('login.enterBoth')); return; }
     setLoading(true);
     setError(t('admin.gettingLocation'));
-
     const withinFence = await checkGeofence();
-    if (!withinFence) {
-      setLoading(false);
-      return;
-    }
-
+    if (!withinFence) { setLoading(false); return; }
     setError('');
     const success = await login(guardId.toUpperCase(), password);
+    setLoading(false);
+    if (!success) setError(t('login.invalidCredentials'));
+  };
+
+  const handleBiometricLogin = async () => {
+    setError('');
+    const result = await authenticate('guard');
+    if (!result) { setError(t('biometric.notRegistered')); return; }
+    // Look up guard by UUID
+    const { data } = await supabase.from('guards').select('*').eq('id', result.userId).single();
+    if (!data) { setError(t('login.invalidCredentials')); return; }
+    setLoading(true);
+    setError(t('admin.gettingLocation'));
+    const withinFence = await checkGeofence();
+    if (!withinFence) { setLoading(false); return; }
+    setError('');
+    const success = await login(data.guard_id, data.password);
     setLoading(false);
     if (!success) setError(t('login.invalidCredentials'));
   };
@@ -96,13 +98,20 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
           <p className="text-muted-foreground text-sm mt-1">{t('login.guardLogin')}</p>
         </div>
 
+        {bioAvailable && (
+          <button onClick={handleBiometricLogin} disabled={bioLoading}
+            className="w-full mb-4 py-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-2 hover:bg-primary/10 transition-colors">
+            <Fingerprint className="w-8 h-8 text-primary" />
+            <span className="text-sm font-medium text-primary">{t('biometric.loginButton')}</span>
+          </button>
+        )}
+
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('login.guardId')}</label>
             <input className="input-field font-mono uppercase" placeholder={t('login.guardIdPlaceholder')}
               value={guardId} onChange={e => setGuardId(e.target.value)} />
           </div>
-
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('login.password')}</label>
             <div className="relative">
@@ -114,25 +123,19 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
               </button>
             </div>
           </div>
-
           {error && <p className="text-destructive text-sm text-center">{error}</p>}
-
           <button type="submit" className="btn-primary mt-2" disabled={loading}>
             {loading ? t('login.loggingIn') : t('login.startShift')}
           </button>
-
           {onSwitchToResident && (
             <button type="button" className="text-xs text-muted-foreground text-center mt-2 underline" onClick={onSwitchToResident}>
               {t('login.switchToResident')}
             </button>
           )}
-
           <p className="text-xs text-muted-foreground text-center mt-4">{t('login.demo')}</p>
         </form>
       </div>
-      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">
-        {t('app.footer')}
-      </p>
+      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">{t('app.footer')}</p>
     </div>
   );
 };

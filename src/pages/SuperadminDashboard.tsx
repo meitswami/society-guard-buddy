@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
+import BiometricSetup from '@/components/BiometricSetup';
 
 interface Props {
   superadmin: { id: string; name: string; username: string };
@@ -13,14 +14,16 @@ interface Props {
 interface Society {
   id: string; name: string; address: string | null; city: string | null;
   state: string | null; pincode: string | null; is_active: boolean;
+  logo_url: string | null; contact_person: string | null;
+  contact_email: string | null; contact_phone: string | null;
 }
 interface SocietyRole { id: string; society_id: string; role_name: string; }
 interface Admin {
   id: string; name: string; admin_id: string; password: string;
-  society_id: string | null; role_id: string | null;
+  society_id: string | null; role_id: string | null; email: string | null;
 }
 
-type Tab = 'societies' | 'admins' | 'roles';
+type Tab = 'societies' | 'admins' | 'roles' | 'settings';
 
 const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const { t } = useLanguage();
@@ -30,16 +33,13 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [selectedSociety, setSelectedSociety] = useState<string>('');
 
-  // Society form
   const [showSocietyForm, setShowSocietyForm] = useState(false);
-  const [sf, setSf] = useState({ name: '', address: '', city: '', state: '', pincode: '' });
+  const [sf, setSf] = useState({ name: '', address: '', city: '', state: '', pincode: '', contact_person: '', contact_email: '', contact_phone: '', logo_url: '' });
 
-  // Role form
   const [newRole, setNewRole] = useState('');
 
-  // Admin form
   const [showAdminForm, setShowAdminForm] = useState(false);
-  const [af, setAf] = useState({ name: '', admin_id: '', password: '', society_id: '', role_id: '' });
+  const [af, setAf] = useState({ name: '', admin_id: '', password: '', society_id: '', role_id: '', email: '' });
 
   useEffect(() => { loadAll(); }, []);
 
@@ -60,8 +60,10 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     await supabase.from('societies').insert({
       name: sf.name, address: sf.address || null, city: sf.city || null,
       state: sf.state || null, pincode: sf.pincode || null,
+      contact_person: sf.contact_person || null, contact_email: sf.contact_email || null,
+      contact_phone: sf.contact_phone || null, logo_url: sf.logo_url || null,
     });
-    setSf({ name: '', address: '', city: '', state: '', pincode: '' });
+    setSf({ name: '', address: '', city: '', state: '', pincode: '', contact_person: '', contact_email: '', contact_phone: '', logo_url: '' });
     setShowSocietyForm(false);
     toast.success(t('superadmin.societyAdded'));
     loadAll();
@@ -92,9 +94,9 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     if (!af.name || !af.admin_id || !af.password || !af.society_id) return;
     await supabase.from('admins').insert({
       name: af.name, admin_id: af.admin_id.toUpperCase(), password: af.password,
-      society_id: af.society_id, role_id: af.role_id || null,
+      society_id: af.society_id, role_id: af.role_id || null, email: af.email || null,
     });
-    setAf({ name: '', admin_id: '', password: '', society_id: '', role_id: '' });
+    setAf({ name: '', admin_id: '', password: '', society_id: '', role_id: '', email: '' });
     setShowAdminForm(false);
     toast.success(t('superadmin.adminAdded'));
     loadAll();
@@ -119,11 +121,11 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     { id: 'societies', label: t('superadmin.societies'), icon: Building2 },
     { id: 'roles', label: t('superadmin.roles'), icon: Tag },
     { id: 'admins', label: t('superadmin.admins'), icon: Users },
+    { id: 'settings', label: t('nav.settings'), icon: Crown },
   ];
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
       <div className="page-container">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -140,7 +142,6 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
           </button>
         </div>
 
-        {/* Society selector */}
         {societies.length > 0 && (
           <div className="mb-4">
             <select className="input-field text-sm" value={selectedSociety}
@@ -150,7 +151,6 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
           </div>
         )}
 
-        {/* Tab content */}
         {tab === 'societies' && (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -167,6 +167,27 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                   <input className="input-field" placeholder={t('superadmin.state')} value={sf.state} onChange={e => setSf({...sf, state: e.target.value})} />
                 </div>
                 <input className="input-field" placeholder={t('superadmin.pincode')} value={sf.pincode} onChange={e => setSf({...sf, pincode: e.target.value})} />
+                <div className="border-t border-border pt-3 mt-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t('superadmin.branding')}</p>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <input className="input-field" placeholder={t('superadmin.contactPerson')} value={sf.contact_person} onChange={e => setSf({...sf, contact_person: e.target.value})} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <input className="input-field" type="email" placeholder={t('superadmin.contactEmail')} value={sf.contact_email} onChange={e => setSf({...sf, contact_email: e.target.value})} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <input className="input-field" placeholder={t('superadmin.contactPhone')} value={sf.contact_phone} onChange={e => setSf({...sf, contact_phone: e.target.value})} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Image className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <input className="input-field" placeholder={t('superadmin.logoUrl')} value={sf.logo_url} onChange={e => setSf({...sf, logo_url: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button onClick={addSociety} className="btn-primary flex-1">{t('common.save')}</button>
                   <button onClick={() => setShowSocietyForm(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
@@ -174,12 +195,18 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
               </div>
             )}
             {societies.map(s => (
-              <div key={s.id} className="card-section p-4 mb-2 flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{s.name}</p>
-                  <p className="text-xs text-muted-foreground">{[s.address, s.city, s.state].filter(Boolean).join(', ')}</p>
+              <div key={s.id} className="card-section p-4 mb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {s.logo_url && <img src={s.logo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />}
+                    <div>
+                      <p className="font-medium">{s.name}</p>
+                      <p className="text-xs text-muted-foreground">{[s.address, s.city, s.state].filter(Boolean).join(', ')}</p>
+                      {s.contact_person && <p className="text-xs text-muted-foreground mt-0.5">👤 {s.contact_person} {s.contact_phone && `• ${s.contact_phone}`}</p>}
+                    </div>
+                  </div>
+                  <button onClick={() => deleteSociety(s.id)} className="p-2 text-destructive"><Trash2 className="w-4 h-4" /></button>
                 </div>
-                <button onClick={() => deleteSociety(s.id)} className="p-2 text-destructive"><Trash2 className="w-4 h-4" /></button>
               </div>
             ))}
             {societies.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">{t('superadmin.noSocieties')}</p>}
@@ -221,6 +248,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                 <input className="input-field" placeholder={t('common.name')} value={af.name} onChange={e => setAf({...af, name: e.target.value})} />
                 <input className="input-field font-mono uppercase" placeholder={t('admin.adminId')}
                   value={af.admin_id} onChange={e => setAf({...af, admin_id: e.target.value})} />
+                <input className="input-field" type="email" placeholder={t('superadmin.adminEmail')} value={af.email} onChange={e => setAf({...af, email: e.target.value})} />
                 <input className="input-field" placeholder={t('login.password')} value={af.password} onChange={e => setAf({...af, password: e.target.value})} />
                 <select className="input-field" value={af.society_id} onChange={e => setAf({...af, society_id: e.target.value})}>
                   <option value="">{t('superadmin.selectSociety')}</option>
@@ -246,6 +274,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                   <div>
                     <p className="font-medium">{a.name}</p>
                     <p className="text-xs text-muted-foreground font-mono">{a.admin_id}</p>
+                    {a.email && <p className="text-xs text-muted-foreground">{a.email}</p>}
                     <div className="flex gap-2 mt-1">
                       {role && <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full">{role.role_name}</span>}
                       {society && <span className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-full">{society.name}</span>}
@@ -258,9 +287,15 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
             {filteredAdmins.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">{t('superadmin.noAdmins')}</p>}
           </div>
         )}
+
+        {tab === 'settings' && (
+          <div className="space-y-4">
+            <h2 className="font-semibold">{t('nav.settings')}</h2>
+            <BiometricSetup userType="superadmin" userId={superadmin.id} userName={superadmin.name} />
+          </div>
+        )}
       </div>
 
-      {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
         <div className="max-w-lg mx-auto flex items-center gap-0 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-4">
           {tabs.map(t => {
