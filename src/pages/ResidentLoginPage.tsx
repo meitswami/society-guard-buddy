@@ -31,7 +31,8 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     setLoading(true);
     const { data, error: err } = await supabase.from('resident_users').select('*').eq('phone', phone).eq('password', password).single();
     setLoading(false);
-    if (err || !data) { setError(t('login.invalidCredentials')); return; }
+    if (err || !data) { auditLoginFailed('resident', phone); setError(t('login.invalidCredentials')); return; }
+    auditLoginSuccess('resident', data.id, data.name);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 
