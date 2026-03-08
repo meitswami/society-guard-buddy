@@ -1,5 +1,5 @@
 import type { TabType } from '@/types';
-import { LayoutDashboard, UserPlus, Car, Truck, FileText } from 'lucide-react';
+import { LayoutDashboard, UserPlus, Car, Truck, FileText, Zap, BookUser } from 'lucide-react';
 
 interface Props {
   activeTab: TabType;
@@ -8,9 +8,11 @@ interface Props {
 
 const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
+  { id: 'quick', label: 'Quick', icon: Zap },
   { id: 'visitor', label: 'Visitor', icon: UserPlus },
   { id: 'delivery', label: 'Delivery', icon: Truck },
   { id: 'vehicle', label: 'Vehicles', icon: Car },
+  { id: 'directory', label: 'Directory', icon: BookUser },
   { id: 'logs', label: 'Logs', icon: FileText },
 ];
 

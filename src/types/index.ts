@@ -49,4 +49,4 @@ export interface BlacklistEntry {
   addedBy: string;
 }
 
-export type TabType = 'dashboard' | 'visitor' | 'vehicle' | 'delivery' | 'logs';
+export type TabType = 'dashboard' | 'visitor' | 'vehicle' | 'delivery' | 'logs' | 'quick' | 'directory';
