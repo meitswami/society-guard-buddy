@@ -54,17 +54,17 @@ export async function logAuditEvent(event: AuditEvent) {
     const [ip] = await Promise.all([getClientIP()]);
     const deviceInfo = getDeviceInfo();
 
-    await supabase.from('audit_logs').insert({
+    await supabase.from('audit_logs').insert([{
       event_type: event.event_type,
       user_type: event.user_type,
       user_id: event.user_id || null,
       user_name: event.user_name || null,
       ip_address: ip,
       user_agent: navigator.userAgent,
-      device_info: deviceInfo,
-      details: event.details || {},
+      device_info: deviceInfo as any,
+      details: (event.details || {}) as any,
       severity: event.severity || 'info',
-    });
+    }]);
   } catch (err) {
     console.error('Audit log failed:', err);
   }
