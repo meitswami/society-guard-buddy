@@ -7,6 +7,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
+import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 
 interface Props {
   onSwitchToResident?: () => void;
