@@ -4,10 +4,13 @@ A comprehensive, mobile-first society gate management application built for secu
 
 ## ✨ Features
 
-### 🔐 Dual Authentication
+### 🔐 Multi-Tier Authentication
 - **Guard login** with ID & password — shift tracking with timestamps
 - **Resident login** with phone & password — manage approvals & visitor passes
-- Role-based dashboards for guards and residents
+- **Admin login** with ID & password — full society management
+- **Super Admin login** — multi-society management
+- **Biometric login** — fingerprint/face unlock for quick access (all user types)
+- Role-based dashboards for each tier
 
 ### 👤 Visitor Management
 - Full visitor registration (name, phone, document, photos)
@@ -21,34 +24,26 @@ A comprehensive, mobile-first society gate management application built for secu
 - Resident receives **sound notification** for pending approvals
 - One-tap **Approve / Reject** with 2-minute timeout
 - Full approval history for residents
-- Powered by real-time database subscriptions
 
 ### 🔑 OTP Visitor Pass System
 - Residents (or guards) generate **6-digit OTP passes** for expected guests
 - Passes include **date + time slot** restrictions
 - Guard verifies OTP at the gate — auto-registers the visitor if valid
-- Pass status tracking: active → used → expired
-- Copy-to-clipboard for easy sharing
 
 ### 🚗 Vehicle Registry
 - Resident vehicle registration linked to flats
 - Vehicle type categorization (car, bike, delivery, other)
-- Search by vehicle number, flat, or resident name
 
 ### 📦 Delivery & Service Entry
 - Quick logging for delivery partners (Amazon, Flipkart, Swiggy, etc.)
 - Service staff tracking (electrician, plumber, etc.)
-- Photo capture support
 
 ### 🏠 Flat & Member Directory
 - Complete flat registry with wing, floor, and owner details
 - Member profiles with relation, age, gender
-- Vehicle linking per flat
-- Visitor history directory with visit counts
 
 ### 🚫 Blacklist Management
 - Flag visitors by phone number or vehicles by registration
-- Reason tracking and guard attribution
 - Real-time blacklist alerts during entry
 
 ### 📊 Daily Reports
@@ -56,17 +51,29 @@ A comprehensive, mobile-first society gate management application built for secu
 - Guard shift logs
 - CSV export & print-ready HTML reports
 
-### ⚙️ Settings & Data Management
-- One-click clear all dummy data for production readiness
-- Data summary dashboard
-- Theme & language settings
+### 🛡️ Admin Features
+- Manage guards (add/delete/reset passwords)
+- Manage residents (add/edit/delete)
+- Geofence setup for guard login boundary
+- Admin password change
+- Biometric setup
+- Full access to all modules (reports, logs, etc.)
+
+### 👑 Super Admin Features
+- Create & manage multiple societies
+- Define custom RBAC roles (President, Secretary, Treasurer, etc.)
+- Appoint society-specific admins with roles
+- Society branding (logo, contact person, email, phone)
+
+### 🔒 Security Features
+- **Geofencing** — Guards can only login within a configurable radius
+- **Biometric login** — Fingerprint/Face ID via WebAuthn API
+- **FLAG_SECURE** — Screenshot prevention on native Android app
 
 ### 🎨 UI/UX
 - **Dual theme**: Light / Dark / System auto-detect
 - **Bilingual**: English 🇬🇧 & Hindi 🇮🇳 with instant toggle
 - **Mobile-first**: Optimized for guard phones with bottom navigation
-- **SweetAlert2**: Beautiful confirmation dialogs for all destructive actions
-- **Interactive dashboard**: Clickable stat cards filter entries, today/yesterday toggle
 
 ## 🛠 Tech Stack
 
@@ -79,24 +86,93 @@ A comprehensive, mobile-first society gate management application built for secu
 | UI Components | shadcn/ui, Lucide icons |
 | Alerts | SweetAlert2 |
 | i18n | Custom context-based translation system |
+| Native | Capacitor (Android/iOS) |
+| Biometric | WebAuthn / FIDO2 API |
 
-## 📱 Navigation Modules
+## 📱 Capacitor Setup (Native Android/iOS App)
 
-| # | Module | Description |
-|---|--------|-------------|
-| 1 | 🏠 Home | Dashboard with stats, alerts, recent entries |
-| 2 | ⚡ Quick | One-tap re-entry for frequent visitors |
-| 3 | 👤 Visitor | Full registration + Ask Permission + OTP Verify |
-| 4 | 📦 Delivery | Delivery & service staff entry |
-| 5 | 🚗 Vehicles | Resident vehicle registry |
-| 6 | 🚫 Blacklist | Flagged visitors & vehicles |
-| 7 | 📒 Directory | Flats, members & visitor history |
-| 8 | 📊 Report | Daily reports with export |
-| 9 | 📄 Logs | Searchable entry/exit records |
-| 10 | ⚙️ Settings | Theme, language, data management |
+### Prerequisites
+- Node.js 18+
+- Android Studio (for Android)
+- Xcode (for iOS, Mac only)
+
+### Step-by-Step Setup
+
+```bash
+# 1. Export project to GitHub and clone it
+git clone <your-github-repo-url>
+cd society-guard-buddy
+
+# 2. Install dependencies
+npm install
+
+# 3. Add native platforms
+npx cap add android
+npx cap add ios
+
+# 4. Build the web app
+npm run build
+
+# 5. Sync web assets to native projects
+npx cap sync
+
+# 6. Run on Android emulator or device
+npx cap run android
+
+# 7. Run on iOS simulator or device (Mac only)
+npx cap run ios
+```
+
+### Enable FLAG_SECURE (Screenshot Prevention - Android)
+
+After running `npx cap add android`, edit the file:
+`android/app/src/main/java/.../MainActivity.java`
+
+```java
+import android.os.Bundle;
+import android.view.WindowManager;
+
+public class MainActivity extends BridgeActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // Prevent screenshots and screen recording
+        getWindow().setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        );
+    }
+}
+```
+
+### Hot Reload During Development
+
+The `capacitor.config.ts` is pre-configured with the live preview URL for hot reload. When building for production:
+
+1. Remove or comment out the `server.url` in `capacitor.config.ts`
+2. Run `npm run build && npx cap sync`
+3. The app will use the locally bundled files
+
+### Updating After Code Changes
+
+```bash
+# Pull latest changes
+git pull
+
+# Rebuild and sync
+npm run build
+npx cap sync
+
+# Run on device
+npx cap run android  # or ios
+```
 
 ## 🗄 Database Schema
 
+- **societies** — Multi-society management with branding
+- **super_admins** — Super admin credentials
+- **admins** — Admin credentials with society & role links
+- **society_roles** — Custom RBAC roles per society
 - **guards** — Guard credentials and IDs
 - **guard_shifts** — Login/logout timestamps per shift
 - **visitors** — Complete visitor entry records
@@ -107,10 +183,24 @@ A comprehensive, mobile-first society gate management application built for secu
 - **resident_users** — Resident login credentials linked to flats
 - **approval_requests** — Guard → Resident approval flow (real-time)
 - **visitor_passes** — OTP-based pre-approved visitor passes
+- **geofence_settings** — GPS-based login boundary
+- **biometric_credentials** — WebAuthn credential storage
 
 ## 🚀 Getting Started
 
 ### Demo Logins
+
+**Super Admin:**
+```
+Username: SUPERADMIN
+Password: super123
+```
+
+**Admin:**
+```
+Admin ID: ADMIN
+Password: admin123
+```
 
 **Guard:**
 ```
@@ -124,17 +214,12 @@ Phone: 9876543210
 Password: resident123
 ```
 
-### Approval Flow
-1. Guard fills visitor details → clicks **"Ask Permission"**
-2. Resident sees real-time notification with sound alert
-3. Resident taps **Approve** or **Reject**
-4. Guard screen updates instantly — auto-registers visitor if approved
-
-### OTP Pass Flow
-1. Resident creates a pass with guest name, date & time slot
-2. System generates a **6-digit OTP** — resident shares with guest
-3. Guest arrives → Guard clicks **"Verify OTP"** → enters code
-4. System validates date/time → auto-registers entry
+### Biometric Setup
+1. Login with password first
+2. Go to Settings/Biometric tab
+3. Tap "Enable Fingerprint Login"
+4. Use your device's fingerprint sensor
+5. Next time, use the fingerprint button on the login screen
 
 ### Going to Production
 1. Navigate to **Settings** (⚙️ tab)

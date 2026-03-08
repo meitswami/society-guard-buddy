@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Crown, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Crown, Eye, EyeOff, Fingerprint } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useBiometric } from '@/hooks/useBiometric';
 
 interface Props {
   onLogin: (sa: { id: string; name: string; username: string }) => void;
@@ -17,24 +18,29 @@ const SuperadminLoginPage = ({ onLogin, onBack }: Props) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { isAvailable, authenticate, loading: bioLoading } = useBiometric();
+  const [bioAvailable, setBioAvailable] = useState(false);
+
+  useEffect(() => { isAvailable().then(setBioAvailable); }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!username || !password) { setError(t('login.enterBoth')); return; }
     setLoading(true);
-    const { data } = await supabase
-      .from('super_admins')
-      .select('*')
-      .eq('username', username.toUpperCase())
-      .eq('password', password)
-      .single();
+    const { data } = await supabase.from('super_admins').select('*').eq('username', username.toUpperCase()).eq('password', password).single();
     setLoading(false);
-    if (data) {
-      onLogin({ id: data.id, name: data.name, username: data.username });
-    } else {
-      setError(t('login.invalidCredentials'));
-    }
+    if (data) onLogin({ id: data.id, name: data.name, username: data.username });
+    else setError(t('login.invalidCredentials'));
+  };
+
+  const handleBiometricLogin = async () => {
+    setError('');
+    const result = await authenticate('superadmin');
+    if (!result) { setError(t('biometric.notRegistered')); return; }
+    const { data } = await supabase.from('super_admins').select('*').eq('id', result.userId).single();
+    if (!data) { setError(t('login.invalidCredentials')); return; }
+    onLogin({ id: data.id, name: data.name, username: data.username });
   };
 
   return (
@@ -51,6 +57,15 @@ const SuperadminLoginPage = ({ onLogin, onBack }: Props) => {
           <h1 className="page-title text-2xl">{t('superadmin.login')}</h1>
           <p className="text-muted-foreground text-sm mt-1">{t('superadmin.loginSubtitle')}</p>
         </div>
+
+        {bioAvailable && (
+          <button onClick={handleBiometricLogin} disabled={bioLoading}
+            className="w-full mb-4 py-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-2 hover:bg-primary/10 transition-colors">
+            <Fingerprint className="w-8 h-8 text-primary" />
+            <span className="text-sm font-medium text-primary">{t('biometric.loginButton')}</span>
+          </button>
+        )}
+
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('superadmin.username')}</label>
