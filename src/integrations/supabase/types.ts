@@ -21,6 +21,8 @@ export type Database = {
           id: string
           name: string
           password: string
+          role_id: string | null
+          society_id: string | null
         }
         Insert: {
           admin_id: string
@@ -28,6 +30,8 @@ export type Database = {
           id?: string
           name: string
           password: string
+          role_id?: string | null
+          society_id?: string | null
         }
         Update: {
           admin_id?: string
@@ -35,8 +39,25 @@ export type Database = {
           id?: string
           name?: string
           password?: string
+          role_id?: string | null
+          society_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admins_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "society_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admins_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       approval_requests: {
         Row: {
@@ -138,6 +159,7 @@ export type Database = {
           is_occupied: boolean | null
           owner_name: string | null
           owner_phone: string | null
+          society_id: string | null
           wing: string | null
         }
         Insert: {
@@ -150,6 +172,7 @@ export type Database = {
           is_occupied?: boolean | null
           owner_name?: string | null
           owner_phone?: string | null
+          society_id?: string | null
           wing?: string | null
         }
         Update: {
@@ -162,9 +185,18 @@ export type Database = {
           is_occupied?: boolean | null
           owner_name?: string | null
           owner_phone?: string | null
+          society_id?: string | null
           wing?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "flats_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       geofence_settings: {
         Row: {
@@ -230,6 +262,7 @@ export type Database = {
           id: string
           name: string
           password: string
+          society_id: string | null
         }
         Insert: {
           created_at?: string
@@ -237,6 +270,7 @@ export type Database = {
           id?: string
           name: string
           password: string
+          society_id?: string | null
         }
         Update: {
           created_at?: string
@@ -244,8 +278,17 @@ export type Database = {
           id?: string
           name?: string
           password?: string
+          society_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "guards_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       members: {
         Row: {
@@ -372,6 +415,92 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      societies: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          pincode: string | null
+          state: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          pincode?: string | null
+          state?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          pincode?: string | null
+          state?: string | null
+        }
+        Relationships: []
+      }
+      society_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role_name: string
+          society_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role_name: string
+          society_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role_name?: string
+          society_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "society_roles_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      super_admins: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          password: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          password: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          password?: string
+          username?: string
+        }
+        Relationships: []
       }
       visitor_passes: {
         Row: {
