@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
@@ -20,6 +20,13 @@ import AdminResidentManager from '@/components/AdminResidentManager';
 import AdminPasswordChange from '@/components/AdminPasswordChange';
 import BiometricSetup from '@/components/BiometricSetup';
 import AuditLogViewer from '@/components/AuditLogViewer';
+import FinanceManager from '@/components/FinanceManager';
+import DonationManager from '@/components/DonationManager';
+import EventManager from '@/components/EventManager';
+import PollManager from '@/components/PollManager';
+import ParkingManager from '@/components/ParkingManager';
+import ExpenseSplitter from '@/components/ExpenseSplitter';
+import NotificationCenter from '@/components/NotificationCenter';
 import { auditLogout } from '@/lib/auditLogger';
 
 interface Props {
@@ -27,7 +34,9 @@ interface Props {
   onLogout: () => void;
 }
 
-type AdminTab = 'overview' | 'guards' | 'residents' | 'geofence' | 'password' | 'biometric' | 'audit' | 'visitor' | 'delivery' | 'vehicle' | 'blacklist' | 'directory' | 'quick' | 'report' | 'logs' | 'settings';
+type AdminTab = 'overview' | 'guards' | 'residents' | 'geofence' | 'password' | 'biometric' | 'audit' |
+  'finance' | 'donations' | 'events' | 'polls' | 'parking' | 'splits' | 'notifications' |
+  'visitor' | 'delivery' | 'vehicle' | 'blacklist' | 'directory' | 'quick' | 'report' | 'logs' | 'settings';
 
 const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { t } = useLanguage();
@@ -62,23 +71,35 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     }
   };
 
-  const tabs: { id: AdminTab; label: string; icon: React.ElementType }[] = [
-    { id: 'overview', label: t('admin.overview'), icon: Home },
-    { id: 'guards', label: t('admin.manageGuards'), icon: Shield },
-    { id: 'residents', label: t('admin.manageResidents'), icon: UserCheck },
-    { id: 'geofence', label: t('admin.geofence'), icon: MapPin },
-    { id: 'password', label: t('admin.changePassword'), icon: Lock },
-    { id: 'biometric', label: t('biometric.title'), icon: Fingerprint },
-    { id: 'audit', label: 'Audit Logs', icon: ClipboardList },
-    { id: 'report', label: t('nav.report'), icon: BarChart3 },
-    { id: 'logs', label: t('nav.logs'), icon: FileText },
-    { id: 'visitor', label: t('nav.visitor'), icon: UserPlus },
-    { id: 'delivery', label: t('nav.delivery'), icon: Truck },
-    { id: 'vehicle', label: t('nav.vehicles'), icon: Car },
-    { id: 'blacklist', label: t('nav.blacklist'), icon: ShieldAlert },
-    { id: 'directory', label: t('nav.directory'), icon: BookUser },
-    { id: 'quick', label: t('nav.quick'), icon: Zap },
-    { id: 'settings', label: t('nav.settings'), icon: Settings },
+  const tabs: { id: AdminTab; label: string; icon: React.ElementType; group?: string }[] = [
+    { id: 'overview', label: 'Home', icon: Home, group: 'main' },
+    // Management
+    { id: 'guards', label: 'Guards', icon: Shield, group: 'manage' },
+    { id: 'residents', label: 'Residents', icon: UserCheck, group: 'manage' },
+    { id: 'geofence', label: 'Geofence', icon: MapPin, group: 'manage' },
+    // Finance
+    { id: 'finance', label: 'Finance', icon: DollarSign, group: 'finance' },
+    { id: 'donations', label: 'Donations', icon: Heart, group: 'finance' },
+    { id: 'splits', label: 'Splitwise', icon: Split, group: 'finance' },
+    // Community
+    { id: 'events', label: 'Events', icon: Calendar, group: 'community' },
+    { id: 'polls', label: 'Polls', icon: Vote, group: 'community' },
+    { id: 'notifications', label: 'Notify', icon: Bell, group: 'community' },
+    { id: 'parking', label: 'Parking', icon: ParkingSquare, group: 'community' },
+    // Operations
+    { id: 'visitor', label: 'Visitor', icon: UserPlus, group: 'ops' },
+    { id: 'delivery', label: 'Delivery', icon: Truck, group: 'ops' },
+    { id: 'vehicle', label: 'Vehicles', icon: Car, group: 'ops' },
+    { id: 'blacklist', label: 'Blacklist', icon: ShieldAlert, group: 'ops' },
+    { id: 'directory', label: 'Directory', icon: BookUser, group: 'ops' },
+    { id: 'quick', label: 'Quick', icon: Zap, group: 'ops' },
+    // Reports & Settings
+    { id: 'report', label: 'Reports', icon: BarChart3, group: 'system' },
+    { id: 'logs', label: 'Logs', icon: FileText, group: 'system' },
+    { id: 'audit', label: 'Audit', icon: ClipboardList, group: 'system' },
+    { id: 'password', label: 'Password', icon: Lock, group: 'system' },
+    { id: 'biometric', label: 'Biometric', icon: Fingerprint, group: 'system' },
+    { id: 'settings', label: 'Settings', icon: Settings, group: 'system' },
   ];
 
   const renderContent = () => {
@@ -94,6 +115,13 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         </div>
       );
       case 'audit': return <AuditLogViewer />;
+      case 'finance': return <FinanceManager adminName={admin.name} />;
+      case 'donations': return <DonationManager adminName={admin.name} />;
+      case 'events': return <EventManager adminName={admin.name} />;
+      case 'polls': return <PollManager adminName={admin.name} />;
+      case 'parking': return <ParkingManager />;
+      case 'splits': return <ExpenseSplitter adminName={admin.name} />;
+      case 'notifications': return <NotificationCenter adminName={admin.name} />;
       case 'report': return <ReportPage />;
       case 'logs': return <LogsPage />;
       case 'visitor': return <VisitorEntryPage onDone={() => setActiveTab('overview')} />;
@@ -132,6 +160,21 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                 <p className="text-xs text-muted-foreground">{s.label}</p>
               </div>
             ))}
+          </div>
+
+          {/* Quick access grid */}
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick Access</p>
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            {tabs.filter(t => t.id !== 'overview').slice(0, 12).map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className="card-section p-3 flex flex-col items-center gap-1 hover:bg-primary/5">
+                  <Icon className="w-5 h-5 text-primary" />
+                  <span className="text-[9px] text-muted-foreground">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       );
