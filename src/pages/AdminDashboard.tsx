@@ -56,7 +56,10 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
 
   const handleLogout = async () => {
     const confirmed = await confirmAction(t('swal.confirmLogout'), t('swal.confirmLogoutText'), t('swal.yes'), t('swal.no'));
-    if (confirmed) onLogout();
+    if (confirmed) {
+      auditLogout('admin', admin.id, admin.name);
+      onLogout();
+    }
   };
 
   const tabs: { id: AdminTab; label: string; icon: React.ElementType }[] = [
