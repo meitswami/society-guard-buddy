@@ -94,6 +94,8 @@ const VisitorEntryPage = () => {
     setHasVehicle(false);
     setBlacklistAlert(false);
     setRepeatAlert(null);
+    setVisitorPhotos([]);
+    setDocumentPhoto([]);
     setTimeout(() => setSuccess(false), 2000);
   };
 
