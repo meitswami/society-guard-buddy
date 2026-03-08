@@ -24,7 +24,7 @@ interface Props {
   onLogout: () => void;
 }
 
-type AdminTab = 'overview' | 'guards' | 'geofence' | 'visitor' | 'delivery' | 'vehicle' | 'blacklist' | 'directory' | 'quick' | 'report' | 'logs' | 'settings';
+type AdminTab = 'overview' | 'guards' | 'residents' | 'geofence' | 'password' | 'visitor' | 'delivery' | 'vehicle' | 'blacklist' | 'directory' | 'quick' | 'report' | 'logs' | 'settings';
 
 const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { t } = useLanguage();
