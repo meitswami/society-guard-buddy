@@ -48,6 +48,7 @@ const DeliveryEntryPage = () => {
     addVisitor(entry);
     setSuccess(true);
     setForm({ name: '', phone: '', company: tab === 'delivery' ? 'Amazon' : 'Housekeeping', flatNumber: '', vehicleNumber: '' });
+    setPersonPhotos([]);
     setTimeout(() => setSuccess(false), 2000);
   };
 
