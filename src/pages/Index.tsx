@@ -20,7 +20,7 @@ import SettingsPage from '@/pages/SettingsPage';
 import BottomNav from '@/components/BottomNav';
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
 
-type UserMode = 'choosing' | 'guard' | 'resident' | 'admin';
+type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 
 const AppContent = () => {
   const { currentGuard, theme, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
