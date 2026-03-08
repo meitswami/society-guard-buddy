@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { auditPasswordChange } from '@/lib/auditLogger';
 
 interface Props {
   adminId: string;
@@ -28,6 +29,7 @@ const AdminPasswordChange = ({ adminId }: Props) => {
       setLoading(false); return;
     }
     await supabase.from('admins').update({ password: newPass }).eq('id', adminId);
+    auditPasswordChange('admin', adminId, 'admin');
     toast.success(t('admin.passwordChanged'));
     setCurrent(''); setNewPass(''); setConfirm('');
     setLoading(false);

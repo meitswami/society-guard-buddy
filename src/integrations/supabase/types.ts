@@ -115,6 +115,48 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          device_info: Json | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          severity: string
+          user_agent: string | null
+          user_id: string | null
+          user_name: string | null
+          user_type: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          device_info?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          user_type: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          device_info?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          user_type?: string
+        }
+        Relationships: []
+      }
       biometric_credentials: {
         Row: {
           created_at: string

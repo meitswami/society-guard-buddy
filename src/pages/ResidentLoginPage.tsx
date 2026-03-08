@@ -5,6 +5,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useBiometric } from '@/hooks/useBiometric';
+import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 
 interface Props {
   onLogin: (resident: { id: string; name: string; phone: string; flatId: string; flatNumber: string }) => void;
@@ -30,7 +31,8 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     setLoading(true);
     const { data, error: err } = await supabase.from('resident_users').select('*').eq('phone', phone).eq('password', password).single();
     setLoading(false);
-    if (err || !data) { setError(t('login.invalidCredentials')); return; }
+    if (err || !data) { auditLoginFailed('resident', phone); setError(t('login.invalidCredentials')); return; }
+    auditLoginSuccess('resident', data.id, data.name);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 
@@ -39,7 +41,8 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     const result = await authenticate('resident');
     if (!result) { setError(t('biometric.notRegistered')); return; }
     const { data } = await supabase.from('resident_users').select('*').eq('id', result.userId).single();
-    if (!data) { setError(t('login.invalidCredentials')); return; }
+    if (!data) { auditLoginFailed('resident', result.userId, 'biometric_user_not_found'); setError(t('login.invalidCredentials')); return; }
+    auditBiometricLogin('resident', data.id, data.name);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 

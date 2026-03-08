@@ -6,6 +6,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useBiometric } from '@/hooks/useBiometric';
+import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 
 interface Props {
   onSwitchToResident?: () => void;
@@ -63,7 +64,12 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     setError('');
     const success = await login(guardId.toUpperCase(), password);
     setLoading(false);
-    if (!success) setError(t('login.invalidCredentials'));
+    if (success) {
+      auditLoginSuccess('guard', guardId.toUpperCase(), guardId.toUpperCase());
+    } else {
+      auditLoginFailed('guard', guardId.toUpperCase());
+      setError(t('login.invalidCredentials'));
+    }
   };
 
   const handleBiometricLogin = async () => {
@@ -80,7 +86,12 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     setError('');
     const success = await login(data.guard_id, data.password);
     setLoading(false);
-    if (!success) setError(t('login.invalidCredentials'));
+    if (success) {
+      auditBiometricLogin('guard', data.id, data.name);
+    } else {
+      auditLoginFailed('guard', data.guard_id, 'biometric_lookup_failed');
+      setError(t('login.invalidCredentials'));
+    }
   };
 
   return (

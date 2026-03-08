@@ -5,6 +5,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useBiometric } from '@/hooks/useBiometric';
+import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 
 interface Props {
   onLogin: (admin: { id: string; name: string; adminId: string }) => void;
@@ -30,8 +31,13 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
     setLoading(true);
     const { data } = await supabase.from('admins').select('*').eq('admin_id', adminId.toUpperCase()).eq('password', password).single();
     setLoading(false);
-    if (data) onLogin({ id: data.id, name: data.name, adminId: data.admin_id });
-    else setError(t('login.invalidCredentials'));
+    if (data) {
+      auditLoginSuccess('admin', data.id, data.name);
+      onLogin({ id: data.id, name: data.name, adminId: data.admin_id });
+    } else {
+      auditLoginFailed('admin', adminId.toUpperCase());
+      setError(t('login.invalidCredentials'));
+    }
   };
 
   const handleBiometricLogin = async () => {
@@ -39,7 +45,8 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
     const result = await authenticate('admin');
     if (!result) { setError(t('biometric.notRegistered')); return; }
     const { data } = await supabase.from('admins').select('*').eq('id', result.userId).single();
-    if (!data) { setError(t('login.invalidCredentials')); return; }
+    if (!data) { auditLoginFailed('admin', result.userId, 'biometric_user_not_found'); setError(t('login.invalidCredentials')); return; }
+    auditBiometricLogin('admin', data.id, data.name);
     onLogin({ id: data.id, name: data.name, adminId: data.admin_id });
   };
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
@@ -19,13 +19,15 @@ import AdminGuardManager from '@/components/AdminGuardManager';
 import AdminResidentManager from '@/components/AdminResidentManager';
 import AdminPasswordChange from '@/components/AdminPasswordChange';
 import BiometricSetup from '@/components/BiometricSetup';
+import AuditLogViewer from '@/components/AuditLogViewer';
+import { auditLogout } from '@/lib/auditLogger';
 
 interface Props {
   admin: { id: string; name: string; adminId: string };
   onLogout: () => void;
 }
 
-type AdminTab = 'overview' | 'guards' | 'residents' | 'geofence' | 'password' | 'biometric' | 'visitor' | 'delivery' | 'vehicle' | 'blacklist' | 'directory' | 'quick' | 'report' | 'logs' | 'settings';
+type AdminTab = 'overview' | 'guards' | 'residents' | 'geofence' | 'password' | 'biometric' | 'audit' | 'visitor' | 'delivery' | 'vehicle' | 'blacklist' | 'directory' | 'quick' | 'report' | 'logs' | 'settings';
 
 const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { t } = useLanguage();
@@ -54,7 +56,10 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
 
   const handleLogout = async () => {
     const confirmed = await confirmAction(t('swal.confirmLogout'), t('swal.confirmLogoutText'), t('swal.yes'), t('swal.no'));
-    if (confirmed) onLogout();
+    if (confirmed) {
+      auditLogout('admin', admin.id, admin.name);
+      onLogout();
+    }
   };
 
   const tabs: { id: AdminTab; label: string; icon: React.ElementType }[] = [
@@ -64,6 +69,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'geofence', label: t('admin.geofence'), icon: MapPin },
     { id: 'password', label: t('admin.changePassword'), icon: Lock },
     { id: 'biometric', label: t('biometric.title'), icon: Fingerprint },
+    { id: 'audit', label: 'Audit Logs', icon: ClipboardList },
     { id: 'report', label: t('nav.report'), icon: BarChart3 },
     { id: 'logs', label: t('nav.logs'), icon: FileText },
     { id: 'visitor', label: t('nav.visitor'), icon: UserPlus },
@@ -87,6 +93,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           <BiometricSetup userType="admin" userId={admin.id} userName={admin.name} />
         </div>
       );
+      case 'audit': return <AuditLogViewer />;
       case 'report': return <ReportPage />;
       case 'logs': return <LogsPage />;
       case 'visitor': return <VisitorEntryPage onDone={() => setActiveTab('overview')} />;
