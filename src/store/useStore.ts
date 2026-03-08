@@ -43,7 +43,7 @@ export const useStore = create<AppState>()((set, get) => ({
   visitors: [],
   residentVehicles: [],
   blacklist: [],
-  theme: (localStorage.getItem('gate-theme') as 'dark' | 'light') || 'dark',
+  theme: (localStorage.getItem('gate-theme') as 'dark' | 'light' | 'system') || 'system',
 
   loadGuards: async () => {
     const { data } = await supabase.from('guards').select('*');
