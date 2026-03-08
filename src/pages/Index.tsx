@@ -30,6 +30,7 @@ const AppContent = () => {
   const [userMode, setUserMode] = useState<UserMode>('choosing');
   const [residentUser, setResidentUser] = useState<{ id: string; name: string; phone: string; flatId: string; flatNumber: string } | null>(null);
   const [adminUser, setAdminUser] = useState<{ id: string; name: string; adminId: string } | null>(null);
+  const [superadminUser, setSuperadminUser] = useState<{ id: string; name: string; username: string } | null>(null);
 
   const goHome = useCallback(() => setActiveTab('dashboard'), []);
 
