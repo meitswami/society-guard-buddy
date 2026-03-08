@@ -129,6 +129,10 @@ const AppContent = () => {
       return <AdminLoginPage onLogin={setAdminUser} onBack={() => setUserMode('choosing')} />;
     }
 
+    if (userMode === 'superadmin') {
+      return <SuperadminLoginPage onLogin={setSuperadminUser} onBack={() => setUserMode('choosing')} />;
+    }
+
     if (userMode === 'resident') {
       return <ResidentLoginPage onLogin={setResidentUser} onSwitchToGuard={() => setUserMode('guard')} />;
     }
