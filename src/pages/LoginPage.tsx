@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '@/store/useStore';
+import { supabase } from '@/integrations/supabase/client';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -7,6 +8,14 @@ import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
   onSwitchToResident?: () => void;
+}
+
+function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 const LoginPage = ({ onSwitchToResident }: Props) => {
@@ -18,6 +27,38 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
   const login = useStore(s => s.login);
   const [loading, setLoading] = useState(false);
 
+  const checkGeofence = (): Promise<boolean> => {
+    return new Promise(async (resolve) => {
+      const { data: geoData } = await supabase.from('geofence_settings').select('*').order('created_at', { ascending: false }).limit(1);
+      if (!geoData || geoData.length === 0) {
+        resolve(true); // No geofence set, allow login
+        return;
+      }
+      const geo = geoData[0];
+      if (!navigator.geolocation) {
+        setError(t('admin.geofenceBlocked'));
+        resolve(false);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const dist = getDistanceMeters(pos.coords.latitude, pos.coords.longitude, geo.latitude, geo.longitude);
+          if (dist <= geo.radius_meters) {
+            resolve(true);
+          } else {
+            setError(`${t('admin.geofenceBlocked')} (${Math.round(dist)}m away)`);
+            resolve(false);
+          }
+        },
+        () => {
+          setError(t('admin.geofenceBlocked'));
+          resolve(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -26,6 +67,15 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
       return;
     }
     setLoading(true);
+    setError(t('admin.gettingLocation'));
+
+    const withinFence = await checkGeofence();
+    if (!withinFence) {
+      setLoading(false);
+      return;
+    }
+
+    setError('');
     const success = await login(guardId.toUpperCase(), password);
     setLoading(false);
     if (!success) setError(t('login.invalidCredentials'));
