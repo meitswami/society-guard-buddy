@@ -27,7 +27,7 @@ const BottomNav = ({ activeTab, onTabChange }: Props) => {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={isActive ? 'nav-item-active' : 'nav-item'}
+              className={`${isActive ? 'nav-item-active' : 'nav-item'} min-w-[3.5rem] flex-1`}
             >
               <Icon className="w-5 h-5" />
               <span className="text-[10px] font-medium">{tab.label}</span>
