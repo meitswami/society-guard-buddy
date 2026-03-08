@@ -30,6 +30,54 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.invalidCredentials': { en: 'Invalid credentials', hi: 'गलत प्रमाण-पत्र' },
   'login.enterBoth': { en: 'Enter Guard ID and Password', hi: 'गार्ड आईडी और पासवर्ड दर्ज करें' },
   'login.demo': { en: 'Demo: G001 / guard123', hi: 'डेमो: G001 / guard123' },
+  'login.guardLogin': { en: 'Guard Login', hi: 'गार्ड लॉगिन' },
+  'login.switchToResident': { en: 'Login as Resident →', hi: 'निवासी के रूप में लॉगिन →' },
+
+  // Resident
+  'resident.loginTitle': { en: 'Resident Login', hi: 'निवासी लॉगिन' },
+  'resident.loginSubtitle': { en: 'Login with your registered phone number', hi: 'अपने पंजीकृत फोन नंबर से लॉगिन करें' },
+  'resident.login': { en: 'Login', hi: 'लॉगिन' },
+  'resident.enterBoth': { en: 'Enter phone and password', hi: 'फोन और पासवर्ड दर्ज करें' },
+  'resident.switchToGuard': { en: '← Guard Login', hi: '← गार्ड लॉगिन' },
+  'resident.demo': { en: 'Demo: 9876543210 / resident123', hi: 'डेमो: 9876543210 / resident123' },
+  'resident.approvals': { en: 'Approvals', hi: 'अनुमोदन' },
+  'resident.passes': { en: 'Visitor Passes', hi: 'विज़िटर पास' },
+  'resident.pendingApprovals': { en: 'Pending Approvals', hi: 'लंबित अनुमोदन' },
+  'resident.approve': { en: 'Approve', hi: 'स्वीकार' },
+  'resident.reject': { en: 'Reject', hi: 'अस्वीकार' },
+  'resident.approved': { en: 'Approved', hi: 'स्वीकृत' },
+  'resident.rejected': { en: 'Rejected', hi: 'अस्वीकृत' },
+  'resident.confirmApprovalText': { en: 'Are you sure about this action?', hi: 'क्या आप इस कार्रवाई के बारे में सुनिश्चित हैं?' },
+  'resident.history': { en: 'History', hi: 'इतिहास' },
+  'resident.noHistory': { en: 'No approval history', hi: 'कोई अनुमोदन इतिहास नहीं' },
+  'resident.createPass': { en: 'Create Visitor Pass', hi: 'विज़िटर पास बनाएं' },
+  'resident.guestName': { en: 'Guest Name', hi: 'मेहमान का नाम' },
+  'resident.guestPhone': { en: 'Guest Phone', hi: 'मेहमान का फोन' },
+  'resident.validDate': { en: 'Valid Date', hi: 'मान्य तिथि' },
+  'resident.from': { en: 'From', hi: 'से' },
+  'resident.to': { en: 'To', hi: 'तक' },
+  'resident.generateOTP': { en: 'Generate OTP Pass', hi: 'OTP पास बनाएं' },
+  'resident.passCreated': { en: 'Pass created successfully', hi: 'पास सफलतापूर्वक बनाया गया' },
+  'resident.noPasses': { en: 'No visitor passes yet', hi: 'अभी तक कोई विज़िटर पास नहीं' },
+
+  // Approval flow (guard side)
+  'approval.sending': { en: 'Sending request...', hi: 'अनुरोध भेज रहे हैं...' },
+  'approval.waitingTitle': { en: 'Waiting for Approval', hi: 'अनुमोदन की प्रतीक्षा' },
+  'approval.waitingFor': { en: 'Waiting for response from Flat', hi: 'फ्लैट से प्रतिक्रिया की प्रतीक्षा' },
+  'approval.approved': { en: 'Entry Approved! ✅', hi: 'प्रवेश स्वीकृत! ✅' },
+  'approval.rejected': { en: 'Entry Rejected ❌', hi: 'प्रवेश अस्वीकृत ❌' },
+  'approval.timeout': { en: 'No response received', hi: 'कोई प्रतिक्रिया प्राप्त नहीं हुई' },
+  'approval.askPermission': { en: 'Ask Permission', hi: 'अनुमति मांगें' },
+
+  // OTP
+  'otp.verifyTitle': { en: 'Verify OTP Pass', hi: 'OTP पास सत्यापित करें' },
+  'otp.verifySubtitle': { en: 'Enter the 6-digit code from the visitor', hi: 'विज़िटर से 6 अंकों का कोड दर्ज करें' },
+  'otp.verify': { en: 'Verify', hi: 'सत्यापित करें' },
+  'otp.enterSixDigit': { en: 'Enter 6-digit OTP', hi: '6 अंकों का OTP दर्ज करें' },
+  'otp.invalid': { en: 'Invalid or expired OTP', hi: 'अमान्य या समय-सीमा समाप्त OTP' },
+  'otp.outsideTimeSlot': { en: 'OTP not valid at this time', hi: 'OTP इस समय मान्य नहीं है' },
+  'otp.verifyPass': { en: 'Verify OTP', hi: 'OTP सत्यापित करें' },
+  'otp.validPass': { en: 'Valid pass! Auto-registering entry.', hi: 'मान्य पास! स्वचालित एंट्री दर्ज हो रही है।' },
 
   // Nav
   'nav.home': { en: 'Home', hi: 'होम' },
@@ -171,6 +219,12 @@ const translations: Record<string, Record<Lang, string>> = {
   'dashboard.yesterday': { en: 'Yesterday', hi: 'कल' },
   'dashboard.todayLabel': { en: 'Today', hi: 'आज' },
   'dashboard.all': { en: 'All', hi: 'सभी' },
+
+  // Settings
+  'settings.title': { en: 'Settings', hi: 'सेटिंग्स' },
+  'settings.dataSummary': { en: 'Data Summary', hi: 'डेटा सारांश' },
+  'settings.clearAll': { en: 'Clear All Data & Go Production', hi: 'सभी डेटा साफ़ करें और प्रोडक्शन शुरू करें' },
+  'settings.clearConfirm': { en: 'This will delete ALL data. Are you sure?', hi: 'यह सभी डेटा हटा देगा। क्या आप सुनिश्चित हैं?' },
 };
 
 export default translations;

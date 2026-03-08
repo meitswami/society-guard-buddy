@@ -5,7 +5,11 @@ import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 
-const LoginPage = () => {
+interface Props {
+  onSwitchToResident?: () => void;
+}
+
+const LoginPage = ({ onSwitchToResident }: Props) => {
   const { t } = useLanguage();
   const [guardId, setGuardId] = useState('');
   const [password, setPassword] = useState('');
@@ -39,35 +43,23 @@ const LoginPage = () => {
             <Shield className="w-10 h-10 text-primary" />
           </div>
           <h1 className="page-title text-2xl">{t('app.name')}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t('app.subtitle')}</p>
+          <p className="text-muted-foreground text-sm mt-1">{t('login.guardLogin')}</p>
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('login.guardId')}</label>
-            <input
-              className="input-field font-mono uppercase"
-              placeholder={t('login.guardIdPlaceholder')}
-              value={guardId}
-              onChange={e => setGuardId(e.target.value)}
-            />
+            <input className="input-field font-mono uppercase" placeholder={t('login.guardIdPlaceholder')}
+              value={guardId} onChange={e => setGuardId(e.target.value)} />
           </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('login.password')}</label>
             <div className="relative">
-              <input
-                className="input-field pr-10"
-                type={showPassword ? 'text' : 'password'}
-                placeholder={t('login.passwordPlaceholder')}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                onClick={() => setShowPassword(!showPassword)}
-              >
+              <input className="input-field pr-10" type={showPassword ? 'text' : 'password'}
+                placeholder={t('login.passwordPlaceholder')} value={password} onChange={e => setPassword(e.target.value)} />
+              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -78,6 +70,12 @@ const LoginPage = () => {
           <button type="submit" className="btn-primary mt-2" disabled={loading}>
             {loading ? t('login.loggingIn') : t('login.startShift')}
           </button>
+
+          {onSwitchToResident && (
+            <button type="button" className="text-xs text-muted-foreground text-center mt-2 underline" onClick={onSwitchToResident}>
+              {t('login.switchToResident')}
+            </button>
+          )}
 
           <p className="text-xs text-muted-foreground text-center mt-4">{t('login.demo')}</p>
         </form>
