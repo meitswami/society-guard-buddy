@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '@/store/useStore';
 import type { Visitor } from '@/types';
 import { Truck, Camera } from 'lucide-react';
+import PhotoCapture from '@/components/PhotoCapture';
 
 const COMPANIES = ['Amazon', 'Flipkart', 'Swiggy', 'Zomato', 'BigBasket', 'Blinkit', 'Dunzo', 'Other'];
 const SERVICE_TYPES = ['Housekeeping', 'Electrician', 'Plumber', 'Carpenter', 'Painter', 'AC Service', 'Other'];
