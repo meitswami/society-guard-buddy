@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
@@ -16,6 +16,8 @@ import ReportPage from '@/pages/ReportPage';
 import SettingsPage from '@/pages/SettingsPage';
 import GeofenceSetup from '@/components/GeofenceSetup';
 import AdminGuardManager from '@/components/AdminGuardManager';
+import AdminResidentManager from '@/components/AdminResidentManager';
+import AdminPasswordChange from '@/components/AdminPasswordChange';
 
 interface Props {
   admin: { id: string; name: string; adminId: string };
