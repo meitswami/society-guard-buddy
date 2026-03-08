@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '@/store/useStore';
 import type { Visitor } from '@/types';
 import { Truck, Camera } from 'lucide-react';
+import PhotoCapture from '@/components/PhotoCapture';
 
 const COMPANIES = ['Amazon', 'Flipkart', 'Swiggy', 'Zomato', 'BigBasket', 'Blinkit', 'Dunzo', 'Other'];
 const SERVICE_TYPES = ['Housekeeping', 'Electrician', 'Plumber', 'Carpenter', 'Painter', 'AC Service', 'Other'];
@@ -18,6 +19,7 @@ const DeliveryEntryPage = () => {
     flatNumber: '',
     vehicleNumber: '',
   });
+  const [personPhotos, setPersonPhotos] = useState<string[]>([]);
 
   const update = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }));
 
@@ -31,7 +33,7 @@ const DeliveryEntryPage = () => {
       phone: form.phone,
       documentType: 'other',
       documentNumber: '',
-      visitorPhotos: [],
+      visitorPhotos: personPhotos,
       flatNumber: form.flatNumber,
       purpose: tab === 'delivery' ? `Delivery - ${form.company}` : `Service - ${form.company}`,
       entryTime: new Date().toISOString(),
@@ -46,6 +48,7 @@ const DeliveryEntryPage = () => {
     addVisitor(entry);
     setSuccess(true);
     setForm({ name: '', phone: '', company: tab === 'delivery' ? 'Amazon' : 'Housekeeping', flatNumber: '', vehicleNumber: '' });
+    setPersonPhotos([]);
     setTimeout(() => setSuccess(false), 2000);
   };
 
@@ -121,6 +124,9 @@ const DeliveryEntryPage = () => {
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Vehicle Number (optional)</label>
           <input className="input-field font-mono uppercase" placeholder="e.g. MH02AB1234" value={form.vehicleNumber} onChange={e => update('vehicleNumber', e.target.value.toUpperCase())} />
         </div>
+
+        {/* Photo Capture */}
+        <PhotoCapture photos={personPhotos} onChange={setPersonPhotos} maxPhotos={2} label="Person Photo" />
 
         <button type="submit" className="btn-primary flex items-center justify-center gap-2 mt-2">
           <Camera className="w-4 h-4" />

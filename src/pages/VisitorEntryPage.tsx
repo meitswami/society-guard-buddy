@@ -3,6 +3,7 @@ import { useStore } from '@/store/useStore';
 import type { Visitor } from '@/types';
 import { UserPlus, Camera, ShieldAlert, Search } from 'lucide-react';
 import { format } from 'date-fns';
+import PhotoCapture from '@/components/PhotoCapture';
 
 const DOC_TYPES = [
   { value: 'aadhaar', label: 'Aadhaar' },
@@ -19,7 +20,8 @@ const VisitorEntryPage = () => {
   const [blacklistAlert, setBlacklistAlert] = useState(false);
   const [repeatAlert, setRepeatAlert] = useState<string | null>(null);
   const [hasVehicle, setHasVehicle] = useState(false);
-
+  const [visitorPhotos, setVisitorPhotos] = useState<string[]>([]);
+  const [documentPhoto, setDocumentPhoto] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -74,7 +76,8 @@ const VisitorEntryPage = () => {
       phone: form.phone,
       documentType: form.documentType,
       documentNumber: form.documentNumber,
-      visitorPhotos: [],
+      documentPhoto: documentPhoto[0],
+      visitorPhotos: visitorPhotos,
       flatNumber: form.flatNumber,
       purpose: form.purpose,
       entryTime: new Date().toISOString(),
@@ -91,6 +94,8 @@ const VisitorEntryPage = () => {
     setHasVehicle(false);
     setBlacklistAlert(false);
     setRepeatAlert(null);
+    setVisitorPhotos([]);
+    setDocumentPhoto([]);
     setTimeout(() => setSuccess(false), 2000);
   };
 
@@ -219,6 +224,12 @@ const VisitorEntryPage = () => {
             <input className="input-field font-mono text-xs" placeholder="ID number" value={form.documentNumber} onChange={e => update('documentNumber', e.target.value)} />
           </div>
         </div>
+
+        {/* Visitor Photos */}
+        <PhotoCapture photos={visitorPhotos} onChange={setVisitorPhotos} maxPhotos={3} label="Visitor Photos" />
+
+        {/* Document Photo */}
+        <PhotoCapture photos={documentPhoto} onChange={setDocumentPhoto} maxPhotos={1} label="Document Photo" />
 
         {/* Vehicle Toggle */}
         <div className="flex items-center gap-3">

@@ -7,6 +7,8 @@ import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
 import VehiclePage from '@/pages/VehiclePage';
 import LogsPage from '@/pages/LogsPage';
+import QuickEntryPage from '@/pages/QuickEntryPage';
+import DirectoryPage from '@/pages/DirectoryPage';
 import BottomNav from '@/components/BottomNav';
 
 const Index = () => {
@@ -18,9 +20,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {activeTab === 'dashboard' && <DashboardPage />}
+      {activeTab === 'quick' && <QuickEntryPage />}
       {activeTab === 'visitor' && <VisitorEntryPage />}
       {activeTab === 'delivery' && <DeliveryEntryPage />}
       {activeTab === 'vehicle' && <VehiclePage />}
+      {activeTab === 'directory' && <DirectoryPage />}
       {activeTab === 'logs' && <LogsPage />}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
