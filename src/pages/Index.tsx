@@ -12,13 +12,14 @@ import DirectoryPage from '@/pages/DirectoryPage';
 import BlacklistPage from '@/pages/BlacklistPage';
 import ReportPage from '@/pages/ReportPage';
 import BottomNav from '@/components/BottomNav';
+import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
 
-const Index = () => {
+const AppContent = () => {
   const { currentGuard, theme, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist } = useStore();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loaded, setLoaded] = useState(false);
 
-  // Load all data on mount
   useEffect(() => {
     const init = async () => {
       await loadGuards();
@@ -27,7 +28,6 @@ const Index = () => {
     init();
   }, []);
 
-  // Load data when logged in
   useEffect(() => {
     if (currentGuard) {
       loadVisitors();
@@ -36,7 +36,6 @@ const Index = () => {
     }
   }, [currentGuard]);
 
-  // Apply theme
   useEffect(() => {
     const resolved = theme === 'system'
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
@@ -56,7 +55,7 @@ const Index = () => {
   if (!loaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground text-sm animate-pulse">Loading...</p>
+        <p className="text-muted-foreground text-sm animate-pulse">{t('app.loading')}</p>
       </div>
     );
   }
@@ -78,5 +77,11 @@ const Index = () => {
     </div>
   );
 };
+
+const Index = () => (
+  <LanguageProvider>
+    <AppContent />
+  </LanguageProvider>
+);
 
 export default Index;

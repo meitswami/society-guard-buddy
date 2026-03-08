@@ -1,12 +1,14 @@
 import { useStore } from '@/store/useStore';
 import { Users, Car, Truck, LogIn, ShieldAlert, LogOut, Clock } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
+import LanguageToggle from '@/components/LanguageToggle';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 
 const DashboardPage = () => {
   const { visitors, currentGuard, logout } = useStore();
-
+  const { t } = useLanguage();
   const today = format(new Date(), 'yyyy-MM-dd');
 
   const stats = useMemo(() => {
@@ -21,13 +23,10 @@ const DashboardPage = () => {
 
   const recentEntries = visitors.filter(v => v.entryTime.startsWith(today)).slice(0, 5);
 
-  // Repeat visitor alerts
   const alerts = useMemo(() => {
     const todayVisitors = visitors.filter(v => v.entryTime.startsWith(today));
     const phoneCounts: Record<string, number> = {};
-    todayVisitors.forEach(v => {
-      phoneCounts[v.phone] = (phoneCounts[v.phone] || 0) + 1;
-    });
+    todayVisitors.forEach(v => { phoneCounts[v.phone] = (phoneCounts[v.phone] || 0) + 1; });
     return Object.entries(phoneCounts)
       .filter(([, count]) => count >= 3)
       .map(([phone, count]) => {
@@ -38,10 +37,9 @@ const DashboardPage = () => {
 
   return (
     <div className="page-container">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">Evergreen Heights</h1>
+          <h1 className="page-title">{t('app.name')}</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             <Clock className="w-3 h-3 inline mr-1" />
             {format(new Date(), 'dd MMM yyyy, hh:mm a')}
@@ -52,6 +50,7 @@ const DashboardPage = () => {
             <p className="text-xs text-primary font-mono">{currentGuard?.id}</p>
             <p className="text-xs text-muted-foreground">{currentGuard?.name}</p>
           </div>
+          <LanguageToggle />
           <ThemeToggle />
           <button onClick={logout} className="p-2 rounded-lg bg-secondary text-muted-foreground">
             <LogOut className="w-4 h-4" />
@@ -59,44 +58,37 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="stat-card">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <Users className="w-4 h-4" />
-            <span className="text-xs">Visitors</span>
+            <Users className="w-4 h-4" /><span className="text-xs">{t('dashboard.visitors')}</span>
           </div>
           <span className="text-2xl font-bold font-mono text-foreground">{stats.totalVisitors}</span>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <Car className="w-4 h-4" />
-            <span className="text-xs">Vehicles</span>
+            <Car className="w-4 h-4" /><span className="text-xs">{t('dashboard.vehicles')}</span>
           </div>
           <span className="text-2xl font-bold font-mono text-foreground">{stats.totalVehicles}</span>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <Truck className="w-4 h-4" />
-            <span className="text-xs">Deliveries</span>
+            <Truck className="w-4 h-4" /><span className="text-xs">{t('dashboard.deliveries')}</span>
           </div>
           <span className="text-2xl font-bold font-mono text-foreground">{stats.totalDeliveries}</span>
         </div>
         <div className="stat-card border-primary/30">
           <div className="flex items-center gap-2 text-primary">
-            <LogIn className="w-4 h-4" />
-            <span className="text-xs">Inside Now</span>
+            <LogIn className="w-4 h-4" /><span className="text-xs">{t('dashboard.insideNow')}</span>
           </div>
           <span className="text-2xl font-bold font-mono text-primary">{stats.currentlyInside}</span>
         </div>
       </div>
 
-      {/* Alerts */}
       {alerts.length > 0 && (
         <div className="mb-6">
           <h2 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-            <ShieldAlert className="w-4 h-4 text-destructive" />
-            Alerts
+            <ShieldAlert className="w-4 h-4 text-destructive" /> {t('dashboard.alerts')}
           </h2>
           {alerts.map(a => (
             <div key={a.phone} className="card-section border-destructive/30 mb-2 flex items-center gap-3">
@@ -106,7 +98,7 @@ const DashboardPage = () => {
               <div>
                 <p className="text-sm font-medium">{a.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {a.phone} — entered <span className="text-destructive font-semibold">{a.count}x</span> today
+                  {a.phone} — {t('dashboard.enteredXToday')} <span className="text-destructive font-semibold">{a.count}x</span> {t('dashboard.today')}
                 </p>
               </div>
             </div>
@@ -114,11 +106,10 @@ const DashboardPage = () => {
         </div>
       )}
 
-      {/* Recent Entries */}
       <div>
-        <h2 className="text-sm font-semibold mb-3">Recent Entries</h2>
+        <h2 className="text-sm font-semibold mb-3">{t('dashboard.recentEntries')}</h2>
         {recentEntries.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No entries today</p>
+          <p className="text-sm text-muted-foreground text-center py-8">{t('dashboard.noEntries')}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {recentEntries.map(v => (
@@ -127,12 +118,10 @@ const DashboardPage = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{v.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Flat {v.flatNumber} · {v.category} · {format(new Date(v.entryTime), 'hh:mm a')}
+                    {t('common.flat')} {v.flatNumber} · {v.category} · {format(new Date(v.entryTime), 'hh:mm a')}
                   </p>
                 </div>
-                {!v.exitTime && (
-                  <span className="status-inside text-[10px]">Inside</span>
-                )}
+                {!v.exitTime && <span className="status-inside text-[10px]">{t('common.inside')}</span>}
               </div>
             ))}
           </div>

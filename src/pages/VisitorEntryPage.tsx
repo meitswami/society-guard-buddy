@@ -4,6 +4,7 @@ import type { Visitor } from '@/types';
 import { UserPlus, Camera, ShieldAlert, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import PhotoCapture from '@/components/PhotoCapture';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 const DOC_TYPES = [
   { value: 'aadhaar', label: 'Aadhaar' },
@@ -12,10 +13,12 @@ const DOC_TYPES = [
   { value: 'other', label: 'Other' },
 ] as const;
 
-const PURPOSES = ['Visit', 'Delivery', 'Meeting', 'Maintenance', 'Guest', 'Other'];
+const PURPOSE_KEYS = ['purpose.visit', 'purpose.delivery', 'purpose.meeting', 'purpose.maintenance', 'purpose.guest', 'purpose.other'];
+const PURPOSE_VALUES = ['Visit', 'Delivery', 'Meeting', 'Maintenance', 'Guest', 'Other'];
 
 const VisitorEntryPage = () => {
   const { addVisitor, visitors, currentGuard, isBlacklisted } = useStore();
+  const { t } = useLanguage();
   const [success, setSuccess] = useState(false);
   const [blacklistAlert, setBlacklistAlert] = useState(false);
   const [repeatAlert, setRepeatAlert] = useState<string | null>(null);
@@ -23,44 +26,24 @@ const VisitorEntryPage = () => {
   const [visitorPhotos, setVisitorPhotos] = useState<string[]>([]);
   const [documentPhoto, setDocumentPhoto] = useState<string[]>([]);
   const [form, setForm] = useState({
-    name: '',
-    phone: '',
-    documentType: 'aadhaar' as Visitor['documentType'],
-    documentNumber: '',
-    flatNumber: '',
-    purpose: 'Visit',
-    vehicleNumber: '',
+    name: '', phone: '', documentType: 'aadhaar' as Visitor['documentType'],
+    documentNumber: '', flatNumber: '', purpose: 'Visit', vehicleNumber: '',
   });
 
   const update = (field: string, value: string) => {
     setForm(f => ({ ...f, [field]: value }));
-
     if (field === 'phone' && value.length >= 10) {
-      // Check blacklist
-      if (isBlacklisted(value)) {
-        setBlacklistAlert(true);
-      } else {
-        setBlacklistAlert(false);
-      }
-
-      // Check repeat visitor
+      if (isBlacklisted(value)) { setBlacklistAlert(true); } else { setBlacklistAlert(false); }
       const today = format(new Date(), 'yyyy-MM-dd');
       const todayVisits = visitors.filter(v => v.phone === value && v.entryTime.startsWith(today));
       if (todayVisits.length > 0) {
-        setRepeatAlert(`This visitor has already entered ${todayVisits.length}x today`);
-      } else {
-        setRepeatAlert(null);
-      }
-
-      // Auto-fill from previous visits
+        setRepeatAlert(`${t('visitor.repeatAlert')} ${todayVisits.length}${t('visitor.timesToday')}`);
+      } else { setRepeatAlert(null); }
       const prev = visitors.find(v => v.phone === value);
       if (prev) {
         setForm(f => ({
-          ...f,
-          name: f.name || prev.name,
-          documentType: prev.documentType,
-          documentNumber: f.documentNumber || prev.documentNumber,
-          flatNumber: f.flatNumber || prev.flatNumber,
+          ...f, name: f.name || prev.name, documentType: prev.documentType,
+          documentNumber: f.documentNumber || prev.documentNumber, flatNumber: f.flatNumber || prev.flatNumber,
         }));
       }
     }
@@ -69,37 +52,23 @@ const VisitorEntryPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.phone || !form.flatNumber) return;
-
     const visitor: Visitor = {
-      id: `V${Date.now()}`,
-      name: form.name,
-      phone: form.phone,
-      documentType: form.documentType,
-      documentNumber: form.documentNumber,
-      documentPhoto: documentPhoto[0],
-      visitorPhotos: visitorPhotos,
-      flatNumber: form.flatNumber,
-      purpose: form.purpose,
-      entryTime: new Date().toISOString(),
-      guardId: currentGuard?.id || '',
-      guardName: currentGuard?.name || '',
-      category: 'visitor',
-      vehicleNumber: hasVehicle ? form.vehicleNumber : undefined,
+      id: `V${Date.now()}`, name: form.name, phone: form.phone,
+      documentType: form.documentType, documentNumber: form.documentNumber,
+      documentPhoto: documentPhoto[0], visitorPhotos, flatNumber: form.flatNumber,
+      purpose: form.purpose, entryTime: new Date().toISOString(),
+      guardId: currentGuard?.id || '', guardName: currentGuard?.name || '',
+      category: 'visitor', vehicleNumber: hasVehicle ? form.vehicleNumber : undefined,
       vehicleEntryTime: hasVehicle && form.vehicleNumber ? new Date().toISOString() : undefined,
     };
-
     await addVisitor(visitor);
     setSuccess(true);
     setForm({ name: '', phone: '', documentType: 'aadhaar', documentNumber: '', flatNumber: '', purpose: 'Visit', vehicleNumber: '' });
-    setHasVehicle(false);
-    setBlacklistAlert(false);
-    setRepeatAlert(null);
-    setVisitorPhotos([]);
-    setDocumentPhoto([]);
+    setHasVehicle(false); setBlacklistAlert(false); setRepeatAlert(null);
+    setVisitorPhotos([]); setDocumentPhoto([]);
     setTimeout(() => setSuccess(false), 2000);
   };
 
-  // Phone-based suggestions
   const suggestions = useMemo(() => {
     if (form.phone.length < 4) return [];
     const seen = new Set<string>();
@@ -115,24 +84,22 @@ const VisitorEntryPage = () => {
           <UserPlus className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="page-title">New Visitor</h1>
-          <p className="text-xs text-muted-foreground">Quick entry logging</p>
+          <h1 className="page-title">{t('visitor.title')}</h1>
+          <p className="text-xs text-muted-foreground">{t('visitor.subtitle')}</p>
         </div>
       </div>
 
       {success && (
         <div className="card-section border-success/30 mb-4 text-center">
-          <p className="text-success text-sm font-semibold">✓ Visitor logged successfully</p>
+          <p className="text-success text-sm font-semibold">✓ {t('visitor.loggedSuccess')}</p>
         </div>
       )}
-
       {blacklistAlert && (
         <div className="card-section border-destructive/50 mb-4 flex items-center gap-3">
           <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0" />
-          <p className="text-destructive text-sm font-semibold">⚠ BLACKLISTED — This visitor is flagged!</p>
+          <p className="text-destructive text-sm font-semibold">⚠ {t('visitor.blacklisted')}</p>
         </div>
       )}
-
       {repeatAlert && !blacklistAlert && (
         <div className="card-section border-warning/30 mb-4">
           <p className="text-warning text-sm font-medium">⚠ {repeatAlert}</p>
@@ -140,35 +107,15 @@ const VisitorEntryPage = () => {
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Phone */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Phone Number *</label>
-          <input
-            className="input-field font-mono"
-            placeholder="10-digit number"
-            type="tel"
-            maxLength={10}
-            value={form.phone}
-            onChange={e => update('phone', e.target.value.replace(/\D/g, ''))}
-          />
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('visitor.phoneNumber')} *</label>
+          <input className="input-field font-mono" placeholder="10-digit number" type="tel" maxLength={10}
+            value={form.phone} onChange={e => update('phone', e.target.value.replace(/\D/g, ''))} />
           {suggestions.length > 0 && form.phone.length >= 4 && form.phone.length < 10 && (
             <div className="mt-1 flex flex-wrap gap-1">
               {suggestions.map(s => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className="text-xs bg-secondary px-2 py-1 rounded-md text-secondary-foreground"
-                  onClick={() => {
-                    setForm(f => ({
-                      ...f,
-                      phone: s.phone,
-                      name: s.name,
-                      documentType: s.documentType,
-                      documentNumber: s.documentNumber,
-                      flatNumber: s.flatNumber,
-                    }));
-                  }}
-                >
+                <button key={s.id} type="button" className="text-xs bg-secondary px-2 py-1 rounded-md text-secondary-foreground"
+                  onClick={() => setForm(f => ({ ...f, phone: s.phone, name: s.name, documentType: s.documentType, documentNumber: s.documentNumber, flatNumber: s.flatNumber }))}>
                   <Search className="w-3 h-3 inline mr-1" />{s.name} · {s.phone}
                 </button>
               ))}
@@ -176,83 +123,62 @@ const VisitorEntryPage = () => {
           )}
         </div>
 
-        {/* Name */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Full Name *</label>
-          <input className="input-field" placeholder="Visitor name" value={form.name} onChange={e => update('name', e.target.value)} />
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('visitor.fullName')} *</label>
+          <input className="input-field" placeholder={t('visitor.fullName')} value={form.name} onChange={e => update('name', e.target.value)} />
         </div>
 
-        {/* Flat Number */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Flat / House No. *</label>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('visitor.flatNumber')} *</label>
           <input className="input-field font-mono" placeholder="e.g. 604" value={form.flatNumber} onChange={e => update('flatNumber', e.target.value)} />
         </div>
 
-        {/* Purpose */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Purpose</label>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('visitor.purpose')}</label>
           <div className="flex flex-wrap gap-2">
-            {PURPOSES.map(p => (
-              <button
-                key={p}
-                type="button"
+            {PURPOSE_VALUES.map((p, i) => (
+              <button key={p} type="button"
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${form.purpose === p ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}
-                onClick={() => update('purpose', p)}
-              >
-                {p}
+                onClick={() => update('purpose', p)}>
+                {t(PURPOSE_KEYS[i])}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Document */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Doc Type</label>
-            <select
-              className="input-field"
-              value={form.documentType}
-              onChange={e => update('documentType', e.target.value)}
-            >
-              {DOC_TYPES.map(d => (
-                <option key={d.value} value={d.value}>{d.label}</option>
-              ))}
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('visitor.docType')}</label>
+            <select className="input-field" value={form.documentType} onChange={e => update('documentType', e.target.value)}>
+              {DOC_TYPES.map(d => (<option key={d.value} value={d.value}>{d.label}</option>))}
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Doc Number</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('visitor.docNumber')}</label>
             <input className="input-field font-mono text-xs" placeholder="ID number" value={form.documentNumber} onChange={e => update('documentNumber', e.target.value)} />
           </div>
         </div>
 
-        {/* Visitor Photos */}
-        <PhotoCapture photos={visitorPhotos} onChange={setVisitorPhotos} maxPhotos={3} label="Visitor Photos" />
+        <PhotoCapture photos={visitorPhotos} onChange={setVisitorPhotos} maxPhotos={3} label={t('visitor.visitorPhotos')} />
+        <PhotoCapture photos={documentPhoto} onChange={setDocumentPhoto} maxPhotos={1} label={t('visitor.documentPhoto')} />
 
-        {/* Document Photo */}
-        <PhotoCapture photos={documentPhoto} onChange={setDocumentPhoto} maxPhotos={1} label="Document Photo" />
-
-        {/* Vehicle Toggle */}
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className={`w-10 h-6 rounded-full transition-colors relative ${hasVehicle ? 'bg-primary' : 'bg-secondary'}`}
-            onClick={() => setHasVehicle(!hasVehicle)}
-          >
+          <button type="button" className={`w-10 h-6 rounded-full transition-colors relative ${hasVehicle ? 'bg-primary' : 'bg-secondary'}`}
+            onClick={() => setHasVehicle(!hasVehicle)}>
             <span className={`absolute top-1 w-4 h-4 rounded-full bg-foreground transition-all ${hasVehicle ? 'left-5' : 'left-1'}`} />
           </button>
-          <span className="text-sm text-muted-foreground">Has vehicle</span>
+          <span className="text-sm text-muted-foreground">{t('visitor.hasVehicle')}</span>
         </div>
 
         {hasVehicle && (
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Vehicle Number</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('visitor.vehicleNumber')}</label>
             <input className="input-field font-mono uppercase" placeholder="e.g. MH02AB1234" value={form.vehicleNumber} onChange={e => update('vehicleNumber', e.target.value.toUpperCase())} />
           </div>
         )}
 
         <button type="submit" className="btn-primary flex items-center justify-center gap-2 mt-2">
-          <Camera className="w-4 h-4" />
-          Log Entry
+          <Camera className="w-4 h-4" /> {t('visitor.logEntry')}
         </button>
       </form>
     </div>
