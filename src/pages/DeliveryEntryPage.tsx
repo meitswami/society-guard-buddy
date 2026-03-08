@@ -23,7 +23,7 @@ const DeliveryEntryPage = () => {
 
   const update = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.phone || !form.flatNumber) return;
 
@@ -45,7 +45,7 @@ const DeliveryEntryPage = () => {
       vehicleEntryTime: form.vehicleNumber ? new Date().toISOString() : undefined,
     };
 
-    addVisitor(entry);
+    await addVisitor(entry);
     setSuccess(true);
     setForm({ name: '', phone: '', company: tab === 'delivery' ? 'Amazon' : 'Housekeeping', flatNumber: '', vehicleNumber: '' });
     setPersonPhotos([]);
