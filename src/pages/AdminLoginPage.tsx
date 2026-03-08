@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
+import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 
 interface Props {
   onLogin: (admin: { id: string; name: string; adminId: string }) => void;
