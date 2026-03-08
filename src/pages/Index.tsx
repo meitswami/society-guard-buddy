@@ -6,6 +6,8 @@ import ResidentLoginPage from '@/pages/ResidentLoginPage';
 import ResidentDashboard from '@/pages/ResidentDashboard';
 import AdminLoginPage from '@/pages/AdminLoginPage';
 import AdminDashboard from '@/pages/AdminDashboard';
+import SuperadminLoginPage from '@/pages/SuperadminLoginPage';
+import SuperadminDashboard from '@/pages/SuperadminDashboard';
 import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
