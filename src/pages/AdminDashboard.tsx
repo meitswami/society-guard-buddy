@@ -69,6 +69,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'geofence', label: t('admin.geofence'), icon: MapPin },
     { id: 'password', label: t('admin.changePassword'), icon: Lock },
     { id: 'biometric', label: t('biometric.title'), icon: Fingerprint },
+    { id: 'audit', label: 'Audit Logs', icon: ClipboardList },
     { id: 'report', label: t('nav.report'), icon: BarChart3 },
     { id: 'logs', label: t('nav.logs'), icon: FileText },
     { id: 'visitor', label: t('nav.visitor'), icon: UserPlus },
