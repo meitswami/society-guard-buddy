@@ -36,6 +36,8 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     setLoading(false);
     if (err || !data) { auditLoginFailed('resident', phone); setError(t('login.invalidCredentials')); return; }
     auditLoginSuccess('resident', data.id, data.name);
+    registerOneSignalUser({ userType: 'resident', userId: data.id, userName: data.name, flatNumber: data.flat_number });
+    promptPushPermission();
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 

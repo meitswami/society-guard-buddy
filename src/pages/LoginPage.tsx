@@ -67,6 +67,8 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     setLoading(false);
     if (success) {
       auditLoginSuccess('guard', guardId.toUpperCase(), guardId.toUpperCase());
+      registerOneSignalUser({ userType: 'guard', userId: guardId.toUpperCase(), userName: guardId.toUpperCase() });
+      promptPushPermission();
     } else {
       auditLoginFailed('guard', guardId.toUpperCase());
       setError(t('login.invalidCredentials'));

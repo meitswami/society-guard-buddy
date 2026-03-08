@@ -36,6 +36,8 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
     setLoading(false);
     if (data) {
       auditLoginSuccess('admin', data.id, data.name);
+      registerOneSignalUser({ userType: 'admin', userId: data.id, userName: data.name });
+      promptPushPermission();
       onLogin({ id: data.id, name: data.name, adminId: data.admin_id });
     } else {
       auditLoginFailed('admin', adminId.toUpperCase());
