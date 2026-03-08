@@ -1,12 +1,28 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { useStore } from '@/store/useStore';
+import type { TabType } from '@/types';
+import LoginPage from '@/pages/LoginPage';
+import DashboardPage from '@/pages/DashboardPage';
+import VisitorEntryPage from '@/pages/VisitorEntryPage';
+import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
+import VehiclePage from '@/pages/VehiclePage';
+import LogsPage from '@/pages/LogsPage';
+import BottomNav from '@/components/BottomNav';
 
 const Index = () => {
+  const currentGuard = useStore(s => s.currentGuard);
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+
+  if (!currentGuard) return <LoginPage />;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      {activeTab === 'dashboard' && <DashboardPage />}
+      {activeTab === 'visitor' && <VisitorEntryPage />}
+      {activeTab === 'delivery' && <DeliveryEntryPage />}
+      {activeTab === 'vehicle' && <VehiclePage />}
+      {activeTab === 'logs' && <LogsPage />}
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 };
