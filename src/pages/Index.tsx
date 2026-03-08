@@ -4,6 +4,8 @@ import type { TabType } from '@/types';
 import LoginPage from '@/pages/LoginPage';
 import ResidentLoginPage from '@/pages/ResidentLoginPage';
 import ResidentDashboard from '@/pages/ResidentDashboard';
+import AdminLoginPage from '@/pages/AdminLoginPage';
+import AdminDashboard from '@/pages/AdminDashboard';
 import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
@@ -12,12 +14,11 @@ import LogsPage from '@/pages/LogsPage';
 import QuickEntryPage from '@/pages/QuickEntryPage';
 import DirectoryPage from '@/pages/DirectoryPage';
 import BlacklistPage from '@/pages/BlacklistPage';
-import ReportPage from '@/pages/ReportPage';
 import SettingsPage from '@/pages/SettingsPage';
 import BottomNav from '@/components/BottomNav';
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
 
-type UserMode = 'choosing' | 'guard' | 'resident';
+type UserMode = 'choosing' | 'guard' | 'resident' | 'admin';
 
 const AppContent = () => {
   const { currentGuard, theme, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
@@ -26,6 +27,7 @@ const AppContent = () => {
   const [loaded, setLoaded] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>('choosing');
   const [residentUser, setResidentUser] = useState<{ id: string; name: string; phone: string; flatId: string; flatNumber: string } | null>(null);
+  const [adminUser, setAdminUser] = useState<{ id: string; name: string; adminId: string } | null>(null);
 
   const goHome = useCallback(() => setActiveTab('dashboard'), []);
 
@@ -71,6 +73,11 @@ const AppContent = () => {
     );
   }
 
+  // Admin logged in
+  if (adminUser) {
+    return <AdminDashboard admin={adminUser} onLogout={() => { setAdminUser(null); setUserMode('choosing'); }} />;
+  }
+
   // Resident logged in
   if (residentUser) {
     return <ResidentDashboard resident={residentUser} onLogout={() => { setResidentUser(null); setUserMode('choosing'); }} />;
@@ -81,7 +88,7 @@ const AppContent = () => {
     if (userMode === 'choosing') {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
-          <div className="w-full max-w-sm flex flex-col items-center gap-6">
+          <div className="w-full max-w-sm flex flex-col items-center gap-4">
             <div className="flex flex-col items-center mb-4">
               <h1 className="page-title text-2xl">{t('app.name')}</h1>
               <p className="text-muted-foreground text-sm mt-1">{t('app.subtitle')}</p>
@@ -94,6 +101,10 @@ const AppContent = () => {
               className="w-full py-4 text-base rounded-xl bg-secondary text-secondary-foreground font-semibold hover:opacity-90 transition-opacity">
               🏠 {t('resident.loginTitle')}
             </button>
+            <button onClick={() => setUserMode('admin')}
+              className="w-full py-3 text-sm rounded-xl border border-border text-muted-foreground font-medium hover:bg-muted transition-colors">
+              ⚙️ {t('login.adminLogin')}
+            </button>
           </div>
           <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">
             {t('app.footer')}
@@ -102,12 +113,19 @@ const AppContent = () => {
       );
     }
 
+    if (userMode === 'admin') {
+      return <AdminLoginPage onLogin={setAdminUser} onBack={() => setUserMode('choosing')} />;
+    }
+
     if (userMode === 'resident') {
       return <ResidentLoginPage onLogin={setResidentUser} onSwitchToGuard={() => setUserMode('guard')} />;
     }
 
     return <LoginPage onSwitchToResident={() => setUserMode('resident')} />;
   }
+
+  // Guard tabs - no report or logs
+  const guardTabs: TabType[] = ['dashboard', 'quick', 'visitor', 'delivery', 'vehicle', 'blacklist', 'directory', 'settings'];
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,10 +136,8 @@ const AppContent = () => {
       {activeTab === 'vehicle' && <VehiclePage />}
       {activeTab === 'blacklist' && <BlacklistPage />}
       {activeTab === 'directory' && <DirectoryPage />}
-      {activeTab === 'report' && <ReportPage />}
-      {activeTab === 'logs' && <LogsPage />}
       {activeTab === 'settings' && <SettingsPage />}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} guardTabs={guardTabs} />
     </div>
   );
 };

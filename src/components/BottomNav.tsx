@@ -5,9 +5,10 @@ import { useLanguage } from '@/i18n/LanguageContext';
 interface Props {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
+  guardTabs?: TabType[];
 }
 
-const tabKeys: { id: TabType; labelKey: string; icon: React.ElementType }[] = [
+const allTabs: { id: TabType; labelKey: string; icon: React.ElementType }[] = [
   { id: 'dashboard', labelKey: 'nav.home', icon: LayoutDashboard },
   { id: 'quick', labelKey: 'nav.quick', icon: Zap },
   { id: 'visitor', labelKey: 'nav.visitor', icon: UserPlus },
@@ -20,13 +21,14 @@ const tabKeys: { id: TabType; labelKey: string; icon: React.ElementType }[] = [
   { id: 'settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
-const BottomNav = ({ activeTab, onTabChange }: Props) => {
+const BottomNav = ({ activeTab, onTabChange, guardTabs }: Props) => {
   const { t } = useLanguage();
+  const visibleTabs = guardTabs ? allTabs.filter(tab => guardTabs.includes(tab.id)) : allTabs;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
       <div className="max-w-lg mx-auto flex items-center overflow-x-auto gap-0 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1 scrollbar-hide">
-        {tabKeys.map(tab => {
+        {visibleTabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
