@@ -225,6 +225,12 @@ const VisitorEntryPage = () => {
           </div>
         </div>
 
+        {/* Visitor Photos */}
+        <PhotoCapture photos={visitorPhotos} onChange={setVisitorPhotos} maxPhotos={3} label="Visitor Photos" />
+
+        {/* Document Photo */}
+        <PhotoCapture photos={documentPhoto} onChange={setDocumentPhoto} maxPhotos={1} label="Document Photo" />
+
         {/* Vehicle Toggle */}
         <div className="flex items-center gap-3">
           <button
