@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
+import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 
 interface Props {
   onLogin: (resident: { id: string; name: string; phone: string; flatId: string; flatNumber: string }) => void;
@@ -35,6 +36,8 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     setLoading(false);
     if (err || !data) { auditLoginFailed('resident', phone); setError(t('login.invalidCredentials')); return; }
     auditLoginSuccess('resident', data.id, data.name);
+    registerOneSignalUser({ userType: 'resident', userId: data.id, userName: data.name, flatNumber: data.flat_number });
+    promptPushPermission();
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 

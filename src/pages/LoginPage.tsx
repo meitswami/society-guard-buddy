@@ -7,6 +7,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
+import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 
 interface Props {
   onSwitchToResident?: () => void;
@@ -66,6 +67,8 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     setLoading(false);
     if (success) {
       auditLoginSuccess('guard', guardId.toUpperCase(), guardId.toUpperCase());
+      registerOneSignalUser({ userType: 'guard', userId: guardId.toUpperCase(), userName: guardId.toUpperCase() });
+      promptPushPermission();
     } else {
       auditLoginFailed('guard', guardId.toUpperCase());
       setError(t('login.invalidCredentials'));
