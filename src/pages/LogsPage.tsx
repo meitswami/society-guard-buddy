@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
-import { Search, FileText, LogOut, Filter, Download } from 'lucide-react';
+import { Search, FileText, LogOut, Download } from 'lucide-react';
 import { format } from 'date-fns';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 const LogsPage = () => {
   const { visitors, markExit } = useStore();
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -12,15 +14,12 @@ const LogsPage = () => {
   const filtered = useMemo(() => {
     return visitors.filter(v => {
       const matchSearch = !search ||
-        v.name.toLowerCase().includes(search.toLowerCase()) ||
-        v.phone.includes(search) ||
+        v.name.toLowerCase().includes(search.toLowerCase()) || v.phone.includes(search) ||
         v.flatNumber.toLowerCase().includes(search.toLowerCase()) ||
         (v.vehicleNumber && v.vehicleNumber.toLowerCase().includes(search.toLowerCase())) ||
         v.guardName.toLowerCase().includes(search.toLowerCase());
-
       const matchCategory = categoryFilter === 'all' || v.category === categoryFilter;
       const matchDate = !dateFilter || v.entryTime.startsWith(dateFilter);
-
       return matchSearch && matchCategory && matchDate;
     });
   }, [visitors, search, categoryFilter, dateFilter]);
@@ -31,16 +30,17 @@ const LogsPage = () => {
       v.name, v.phone, v.flatNumber, v.category, v.purpose,
       format(new Date(v.entryTime), 'dd/MM/yyyy HH:mm'),
       v.exitTime ? format(new Date(v.exitTime), 'dd/MM/yyyy HH:mm') : 'Inside',
-      v.guardName,
-      v.vehicleNumber || '-',
+      v.guardName, v.vehicleNumber || '-',
     ]);
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `evergreen-heights-log-${dateFilter}.csv`;
-    a.click();
+    a.href = url; a.download = `evergreen-heights-log-${dateFilter}.csv`; a.click();
+  };
+
+  const categoryLabels: Record<string, string> = {
+    all: t('logs.all'), visitor: t('blacklist.visitor'), delivery: t('delivery.tab.delivery'), service: t('delivery.tab.service'),
   };
 
   return (
@@ -51,8 +51,8 @@ const LogsPage = () => {
             <FileText className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="page-title">Logs</h1>
-            <p className="text-xs text-muted-foreground">Search & export records</p>
+            <h1 className="page-title">{t('logs.title')}</h1>
+            <p className="text-xs text-muted-foreground">{t('logs.subtitle')}</p>
           </div>
         </div>
         <button onClick={exportCSV} className="btn-secondary text-xs px-3 py-2 flex items-center gap-1">
@@ -60,44 +60,30 @@ const LogsPage = () => {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col gap-3 mb-4">
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            className="input-field pl-9"
-            placeholder="Name, phone, flat, vehicle, guard..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          <input className="input-field pl-9" placeholder={t('logs.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-2">
-          <input
-            type="date"
-            className="input-field text-xs flex-1"
-            value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)}
-          />
+          <input type="date" className="input-field text-xs flex-1" value={dateFilter} onChange={e => setDateFilter(e.target.value)} />
           <div className="flex gap-1">
             {['all', 'visitor', 'delivery', 'service'].map(c => (
-              <button
-                key={c}
+              <button key={c}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${categoryFilter === c ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}
-                onClick={() => setCategoryFilter(c)}
-              >
-                {c === 'all' ? 'All' : c.charAt(0).toUpperCase() + c.slice(1)}
+                onClick={() => setCategoryFilter(c)}>
+                {categoryLabels[c]}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Results */}
-      <p className="text-xs text-muted-foreground mb-3">{filtered.length} records</p>
+      <p className="text-xs text-muted-foreground mb-3">{filtered.length} {t('common.records')}</p>
 
       <div className="flex flex-col gap-2">
         {filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No records found</p>
+          <p className="text-sm text-muted-foreground text-center py-8">{t('logs.noRecords')}</p>
         ) : (
           filtered.map(v => (
             <div key={v.id} className="card-section">
@@ -108,29 +94,21 @@ const LogsPage = () => {
                     <p className="text-sm font-semibold truncate">{v.name}</p>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
                       v.category === 'visitor' ? 'bg-primary/20 text-primary' :
-                      v.category === 'delivery' ? 'bg-warning/20 text-warning' :
-                      'bg-secondary text-secondary-foreground'
-                    }`}>
-                      {v.category}
-                    </span>
+                      v.category === 'delivery' ? 'bg-warning/20 text-warning' : 'bg-secondary text-secondary-foreground'
+                    }`}>{v.category}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-mono">{v.phone}</span> · Flat {v.flatNumber}
-                  </p>
+                  <p className="text-xs text-muted-foreground"><span className="font-mono">{v.phone}</span> · {t('common.flat')} {v.flatNumber}</p>
                   <p className="text-xs text-muted-foreground">{v.purpose}</p>
                   <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                     <span>In: {format(new Date(v.entryTime), 'hh:mm a')}</span>
                     {v.exitTime && <span>Out: {format(new Date(v.exitTime), 'hh:mm a')}</span>}
                     {v.vehicleNumber && <span className="font-mono">{v.vehicleNumber}</span>}
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">Guard: {v.guardName}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t('logs.guard')}: {v.guardName}</p>
                 </div>
                 {!v.exitTime && (
-                  <button
-                    onClick={() => markExit(v.id)}
-                    className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1 flex-shrink-0"
-                  >
-                    <LogOut className="w-3 h-3" /> Exit
+                  <button onClick={() => markExit(v.id)} className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1 flex-shrink-0">
+                    <LogOut className="w-3 h-3" /> {t('common.exit')}
                   </button>
                 )}
               </div>
