@@ -20,7 +20,8 @@ const VisitorEntryPage = () => {
   const [blacklistAlert, setBlacklistAlert] = useState(false);
   const [repeatAlert, setRepeatAlert] = useState<string | null>(null);
   const [hasVehicle, setHasVehicle] = useState(false);
-
+  const [visitorPhotos, setVisitorPhotos] = useState<string[]>([]);
+  const [documentPhoto, setDocumentPhoto] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: '',
     phone: '',
