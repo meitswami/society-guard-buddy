@@ -64,7 +64,12 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     setError('');
     const success = await login(guardId.toUpperCase(), password);
     setLoading(false);
-    if (!success) setError(t('login.invalidCredentials'));
+    if (success) {
+      auditLoginSuccess('guard', guardId.toUpperCase(), guardId.toUpperCase());
+    } else {
+      auditLoginFailed('guard', guardId.toUpperCase());
+      setError(t('login.invalidCredentials'));
+    }
   };
 
   const handleBiometricLogin = async () => {
