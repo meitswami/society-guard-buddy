@@ -19,6 +19,8 @@ import AdminGuardManager from '@/components/AdminGuardManager';
 import AdminResidentManager from '@/components/AdminResidentManager';
 import AdminPasswordChange from '@/components/AdminPasswordChange';
 import BiometricSetup from '@/components/BiometricSetup';
+import AuditLogViewer from '@/components/AuditLogViewer';
+import { auditLogout } from '@/lib/auditLogger';
 
 interface Props {
   admin: { id: string; name: string; adminId: string };
