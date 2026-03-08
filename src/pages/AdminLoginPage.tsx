@@ -31,8 +31,13 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
     setLoading(true);
     const { data } = await supabase.from('admins').select('*').eq('admin_id', adminId.toUpperCase()).eq('password', password).single();
     setLoading(false);
-    if (data) onLogin({ id: data.id, name: data.name, adminId: data.admin_id });
-    else setError(t('login.invalidCredentials'));
+    if (data) {
+      auditLoginSuccess('admin', data.id, data.name);
+      onLogin({ id: data.id, name: data.name, adminId: data.admin_id });
+    } else {
+      auditLoginFailed('admin', adminId.toUpperCase());
+      setError(t('login.invalidCredentials'));
+    }
   };
 
   const handleBiometricLogin = async () => {
