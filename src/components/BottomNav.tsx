@@ -19,7 +19,7 @@ const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
 const BottomNav = ({ activeTab, onTabChange }: Props) => {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
-      <div className="max-w-lg mx-auto flex items-center justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="max-w-lg mx-auto flex items-center overflow-x-auto gap-1 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1 scrollbar-hide">
         {tabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
