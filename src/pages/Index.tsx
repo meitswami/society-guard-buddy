@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
 import type { TabType } from '@/types';
 import LoginPage from '@/pages/LoginPage';
@@ -19,6 +19,8 @@ const AppContent = () => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loaded, setLoaded] = useState(false);
+
+  const goHome = useCallback(() => setActiveTab('dashboard'), []);
 
   useEffect(() => {
     const init = async () => {
@@ -66,8 +68,8 @@ const AppContent = () => {
     <div className="min-h-screen bg-background">
       {activeTab === 'dashboard' && <DashboardPage />}
       {activeTab === 'quick' && <QuickEntryPage />}
-      {activeTab === 'visitor' && <VisitorEntryPage />}
-      {activeTab === 'delivery' && <DeliveryEntryPage />}
+      {activeTab === 'visitor' && <VisitorEntryPage onDone={goHome} />}
+      {activeTab === 'delivery' && <DeliveryEntryPage onDone={goHome} />}
       {activeTab === 'vehicle' && <VehiclePage />}
       {activeTab === 'blacklist' && <BlacklistPage />}
       {activeTab === 'directory' && <DirectoryPage />}

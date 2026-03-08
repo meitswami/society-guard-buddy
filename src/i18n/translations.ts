@@ -151,6 +151,25 @@ const translations: Record<string, Record<Lang, string>> = {
   'report.more': { en: 'more — use Print/CSV for full list', hi: 'और — पूरी सूची के लिए प्रिंट/CSV उपयोग करें' },
   'report.flatsVisited': { en: 'Flats Visited', hi: 'फ्लैट विज़िट' },
   'report.print': { en: 'Print', hi: 'प्रिंट' },
+
+  // SWAL confirmations
+  'swal.confirmExit': { en: 'Mark Exit?', hi: 'बाहर जाने की पुष्टि करें?' },
+  'swal.confirmExitText': { en: 'This visitor will be marked as exited.', hi: 'इस आगंतुक को बाहर गया चिह्नित किया जाएगा।' },
+  'swal.confirmDelete': { en: 'Delete?', hi: 'हटाएं?' },
+  'swal.confirmDeleteText': { en: 'This action cannot be undone.', hi: 'यह क्रिया पूर्ववत नहीं की जा सकती।' },
+  'swal.confirmLogout': { en: 'End Shift?', hi: 'शिफ्ट समाप्त करें?' },
+  'swal.confirmLogoutText': { en: 'You will be logged out of the system.', hi: 'आप सिस्टम से लॉग आउट हो जाएंगे।' },
+  'swal.yes': { en: 'Yes', hi: 'हां' },
+  'swal.no': { en: 'No', hi: 'नहीं' },
+  'swal.success': { en: 'Success!', hi: 'सफल!' },
+  'swal.visitorRegistered': { en: 'Visitor registered successfully', hi: 'आगंतुक सफलतापूर्वक पंजीकृत' },
+  'swal.deliveryRegistered': { en: 'Entry registered successfully', hi: 'एंट्री सफलतापूर्वक पंजीकृत' },
+  'swal.exitMarked': { en: 'Exit marked successfully', hi: 'बाहर जाना सफलतापूर्वक दर्ज' },
+
+  // Dashboard date filter
+  'dashboard.yesterday': { en: 'Yesterday', hi: 'कल' },
+  'dashboard.todayLabel': { en: 'Today', hi: 'आज' },
+  'dashboard.all': { en: 'All', hi: 'सभी' },
 };
 
 export default translations;

@@ -3,6 +3,7 @@ import { useStore } from '@/store/useStore';
 import type { ResidentVehicle } from '@/types';
 import { Car, Plus, Search, Trash2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { confirmAction } from '@/lib/swal';
 
 const VEHICLE_TYPES = [
   { value: 'car', label: 'Car' },
@@ -30,6 +31,11 @@ const VehiclePage = () => {
     await addResidentVehicle({ id: `RV${Date.now()}`, ...form, vehicleNumber: form.vehicleNumber.toUpperCase() });
     setForm({ flatNumber: '', residentName: '', vehicleNumber: '', vehicleType: 'car' });
     setShowAdd(false);
+  };
+
+  const handleRemove = async (id: string) => {
+    const confirmed = await confirmAction(t('swal.confirmDelete'), t('swal.confirmDeleteText'), t('swal.yes'), t('swal.no'));
+    if (confirmed) await removeResidentVehicle(id);
   };
 
   return (
@@ -85,7 +91,7 @@ const VehiclePage = () => {
                 <p className="text-sm font-mono font-semibold">{v.vehicleNumber}</p>
                 <p className="text-xs text-muted-foreground">{t('common.flat')} {v.flatNumber} · {v.residentName} · {v.vehicleType}</p>
               </div>
-              <button onClick={() => removeResidentVehicle(v.id)} className="p-2 text-muted-foreground hover:text-destructive">
+              <button onClick={() => handleRemove(v.id)} className="p-2 text-muted-foreground hover:text-destructive">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
