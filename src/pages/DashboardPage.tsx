@@ -1,5 +1,5 @@
 import { useStore } from '@/store/useStore';
-import { Users, Car, Truck, LogIn, ShieldAlert, LogOut, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Car, Truck, LogIn, ShieldAlert, LogOut, Clock, ChevronLeft, ChevronRight, DoorOpen } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
