@@ -22,10 +22,10 @@ const VehiclePage = () => {
     v.residentName.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.flatNumber || !form.residentName || !form.vehicleNumber) return;
-    addResidentVehicle({
+    await addResidentVehicle({
       id: `RV${Date.now()}`,
       ...form,
       vehicleNumber: form.vehicleNumber.toUpperCase(),

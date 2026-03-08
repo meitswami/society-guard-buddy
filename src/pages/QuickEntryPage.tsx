@@ -37,7 +37,7 @@ const QuickEntryPage = () => {
     );
   }, [frequentVisitors, search]);
 
-  const quickLog = (source: Visitor) => {
+  const quickLog = async (source: Visitor) => {
     const entry: Visitor = {
       id: `Q${Date.now()}`,
       name: source.name,
@@ -53,7 +53,7 @@ const QuickEntryPage = () => {
       category: source.category,
       company: source.company,
     };
-    addVisitor(entry);
+    await addVisitor(entry);
     setSuccess(source.name);
     setTimeout(() => setSuccess(null), 2000);
   };
