@@ -31,8 +31,13 @@ const SuperadminLoginPage = ({ onLogin, onBack }: Props) => {
     setLoading(true);
     const { data } = await supabase.from('super_admins').select('*').eq('username', username.toUpperCase()).eq('password', password).single();
     setLoading(false);
-    if (data) onLogin({ id: data.id, name: data.name, username: data.username });
-    else setError(t('login.invalidCredentials'));
+    if (data) {
+      auditLoginSuccess('superadmin', data.id, data.name);
+      onLogin({ id: data.id, name: data.name, username: data.username });
+    } else {
+      auditLoginFailed('superadmin', username.toUpperCase());
+      setError(t('login.invalidCredentials'));
+    }
   };
 
   const handleBiometricLogin = async () => {
