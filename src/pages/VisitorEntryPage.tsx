@@ -3,6 +3,7 @@ import { useStore } from '@/store/useStore';
 import type { Visitor } from '@/types';
 import { UserPlus, Camera, ShieldAlert, Search } from 'lucide-react';
 import { format } from 'date-fns';
+import PhotoCapture from '@/components/PhotoCapture';
 
 const DOC_TYPES = [
   { value: 'aadhaar', label: 'Aadhaar' },
