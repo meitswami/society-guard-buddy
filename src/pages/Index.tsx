@@ -113,6 +113,10 @@ const AppContent = () => {
               className="w-full py-3 text-sm rounded-xl border border-border text-muted-foreground font-medium hover:bg-muted transition-colors">
               ⚙️ {t('login.adminLogin')}
             </button>
+            <button onClick={() => setUserMode('superadmin')}
+              className="w-full py-2 text-xs rounded-xl text-muted-foreground/60 font-medium hover:text-muted-foreground transition-colors">
+              👑 {t('login.superadminLogin')}
+            </button>
           </div>
           <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">
             {t('app.footer')}
