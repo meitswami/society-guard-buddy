@@ -83,6 +83,9 @@ const LoginPage = () => {
           </p>
         </form>
       </div>
+      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">
+        Copyright © 2026. Developed By MCSPL with ❤️
+      </p>
     </div>
   );
 };
