@@ -39,7 +39,7 @@ const LogsPage = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `gate-log-${dateFilter}.csv`;
+    a.download = `evergreen-heights-log-${dateFilter}.csv`;
     a.click();
   };
 

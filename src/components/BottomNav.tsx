@@ -37,6 +37,7 @@ const BottomNav = ({ activeTab, onTabChange }: Props) => {
           );
         })}
       </div>
+      <p className="text-center text-[8px] text-muted-foreground pb-1">Copyright © 2026. Developed By MCSPL with ❤️</p>
     </nav>
   );
 };

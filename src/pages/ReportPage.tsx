@@ -71,7 +71,7 @@ const ReportPage = () => {
       .stat{background:#f8f8f8;padding:12px 16px;border-radius:8px;min-width:100px}
       .stat-val{font-size:24px;font-weight:bold}.stat-label{font-size:11px;color:#888}
     </style></head><body>
-      <h1>🏢 Gate Management — Daily Report</h1>
+      <h1>🏢 Evergreen Heights — Daily Report</h1>
       <p style="color:#888">${format(new Date(date), 'EEEE, dd MMMM yyyy')}</p>
       <div class="stats">
         <div class="stat"><div class="stat-val">${stats.totalVisitors}</div><div class="stat-label">Visitors</div></div>

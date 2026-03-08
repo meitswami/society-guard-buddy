@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { Shield, Eye, EyeOff } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const LoginPage = () => {
   const [guardId, setGuardId] = useState('');
@@ -25,13 +26,16 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-10">
           <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Shield className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="page-title text-2xl">Gate Security</h1>
+          <h1 className="page-title text-2xl">Evergreen Heights</h1>
           <p className="text-muted-foreground text-sm mt-1">Society Management System</p>
         </div>
 
@@ -79,6 +83,9 @@ const LoginPage = () => {
           </p>
         </form>
       </div>
+      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">
+        Copyright © 2026. Developed By MCSPL with ❤️
+      </p>
     </div>
   );
 };
