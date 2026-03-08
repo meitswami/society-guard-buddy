@@ -60,6 +60,19 @@ const DashboardPage = () => {
     setActiveFilter(prev => prev === filter ? 'all' : filter);
   };
 
+  const handleMarkExit = async (visitorId: string, visitorName: string) => {
+    const confirmed = await confirmAction(
+      '🚪 Mark Exit?',
+      `Are you sure you want to mark "${visitorName}" as exited?`,
+      'Yes, mark exit',
+      'Cancel'
+    );
+    if (confirmed) {
+      await markExit(visitorId);
+      showSuccess('Exit Recorded', `${visitorName} has been marked as exited.`);
+    }
+  };
+
   return (
     <div className="page-container">
       <div className="flex items-center justify-between mb-4">
