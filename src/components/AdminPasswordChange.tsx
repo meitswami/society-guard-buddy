@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { auditPasswordChange } from '@/lib/auditLogger';
 
 interface Props {
   adminId: string;
