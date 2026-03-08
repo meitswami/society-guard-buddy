@@ -86,7 +86,12 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     setError('');
     const success = await login(data.guard_id, data.password);
     setLoading(false);
-    if (!success) setError(t('login.invalidCredentials'));
+    if (success) {
+      auditBiometricLogin('guard', data.id, data.name);
+    } else {
+      auditLoginFailed('guard', data.guard_id, 'biometric_lookup_failed');
+      setError(t('login.invalidCredentials'));
+    }
   };
 
   return (

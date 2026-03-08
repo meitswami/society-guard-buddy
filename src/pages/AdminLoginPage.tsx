@@ -45,7 +45,8 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
     const result = await authenticate('admin');
     if (!result) { setError(t('biometric.notRegistered')); return; }
     const { data } = await supabase.from('admins').select('*').eq('id', result.userId).single();
-    if (!data) { setError(t('login.invalidCredentials')); return; }
+    if (!data) { auditLoginFailed('admin', result.userId, 'biometric_user_not_found'); setError(t('login.invalidCredentials')); return; }
+    auditBiometricLogin('admin', data.id, data.name);
     onLogin({ id: data.id, name: data.name, adminId: data.admin_id });
   };
 

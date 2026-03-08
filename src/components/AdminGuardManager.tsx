@@ -48,6 +48,7 @@ const AdminGuardManager = () => {
       return;
     }
     await supabase.from('guards').update({ password: newPassword }).eq('id', id);
+    auditPasswordReset('guard', id, 'guard', 'admin');
     toast.success(t('admin.passwordChanged'));
     setResetId(null);
     setNewPassword('');

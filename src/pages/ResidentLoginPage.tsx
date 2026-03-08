@@ -41,7 +41,8 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     const result = await authenticate('resident');
     if (!result) { setError(t('biometric.notRegistered')); return; }
     const { data } = await supabase.from('resident_users').select('*').eq('id', result.userId).single();
-    if (!data) { setError(t('login.invalidCredentials')); return; }
+    if (!data) { auditLoginFailed('resident', result.userId, 'biometric_user_not_found'); setError(t('login.invalidCredentials')); return; }
+    auditBiometricLogin('resident', data.id, data.name);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 
