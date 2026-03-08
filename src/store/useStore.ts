@@ -32,8 +32,8 @@ interface AppState {
   isBlacklisted: (phone?: string, vehicleNumber?: string) => boolean;
 
   // Theme
-  theme: 'dark' | 'light';
-  toggleTheme: () => void;
+  theme: 'dark' | 'light' | 'system';
+  setTheme: (theme: 'dark' | 'light' | 'system') => void;
 }
 
 export const useStore = create<AppState>()((set, get) => ({
