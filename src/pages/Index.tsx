@@ -76,6 +76,11 @@ const AppContent = () => {
     );
   }
 
+  // Superadmin logged in
+  if (superadminUser) {
+    return <SuperadminDashboard superadmin={superadminUser} onLogout={() => { setSuperadminUser(null); setUserMode('choosing'); }} />;
+  }
+
   // Admin logged in
   if (adminUser) {
     return <AdminDashboard admin={adminUser} onLogout={() => { setAdminUser(null); setUserMode('choosing'); }} />;
