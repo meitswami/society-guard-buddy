@@ -48,7 +48,13 @@ const notificationSound = () => {
 
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
-  const [tab, setTab] = useState<'approvals' | 'passes' | 'notifications' | 'polls' | 'payments'>('approvals');
+  const [tab, setTab] = useState<'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'profile'>('approvals');
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [passLoading, setPassLoading] = useState(false);
+  const [flatmates, setFlatmates] = useState<any[]>([]);
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [passes, setPasses] = useState<VisitorPass[]>([]);
   const [myPayments, setMyPayments] = useState<any[]>([]);
