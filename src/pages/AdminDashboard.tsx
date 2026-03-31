@@ -30,7 +30,7 @@ import NotificationCenter from '@/components/NotificationCenter';
 import { auditLogout } from '@/lib/auditLogger';
 
 interface Props {
-  admin: { id: string; name: string; adminId: string };
+  admin: { id: string; name: string; adminId: string; societyId: string | null };
   onLogout: () => void;
 }
 

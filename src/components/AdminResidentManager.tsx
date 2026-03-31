@@ -11,7 +11,7 @@ type ViewTab = 'flats' | 'addFlat';
 
 const AdminResidentManager = () => {
   const { t } = useLanguage();
-  const { flats, members, residentVehicles, loadFlats, loadMembers, loadResidentVehicles } = useStore();
+  const { flats, members, residentVehicles, loadFlats, loadMembers, loadResidentVehicles, societyId } = useStore();
   const [search, setSearch] = useState('');
   const [expandedFlat, setExpandedFlat] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<ViewTab>('flats');
