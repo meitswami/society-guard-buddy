@@ -351,6 +351,61 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             ))}
           </div>
         )}
+        {tab === 'profile' && (
+          <div className="flex flex-col gap-4">
+            {/* User Info */}
+            <div className="card-section p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">{resident.name}</p>
+                  <p className="text-xs text-muted-foreground">Flat {resident.flatNumber} · 📱 {resident.phone}</p>
+                </div>
+              </div>
+              {flatmates.length > 1 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Flatmates (shared login)</p>
+                  <div className="space-y-1">
+                    {flatmates.filter(f => f.id !== resident.id).map((f: any) => (
+                      <p key={f.id} className="text-xs text-muted-foreground">📱 {f.phone} — {f.name}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Change Password */}
+            <div className="card-section p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Lock className="w-4 h-4 text-primary" />
+                <p className="text-sm font-semibold">Change Password</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground mb-3">⚠️ Changing password will update it for all flatmates</p>
+              <div className="flex flex-col gap-2.5">
+                <div className="relative">
+                  <input className="input-field pr-10 text-sm" type={showPass ? 'text' : 'password'}
+                    placeholder="Current Password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setShowPass(!showPass)}>
+                    {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <input className="input-field text-sm" type={showPass ? 'text' : 'password'}
+                  placeholder="New Password" value={newPass} onChange={e => setNewPass(e.target.value)} />
+                <input className="input-field text-sm" type={showPass ? 'text' : 'password'}
+                  placeholder="Confirm New Password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} />
+                <button onClick={handlePasswordChange} className="btn-primary text-sm" disabled={passLoading}>
+                  {passLoading ? 'Changing...' : 'Change Password'}
+                </button>
+              </div>
+            </div>
+
+            {/* Biometric */}
+            <BiometricSetup userId={resident.id} userType="resident" userName={resident.name} />
+          </div>
+        )}
       </div>
     </div>
   );
