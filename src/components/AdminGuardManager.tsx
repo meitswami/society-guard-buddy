@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useStore } from '@/store/useStore';
 import { Shield, Plus, Trash2, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
@@ -10,6 +11,7 @@ interface GuardRow { id: string; guard_id: string; name: string; password: strin
 
 const AdminGuardManager = () => {
   const { t } = useLanguage();
+  const { societyId } = useStore();
   const [guards, setGuards] = useState<GuardRow[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [guardId, setGuardId] = useState('');
@@ -22,13 +24,15 @@ const AdminGuardManager = () => {
   useEffect(() => { loadGuards(); }, []);
 
   const loadGuards = async () => {
-    const { data } = await supabase.from('guards').select('*').order('guard_id');
+    let query = supabase.from('guards').select('*').order('guard_id');
+    if (societyId) query = query.eq('society_id', societyId);
+    const { data } = await query;
     if (data) setGuards(data);
   };
 
   const addGuard = async () => {
     if (!guardId || !name || !password) return;
-    await supabase.from('guards').insert({ guard_id: guardId.toUpperCase(), name, password });
+    await supabase.from('guards').insert({ guard_id: guardId.toUpperCase(), name, password, society_id: societyId || null });
     setGuardId(''); setName(''); setPassword(''); setShowForm(false);
     loadGuards();
     showSuccess(t('swal.success'), t('admin.guardAdded'));

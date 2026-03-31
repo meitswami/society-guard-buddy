@@ -30,7 +30,7 @@ import NotificationCenter from '@/components/NotificationCenter';
 import { auditLogout } from '@/lib/auditLogger';
 
 interface Props {
-  admin: { id: string; name: string; adminId: string };
+  admin: { id: string; name: string; adminId: string; societyId: string | null };
   onLogout: () => void;
 }
 
@@ -50,13 +50,17 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   }, []);
 
   const loadStats = async () => {
-    const [v, g, f, rv, bl] = await Promise.all([
-      supabase.from('visitors').select('id', { count: 'exact', head: true }),
-      supabase.from('guards').select('id', { count: 'exact', head: true }),
-      supabase.from('flats').select('id', { count: 'exact', head: true }),
-      supabase.from('resident_vehicles').select('id', { count: 'exact', head: true }),
-      supabase.from('blacklist').select('id', { count: 'exact', head: true }),
-    ]);
+    const sid = admin.societyId;
+    let vQ = supabase.from('visitors').select('id', { count: 'exact', head: true });
+    let gQ = supabase.from('guards').select('id', { count: 'exact', head: true });
+    let fQ = supabase.from('flats').select('id', { count: 'exact', head: true });
+    let rvQ = supabase.from('resident_vehicles').select('id', { count: 'exact', head: true });
+    let blQ = supabase.from('blacklist').select('id', { count: 'exact', head: true });
+    if (sid) {
+      gQ = gQ.eq('society_id', sid);
+      fQ = fQ.eq('society_id', sid);
+    }
+    const [v, g, f, rv, bl] = await Promise.all([vQ, gQ, fQ, rvQ, blQ]);
     setStats({
       visitors: v.count || 0, guards: g.count || 0, flats: f.count || 0,
       vehicles: rv.count || 0, blacklist: bl.count || 0,

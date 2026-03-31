@@ -7,6 +7,8 @@ interface AppState {
   currentGuard: Guard | null;
   guards: Guard[];
   shiftId: string | null;
+  societyId: string | null;
+  setSocietyId: (id: string | null) => void;
   login: (id: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   loadGuards: () => Promise<void>;
@@ -49,6 +51,7 @@ export const useStore = create<AppState>()((set, get) => ({
   currentGuard: null,
   guards: [],
   shiftId: null,
+  societyId: null,
   visitors: [],
   residentVehicles: [],
   blacklist: [],
@@ -56,8 +59,13 @@ export const useStore = create<AppState>()((set, get) => ({
   members: [],
   theme: (localStorage.getItem('gate-theme') as 'dark' | 'light' | 'system') || 'system',
 
+  setSocietyId: (id) => set({ societyId: id }),
+
   loadGuards: async () => {
-    const { data } = await supabase.from('guards').select('*');
+    const sid = get().societyId;
+    let query = supabase.from('guards').select('*');
+    if (sid) query = query.eq('society_id', sid);
+    const { data } = await query;
     if (data) {
       set({ guards: data.map(g => ({ id: g.guard_id, name: g.name, password: g.password })) });
     }
@@ -82,7 +90,7 @@ export const useStore = create<AppState>()((set, get) => ({
     if (shiftId) {
       await supabase.from('guard_shifts').update({ logout_time: new Date().toISOString() }).eq('id', shiftId);
     }
-    set({ currentGuard: null, shiftId: null });
+    set({ currentGuard: null, shiftId: null, societyId: null });
   },
 
   loadVisitors: async () => {
@@ -135,13 +143,28 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   loadResidentVehicles: async () => {
-    const { data } = await supabase.from('resident_vehicles').select('*');
+    const sid = get().societyId;
+    let query = supabase.from('resident_vehicles').select('*');
+    if (sid) {
+      // Filter by flat_id in flats belonging to this society
+      const { data: flatData } = await supabase.from('flats').select('id').eq('society_id', sid);
+      if (flatData) {
+        const flatIds = flatData.map(f => f.id);
+        if (flatIds.length > 0) {
+          query = query.in('flat_id', flatIds);
+        } else {
+          set({ residentVehicles: [] });
+          return;
+        }
+      }
+    }
+    const { data } = await query;
     if (data) {
       set({
         residentVehicles: data.map(v => ({
           id: v.id, flatNumber: v.flat_number, residentName: v.resident_name,
           vehicleNumber: v.vehicle_number, vehicleType: v.vehicle_type as ResidentVehicle['vehicleType'],
-          vehiclePhoto: v.vehicle_photo || undefined,
+          vehiclePhoto: v.vehicle_photo || undefined, flatId: v.flat_id || undefined,
         })),
       });
     }
@@ -151,6 +174,7 @@ export const useStore = create<AppState>()((set, get) => ({
     await supabase.from('resident_vehicles').insert({
       flat_number: vehicle.flatNumber, resident_name: vehicle.residentName,
       vehicle_number: vehicle.vehicleNumber, vehicle_type: vehicle.vehicleType,
+      flat_id: vehicle.flatId || null,
     });
     get().loadResidentVehicles();
   },
@@ -192,7 +216,10 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   loadFlats: async () => {
-    const { data } = await supabase.from('flats').select('*').order('flat_number');
+    const sid = get().societyId;
+    let query = supabase.from('flats').select('*').order('flat_number');
+    if (sid) query = query.eq('society_id', sid);
+    const { data } = await query;
     if (data) {
       set({
         flats: data.map(f => ({
@@ -206,7 +233,21 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   loadMembers: async () => {
-    const { data } = await supabase.from('members').select('*').order('is_primary', { ascending: false });
+    const sid = get().societyId;
+    let query = supabase.from('members').select('*').order('is_primary', { ascending: false });
+    if (sid) {
+      const { data: flatData } = await supabase.from('flats').select('id').eq('society_id', sid);
+      if (flatData) {
+        const flatIds = flatData.map(f => f.id);
+        if (flatIds.length > 0) {
+          query = query.in('flat_id', flatIds);
+        } else {
+          set({ members: [] });
+          return;
+        }
+      }
+    }
+    const { data } = await query;
     if (data) {
       set({
         members: data.map(m => ({
@@ -225,7 +266,6 @@ export const useStore = create<AppState>()((set, get) => ({
     await supabase.from('members').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('flats').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('guard_shifts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    // Reload all
     get().loadVisitors();
     get().loadBlacklist();
     get().loadResidentVehicles();

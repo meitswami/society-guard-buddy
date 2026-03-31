@@ -10,7 +10,7 @@ import PasswordResetFlow from '@/components/PasswordResetFlow';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 
 interface Props {
-  onLogin: (admin: { id: string; name: string; adminId: string }) => void;
+  onLogin: (admin: { id: string; name: string; adminId: string; societyId: string | null }) => void;
   onBack?: () => void;
 }
 
@@ -38,7 +38,7 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
       auditLoginSuccess('admin', data.id, data.name);
       registerOneSignalUser({ userType: 'admin', userId: data.id, userName: data.name });
       promptPushPermission();
-      onLogin({ id: data.id, name: data.name, adminId: data.admin_id });
+      onLogin({ id: data.id, name: data.name, adminId: data.admin_id, societyId: data.society_id });
     } else {
       auditLoginFailed('admin', adminId.toUpperCase());
       setError(t('login.invalidCredentials'));
@@ -52,7 +52,7 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
     const { data } = await supabase.from('admins').select('*').eq('id', result.userId).single();
     if (!data) { auditLoginFailed('admin', result.userId, 'biometric_user_not_found'); setError(t('login.invalidCredentials')); return; }
     auditBiometricLogin('admin', data.id, data.name);
-    onLogin({ id: data.id, name: data.name, adminId: data.admin_id });
+    onLogin({ id: data.id, name: data.name, adminId: data.admin_id, societyId: data.society_id });
   };
 
   return (

@@ -11,7 +11,7 @@ type ViewTab = 'flats' | 'addFlat';
 
 const AdminResidentManager = () => {
   const { t } = useLanguage();
-  const { flats, members, residentVehicles, loadFlats, loadMembers, loadResidentVehicles } = useStore();
+  const { flats, members, residentVehicles, loadFlats, loadMembers, loadResidentVehicles, societyId } = useStore();
   const [search, setSearch] = useState('');
   const [expandedFlat, setExpandedFlat] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<ViewTab>('flats');
@@ -55,6 +55,7 @@ const AdminResidentManager = () => {
       owner_phone: flatForm.owner_phone || null,
       intercom: flatForm.intercom || null,
       is_occupied: !!flatForm.owner_name,
+      society_id: societyId || null,
     });
 
     toast.success('Flat added successfully');
