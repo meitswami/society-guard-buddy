@@ -13,11 +13,11 @@ const VEHICLE_TYPES = [
 ] as const;
 
 const VehiclePage = () => {
-  const { residentVehicles, addResidentVehicle, removeResidentVehicle } = useStore();
+  const { residentVehicles, addResidentVehicle, removeResidentVehicle, flats, members } = useStore();
   const { t } = useLanguage();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({ flatNumber: '', residentName: '', vehicleNumber: '', vehicleType: 'car' as ResidentVehicle['vehicleType'] });
+  const [form, setForm] = useState({ flatId: '', flatNumber: '', residentName: '', vehicleNumber: '', vehicleType: 'car' as ResidentVehicle['vehicleType'] });
 
   const filtered = residentVehicles.filter(v =>
     v.vehicleNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -25,11 +25,31 @@ const VehiclePage = () => {
     v.residentName.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleFlatChange = (flatId: string) => {
+    const flat = flats.find(f => f.id === flatId);
+    if (!flat) return;
+    // Find primary member or owner name
+    const primary = members.find(m => m.flatId === flatId && m.isPrimary);
+    setForm(f => ({
+      ...f,
+      flatId,
+      flatNumber: flat.flatNumber,
+      residentName: primary?.name || flat.ownerName || '',
+    }));
+  };
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.flatNumber || !form.residentName || !form.vehicleNumber) return;
-    await addResidentVehicle({ id: `RV${Date.now()}`, ...form, vehicleNumber: form.vehicleNumber.toUpperCase() });
-    setForm({ flatNumber: '', residentName: '', vehicleNumber: '', vehicleType: 'car' });
+    await addResidentVehicle({
+      id: `RV${Date.now()}`,
+      flatNumber: form.flatNumber,
+      residentName: form.residentName,
+      vehicleNumber: form.vehicleNumber.toUpperCase(),
+      vehicleType: form.vehicleType,
+      flatId: form.flatId || undefined,
+    });
+    setForm({ flatId: '', flatNumber: '', residentName: '', vehicleNumber: '', vehicleType: 'car' });
     setShowAdd(false);
   };
 
@@ -58,10 +78,17 @@ const VehiclePage = () => {
       {showAdd && (
         <form onSubmit={handleAdd} className="card-section mb-4 flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
-            <input className="input-field font-mono" placeholder={t('vehicle.flatNo')} value={form.flatNumber} onChange={e => setForm(f => ({ ...f, flatNumber: e.target.value }))} />
-            <input className="input-field" placeholder={t('vehicle.residentName')} value={form.residentName} onChange={e => setForm(f => ({ ...f, residentName: e.target.value }))} />
+            <select className="input-field" value={form.flatId} onChange={e => handleFlatChange(e.target.value)}>
+              <option value="">Select Flat</option>
+              {flats.filter(f => f.isOccupied).map(f => (
+                <option key={f.id} value={f.id}>{f.flatNumber} - {f.ownerName || 'No owner'}</option>
+              ))}
+            </select>
+            <input className="input-field" placeholder={t('vehicle.residentName')} value={form.residentName}
+              onChange={e => setForm(f => ({ ...f, residentName: e.target.value }))} />
           </div>
-          <input className="input-field font-mono uppercase" placeholder={t('visitor.vehicleNumber')} value={form.vehicleNumber} onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value.toUpperCase() }))} />
+          <input className="input-field font-mono uppercase" placeholder={t('visitor.vehicleNumber')} value={form.vehicleNumber}
+            onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value.toUpperCase() }))} />
           <div className="flex gap-2">
             {VEHICLE_TYPES.map(vt => (
               <button key={vt.value} type="button"
