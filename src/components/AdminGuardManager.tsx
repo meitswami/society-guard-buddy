@@ -24,7 +24,9 @@ const AdminGuardManager = () => {
   useEffect(() => { loadGuards(); }, []);
 
   const loadGuards = async () => {
-    const { data } = await supabase.from('guards').select('*').order('guard_id');
+    let query = supabase.from('guards').select('*').order('guard_id');
+    if (societyId) query = query.eq('society_id', societyId);
+    const { data } = await query;
     if (data) setGuards(data);
   };
 
