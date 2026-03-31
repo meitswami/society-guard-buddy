@@ -88,7 +88,30 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     if (data) setMyPayments(data);
   }, [resident.flatNumber]);
 
-  useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); }, [loadRequests, loadPasses, loadMyPayments]);
+  useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); loadFlatmates(); }, [loadRequests, loadPasses, loadMyPayments]);
+
+  const loadFlatmates = async () => {
+    const { data } = await supabase.from('resident_users').select('*').eq('flat_id', resident.flatId);
+    if (data) setFlatmates(data);
+  };
+
+  const handlePasswordChange = async () => {
+    if (!currentPass || !newPass || !confirmPass) { toast.error('Fill all fields'); return; }
+    if (newPass !== confirmPass) { toast.error('Passwords do not match'); return; }
+    if (newPass.length < 4) { toast.error('Password must be at least 4 characters'); return; }
+
+    setPassLoading(true);
+    // Verify current password
+    const { data: user } = await supabase.from('resident_users').select('id').eq('id', resident.id).eq('password', currentPass).single();
+    if (!user) { toast.error('Current password is wrong'); setPassLoading(false); return; }
+
+    // Update password for ALL flatmates (shared password)
+    await supabase.from('resident_users').update({ password: newPass }).eq('flat_id', resident.flatId);
+    toast.success('Password changed for all flatmates');
+    setCurrentPass(''); setNewPass(''); setConfirmPass('');
+    setPassLoading(false);
+    loadFlatmates();
+  };
 
   useEffect(() => {
     const channel = supabase.channel('resident-approvals')
