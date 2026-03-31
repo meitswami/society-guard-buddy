@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign } from 'lucide-react';
+import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { showSuccess, confirmAction } from '@/lib/swal';
+import { toast } from 'sonner';
 import LanguageToggle from '@/components/LanguageToggle';
 import ThemeToggle from '@/components/ThemeToggle';
 import BiometricSetup from '@/components/BiometricSetup';
@@ -48,7 +49,13 @@ const notificationSound = () => {
 
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
-  const [tab, setTab] = useState<'approvals' | 'passes' | 'notifications' | 'polls' | 'payments'>('approvals');
+  const [tab, setTab] = useState<'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'profile'>('approvals');
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [passLoading, setPassLoading] = useState(false);
+  const [flatmates, setFlatmates] = useState<any[]>([]);
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [passes, setPasses] = useState<VisitorPass[]>([]);
   const [myPayments, setMyPayments] = useState<any[]>([]);
@@ -82,7 +89,30 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     if (data) setMyPayments(data);
   }, [resident.flatNumber]);
 
-  useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); }, [loadRequests, loadPasses, loadMyPayments]);
+  useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); loadFlatmates(); }, [loadRequests, loadPasses, loadMyPayments]);
+
+  const loadFlatmates = async () => {
+    const { data } = await supabase.from('resident_users').select('*').eq('flat_id', resident.flatId);
+    if (data) setFlatmates(data);
+  };
+
+  const handlePasswordChange = async () => {
+    if (!currentPass || !newPass || !confirmPass) { toast.error('Fill all fields'); return; }
+    if (newPass !== confirmPass) { toast.error('Passwords do not match'); return; }
+    if (newPass.length < 4) { toast.error('Password must be at least 4 characters'); return; }
+
+    setPassLoading(true);
+    // Verify current password
+    const { data: user } = await supabase.from('resident_users').select('id').eq('id', resident.id).eq('password', currentPass).single();
+    if (!user) { toast.error('Current password is wrong'); setPassLoading(false); return; }
+
+    // Update password for ALL flatmates (shared password)
+    await supabase.from('resident_users').update({ password: newPass }).eq('flat_id', resident.flatId);
+    toast.success('Password changed for all flatmates');
+    setCurrentPass(''); setNewPass(''); setConfirmPass('');
+    setPassLoading(false);
+    loadFlatmates();
+  };
 
   useEffect(() => {
     const channel = supabase.channel('resident-approvals')
@@ -133,6 +163,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     { id: 'notifications' as const, label: 'Notifications', icon: Bell },
     { id: 'polls' as const, label: 'Polls', icon: Vote },
     { id: 'payments' as const, label: 'Payments', icon: DollarSign },
+    { id: 'profile' as const, label: 'Profile', icon: User },
   ];
 
   return (
@@ -318,6 +349,61 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {tab === 'profile' && (
+          <div className="flex flex-col gap-4">
+            {/* User Info */}
+            <div className="card-section p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">{resident.name}</p>
+                  <p className="text-xs text-muted-foreground">Flat {resident.flatNumber} · 📱 {resident.phone}</p>
+                </div>
+              </div>
+              {flatmates.length > 1 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Flatmates (shared login)</p>
+                  <div className="space-y-1">
+                    {flatmates.filter(f => f.id !== resident.id).map((f: any) => (
+                      <p key={f.id} className="text-xs text-muted-foreground">📱 {f.phone} — {f.name}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Change Password */}
+            <div className="card-section p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Lock className="w-4 h-4 text-primary" />
+                <p className="text-sm font-semibold">Change Password</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground mb-3">⚠️ Changing password will update it for all flatmates</p>
+              <div className="flex flex-col gap-2.5">
+                <div className="relative">
+                  <input className="input-field pr-10 text-sm" type={showPass ? 'text' : 'password'}
+                    placeholder="Current Password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setShowPass(!showPass)}>
+                    {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <input className="input-field text-sm" type={showPass ? 'text' : 'password'}
+                  placeholder="New Password" value={newPass} onChange={e => setNewPass(e.target.value)} />
+                <input className="input-field text-sm" type={showPass ? 'text' : 'password'}
+                  placeholder="Confirm New Password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} />
+                <button onClick={handlePasswordChange} className="btn-primary text-sm" disabled={passLoading}>
+                  {passLoading ? 'Changing...' : 'Change Password'}
+                </button>
+              </div>
+            </div>
+
+            {/* Biometric */}
+            <BiometricSetup userId={resident.id} userType="resident" userName={resident.name} />
           </div>
         )}
       </div>
