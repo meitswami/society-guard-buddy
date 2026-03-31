@@ -4,6 +4,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { showSuccess, confirmAction } from '@/lib/swal';
+import { toast } from 'sonner';
 import LanguageToggle from '@/components/LanguageToggle';
 import ThemeToggle from '@/components/ThemeToggle';
 import BiometricSetup from '@/components/BiometricSetup';
