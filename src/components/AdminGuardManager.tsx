@@ -32,7 +32,7 @@ const AdminGuardManager = () => {
 
   const addGuard = async () => {
     if (!guardId || !name || !password) return;
-    await supabase.from('guards').insert({ guard_id: guardId.toUpperCase(), name, password });
+    await supabase.from('guards').insert({ guard_id: guardId.toUpperCase(), name, password, society_id: societyId || null });
     setGuardId(''); setName(''); setPassword(''); setShowForm(false);
     loadGuards();
     showSuccess(t('swal.success'), t('admin.guardAdded'));
