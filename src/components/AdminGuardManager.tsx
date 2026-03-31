@@ -11,6 +11,7 @@ interface GuardRow { id: string; guard_id: string; name: string; password: strin
 
 const AdminGuardManager = () => {
   const { t } = useLanguage();
+  const { societyId } = useStore();
   const [guards, setGuards] = useState<GuardRow[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [guardId, setGuardId] = useState('');
