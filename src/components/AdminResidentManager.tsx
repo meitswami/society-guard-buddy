@@ -55,6 +55,7 @@ const AdminResidentManager = () => {
       owner_phone: flatForm.owner_phone || null,
       intercom: flatForm.intercom || null,
       is_occupied: !!flatForm.owner_name,
+      society_id: societyId || null,
     });
 
     toast.success('Flat added successfully');
