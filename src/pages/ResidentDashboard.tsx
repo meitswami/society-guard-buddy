@@ -163,6 +163,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     { id: 'notifications' as const, label: 'Notifications', icon: Bell },
     { id: 'polls' as const, label: 'Polls', icon: Vote },
     { id: 'payments' as const, label: 'Payments', icon: DollarSign },
+    { id: 'profile' as const, label: 'Profile', icon: User },
   ];
 
   return (
