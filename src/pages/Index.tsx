@@ -23,13 +23,13 @@ import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
 type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 
 const AppContent = () => {
-  const { currentGuard, theme, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
+  const { currentGuard, theme, setSocietyId, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loaded, setLoaded] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>('choosing');
   const [residentUser, setResidentUser] = useState<{ id: string; name: string; phone: string; flatId: string; flatNumber: string } | null>(null);
-  const [adminUser, setAdminUser] = useState<{ id: string; name: string; adminId: string } | null>(null);
+  const [adminUser, setAdminUser] = useState<{ id: string; name: string; adminId: string; societyId: string | null } | null>(null);
   const [superadminUser, setSuperadminUser] = useState<{ id: string; name: string; username: string } | null>(null);
 
   const goHome = useCallback(() => setActiveTab('dashboard'), []);
@@ -83,12 +83,12 @@ const AppContent = () => {
 
   // Admin logged in
   if (adminUser) {
-    return <AdminDashboard admin={adminUser} onLogout={() => { setAdminUser(null); setUserMode('choosing'); }} />;
+    return <AdminDashboard admin={adminUser} onLogout={() => { setAdminUser(null); setSocietyId(null); setUserMode('choosing'); }} />;
   }
 
   // Resident logged in
   if (residentUser) {
-    return <ResidentDashboard resident={residentUser} onLogout={() => { setResidentUser(null); setUserMode('choosing'); }} />;
+    return <ResidentDashboard resident={residentUser} onLogout={() => { setResidentUser(null); setSocietyId(null); setUserMode('choosing'); }} />;
   }
 
   // Show login chooser or specific login
@@ -126,7 +126,10 @@ const AppContent = () => {
     }
 
     if (userMode === 'admin') {
-      return <AdminLoginPage onLogin={setAdminUser} onBack={() => setUserMode('choosing')} />;
+      return <AdminLoginPage onLogin={(admin) => {
+        setSocietyId(admin.societyId);
+        setAdminUser(admin);
+      }} onBack={() => setUserMode('choosing')} />;
     }
 
     if (userMode === 'superadmin') {
@@ -134,13 +137,15 @@ const AppContent = () => {
     }
 
     if (userMode === 'resident') {
-      return <ResidentLoginPage onLogin={setResidentUser} onSwitchToGuard={() => setUserMode('guard')} />;
+      return <ResidentLoginPage onLogin={(resident) => {
+        setResidentUser(resident);
+      }} onSwitchToGuard={() => setUserMode('guard')} />;
     }
 
     return <LoginPage onSwitchToResident={() => setUserMode('resident')} />;
   }
 
-  // Guard tabs - no report or logs
+  // Guard tabs
   const guardTabs: TabType[] = ['dashboard', 'quick', 'visitor', 'delivery', 'vehicle', 'blacklist', 'directory', 'settings'];
 
   return (

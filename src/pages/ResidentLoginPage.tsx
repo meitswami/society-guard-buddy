@@ -8,6 +8,7 @@ import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
+import { useStore } from '@/store/useStore';
 
 interface Props {
   onLogin: (resident: { id: string; name: string; phone: string; flatId: string; flatNumber: string }) => void;
@@ -16,6 +17,7 @@ interface Props {
 
 const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
   const { t } = useLanguage();
+  const { setSocietyId } = useStore();
   const [showResetFlow, setShowResetFlow] = useState(false);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +28,13 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
   const [bioAvailable, setBioAvailable] = useState(false);
 
   useEffect(() => { isAvailable().then(setBioAvailable); }, []);
+
+  const setSocietyFromFlat = async (flatId: string) => {
+    const { data: flat } = await supabase.from('flats').select('society_id').eq('id', flatId).single();
+    if (flat?.society_id) {
+      setSocietyId(flat.society_id);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +47,7 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     auditLoginSuccess('resident', data.id, data.name);
     registerOneSignalUser({ userType: 'resident', userId: data.id, userName: data.name, flatNumber: data.flat_number });
     promptPushPermission();
+    await setSocietyFromFlat(data.flat_id);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 
@@ -48,6 +58,7 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     const { data } = await supabase.from('resident_users').select('*').eq('id', result.userId).single();
     if (!data) { auditLoginFailed('resident', result.userId, 'biometric_user_not_found'); setError(t('login.invalidCredentials')); return; }
     auditBiometricLogin('resident', data.id, data.name);
+    await setSocietyFromFlat(data.flat_id);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 

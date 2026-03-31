@@ -27,7 +27,7 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const login = useStore(s => s.login);
+  const { login, setSocietyId, loadGuards } = useStore();
   const [loading, setLoading] = useState(false);
   const { isAvailable, authenticate, loading: bioLoading } = useBiometric();
   const [bioAvailable, setBioAvailable] = useState(false);
@@ -63,11 +63,27 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     const withinFence = await checkGeofence();
     if (!withinFence) { setLoading(false); return; }
     setError('');
-    const success = await login(guardId.toUpperCase(), password);
+
+    // Look up guard to get society_id
+    const { data: guardData } = await supabase.from('guards').select('*').eq('guard_id', guardId.toUpperCase()).eq('password', password).single();
+    if (!guardData) {
+      auditLoginFailed('guard', guardId.toUpperCase());
+      setError(t('login.invalidCredentials'));
+      setLoading(false);
+      return;
+    }
+
+    // Set society scope before loading guards
+    if (guardData.society_id) {
+      setSocietyId(guardData.society_id);
+    }
+    await loadGuards();
+
+    const success = await login(guardData.guard_id, guardData.password);
     setLoading(false);
     if (success) {
-      auditLoginSuccess('guard', guardId.toUpperCase(), guardId.toUpperCase());
-      registerOneSignalUser({ userType: 'guard', userId: guardId.toUpperCase(), userName: guardId.toUpperCase() });
+      auditLoginSuccess('guard', guardData.guard_id, guardData.name);
+      registerOneSignalUser({ userType: 'guard', userId: guardData.guard_id, userName: guardData.name });
       promptPushPermission();
     } else {
       auditLoginFailed('guard', guardId.toUpperCase());
@@ -79,9 +95,14 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     setError('');
     const result = await authenticate('guard');
     if (!result) { setError(t('biometric.notRegistered')); return; }
-    // Look up guard by UUID
     const { data } = await supabase.from('guards').select('*').eq('id', result.userId).single();
     if (!data) { setError(t('login.invalidCredentials')); return; }
+
+    if (data.society_id) {
+      setSocietyId(data.society_id);
+    }
+    await loadGuards();
+
     setLoading(true);
     setError(t('admin.gettingLocation'));
     const withinFence = await checkGeofence();
