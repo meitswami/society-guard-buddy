@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { DollarSign, Plus, Check, X, Upload, Eye, Filter, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
 
 interface Props {
