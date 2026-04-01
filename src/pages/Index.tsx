@@ -27,6 +27,7 @@ type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 const AppContent = () => {
   const { currentGuard, theme, setSocietyId, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
   const { t } = useLanguage();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loaded, setLoaded] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>('choosing');
