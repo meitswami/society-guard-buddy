@@ -89,7 +89,10 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   };
 
   const deleteRole = async (id: string) => {
+    const ok = await confirmAction(t('swal.confirmDelete'), t('swal.confirmDeleteText'), t('swal.yes'), t('swal.no'));
+    if (!ok) return;
     await supabase.from('society_roles').delete().eq('id', id);
+    showSuccess(t('swal.success'), 'Role deleted');
     loadAll();
   };
 
