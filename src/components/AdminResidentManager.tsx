@@ -144,7 +144,7 @@ const AdminResidentManager = () => {
       if (memberForm.phone) {
         await supabase.from('resident_users').update({ name: memberForm.name }).eq('phone', memberForm.phone).eq('flat_id', flatId);
       }
-      toast.success('Member updated');
+      showSuccess('Updated!', 'Member updated successfully');
     } else {
       const existing = getMembersForFlat(flatId);
       if (existing.length === 0) payload.is_primary = true;
