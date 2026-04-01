@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { MapPin, Navigation, Save, Trash2 } from 'lucide-react';
-import { showSuccess } from '@/lib/swal';
+import { showSuccess, confirmAction } from '@/lib/swal';
 
 interface Props {
   adminName: string;
