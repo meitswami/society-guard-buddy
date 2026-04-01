@@ -96,6 +96,19 @@ const AppContent = () => {
 
   // Show login chooser or specific login
   if (!currentGuard) {
+    // Mobile: single unified login page
+    if (isMobile) {
+      return (
+        <UnifiedLoginPage
+          onGuardLogin={() => {}}
+          onResidentLogin={(resident) => setResidentUser(resident)}
+          onAdminLogin={(admin) => { setSocietyId(admin.societyId); setAdminUser(admin); }}
+          onSuperadminLogin={setSuperadminUser}
+        />
+      );
+    }
+
+    // Desktop: 4-button chooser
     if (userMode === 'choosing') {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
