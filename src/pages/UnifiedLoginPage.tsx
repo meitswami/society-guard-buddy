@@ -125,7 +125,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     }
 
     // None matched
-    auditLoginFailed('unknown', id);
+    auditLoginFailed('guard', id);
     setError(t('login.invalidCredentials'));
     setLoading(false);
   };
