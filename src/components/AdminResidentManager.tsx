@@ -206,7 +206,7 @@ const AdminResidentManager = () => {
     if (member) {
       await supabase.from('flats').update({ owner_name: member.name }).eq('id', flatId);
     }
-    toast.success('Primary member updated');
+    showSuccess('Updated!', 'Primary member changed');
     loadMembers();
     loadFlats();
   };
