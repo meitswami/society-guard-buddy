@@ -31,14 +31,14 @@ const PasswordResetFlow = ({ userType, onBack }: Props) => {
 
     let user: any = null;
     if (method === 'email') {
-      const { data } = await supabase.from(table).select('id, email, name, flat_number').eq('email', identifier).single();
+      const { data } = await supabase.from(table).select('*').eq('email', identifier).single();
       user = data;
     } else {
       if (userType === 'resident') {
-        const { data } = await supabase.from(table).select('id, email, name, phone, flat_number').eq('phone', identifier).single();
+        const { data } = await supabase.from('resident_users').select('*').eq('phone', identifier).single();
         user = data;
       } else {
-        const { data } = await supabase.from(table).select('id, email, name, admin_id').eq('admin_id', identifier.toUpperCase()).single();
+        const { data } = await supabase.from('admins').select('*').eq('admin_id', identifier.toUpperCase()).single();
         user = data;
       }
     }
