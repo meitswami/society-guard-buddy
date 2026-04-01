@@ -253,7 +253,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     if (member.phone) {
       await supabase.from('resident_users').delete().eq('phone', member.phone).eq('flat_id', resident.flatId);
     }
-    toast.success('Member removed');
+    showSuccess('Removed!', 'Member removed successfully');
     loadMyMembers();
     loadDirectory();
   };
@@ -290,7 +290,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     const confirmed = await confirmAction('Delete vehicle?', `Remove ${v.vehicle_number}?`, 'Yes', 'No');
     if (!confirmed) return;
     await supabase.from('resident_vehicles').delete().eq('id', v.id);
-    toast.success('Vehicle removed');
+    showSuccess('Removed!', 'Vehicle removed successfully');
     loadMyVehicles();
     loadDirectory();
   };

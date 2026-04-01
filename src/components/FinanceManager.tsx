@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { DollarSign, Plus, Check, X, Upload, Eye, Filter, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
 
 interface Props {
@@ -64,14 +65,18 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   };
 
   const verifyPayment = async (id: string) => {
+    const ok = await confirmAction('Verify Payment?', 'Confirm this payment as verified?', 'Yes, Verify', 'Cancel');
+    if (!ok) return;
     await supabase.from('maintenance_payments').update({ payment_status: 'verified', verified_by: adminName, verified_at: new Date().toISOString() }).eq('id', id);
-    toast.success('Payment verified');
+    showSuccess('Verified!', 'Payment verified successfully');
     loadAll();
   };
 
   const rejectPayment = async (id: string) => {
+    const ok = await confirmAction('Reject Payment?', 'Are you sure you want to reject this payment?', 'Yes, Reject', 'Cancel');
+    if (!ok) return;
     await supabase.from('maintenance_payments').update({ payment_status: 'rejected', verified_by: adminName }).eq('id', id);
-    toast.success('Payment rejected');
+    showSuccess('Rejected', 'Payment has been rejected');
     loadAll();
   };
 

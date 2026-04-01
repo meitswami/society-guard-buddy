@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Split, Plus, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmAction, showSuccess } from '@/lib/swal';
 
 interface Props { adminName?: string; }
 
@@ -57,8 +58,10 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
   };
 
   const settleUp = async (splitId: string) => {
+    const ok = await confirmAction('Settle Up?', 'Mark this split as settled?', 'Yes, Settle', 'Cancel');
+    if (!ok) return;
     await supabase.from('expense_splits').update({ is_settled: true, settled_at: new Date().toISOString() }).eq('id', splitId);
-    toast.success('Settled!'); loadAll();
+    showSuccess('Settled!', 'Payment marked as settled'); loadAll();
   };
 
   // Calculate balances per flat

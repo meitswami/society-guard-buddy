@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
 import { Plus, Trash2, Edit2, Search, Users, Home, ChevronDown, ChevronUp, Car, Phone, Star, UserPlus, Key, Eye, EyeOff, RefreshCw } from 'lucide-react';
-import { confirmAction } from '@/lib/swal';
+import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import { generateFlatPassword } from '@/lib/passwordGenerator';
 import type { Flat, Member, ResidentVehicle } from '@/types';
@@ -144,7 +144,7 @@ const AdminResidentManager = () => {
       if (memberForm.phone) {
         await supabase.from('resident_users').update({ name: memberForm.name }).eq('phone', memberForm.phone).eq('flat_id', flatId);
       }
-      toast.success('Member updated');
+      showSuccess('Updated!', 'Member updated successfully');
     } else {
       const existing = getMembersForFlat(flatId);
       if (existing.length === 0) payload.is_primary = true;
@@ -206,16 +206,18 @@ const AdminResidentManager = () => {
     if (member) {
       await supabase.from('flats').update({ owner_name: member.name }).eq('id', flatId);
     }
-    toast.success('Primary member updated');
+    showSuccess('Updated!', 'Primary member changed');
     loadMembers();
     loadFlats();
   };
 
   // === RESET PASSWORD for flat ===
   const resetFlatPassword = async (flatId: string) => {
+    const ok = await confirmAction('Reset Password?', 'Generate a new password for all members of this flat?', 'Yes, Reset', 'Cancel');
+    if (!ok) return;
     const newPass = generateFlatPassword();
     await supabase.from('resident_users').update({ password: newPass }).eq('flat_id', flatId);
-    toast.success(`New password: ${newPass}`);
+    showSuccess('Password Reset!', `New password: ${newPass}`);
     loadResidentUsers();
   };
 
@@ -226,7 +228,7 @@ const AdminResidentManager = () => {
     await supabase.from('resident_users').delete().eq('flat_id', flatId);
     await supabase.from('members').delete().eq('flat_id', flatId);
     await supabase.from('flats').delete().eq('id', flatId);
-    toast.success('Flat removed');
+    showSuccess('Deleted!', 'Flat and all data removed');
     loadFlats();
     loadMembers();
     loadResidentUsers();

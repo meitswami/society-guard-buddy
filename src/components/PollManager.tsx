@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Vote, Plus, BarChart3, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmAction, showSuccess } from '@/lib/swal';
 
 interface Props { adminName?: string; isResident?: boolean; voterId?: string; flatNumber?: string; }
 
@@ -52,8 +53,10 @@ const PollManager = ({ adminName = 'Admin', isResident = false, voterId = '', fl
   };
 
   const closePoll = async (id: string) => {
+    const ok = await confirmAction('Close Poll?', 'This will stop accepting new votes.', 'Yes, Close', 'Cancel');
+    if (!ok) return;
     await supabase.from('polls').update({ is_active: false }).eq('id', id);
-    toast.success('Poll closed'); loadAll();
+    showSuccess('Closed!', 'Poll has been closed'); loadAll();
   };
 
   return (
