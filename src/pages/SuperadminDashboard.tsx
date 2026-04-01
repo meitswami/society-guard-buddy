@@ -112,6 +112,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     const ok = await confirmAction(t('swal.confirmDelete'), t('swal.confirmDeleteText'), t('swal.yes'), t('swal.no'));
     if (!ok) return;
     await supabase.from('admins').delete().eq('id', id);
+    showSuccess(t('swal.success'), 'Admin deleted');
     loadAll();
   };
 

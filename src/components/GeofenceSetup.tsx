@@ -71,11 +71,14 @@ const GeofenceSetup = ({ adminName }: Props) => {
 
   const clearGeofence = async () => {
     if (existing) {
+      const ok = await confirmAction('Clear Geofence?', 'This will remove the geofence boundary.', 'Yes, Clear', 'Cancel');
+      if (!ok) return;
       await supabase.from('geofence_settings').delete().eq('id', existing.id);
       setExisting(null);
       setLatitude(null);
       setLongitude(null);
       setRadius(500);
+      showSuccess('Cleared!', 'Geofence removed');
     }
   };
 

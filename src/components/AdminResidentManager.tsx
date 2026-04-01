@@ -228,7 +228,7 @@ const AdminResidentManager = () => {
     await supabase.from('resident_users').delete().eq('flat_id', flatId);
     await supabase.from('members').delete().eq('flat_id', flatId);
     await supabase.from('flats').delete().eq('id', flatId);
-    toast.success('Flat removed');
+    showSuccess('Deleted!', 'Flat and all data removed');
     loadFlats();
     loadMembers();
     loadResidentUsers();

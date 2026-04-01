@@ -290,7 +290,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     const confirmed = await confirmAction('Delete vehicle?', `Remove ${v.vehicle_number}?`, 'Yes', 'No');
     if (!confirmed) return;
     await supabase.from('resident_vehicles').delete().eq('id', v.id);
-    toast.success('Vehicle removed');
+    showSuccess('Removed!', 'Vehicle removed successfully');
     loadMyVehicles();
     loadDirectory();
   };

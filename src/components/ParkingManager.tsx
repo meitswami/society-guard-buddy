@@ -34,15 +34,19 @@ const ParkingManager = () => {
   };
 
   const deleteSpace = async (id: string) => {
+    const ok = await confirmAction('Delete Space?', 'Remove this parking space?', 'Yes, Delete', 'Cancel');
+    if (!ok) return;
     await supabase.from('parking_spaces').delete().eq('id', id);
-    toast.success('Space removed'); loadAll();
+    showSuccess('Deleted!', 'Parking space removed'); loadAll();
   };
 
   const deallocate = async (id: string) => {
+    const ok = await confirmAction('Deallocate?', 'Remove allocation from this space?', 'Yes', 'Cancel');
+    if (!ok) return;
     await supabase.from('parking_spaces').update({
       is_allocated: false, allocated_flat_id: null, allocated_flat_number: null, allocated_vehicle_number: null,
     }).eq('id', id);
-    toast.success('Space deallocated'); loadAll();
+    showSuccess('Done!', 'Space deallocated'); loadAll();
   };
 
   const allocated = spaces.filter(s => s.is_allocated);
