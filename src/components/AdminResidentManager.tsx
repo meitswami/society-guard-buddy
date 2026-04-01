@@ -213,9 +213,11 @@ const AdminResidentManager = () => {
 
   // === RESET PASSWORD for flat ===
   const resetFlatPassword = async (flatId: string) => {
+    const ok = await confirmAction('Reset Password?', 'Generate a new password for all members of this flat?', 'Yes, Reset', 'Cancel');
+    if (!ok) return;
     const newPass = generateFlatPassword();
     await supabase.from('resident_users').update({ password: newPass }).eq('flat_id', flatId);
-    toast.success(`New password: ${newPass}`);
+    showSuccess('Password Reset!', `New password: ${newPass}`);
     loadResidentUsers();
   };
 
