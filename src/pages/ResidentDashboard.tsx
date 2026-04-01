@@ -253,7 +253,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     if (member.phone) {
       await supabase.from('resident_users').delete().eq('phone', member.phone).eq('flat_id', resident.flatId);
     }
-    toast.success('Member removed');
+    showSuccess('Removed!', 'Member removed successfully');
     loadMyMembers();
     loadDirectory();
   };
