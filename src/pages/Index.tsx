@@ -9,6 +9,8 @@ import AdminDashboard from '@/pages/AdminDashboard';
 import SuperadminLoginPage from '@/pages/SuperadminLoginPage';
 import SuperadminDashboard from '@/pages/SuperadminDashboard';
 import DashboardPage from '@/pages/DashboardPage';
+import UnifiedLoginPage from '@/pages/UnifiedLoginPage';
+import { useIsMobile } from '@/hooks/use-mobile';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
 import VehiclePage from '@/pages/VehiclePage';
@@ -25,6 +27,7 @@ type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 const AppContent = () => {
   const { currentGuard, theme, setSocietyId, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
   const { t } = useLanguage();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loaded, setLoaded] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>('choosing');
@@ -93,6 +96,19 @@ const AppContent = () => {
 
   // Show login chooser or specific login
   if (!currentGuard) {
+    // Mobile: single unified login page
+    if (isMobile) {
+      return (
+        <UnifiedLoginPage
+          onGuardLogin={() => {}}
+          onResidentLogin={(resident) => setResidentUser(resident)}
+          onAdminLogin={(admin) => { setSocietyId(admin.societyId); setAdminUser(admin); }}
+          onSuperadminLogin={setSuperadminUser}
+        />
+      );
+    }
+
+    // Desktop: 4-button chooser
     if (userMode === 'choosing') {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
