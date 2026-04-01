@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Car, Plus, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmAction, showSuccess } from '@/lib/swal';
 
 const ParkingManager = () => {
   const [spaces, setSpaces] = useState<any[]>([]);
