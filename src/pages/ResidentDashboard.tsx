@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock } from 'lucide-react';
+import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser } from 'lucide-react';
 import { format } from 'date-fns';
 import { showSuccess, confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
@@ -29,6 +29,9 @@ interface VisitorPass {
 
 interface Props { resident: Resident; onLogout: () => void; }
 
+const SERVICE_TYPES = ['Cook', 'Maid', 'Washerman', 'Newspaper', 'Driver', 'Others'] as const;
+const RELATION_TYPES = ['Owner', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Tenant', 'Others'] as const;
+
 const notificationSound = () => {
   try {
     const ctx = new AudioContext();
@@ -49,7 +52,7 @@ const notificationSound = () => {
 
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
-  const [tab, setTab] = useState<'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'profile'>('approvals');
+  const [tab, setTab] = useState<'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'family' | 'vehicles' | 'directory' | 'profile'>('approvals');
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
@@ -65,6 +68,24 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     timeStart: '09:00', timeEnd: '18:00',
   });
   const prevPendingCount = useRef(0);
+
+  // Family & servicemen state
+  const [myMembers, setMyMembers] = useState<any[]>([]);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [editingMember, setEditingMember] = useState<any>(null);
+  const [memberForm, setMemberForm] = useState({ name: '', phone: '', relation: 'Spouse', age: '', gender: 'male', isServiceman: false, serviceType: '', customServiceType: '', photo: '' });
+
+  // Vehicles state
+  const [myVehicles, setMyVehicles] = useState<any[]>([]);
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState({ vehicleNumber: '', vehicleType: 'car' as string });
+
+  // Directory state (all flats)
+  const [allFlats, setAllFlats] = useState<any[]>([]);
+  const [allMembers, setAllMembers] = useState<any[]>([]);
+  const [allVehicles, setAllVehicles] = useState<any[]>([]);
+  const [dirSearch, setDirSearch] = useState('');
+  const [expandedFlat, setExpandedFlat] = useState<string | null>(null);
 
   const loadRequests = useCallback(async () => {
     const { data } = await supabase.from('approval_requests').select('*')
@@ -89,24 +110,42 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     if (data) setMyPayments(data);
   }, [resident.flatNumber]);
 
-  useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); loadFlatmates(); }, [loadRequests, loadPasses, loadMyPayments]);
-
   const loadFlatmates = async () => {
     const { data } = await supabase.from('resident_users').select('*').eq('flat_id', resident.flatId);
     if (data) setFlatmates(data);
   };
 
+  const loadMyMembers = async () => {
+    const { data } = await supabase.from('members').select('*').eq('flat_id', resident.flatId).order('created_at');
+    if (data) setMyMembers(data);
+  };
+
+  const loadMyVehicles = async () => {
+    const { data } = await supabase.from('resident_vehicles').select('*').eq('flat_number', resident.flatNumber).order('created_at');
+    if (data) setMyVehicles(data);
+  };
+
+  const loadDirectory = async () => {
+    // Get society_id from flat
+    const { data: flat } = await supabase.from('flats').select('society_id').eq('id', resident.flatId).single();
+    if (!flat?.society_id) return;
+    const { data: flats } = await supabase.from('flats').select('*').eq('society_id', flat.society_id).order('flat_number');
+    const { data: members } = await supabase.from('members').select('*');
+    const { data: vehicles } = await supabase.from('resident_vehicles').select('*');
+    if (flats) setAllFlats(flats);
+    if (members) setAllMembers(members);
+    if (vehicles) setAllVehicles(vehicles);
+  };
+
+  useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); loadFlatmates(); loadMyMembers(); loadMyVehicles(); loadDirectory(); }, []);
+
   const handlePasswordChange = async () => {
     if (!currentPass || !newPass || !confirmPass) { toast.error('Fill all fields'); return; }
     if (newPass !== confirmPass) { toast.error('Passwords do not match'); return; }
     if (newPass.length < 4) { toast.error('Password must be at least 4 characters'); return; }
-
     setPassLoading(true);
-    // Verify current password
     const { data: user } = await supabase.from('resident_users').select('id').eq('id', resident.id).eq('password', currentPass).single();
     if (!user) { toast.error('Current password is wrong'); setPassLoading(false); return; }
-
-    // Update password for ALL flatmates (shared password)
     await supabase.from('resident_users').update({ password: newPass }).eq('flat_id', resident.flatId);
     toast.success('Password changed for all flatmates');
     setCurrentPass(''); setNewPass(''); setConfirmPass('');
@@ -146,6 +185,116 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     loadPasses();
   };
 
+  // ========== FAMILY/SERVICEMEN HANDLERS ==========
+  const handlePhotoCapture = (setter: (val: string) => void) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onloadend = () => setter(reader.result as string);
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const handleAddMember = async () => {
+    if (!memberForm.name) { toast.error('Name is required'); return; }
+    const relation = memberForm.isServiceman
+      ? (memberForm.serviceType === 'Others' ? memberForm.customServiceType || 'Others' : memberForm.serviceType)
+      : (memberForm.relation === 'Others' ? 'Others' : memberForm.relation);
+
+    const payload = {
+      flat_id: resident.flatId,
+      name: memberForm.name,
+      phone: memberForm.phone || null,
+      relation: relation.toLowerCase(),
+      age: memberForm.age ? parseInt(memberForm.age) : null,
+      gender: memberForm.gender || null,
+      photo: memberForm.photo || null,
+      is_primary: false,
+    };
+
+    if (editingMember) {
+      await supabase.from('members').update(payload).eq('id', editingMember.id);
+      toast.success('Member updated');
+    } else {
+      await supabase.from('members').insert(payload);
+      // Also create resident_user login if phone provided
+      if (memberForm.phone) {
+        const { data: existing } = await supabase.from('resident_users').select('id').eq('phone', memberForm.phone).single();
+        if (!existing) {
+          const { data: flatmate } = await supabase.from('resident_users').select('password').eq('flat_id', resident.flatId).limit(1).single();
+          const pw = flatmate?.password || 'Welcome123!';
+          await supabase.from('resident_users').insert({
+            phone: memberForm.phone, name: memberForm.name, password: pw,
+            flat_id: resident.flatId, flat_number: resident.flatNumber,
+          });
+        }
+      }
+      toast.success('Member added');
+    }
+
+    setMemberForm({ name: '', phone: '', relation: 'Spouse', age: '', gender: 'male', isServiceman: false, serviceType: '', customServiceType: '', photo: '' });
+    setShowAddMember(false);
+    setEditingMember(null);
+    loadMyMembers();
+    loadDirectory();
+  };
+
+  const handleDeleteMember = async (member: any) => {
+    if (member.is_primary) { toast.error('Cannot delete primary member'); return; }
+    const confirmed = await confirmAction('Delete member?', `Remove ${member.name}?`, 'Yes', 'No');
+    if (!confirmed) return;
+    await supabase.from('members').delete().eq('id', member.id);
+    if (member.phone) {
+      await supabase.from('resident_users').delete().eq('phone', member.phone).eq('flat_id', resident.flatId);
+    }
+    toast.success('Member removed');
+    loadMyMembers();
+    loadDirectory();
+  };
+
+  const startEditMember = (m: any) => {
+    const isService = SERVICE_TYPES.map(s => s.toLowerCase()).includes(m.relation?.toLowerCase());
+    setEditingMember(m);
+    setMemberForm({
+      name: m.name, phone: m.phone || '', relation: isService ? 'Spouse' : (m.relation || 'Spouse'),
+      age: m.age?.toString() || '', gender: m.gender || 'male',
+      isServiceman: isService,
+      serviceType: isService ? SERVICE_TYPES.find(s => s.toLowerCase() === m.relation?.toLowerCase()) || 'Others' : '',
+      customServiceType: '', photo: m.photo || '',
+    });
+    setShowAddMember(true);
+  };
+
+  // ========== VEHICLE HANDLERS ==========
+  const handleAddVehicle = async () => {
+    if (!vehicleForm.vehicleNumber) { toast.error('Vehicle number required'); return; }
+    await supabase.from('resident_vehicles').insert({
+      flat_number: resident.flatNumber, flat_id: resident.flatId,
+      resident_name: resident.name, vehicle_number: vehicleForm.vehicleNumber.toUpperCase(),
+      vehicle_type: vehicleForm.vehicleType,
+    });
+    toast.success('Vehicle added');
+    setVehicleForm({ vehicleNumber: '', vehicleType: 'car' });
+    setShowAddVehicle(false);
+    loadMyVehicles();
+    loadDirectory();
+  };
+
+  const handleDeleteVehicle = async (v: any) => {
+    const confirmed = await confirmAction('Delete vehicle?', `Remove ${v.vehicle_number}?`, 'Yes', 'No');
+    if (!confirmed) return;
+    await supabase.from('resident_vehicles').delete().eq('id', v.id);
+    toast.success('Vehicle removed');
+    loadMyVehicles();
+    loadDirectory();
+  };
+
   const copyOTP = (code: string) => { navigator.clipboard.writeText(code); showSuccess('Copied!', code); };
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
@@ -157,10 +306,20 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     }
   };
 
+  // Directory filtering
+  const filteredDirFlats = allFlats.filter(f => {
+    if (!dirSearch.trim()) return true;
+    const q = dirSearch.toLowerCase();
+    return f.flat_number?.toLowerCase().includes(q) || f.owner_name?.toLowerCase().includes(q) || f.owner_phone?.includes(q);
+  });
+
   const tabItems = [
     { id: 'approvals' as const, label: t('resident.approvals'), icon: Bell, badge: pendingRequests.length },
     { id: 'passes' as const, label: t('resident.passes'), icon: KeyRound },
-    { id: 'notifications' as const, label: 'Notifications', icon: Bell },
+    { id: 'family' as const, label: 'Family', icon: Users },
+    { id: 'vehicles' as const, label: 'Vehicles', icon: Car },
+    { id: 'directory' as const, label: 'Directory', icon: BookUser },
+    { id: 'notifications' as const, label: 'Alerts', icon: Bell },
     { id: 'polls' as const, label: 'Polls', icon: Vote },
     { id: 'payments' as const, label: 'Payments', icon: DollarSign },
     { id: 'profile' as const, label: 'Profile', icon: User },
@@ -197,7 +356,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 px-4 pt-4 overflow-x-auto">
+      <div className="flex gap-1 px-4 pt-4 overflow-x-auto scrollbar-hide">
         {tabItems.map(ti => (
           <button key={ti.id} onClick={() => setTab(ti.id)}
             className={`px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 whitespace-nowrap ${tab === ti.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
@@ -209,6 +368,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       </div>
 
       <div className="px-4 pt-4">
+        {/* ========== APPROVALS TAB ========== */}
         {tab === 'approvals' && (
           <div className="flex flex-col gap-3">
             {pendingRequests.length > 0 && (
@@ -257,6 +417,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
           </div>
         )}
 
+        {/* ========== PASSES TAB ========== */}
         {tab === 'passes' && (
           <div className="flex flex-col gap-3">
             <button onClick={() => setShowNewPass(!showNewPass)} className="btn-primary flex items-center justify-center gap-2">
@@ -321,6 +482,265 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
           </div>
         )}
 
+        {/* ========== FAMILY & SERVICEMEN TAB ========== */}
+        {tab === 'family' && (
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">My Family & Staff ({myMembers.length})</p>
+              <button onClick={() => { setShowAddMember(true); setEditingMember(null); setMemberForm({ name: '', phone: '', relation: 'Spouse', age: '', gender: 'male', isServiceman: false, serviceType: '', customServiceType: '', photo: '' }); }}
+                className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
+                <Plus className="w-3 h-3" /> Add
+              </button>
+            </div>
+
+            {showAddMember && (
+              <div className="card-section p-4 flex flex-col gap-3">
+                <p className="text-sm font-semibold">{editingMember ? 'Edit Member' : 'Add Member'}</p>
+
+                {/* Type toggle */}
+                <div className="flex gap-2">
+                  <button onClick={() => setMemberForm(f => ({ ...f, isServiceman: false }))}
+                    className={`flex-1 py-2 rounded-lg text-xs font-medium ${!memberForm.isServiceman ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                    👨‍👩‍👧‍👦 Family
+                  </button>
+                  <button onClick={() => setMemberForm(f => ({ ...f, isServiceman: true }))}
+                    className={`flex-1 py-2 rounded-lg text-xs font-medium ${memberForm.isServiceman ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                    🧹 Serviceman
+                  </button>
+                </div>
+
+                <input className="input-field" placeholder="Full Name *" value={memberForm.name}
+                  onChange={e => setMemberForm(f => ({ ...f, name: e.target.value }))} />
+                <input className="input-field font-mono" placeholder="Phone (optional)" type="tel" maxLength={10}
+                  value={memberForm.phone} onChange={e => setMemberForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))} />
+
+                {!memberForm.isServiceman ? (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Relation</label>
+                    <select className="input-field" value={memberForm.relation}
+                      onChange={e => setMemberForm(f => ({ ...f, relation: e.target.value }))}>
+                      {RELATION_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Service Type</label>
+                    <select className="input-field" value={memberForm.serviceType}
+                      onChange={e => setMemberForm(f => ({ ...f, serviceType: e.target.value }))}>
+                      <option value="">Select...</option>
+                      {SERVICE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    {memberForm.serviceType === 'Others' && (
+                      <input className="input-field mt-2" placeholder="Specify type..." value={memberForm.customServiceType}
+                        onChange={e => setMemberForm(f => ({ ...f, customServiceType: e.target.value }))} />
+                    )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Age</label>
+                    <input className="input-field" type="number" placeholder="Age" value={memberForm.age}
+                      onChange={e => setMemberForm(f => ({ ...f, age: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Gender</label>
+                    <select className="input-field" value={memberForm.gender}
+                      onChange={e => setMemberForm(f => ({ ...f, gender: e.target.value }))}>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Photo (for servicemen ID) */}
+                {memberForm.isServiceman && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">ID Photo</label>
+                    {memberForm.photo ? (
+                      <div className="relative w-24 h-24">
+                        <img src={memberForm.photo} alt="ID" className="w-24 h-24 rounded-lg object-cover border border-border" />
+                        <button onClick={() => setMemberForm(f => ({ ...f, photo: '' }))}
+                          className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs">×</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => handlePhotoCapture(val => setMemberForm(f => ({ ...f, photo: val })))}
+                        className="w-full py-3 rounded-lg border-2 border-dashed border-border flex items-center justify-center gap-2 text-sm text-muted-foreground hover:border-primary/50">
+                        <Camera className="w-4 h-4" /> Capture ID Photo
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button onClick={handleAddMember} className="btn-primary flex-1">
+                    {editingMember ? 'Update' : 'Add Member'}
+                  </button>
+                  <button onClick={() => { setShowAddMember(false); setEditingMember(null); }}
+                    className="px-4 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {myMembers.length === 0 && !showAddMember && (
+              <p className="text-sm text-muted-foreground text-center py-8">No members added yet</p>
+            )}
+            {myMembers.map(m => {
+              const isService = SERVICE_TYPES.map(s => s.toLowerCase()).includes(m.relation?.toLowerCase());
+              return (
+                <div key={m.id} className="card-section p-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {m.photo ? <img src={m.photo} alt={m.name} className="w-full h-full object-cover" /> :
+                      <span className="text-sm font-bold text-primary">{m.name.charAt(0)}</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {m.name}
+                      {m.is_primary && <span className="ml-1 text-[9px] text-primary">★ Primary</span>}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground capitalize">
+                      {isService ? `🧹 ${m.relation}` : m.relation}
+                      {m.age ? ` · ${m.age}y` : ''}{m.gender ? ` · ${m.gender}` : ''}
+                      {m.phone ? ` · 📱${m.phone}` : ''}
+                    </p>
+                  </div>
+                  {!m.is_primary && (
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button onClick={() => startEditMember(m)} className="p-1.5 text-muted-foreground hover:text-primary">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => handleDeleteMember(m)} className="p-1.5 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ========== VEHICLES TAB ========== */}
+        {tab === 'vehicles' && (
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">My Vehicles ({myVehicles.length})</p>
+              <button onClick={() => setShowAddVehicle(true)}
+                className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
+                <Plus className="w-3 h-3" /> Add
+              </button>
+            </div>
+
+            {showAddVehicle && (
+              <div className="card-section p-4 flex flex-col gap-3">
+                <p className="text-sm font-semibold">Add Vehicle</p>
+                <input className="input-field font-mono uppercase" placeholder="Vehicle Number (e.g. MH04AB1234)"
+                  value={vehicleForm.vehicleNumber} onChange={e => setVehicleForm(f => ({ ...f, vehicleNumber: e.target.value }))} />
+                <select className="input-field" value={vehicleForm.vehicleType}
+                  onChange={e => setVehicleForm(f => ({ ...f, vehicleType: e.target.value }))}>
+                  <option value="car">🚗 Car</option>
+                  <option value="bike">🏍️ Bike</option>
+                  <option value="other">🚐 Other</option>
+                </select>
+                <div className="flex gap-2">
+                  <button onClick={handleAddVehicle} className="btn-primary flex-1">Add Vehicle</button>
+                  <button onClick={() => setShowAddVehicle(false)}
+                    className="px-4 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {myVehicles.length === 0 && !showAddVehicle && (
+              <p className="text-sm text-muted-foreground text-center py-8">No vehicles registered</p>
+            )}
+            {myVehicles.map(v => (
+              <div key={v.id} className="card-section p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Car className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-mono font-semibold">{v.vehicle_number}</p>
+                    <p className="text-[10px] text-muted-foreground capitalize">{v.vehicle_type}</p>
+                  </div>
+                </div>
+                <button onClick={() => handleDeleteVehicle(v)} className="p-1.5 text-muted-foreground hover:text-destructive">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ========== DIRECTORY TAB ========== */}
+        {tab === 'directory' && (
+          <div className="flex flex-col gap-3">
+            <div className="relative">
+              <input className="input-field pl-9" placeholder="Search flats, names, phone..."
+                value={dirSearch} onChange={e => setDirSearch(e.target.value)} />
+              <BookUser className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            </div>
+            <p className="text-[10px] text-muted-foreground">{filteredDirFlats.length} flats · You can only edit your own flat's data</p>
+
+            {filteredDirFlats.map(flat => {
+              const isMyFlat = flat.id === resident.flatId;
+              const flatMembers = allMembers.filter((m: any) => m.flat_id === flat.id);
+              const flatVehicles = allVehicles.filter((v: any) => v.flat_number === flat.flat_number);
+              const isExpanded = expandedFlat === flat.id;
+
+              return (
+                <div key={flat.id} className={`card-section ${isMyFlat ? 'border-primary/30' : ''}`}>
+                  <button type="button" className="w-full flex items-center gap-3 text-left"
+                    onClick={() => setExpandedFlat(isExpanded ? null : flat.id)}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isMyFlat ? 'bg-primary/20' : 'bg-primary/10'}`}>
+                      <Home className={`w-5 h-5 ${isMyFlat ? 'text-primary' : 'text-muted-foreground'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold font-mono">{flat.flat_number}</p>
+                        {isMyFlat && <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">My Flat</span>}
+                        {flat.wing && <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground">Wing {flat.wing}</span>}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{flat.owner_name || 'No owner'} · {flatMembers.length} members · {flatVehicles.length} vehicles</p>
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="mt-3 pt-3 border-t border-border space-y-2">
+                      {flatMembers.map((m: any) => (
+                        <div key={m.id} className="flex items-center gap-2 bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0 overflow-hidden">
+                            {m.photo ? <img src={m.photo} alt="" className="w-full h-full object-cover" /> : m.name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">
+                              {m.name} {m.is_primary && <span className="text-[9px] text-primary">★</span>}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground capitalize">
+                              {m.relation}{m.age ? ` · ${m.age}y` : ''}{m.phone ? ` · 📱${m.phone}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {flatVehicles.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {flatVehicles.map((v: any) => (
+                            <span key={v.id} className="flex items-center gap-1 bg-secondary/50 rounded-lg px-2.5 py-1.5 text-xs">
+                              <Car className="w-3 h-3 text-muted-foreground" />
+                              <span className="font-mono font-medium">{v.vehicle_number}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {tab === 'notifications' && (
           <NotificationCenter isResident flatNumber={resident.flatNumber} />
         )}
@@ -351,9 +771,10 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             ))}
           </div>
         )}
+
+        {/* ========== PROFILE TAB ========== */}
         {tab === 'profile' && (
           <div className="flex flex-col gap-4">
-            {/* User Info */}
             <div className="card-section p-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -376,7 +797,6 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
               )}
             </div>
 
-            {/* Change Password */}
             <div className="card-section p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Lock className="w-4 h-4 text-primary" />
@@ -402,7 +822,6 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
               </div>
             </div>
 
-            {/* Biometric */}
             <BiometricSetup userId={resident.id} userType="resident" userName={resident.name} />
           </div>
         )}
