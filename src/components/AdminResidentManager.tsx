@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
 import { Plus, Trash2, Edit2, Search, Users, Home, ChevronDown, ChevronUp, Car, Phone, Star, UserPlus, Key, Eye, EyeOff, RefreshCw } from 'lucide-react';
-import { confirmAction } from '@/lib/swal';
+import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import { generateFlatPassword } from '@/lib/passwordGenerator';
 import type { Flat, Member, ResidentVehicle } from '@/types';
