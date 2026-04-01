@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Vote, Plus, BarChart3, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmAction, showSuccess } from '@/lib/swal';
 
 interface Props { adminName?: string; isResident?: boolean; voterId?: string; flatNumber?: string; }
 
