@@ -180,6 +180,22 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
             ))}
           </div>
 
+          {/* KYC Pending Alerts */}
+          {kycPending.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <span className="text-sm font-semibold text-amber-700">Guard KYC Pending ({kycPending.length})</span>
+              </div>
+              {kycPending.map(g => (
+                <button key={g.id} onClick={() => setActiveTab('guards')}
+                  className="text-xs text-amber-600 ml-6 block hover:underline">
+                  • {g.name} ({g.guard_id}) - Police verification overdue
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Quick access grid */}
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick Access</p>
           <div className="grid grid-cols-4 gap-2 mb-4">
