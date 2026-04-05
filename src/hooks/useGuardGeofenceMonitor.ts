@@ -19,8 +19,7 @@ export function useGuardGeofenceMonitor(currentGuard: Guard | null) {
   useEffect(() => {
     if (!currentGuard || typeof navigator === 'undefined' || !navigator.geolocation) return;
 
-    let cancelled = false;
-    let watchId: number | undefined;
+    const session = { cancelled: false, watchId: undefined as number | undefined };
 
     const breachActiveRef = { current: false };
     const armedRef = { current: false };
@@ -53,16 +52,18 @@ export function useGuardGeofenceMonitor(currentGuard: Guard | null) {
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (cancelled || !geoData?.length) return;
+      if (session.cancelled || !geoData?.length) return;
 
       const geo = geoData[0];
       const centerLat = geo.latitude;
       const centerLon = geo.longitude;
       const radiusM = geo.radius_meters;
 
-      watchId = navigator.geolocation.watchPosition(
+      if (session.cancelled) return;
+
+      session.watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          if (cancelled) return;
+          if (session.cancelled) return;
           const dist = getDistanceMeters(
             pos.coords.latitude,
             pos.coords.longitude,
@@ -82,7 +83,7 @@ export function useGuardGeofenceMonitor(currentGuard: Guard | null) {
           }
         },
         (err) => {
-          if (cancelled || !armedRef.current) return;
+          if (session.cancelled || !armedRef.current) return;
           void notifyBreach('location_disabled', {
             error_code: err.code,
             message: err.message,
@@ -93,8 +94,11 @@ export function useGuardGeofenceMonitor(currentGuard: Guard | null) {
     })();
 
     return () => {
-      cancelled = true;
-      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+      session.cancelled = true;
+      if (session.watchId !== undefined) {
+        navigator.geolocation.clearWatch(session.watchId);
+        session.watchId = undefined;
+      }
     };
   }, [currentGuard?.id, currentGuard?.name]);
 }
