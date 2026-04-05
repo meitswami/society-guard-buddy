@@ -239,20 +239,21 @@ const QuickEntryPage = () => {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => quickLog(v)}
-                    className="btn-primary text-xs px-3 py-2 flex items-center justify-center gap-1.5"
-                  >
-                    <UserCheck className="w-3.5 h-3.5" /> {t('common.enter')}
-                  </button>
-                  {active && (
+                  {active ? (
                     <button
                       type="button"
                       onClick={() => quickExit(v)}
-                      className="btn-secondary text-xs px-3 py-2 flex items-center justify-center gap-1.5 border-success/30"
+                      className="btn-primary text-xs px-3 py-2 flex items-center justify-center gap-1.5"
                     >
                       <LogOut className="w-3.5 h-3.5" /> {t('common.exit')}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => quickLog(v)}
+                      className="btn-primary text-xs px-3 py-2 flex items-center justify-center gap-1.5"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" /> {t('common.enter')}
                     </button>
                   )}
                 </div>
