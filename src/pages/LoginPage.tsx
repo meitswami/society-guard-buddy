@@ -9,6 +9,7 @@ import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 import OTPLoginFlow from '@/components/OTPLoginFlow';
+import { LoginFooter } from '@/components/LoginFooter';
 
 interface Props {
   onSwitchToResident?: () => void;
@@ -136,7 +137,7 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-36">
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <LanguageToggle />
         <ThemeToggle />
@@ -215,9 +216,8 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
             {t('login.switchToResident')}
           </button>
         )}
-        <p className="text-xs text-muted-foreground text-center mt-4">{t('login.demo')}</p>
       </div>
-      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">{t('app.footer')}</p>
+      <LoginFooter />
     </div>
   );
 };

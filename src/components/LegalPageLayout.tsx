@@ -7,12 +7,6 @@ type LegalPageLayoutProps = {
   children: ReactNode;
 };
 
-const legalLinks = [
-  { to: "/privacy", label: "Privacy Policy" },
-  { to: "/terms", label: "Terms of Service" },
-  { to: "/contact", label: "Contact" },
-] as const;
-
 export function LegalPageLayout({ title, children }: LegalPageLayoutProps) {
   return (
     <div className="min-h-screen bg-background text-foreground font-display">
@@ -30,20 +24,7 @@ export function LegalPageLayout({ title, children }: LegalPageLayoutProps) {
         </div>
       </header>
 
-      <main className="container max-w-3xl py-8 pb-16">{children}</main>
-
-      <footer className="border-t border-border py-6">
-        <nav
-          className="container flex max-w-3xl flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground"
-          aria-label="Legal"
-        >
-          {legalLinks.map(({ to, label }) => (
-            <Link key={to} to={to} className="underline-offset-4 hover:text-foreground hover:underline">
-              {label}
-            </Link>
-          ))}
-        </nav>
-      </footer>
+      <main className="container max-w-3xl py-8 pb-12">{children}</main>
     </div>
   );
 }

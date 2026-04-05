@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
+import { LoginFooter } from '@/components/LoginFooter';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 
 interface Props {
@@ -56,7 +57,7 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-36">
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <LanguageToggle />
         <ThemeToggle />
@@ -107,10 +108,9 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
           <button type="button" className="text-xs text-primary text-center mt-2 underline" onClick={() => setShowResetFlow(true)}>
             Forgot Password?
           </button>
-          <p className="text-xs text-muted-foreground text-center mt-4">{t('admin.demo')}</p>
         </form>
       </div>
-      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">{t('app.footer')}</p>
+      <LoginFooter />
       {showResetFlow && (
         <div className="fixed inset-0 z-50 bg-background">
           <PasswordResetFlow userType="admin" onBack={() => setShowResetFlow(false)} />

@@ -20,6 +20,7 @@ import DirectoryPage from '@/pages/DirectoryPage';
 import BlacklistPage from '@/pages/BlacklistPage';
 import SettingsPage from '@/pages/SettingsPage';
 import BottomNav from '@/components/BottomNav';
+import { LoginFooter } from '@/components/LoginFooter';
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
 
 type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
@@ -111,8 +112,8 @@ const AppContent = () => {
     // Desktop: 4-button chooser
     if (userMode === 'choosing') {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
-          <div className="w-full max-w-sm flex flex-col items-center gap-4">
+        <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-36">
+          <div className="flex w-full max-w-sm flex-col items-center gap-4">
             <div className="flex flex-col items-center mb-4">
               <h1 className="page-title text-2xl">{t('app.name')}</h1>
               <p className="text-muted-foreground text-sm mt-1">{t('app.subtitle')}</p>
@@ -134,9 +135,7 @@ const AppContent = () => {
               👑 {t('login.superadminLogin')}
             </button>
           </div>
-          <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">
-            {t('app.footer')}
-          </p>
+          <LoginFooter />
         </div>
       );
     }

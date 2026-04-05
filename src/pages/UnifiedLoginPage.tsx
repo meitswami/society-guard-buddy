@@ -10,6 +10,7 @@ import { auditLoginSuccess, auditLoginFailed } from '@/lib/auditLogger';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
 import OTPLoginFlow from '@/components/OTPLoginFlow';
+import { LoginFooter } from '@/components/LoginFooter';
 
 interface Props {
   onGuardLogin: () => void;
@@ -161,7 +162,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-36">
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <LanguageToggle />
         <ThemeToggle />
@@ -266,7 +267,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
 
         {loginMode === 'otp' && error && <p className="text-destructive text-sm text-center mt-2">{error}</p>}
       </div>
-      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">{t('app.footer')}</p>
+      <LoginFooter />
       {showResetFlow && (
         <div className="fixed inset-0 z-50 bg-background">
           <PasswordResetFlow userType="resident" onBack={() => setShowResetFlow(false)} />

@@ -6,6 +6,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
+import { LoginFooter } from '@/components/LoginFooter';
 
 interface Props {
   onLogin: (sa: { id: string; name: string; username: string }) => void;
@@ -51,7 +52,7 @@ const SuperadminLoginPage = ({ onLogin, onBack }: Props) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-36">
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <LanguageToggle />
         <ThemeToggle />
@@ -99,10 +100,9 @@ const SuperadminLoginPage = ({ onLogin, onBack }: Props) => {
               ← {t('admin.backToMain')}
             </button>
           )}
-          <p className="text-xs text-muted-foreground text-center mt-4">{t('superadmin.demo')}</p>
         </form>
       </div>
-      <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">{t('app.footer')}</p>
+      <LoginFooter />
     </div>
   );
 };

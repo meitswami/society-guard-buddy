@@ -32,6 +32,9 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.demo': { en: 'Demo: G001 / guard123', hi: 'डेमो: G001 / guard123' },
   'login.guardLogin': { en: 'Guard Login', hi: 'गार्ड लॉगिन' },
   'login.switchToResident': { en: 'Login as Resident →', hi: 'निवासी के रूप में लॉगिन →' },
+  'login.footerPrivacy': { en: 'Privacy Policy', hi: 'गोपनीयता नीति' },
+  'login.footerTerms': { en: 'Terms of Service', hi: 'सेवा की शर्तें' },
+  'login.footerContact': { en: 'Contact Us', hi: 'संपर्क करें' },
 
   // Resident
   'resident.loginTitle': { en: 'Resident Login', hi: 'निवासी लॉगिन' },
