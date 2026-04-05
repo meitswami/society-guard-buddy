@@ -43,11 +43,25 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, loadGuards } = useStore();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [stats, setStats] = useState({ visitors: 0, guards: 0, flats: 0, vehicles: 0, blacklist: 0 });
+  const [kycPending, setKycPending] = useState<{ id: string; name: string; guard_id: string; kyc_alert_days: number; created_at: string }[]>([]);
 
   useEffect(() => {
     loadVisitors(); loadResidentVehicles(); loadBlacklist(); loadFlats(); loadMembers(); loadGuards();
-    loadStats();
+    loadStats(); loadKycPending();
   }, []);
+
+  const loadKycPending = async () => {
+    let q = supabase.from('guards').select('id, name, guard_id, kyc_alert_days, created_at').eq('police_verification', 'pending');
+    if (admin.societyId) q = q.eq('society_id', admin.societyId);
+    const { data } = await q;
+    if (data) {
+      const alerts = data.filter(g => {
+        const daysElapsed = (Date.now() - new Date(g.created_at).getTime()) / (1000 * 60 * 60 * 24);
+        return daysElapsed >= (g.kyc_alert_days || 7);
+      });
+      setKycPending(alerts as any);
+    }
+  };
 
   const loadStats = async () => {
     const sid = admin.societyId;
