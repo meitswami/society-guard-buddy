@@ -2,17 +2,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Phone, ArrowLeft, Loader2, MessageSquare } from 'lucide-react';
 import { FirebaseError } from 'firebase/app';
 import {
+  initializeRecaptchaConfig,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   signOut,
   type ConfirmationResult,
 } from 'firebase/auth';
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase';
-import {
-  executeRecaptchaEnterprise,
-  getRecaptchaEnterpriseSiteKey,
-  loadRecaptchaEnterpriseScript,
-} from '@/lib/recaptchaEnterprise';
 
 interface Props {
   onVerified: (phone: string) => void;
@@ -23,9 +19,7 @@ interface Props {
 
 function formatFirebaseAuthError(err: unknown): string {
   if (err instanceof FirebaseError) {
-    if (import.meta.env.DEV) {
-      console.error('[Firebase Phone Auth]', err.code, err.message);
-    }
+    console.error('[Firebase Phone Auth]', err.code, err.message);
     switch (err.code) {
       case 'auth/invalid-phone-number':
         return 'Invalid phone number.';
@@ -40,8 +34,10 @@ function formatFirebaseAuthError(err: unknown): string {
       case 'auth/captcha-check-failed':
         return 'Security check failed. Refresh the page and try again.';
       case 'auth/invalid-app-credential':
+      case 'auth/invalid-app-credentials':
       case 'auth/missing-client-identifier':
-        return 'App verification failed. In Firebase Console: enable Phone sign-in, add this domain under Authentication → Settings → Authorized domains, and ensure your API key is not over-restricted for Identity Toolkit.';
+      case 'auth/missing-recaptcha-token':
+        return 'App verification failed. Add this exact site to Firebase → Authentication → Settings → Authorized domains (e.g. your-app.vercel.app). In Google Cloud → Credentials, ensure the Browser API key allows Identity Toolkit API. For +91 SMS, allow India in Authentication → Settings → SMS region policy.';
       case 'auth/operation-not-allowed':
         return 'Phone sign-in is disabled. Enable the Phone provider in Firebase Console → Authentication → Sign-in method.';
       case 'auth/billing-not-enabled':
@@ -51,8 +47,8 @@ function formatFirebaseAuthError(err: unknown): string {
       case 'auth/app-not-authorized':
         return 'This app is not authorized to use Firebase Authentication with this key.';
       default:
-        if (err.message && err.message.length < 160) return err.message;
-        return 'Something went wrong. Try again.';
+        if (err.message && err.message.length < 200) return `${err.message} (${err.code})`;
+        return `Something went wrong (${err.code}). Check the browser console and Firebase / Vercel settings.`;
     }
   }
   const code = err && typeof err === 'object' && 'code' in err ? String((err as { code: string }).code) : '';
@@ -72,7 +68,7 @@ function formatFirebaseAuthError(err: unknown): string {
     case 'auth/quota-exceeded':
       return 'SMS quota exceeded. Contact support.';
     default:
-      return 'Something went wrong. Try again.';
+      return code ? `Something went wrong (${code}).` : 'Something went wrong. Try again.';
   }
 }
 
@@ -154,36 +150,27 @@ const OTPLoginFlow = ({ onVerified, onBack, title = 'Login with OTP', subtitle =
     const auth = getFirebaseAuth();
     auth.languageCode = 'en';
 
-    const enterpriseKey = getRecaptchaEnterpriseSiteKey();
-
     try {
+      await initializeRecaptchaConfig(auth).catch(() => {});
+
+      const el = recaptchaContainerRef.current;
+      if (el) el.innerHTML = '';
+
+      const verifier = new RecaptchaVerifier(auth, el ?? 'firebase-phone-recaptcha', {
+        size: 'invisible',
+        callback: () => {},
+        'expired-callback': () => {},
+      });
+
       let confirmation: ConfirmationResult;
-
-      if (enterpriseKey) {
-        await loadRecaptchaEnterpriseScript(enterpriseKey);
-        const enterpriseVerifier = {
-          type: 'recaptcha',
-          verify: () => executeRecaptchaEnterprise(enterpriseKey, 'LOGIN'),
-        };
-        confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, enterpriseVerifier);
-      } else {
-        const el = recaptchaContainerRef.current;
-        if (el) el.innerHTML = '';
-
-        const verifier = new RecaptchaVerifier(auth, el ?? 'firebase-phone-recaptcha', {
-          size: 'invisible',
-          callback: () => {},
-          'expired-callback': () => {},
-        });
+      try {
+        await verifier.render();
+        confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
+      } finally {
         try {
-          await verifier.render();
-          confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
-        } finally {
-          try {
-            verifier.clear();
-          } catch {
-            /* ignore */
-          }
+          verifier.clear();
+        } catch {
+          /* ignore */
         }
       }
 

@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, initializeRecaptchaConfig, type Auth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
@@ -42,4 +42,18 @@ export function getFirebaseApp(): FirebaseApp {
 
 export function getFirebaseAuth(): Auth {
   return getAuth(getFirebaseApp());
+}
+
+/**
+ * Loads reCAPTCHA Enterprise / enforcement config from Firebase for this web app.
+ * Call once on startup (and before phone auth) so the SDK uses the site key linked in
+ * Google Cloud / Firebase, not a mismatched client-side key.
+ */
+export async function initFirebaseRecaptchaConfig(): Promise<void> {
+  if (!isFirebaseConfigured() || typeof window === 'undefined') return;
+  try {
+    await initializeRecaptchaConfig(getFirebaseAuth());
+  } catch {
+    /* SDK retries on first phone auth if this fails */
+  }
 }

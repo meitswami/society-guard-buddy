@@ -10,11 +10,7 @@
 
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
-    <!--
-      reCAPTCHA Enterprise (optional): set VITE_RECAPTCHA_ENTERPRISE_SITE_KEY in .env — the app loads
-      https://www.google.com/recaptcha/enterprise.js?render=<key> and runs grecaptcha.enterprise.execute(..., { action: 'LOGIN' }) before Firebase Phone Auth.
-      Alternatively, you may load the same script here manually (avoid duplicating if using .env).
-    -->
+    <!-- Phone / reCAPTCHA: Firebase JS SDK loads Enterprise config via initializeRecaptchaConfig (see src/lib/firebase.ts). -->
 
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/P1nKa2DN3FYZHZXHfN6HzPpKFr62/social-images/social-1772943118985-Project-Photo-3-EVERGREEN-HEIGHTS-Jaipur-5432445_1194_1379.webp">
