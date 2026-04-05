@@ -685,6 +685,41 @@ export type Database = {
         }
         Relationships: []
       }
+      guard_documents: {
+        Row: {
+          back_url: string | null
+          created_at: string
+          doc_label: string
+          front_url: string | null
+          guard_id: string
+          id: string
+        }
+        Insert: {
+          back_url?: string | null
+          created_at?: string
+          doc_label?: string
+          front_url?: string | null
+          guard_id: string
+          id?: string
+        }
+        Update: {
+          back_url?: string | null
+          created_at?: string
+          doc_label?: string
+          front_url?: string | null
+          guard_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_documents_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "guards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guard_shifts: {
         Row: {
           created_at: string
@@ -714,27 +749,42 @@ export type Database = {
       }
       guards: {
         Row: {
+          auth_mode: string
           created_at: string
           guard_id: string
           id: string
+          kyc_alert_days: number
           name: string
           password: string
+          phone: string | null
+          police_verification: string
+          police_verification_date: string | null
           society_id: string | null
         }
         Insert: {
+          auth_mode?: string
           created_at?: string
           guard_id: string
           id?: string
+          kyc_alert_days?: number
           name: string
           password: string
+          phone?: string | null
+          police_verification?: string
+          police_verification_date?: string | null
           society_id?: string | null
         }
         Update: {
+          auth_mode?: string
           created_at?: string
           guard_id?: string
           id?: string
+          kyc_alert_days?: number
           name?: string
           password?: string
+          phone?: string | null
+          police_verification?: string
+          police_verification_date?: string | null
           society_id?: string | null
         }
         Relationships: [
