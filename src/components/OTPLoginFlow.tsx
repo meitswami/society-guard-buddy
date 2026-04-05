@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Phone, ArrowLeft, Loader2, MessageSquare } from 'lucide-react';
+import { FirebaseError } from 'firebase/app';
 import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
@@ -7,6 +8,11 @@ import {
   type ConfirmationResult,
 } from 'firebase/auth';
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase';
+import {
+  executeRecaptchaEnterprise,
+  getRecaptchaEnterpriseSiteKey,
+  loadRecaptchaEnterpriseScript,
+} from '@/lib/recaptchaEnterprise';
 
 interface Props {
   onVerified: (phone: string) => void;
@@ -16,6 +22,39 @@ interface Props {
 }
 
 function formatFirebaseAuthError(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    if (import.meta.env.DEV) {
+      console.error('[Firebase Phone Auth]', err.code, err.message);
+    }
+    switch (err.code) {
+      case 'auth/invalid-phone-number':
+        return 'Invalid phone number.';
+      case 'auth/missing-phone-number':
+        return 'Enter a valid phone number.';
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Try again later.';
+      case 'auth/invalid-verification-code':
+        return 'Invalid code.';
+      case 'auth/code-expired':
+        return 'Code expired. Request a new one.';
+      case 'auth/captcha-check-failed':
+        return 'Security check failed. Refresh the page and try again.';
+      case 'auth/invalid-app-credential':
+      case 'auth/missing-client-identifier':
+        return 'App verification failed. In Firebase Console: enable Phone sign-in, add this domain under Authentication → Settings → Authorized domains, and ensure your API key is not over-restricted for Identity Toolkit.';
+      case 'auth/operation-not-allowed':
+        return 'Phone sign-in is disabled. Enable the Phone provider in Firebase Console → Authentication → Sign-in method.';
+      case 'auth/billing-not-enabled':
+        return 'SMS requires the Firebase project on a billing-enabled (Blaze) plan.';
+      case 'auth/quota-exceeded':
+        return 'SMS quota exceeded. Contact support.';
+      case 'auth/app-not-authorized':
+        return 'This app is not authorized to use Firebase Authentication with this key.';
+      default:
+        if (err.message && err.message.length < 160) return err.message;
+        return 'Something went wrong. Try again.';
+    }
+  }
   const code = err && typeof err === 'object' && 'code' in err ? String((err as { code: string }).code) : '';
   switch (code) {
     case 'auth/invalid-phone-number':
@@ -29,7 +68,7 @@ function formatFirebaseAuthError(err: unknown): string {
     case 'auth/code-expired':
       return 'Code expired. Request a new one.';
     case 'auth/captcha-check-failed':
-      return 'Security check failed. Try again.';
+      return 'Security check failed. Refresh the page and try again.';
     case 'auth/quota-exceeded':
       return 'SMS quota exceeded. Contact support.';
     default:
@@ -46,6 +85,7 @@ const OTPLoginFlow = ({ onVerified, onBack, title = 'Login with OTP', subtitle =
   const [countdown, setCountdown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const confirmationRef = useRef<ConfirmationResult | null>(null);
+  const recaptchaContainerRef = useRef<HTMLDivElement | null>(null);
 
   const handleVerifyOtp = useCallback(
     async (otpCode: string) => {
@@ -112,10 +152,41 @@ const OTPLoginFlow = ({ onVerified, onBack, title = 'Login with OTP', subtitle =
     confirmationRef.current = null;
 
     const auth = getFirebaseAuth();
-    const verifier = new RecaptchaVerifier(auth, 'firebase-phone-recaptcha', { size: 'invisible' });
+    auth.languageCode = 'en';
+
+    const enterpriseKey = getRecaptchaEnterpriseSiteKey();
 
     try {
-      const confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
+      let confirmation: ConfirmationResult;
+
+      if (enterpriseKey) {
+        await loadRecaptchaEnterpriseScript(enterpriseKey);
+        const enterpriseVerifier = {
+          type: 'recaptcha',
+          verify: () => executeRecaptchaEnterprise(enterpriseKey, 'LOGIN'),
+        };
+        confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, enterpriseVerifier);
+      } else {
+        const el = recaptchaContainerRef.current;
+        if (el) el.innerHTML = '';
+
+        const verifier = new RecaptchaVerifier(auth, el ?? 'firebase-phone-recaptcha', {
+          size: 'invisible',
+          callback: () => {},
+          'expired-callback': () => {},
+        });
+        try {
+          await verifier.render();
+          confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
+        } finally {
+          try {
+            verifier.clear();
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
       confirmationRef.current = confirmation;
       setStep('otp');
       setOtp(['', '', '', '', '', '']);
@@ -124,11 +195,6 @@ const OTPLoginFlow = ({ onVerified, onBack, title = 'Login with OTP', subtitle =
     } catch (err: unknown) {
       setError(formatFirebaseAuthError(err));
     } finally {
-      try {
-        verifier.clear();
-      } catch {
-        /* ignore */
-      }
       setLoading(false);
     }
   };
@@ -174,7 +240,16 @@ const OTPLoginFlow = ({ onVerified, onBack, title = 'Login with OTP', subtitle =
 
   return (
     <div className="w-full max-w-sm mx-auto">
-      <div id="firebase-phone-recaptcha" className="sr-only" aria-hidden="true" />
+      {/*
+        Invisible reCAPTCHA injects iframes; Tailwind `sr-only` clips content and breaks verification.
+        Keep a real-sized container off-screen (Firebase may send captchaResponse / Enterprise token in the network payload).
+      */}
+      <div
+        ref={recaptchaContainerRef}
+        id="firebase-phone-recaptcha"
+        className="pointer-events-none fixed left-[-10000px] top-0 h-[78px] w-[304px] overflow-visible"
+        aria-hidden="true"
+      />
 
       {step === 'phone' ? (
         <div className="flex flex-col gap-4">
