@@ -742,7 +742,11 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         )}
 
         {tab === 'notifications' && (
-          <NotificationCenter isResident flatNumber={resident.flatNumber} />
+          <NotificationCenter
+            isResident
+            flatNumber={resident.flatNumber}
+            resident={{ id: resident.id, name: resident.name, flatNumber: resident.flatNumber }}
+          />
         )}
 
         {tab === 'polls' && (

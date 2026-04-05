@@ -22,12 +22,14 @@ import SettingsPage from '@/pages/SettingsPage';
 import BottomNav from '@/components/BottomNav';
 import { LoginFooter } from '@/components/LoginFooter';
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
+import { useGuardGeofenceMonitor } from '@/hooks/useGuardGeofenceMonitor';
 
 type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 
 const AppContent = () => {
   const { currentGuard, theme, setSocietyId, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
   const { t } = useLanguage();
+  useGuardGeofenceMonitor(currentGuard);
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loaded, setLoaded] = useState(false);

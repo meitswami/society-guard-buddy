@@ -20,7 +20,7 @@ serve(async (req) => {
       });
     }
 
-    const { title, message, target_type, target_ids, target_flat_numbers } = await req.json();
+    const { title, message, target_type, target_ids, target_flat_numbers, media_items } = await req.json();
 
     if (!title || !message) {
       return new Response(JSON.stringify({ error: 'Title and message required' }), {
@@ -29,11 +29,24 @@ serve(async (req) => {
     }
 
     // Build OneSignal payload based on target
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       app_id: ONESIGNAL_APP_ID,
       headings: { en: title },
       contents: { en: message },
     };
+
+    if (Array.isArray(media_items) && media_items.length > 0) {
+      const firstImage = media_items.find((m: { kind?: string; url?: string }) => m?.kind === 'image' && m?.url);
+      const firstVideo = media_items.find((m: { kind?: string; url?: string }) => m?.kind === 'video' && m?.url);
+      const thumb = firstImage?.url || firstVideo?.url;
+      if (thumb) {
+        (payload as { big_picture?: string }).big_picture = thumb;
+      }
+      (payload as { data?: Record<string, string> }).data = {
+        media_count: String(media_items.length),
+        has_video: media_items.some((m: { kind?: string }) => m?.kind === 'video') ? '1' : '0',
+      };
+    }
 
     if (target_type === 'all') {
       // Send to all subscribed users

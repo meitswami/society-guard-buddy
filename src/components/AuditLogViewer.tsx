@@ -30,6 +30,7 @@ const eventLabels: Record<string, string> = {
   password_reset: '🔄 Password Reset',
   logout: '🚪 Logout',
   biometric_register: '👆 Biometric Registered',
+  geofence_violation: '📍 Geofence / Location breach',
 };
 
 const AuditLogViewer = () => {
@@ -109,6 +110,7 @@ const AuditLogViewer = () => {
           <option value="password_reset">Password Reset</option>
           <option value="logout">Logout</option>
           <option value="biometric_register">Biometric</option>
+          <option value="geofence_violation">Geofence / Location</option>
         </select>
       </div>
 

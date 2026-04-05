@@ -967,6 +967,7 @@ export type Database = {
           id: string
           is_read: boolean
           message: string
+          media_items: unknown
           society_id: string | null
           target_id: string | null
           target_type: string
@@ -979,6 +980,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message: string
+          media_items?: unknown
           society_id?: string | null
           target_id?: string | null
           target_type?: string
@@ -991,6 +993,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message?: string
+          media_items?: unknown
           society_id?: string | null
           target_id?: string | null
           target_type?: string
@@ -1003,6 +1006,47 @@ export type Database = {
             columns: ["society_id"]
             isOneToOne: false
             referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_comments: {
+        Row: {
+          author_flat_number: string | null
+          author_name: string
+          author_resident_id: string | null
+          author_role: string
+          body: string
+          created_at: string
+          id: string
+          notification_id: string
+        }
+        Insert: {
+          author_flat_number?: string | null
+          author_name: string
+          author_resident_id?: string | null
+          author_role?: string
+          body: string
+          created_at?: string
+          id?: string
+          notification_id: string
+        }
+        Update: {
+          author_flat_number?: string | null
+          author_name?: string
+          author_resident_id?: string | null
+          author_role?: string
+          body?: string
+          created_at?: string
+          id?: string
+          notification_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_comments_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
             referencedColumns: ["id"]
           },
         ]

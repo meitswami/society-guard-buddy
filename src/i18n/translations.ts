@@ -36,6 +36,16 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.footerTerms': { en: 'Terms of Service', hi: 'सेवा की शर्तें' },
   'login.footerContact': { en: 'Contact Us', hi: 'संपर्क करें' },
 
+  // Guard (in-session)
+  'guard.geofenceLeftZone': {
+    en: 'You are taking the phone outside the geofencing zone. Please return to the allowed area.',
+    hi: 'आप फोन को जियोफ़ेंसिंग ज़ोन से बाहर ले जा रहे हैं। कृपया अनुमत क्षेत्र में लौटें।',
+  },
+  'guard.geofenceLocationOff': {
+    en: 'Location is off or unavailable. Turn location on to stay within the guard geofencing zone.',
+    hi: 'लोकेशन बंद है या उपलब्ध नहीं। गार्ड जियोफ़ेंस ज़ोन में रहने के लिए लोकेशन चालू करें।',
+  },
+
   // Resident
   'resident.loginTitle': { en: 'Resident Login', hi: 'निवासी लॉगिन' },
   'resident.loginSubtitle': { en: 'Login with your registered phone number', hi: 'अपने पंजीकृत फोन नंबर से लॉगिन करें' },

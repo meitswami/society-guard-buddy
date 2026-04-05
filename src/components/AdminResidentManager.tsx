@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
@@ -6,6 +6,7 @@ import { Plus, Trash2, Edit2, Search, Users, Home, ChevronDown, ChevronUp, Car, 
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import { generateFlatPassword } from '@/lib/passwordGenerator';
+import { floorLabelFromFlatNumber } from '@/lib/flatFloor';
 import type { Flat, Member, ResidentVehicle } from '@/types';
 
 type ViewTab = 'flats' | 'addFlat';
@@ -30,6 +31,10 @@ const AdminResidentManager = () => {
   const [showMemberForm, setShowMemberForm] = useState<string | null>(null);
   const [memberForm, setMemberForm] = useState({ name: '', phone: '', relation: 'family', age: '', gender: 'Male', isPrimary: false });
   const [editingMember, setEditingMember] = useState<string | null>(null);
+
+  const floorFieldTouched = useRef(false);
+  const [flatMetaEditId, setFlatMetaEditId] = useState<string | null>(null);
+  const [flatMetaForm, setFlatMetaForm] = useState({ floor: '', wing: '', intercom: '' });
 
   useEffect(() => { loadFlats(); loadMembers(); loadResidentVehicles(); loadResidentUsers(); }, []);
 
@@ -63,9 +68,12 @@ const AdminResidentManager = () => {
     const existing = flats.find(f => f.flatNumber === flatForm.flat_number);
     if (existing) { toast.error('Flat number already exists'); return; }
 
+    const suggested = floorLabelFromFlatNumber(flatForm.flat_number);
+    const floorValue = (flatForm.floor.trim() || suggested || '').trim() || null;
+
     await supabase.from('flats').insert({
       flat_number: flatForm.flat_number,
-      floor: flatForm.floor || null,
+      floor: floorValue,
       wing: flatForm.wing || null,
       flat_type: 'residential',
       owner_name: flatForm.owner_name || null,
@@ -76,8 +84,43 @@ const AdminResidentManager = () => {
     });
 
     toast.success('Flat added successfully');
+    floorFieldTouched.current = false;
     setFlatForm({ flat_number: '', floor: '', wing: 'A', owner_name: '', owner_phone: '', intercom: '' });
     setViewTab('flats');
+    loadFlats();
+  };
+
+  const openAddFlatTab = () => {
+    if (viewTab !== 'addFlat') {
+      floorFieldTouched.current = false;
+      setFlatForm({ flat_number: '', floor: '', wing: 'A', owner_name: '', owner_phone: '', intercom: '' });
+    }
+    setViewTab(viewTab === 'addFlat' ? 'flats' : 'addFlat');
+  };
+
+  const startFlatMetaEdit = (f: Flat) => {
+    setFlatMetaEditId(f.id);
+    setFlatMetaForm({
+      floor: f.floor || '',
+      wing: f.wing || '',
+      intercom: f.intercom || '',
+    });
+  };
+
+  const cancelFlatMetaEdit = () => setFlatMetaEditId(null);
+
+  const saveFlatMeta = async () => {
+    if (!flatMetaEditId) return;
+    await supabase
+      .from('flats')
+      .update({
+        floor: flatMetaForm.floor.trim() || null,
+        wing: flatMetaForm.wing.trim() || null,
+        intercom: flatMetaForm.intercom.trim() || null,
+      })
+      .eq('id', flatMetaEditId);
+    toast.success('Flat details updated');
+    setFlatMetaEditId(null);
     loadFlats();
   };
 
@@ -245,7 +288,7 @@ const AdminResidentManager = () => {
           <Users className="w-5 h-5 text-primary" />
           <h2 className="font-semibold">{t('admin.manageResidents')}</h2>
         </div>
-        <button onClick={() => setViewTab(viewTab === 'addFlat' ? 'flats' : 'addFlat')}
+        <button onClick={openAddFlatTab}
           className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">
           <Plus className="w-3.5 h-3.5" /> Add Flat
         </button>
@@ -255,17 +298,67 @@ const AdminResidentManager = () => {
       {viewTab === 'addFlat' && (
         <div className="card-section p-4 mb-4 space-y-3">
           <p className="text-sm font-semibold">Add New Flat</p>
+          <p className="text-[11px] text-muted-foreground leading-snug">
+            Floor is filled automatically for 3-digit flats (101–199 → 1st Floor, … 601–699 → 6th Floor). Change it anytime for your society’s numbering.
+          </p>
           <div className="grid grid-cols-2 gap-3">
-            <input className="input-field" placeholder="Flat No. (e.g. 607)" value={flatForm.flat_number} onChange={e => setFlatForm({...flatForm, flat_number: e.target.value})} />
-            <input className="input-field" placeholder="Floor (e.g. 5th)" value={flatForm.floor} onChange={e => setFlatForm({...flatForm, floor: e.target.value})} />
-            <input className="input-field" placeholder="Wing" value={flatForm.wing} onChange={e => setFlatForm({...flatForm, wing: e.target.value})} />
-            <input className="input-field" placeholder="Owner Name" value={flatForm.owner_name} onChange={e => setFlatForm({...flatForm, owner_name: e.target.value})} />
-            <input className="input-field" placeholder="Owner Phone" value={flatForm.owner_phone} onChange={e => setFlatForm({...flatForm, owner_phone: e.target.value})} />
-            <input className="input-field" placeholder="Intercom" value={flatForm.intercom} onChange={e => setFlatForm({...flatForm, intercom: e.target.value})} />
+            <div className="col-span-2 sm:col-span-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block mb-1">Flat no. *</label>
+              <input
+                className="input-field"
+                placeholder="e.g. 103, 607"
+                value={flatForm.flat_number}
+                onChange={e => {
+                  const v = e.target.value;
+                  const sug = floorLabelFromFlatNumber(v);
+                  setFlatForm(prev => ({
+                    ...prev,
+                    flat_number: v,
+                    floor: floorFieldTouched.current ? prev.floor : (sug ?? (v.trim() ? prev.floor : '')),
+                  }));
+                }}
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block mb-1">Floor</label>
+              <input
+                className="input-field"
+                placeholder="Auto or e.g. Ground, 1st Floor"
+                value={flatForm.floor}
+                onChange={e => {
+                  floorFieldTouched.current = true;
+                  setFlatForm({ ...flatForm, floor: e.target.value });
+                }}
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block mb-1">Wing</label>
+              <input className="input-field" placeholder="e.g. A" value={flatForm.wing} onChange={e => setFlatForm({ ...flatForm, wing: e.target.value })} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block mb-1">Primary / owner name</label>
+              <input className="input-field" placeholder="Owner name" value={flatForm.owner_name} onChange={e => setFlatForm({ ...flatForm, owner_name: e.target.value })} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block mb-1">Owner phone</label>
+              <input className="input-field" placeholder="For resident login" value={flatForm.owner_phone} onChange={e => setFlatForm({ ...flatForm, owner_phone: e.target.value })} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block mb-1">Intercom</label>
+              <input className="input-field" placeholder="Optional" value={flatForm.intercom} onChange={e => setFlatForm({ ...flatForm, intercom: e.target.value })} />
+            </div>
           </div>
           <div className="flex gap-2">
             <button onClick={saveFlat} className="btn-primary flex-1">Add Flat</button>
-            <button onClick={() => setViewTab('flats')} className="btn-secondary flex-1">{t('common.cancel')}</button>
+            <button
+              onClick={() => {
+                floorFieldTouched.current = false;
+                setViewTab('flats');
+              }}
+              className="btn-secondary flex-1"
+            >
+              {t('common.cancel')}
+            </button>
           </div>
         </div>
       )}
@@ -300,7 +393,14 @@ const AdminResidentManager = () => {
             return (
               <div key={flat.id} className="card-section">
                 <button type="button" className="w-full flex items-center gap-3 text-left p-3"
-                  onClick={() => setExpandedFlat(isExpanded ? null : flat.id)}>
+                  onClick={() => {
+                    if (isExpanded) {
+                      setExpandedFlat(null);
+                      if (flatMetaEditId === flat.id) setFlatMetaEditId(null);
+                    } else {
+                      setExpandedFlat(flat.id);
+                    }
+                  }}>
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${flat.isOccupied ? 'bg-primary/10' : 'bg-muted'}`}>
                     <Home className={`w-5 h-5 ${flat.isOccupied ? 'text-primary' : 'text-muted-foreground'}`} />
                   </div>
@@ -321,17 +421,66 @@ const AdminResidentManager = () => {
                 {isExpanded && (
                   <div className="px-3 pb-3 border-t border-border space-y-3 pt-3">
                     {/* Flat details */}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div><span className="text-muted-foreground">Floor:</span> <span className="font-medium">{flat.floor || '-'}</span></div>
-                      <div><span className="text-muted-foreground">Type:</span> <span className="font-medium capitalize">{flat.flatType}</span></div>
-                      {flat.intercom && <div><span className="text-muted-foreground">Intercom:</span> <span className="font-mono font-medium">{flat.intercom}</span></div>}
-                      {flat.ownerPhone && (
-                        <div className="flex items-center gap-1">
-                          <Phone className="w-3 h-3 text-muted-foreground" />
-                          <a href={`tel:${flat.ownerPhone}`} className="font-mono font-medium text-primary">{flat.ownerPhone}</a>
+                    {flatMetaEditId === flat.id ? (
+                      <div className="space-y-2 rounded-lg bg-secondary/30 p-3">
+                        <p className="text-xs font-semibold">Edit flat / floor</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="col-span-2 sm:col-span-1">
+                            <label className="text-[10px] text-muted-foreground block mb-0.5">Floor</label>
+                            <input
+                              className="input-field text-xs"
+                              value={flatMetaForm.floor}
+                              onChange={e => setFlatMetaForm(f => ({ ...f, floor: e.target.value }))}
+                              placeholder="e.g. 1st Floor, Ground"
+                            />
+                          </div>
+                          <div className="col-span-2 sm:col-span-1">
+                            <label className="text-[10px] text-muted-foreground block mb-0.5">Wing</label>
+                            <input
+                              className="input-field text-xs"
+                              value={flatMetaForm.wing}
+                              onChange={e => setFlatMetaForm(f => ({ ...f, wing: e.target.value }))}
+                              placeholder="Wing"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="text-[10px] text-muted-foreground block mb-0.5">Intercom</label>
+                            <input
+                              className="input-field text-xs"
+                              value={flatMetaForm.intercom}
+                              onChange={e => setFlatMetaForm(f => ({ ...f, intercom: e.target.value }))}
+                              placeholder="Intercom"
+                            />
+                          </div>
                         </div>
-                      )}
-                    </div>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={saveFlatMeta} className="btn-primary text-xs py-1.5 flex-1">Save</button>
+                          <button type="button" onClick={cancelFlatMetaEdit} className="btn-secondary text-xs py-1.5 flex-1">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div><span className="text-muted-foreground">Floor:</span> <span className="font-medium">{flat.floor || '-'}</span></div>
+                          <div><span className="text-muted-foreground">Type:</span> <span className="font-medium capitalize">{flat.flatType}</span></div>
+                          {flat.wing && <div><span className="text-muted-foreground">Wing:</span> <span className="font-medium">{flat.wing}</span></div>}
+                          {flat.intercom && <div className="col-span-2"><span className="text-muted-foreground">Intercom:</span> <span className="font-mono font-medium">{flat.intercom}</span></div>}
+                          {flat.ownerPhone && (
+                            <div className="col-span-2 flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-muted-foreground" />
+                              <a href={`tel:${flat.ownerPhone}`} className="font-mono font-medium text-primary">{flat.ownerPhone}</a>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => startFlatMetaEdit(flat)}
+                          className="self-start text-[10px] font-medium text-primary hover:underline"
+                        >
+                          Edit floor / wing / intercom
+                        </button>
+                      </div>
+                    )}
 
                     {/* Login Credentials */}
                     {flatLogins.length > 0 && (
