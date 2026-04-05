@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, Eye, EyeOff, Fingerprint } from 'lucide-react';
+import { Shield, Eye, EyeOff, Fingerprint, Phone } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -9,6 +9,7 @@ import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed } from '@/lib/auditLogger';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
+import OTPLoginFlow from '@/components/OTPLoginFlow';
 
 interface Props {
   onGuardLogin: () => void;
@@ -28,6 +29,7 @@ function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numbe
 const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuperadminLogin }: Props) => {
   const { t } = useLanguage();
   const { login, setSocietyId, loadGuards } = useStore();
+  const [loginMode, setLoginMode] = useState<'credentials' | 'otp'>('otp');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -61,7 +63,40 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     });
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // OTP verified - lookup resident or guard by phone
+  const handleOtpVerified = async (phone: string) => {
+    // Try resident first
+    const { data: resident } = await supabase.from('resident_users').select('*').eq('phone', phone).single();
+    if (resident) {
+      auditLoginSuccess('resident', resident.id, resident.name);
+      registerOneSignalUser({ userType: 'resident', userId: resident.id, userName: resident.name, flatNumber: resident.flat_number });
+      promptPushPermission();
+      await setSocietyFromFlat(resident.flat_id);
+      onResidentLogin({ id: resident.id, name: resident.name, phone: resident.phone, flatId: resident.flat_id, flatNumber: resident.flat_number });
+      return;
+    }
+
+    // Try guard with OTP auth mode
+    const { data: guard } = await supabase.from('guards').select('*').eq('phone', phone).eq('auth_mode', 'otp').single();
+    if (guard) {
+      const withinFence = await checkGeofence();
+      if (!withinFence) { setError(t('admin.geofenceBlocked')); return; }
+      if (guard.society_id) setSocietyId(guard.society_id);
+      await loadGuards();
+      const success = await login(guard.guard_id, guard.password);
+      if (success) {
+        auditLoginSuccess('guard', guard.guard_id, guard.name);
+        registerOneSignalUser({ userType: 'guard', userId: guard.guard_id, userName: guard.name });
+        promptPushPermission();
+        onGuardLogin();
+      }
+      return;
+    }
+
+    setError('No account found for this phone number. Contact your admin.');
+  };
+
+  const handleCredentialLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!identifier || !password) { setError(t('login.enterBoth')); return; }
@@ -69,7 +104,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
 
     const id = identifier.trim();
 
-    // 1. Try Superadmin
+    // 1. Superadmin
     const { data: sa } = await supabase.from('super_admins').select('*').eq('username', id).eq('password', password).single();
     if (sa) {
       auditLoginSuccess('superadmin', sa.id, sa.name);
@@ -78,7 +113,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       return;
     }
 
-    // 2. Try Admin (by admin_id)
+    // 2. Admin
     const { data: admin } = await supabase.from('admins').select('*').eq('admin_id', id.toUpperCase()).eq('password', password).single();
     if (admin) {
       auditLoginSuccess('admin', admin.id, admin.name);
@@ -88,15 +123,11 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       return;
     }
 
-    // 3. Try Guard (by guard_id)
+    // 3. Guard (password mode)
     const { data: guard } = await supabase.from('guards').select('*').eq('guard_id', id.toUpperCase()).eq('password', password).single();
     if (guard) {
       const withinFence = await checkGeofence();
-      if (!withinFence) {
-        setError(t('admin.geofenceBlocked'));
-        setLoading(false);
-        return;
-      }
+      if (!withinFence) { setError(t('admin.geofenceBlocked')); setLoading(false); return; }
       if (guard.society_id) setSocietyId(guard.society_id);
       await loadGuards();
       const success = await login(guard.guard_id, guard.password);
@@ -112,7 +143,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       return;
     }
 
-    // 4. Try Resident (by phone)
+    // 4. Resident (password)
     const { data: resident } = await supabase.from('resident_users').select('*').eq('phone', id).eq('password', password).single();
     if (resident) {
       auditLoginSuccess('resident', resident.id, resident.name);
@@ -124,7 +155,6 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       return;
     }
 
-    // None matched
     auditLoginFailed('guard', id);
     setError(t('login.invalidCredentials'));
     setLoading(false);
@@ -137,7 +167,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
         <ThemeToggle />
       </div>
       <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
             <Shield className="w-8 h-8 text-primary" />
           </div>
@@ -145,64 +175,96 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
           <p className="text-muted-foreground text-xs mt-1">{t('app.subtitle')}</p>
         </div>
 
-        {bioAvailable && (
-          <button onClick={async () => {
-            setError('');
-            const result = await authenticate('guard');
-            if (!result) {
-              const resResult = await authenticate('resident');
-              if (!resResult) { setError(t('biometric.notRegistered')); return; }
-              const { data } = await supabase.from('resident_users').select('*').eq('id', resResult.userId).single();
-              if (!data) { setError(t('login.invalidCredentials')); return; }
-              await setSocietyFromFlat(data.flat_id);
-              onResidentLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
-              return;
-            }
-            const { data } = await supabase.from('guards').select('*').eq('id', result.userId).single();
-            if (!data) { setError(t('login.invalidCredentials')); return; }
-            if (data.society_id) setSocietyId(data.society_id);
-            await loadGuards();
-            const withinFence = await checkGeofence();
-            if (!withinFence) { setError(t('admin.geofenceBlocked')); return; }
-            const success = await login(data.guard_id, data.password);
-            if (success) onGuardLogin();
-          }} disabled={bioLoading}
-            className="w-full mb-4 py-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-1 hover:bg-primary/10 transition-colors">
-            <Fingerprint className="w-7 h-7 text-primary" />
-            <span className="text-xs font-medium text-primary">{t('biometric.loginButton')}</span>
+        {/* Mode Toggle */}
+        <div className="flex gap-1 p-1 bg-muted rounded-xl mb-4">
+          <button
+            onClick={() => { setLoginMode('otp'); setError(''); }}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+              loginMode === 'otp' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            <Phone className="w-3.5 h-3.5" /> OTP Login
           </button>
+          <button
+            onClick={() => { setLoginMode('credentials'); setError(''); }}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+              loginMode === 'credentials' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" /> ID & Password
+          </button>
+        </div>
+
+        {loginMode === 'otp' ? (
+          <OTPLoginFlow
+            onVerified={handleOtpVerified}
+            title="Login with OTP"
+            subtitle="Residents & OTP-enabled guards"
+          />
+        ) : (
+          <>
+            {bioAvailable && (
+              <button onClick={async () => {
+                setError('');
+                const result = await authenticate('guard');
+                if (!result) {
+                  const resResult = await authenticate('resident');
+                  if (!resResult) { setError(t('biometric.notRegistered')); return; }
+                  const { data } = await supabase.from('resident_users').select('*').eq('id', resResult.userId).single();
+                  if (!data) { setError(t('login.invalidCredentials')); return; }
+                  await setSocietyFromFlat(data.flat_id);
+                  onResidentLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
+                  return;
+                }
+                const { data } = await supabase.from('guards').select('*').eq('id', result.userId).single();
+                if (!data) { setError(t('login.invalidCredentials')); return; }
+                if (data.society_id) setSocietyId(data.society_id);
+                await loadGuards();
+                const withinFence = await checkGeofence();
+                if (!withinFence) { setError(t('admin.geofenceBlocked')); return; }
+                const success = await login(data.guard_id, data.password);
+                if (success) onGuardLogin();
+              }} disabled={bioLoading}
+                className="w-full mb-4 py-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-1 hover:bg-primary/10 transition-colors">
+                <Fingerprint className="w-7 h-7 text-primary" />
+                <span className="text-xs font-medium text-primary">{t('biometric.loginButton')}</span>
+              </button>
+            )}
+
+            <form onSubmit={handleCredentialLogin} className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">
+                  ID / Phone / Username
+                </label>
+                <input className="input-field font-mono" placeholder="Guard ID, Admin ID, Phone..."
+                  value={identifier} onChange={e => setIdentifier(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">{t('login.password')}</label>
+                <div className="relative">
+                  <input className="input-field pr-10" type={showPassword ? 'text' : 'password'}
+                    placeholder={t('login.passwordPlaceholder')} value={password} onChange={e => setPassword(e.target.value)} />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center">
+                Guards, Admins & Superadmins
+              </p>
+              {error && <p className="text-destructive text-sm text-center">{error}</p>}
+              <button type="submit" className="btn-primary mt-1" disabled={loading}>
+                {loading ? t('login.loggingIn') : 'Login'}
+              </button>
+              <button type="button" className="text-xs text-primary text-center mt-1 underline" onClick={() => setShowResetFlow(true)}>
+                Forgot Password?
+              </button>
+            </form>
+          </>
         )}
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">
-              ID / Phone / Username
-            </label>
-            <input className="input-field font-mono" placeholder="Guard ID, Phone, Admin ID..."
-              value={identifier} onChange={e => setIdentifier(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">{t('login.password')}</label>
-            <div className="relative">
-              <input className="input-field pr-10" type={showPassword ? 'text' : 'password'}
-                placeholder={t('login.passwordPlaceholder')} value={password} onChange={e => setPassword(e.target.value)} />
-              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground text-center">
-            Enter your Guard ID, Admin ID, Phone Number, or Username
-          </p>
-          {error && <p className="text-destructive text-sm text-center">{error}</p>}
-          <button type="submit" className="btn-primary mt-1" disabled={loading}>
-            {loading ? t('login.loggingIn') : 'Login'}
-          </button>
-          <button type="button" className="text-xs text-primary text-center mt-1 underline" onClick={() => setShowResetFlow(true)}>
-            Forgot Password?
-          </button>
-        </form>
+        {loginMode === 'otp' && error && <p className="text-destructive text-sm text-center mt-2">{error}</p>}
       </div>
       <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">{t('app.footer')}</p>
       {showResetFlow && (

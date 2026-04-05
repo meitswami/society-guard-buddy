@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Eye, EyeOff, Fingerprint } from 'lucide-react';
+import { Shield, Eye, EyeOff, Fingerprint, Phone } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
+import OTPLoginFlow from '@/components/OTPLoginFlow';
 
 interface Props {
   onSwitchToResident?: () => void;
@@ -23,6 +24,7 @@ function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 const LoginPage = ({ onSwitchToResident }: Props) => {
   const { t } = useLanguage();
+  const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
   const [guardId, setGuardId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,9 +34,7 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
   const { isAvailable, authenticate, loading: bioLoading } = useBiometric();
   const [bioAvailable, setBioAvailable] = useState(false);
 
-  useEffect(() => {
-    isAvailable().then(setBioAvailable);
-  }, []);
+  useEffect(() => { isAvailable().then(setBioAvailable); }, []);
 
   const checkGeofence = (): Promise<boolean> => {
     return new Promise(async (resolve) => {
@@ -54,6 +54,29 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     });
   };
 
+  const handleOtpVerified = async (phone: string) => {
+    const { data: guard } = await supabase.from('guards').select('*').eq('phone', phone).eq('auth_mode', 'otp').single();
+    if (!guard) { setError('No guard with OTP login found for this phone.'); return; }
+
+    setLoading(true);
+    setError(t('admin.gettingLocation'));
+    const withinFence = await checkGeofence();
+    if (!withinFence) { setLoading(false); return; }
+    setError('');
+
+    if (guard.society_id) setSocietyId(guard.society_id);
+    await loadGuards();
+    const success = await login(guard.guard_id, guard.password);
+    setLoading(false);
+    if (success) {
+      auditLoginSuccess('guard', guard.guard_id, guard.name);
+      registerOneSignalUser({ userType: 'guard', userId: guard.guard_id, userName: guard.name });
+      promptPushPermission();
+    } else {
+      setError(t('login.invalidCredentials'));
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -64,7 +87,6 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     if (!withinFence) { setLoading(false); return; }
     setError('');
 
-    // Look up guard to get society_id
     const { data: guardData } = await supabase.from('guards').select('*').eq('guard_id', guardId.toUpperCase()).eq('password', password).single();
     if (!guardData) {
       auditLoginFailed('guard', guardId.toUpperCase());
@@ -73,10 +95,7 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
       return;
     }
 
-    // Set society scope before loading guards
-    if (guardData.society_id) {
-      setSocietyId(guardData.society_id);
-    }
+    if (guardData.society_id) setSocietyId(guardData.society_id);
     await loadGuards();
 
     const success = await login(guardData.guard_id, guardData.password);
@@ -98,9 +117,7 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     const { data } = await supabase.from('guards').select('*').eq('id', result.userId).single();
     if (!data) { setError(t('login.invalidCredentials')); return; }
 
-    if (data.society_id) {
-      setSocietyId(data.society_id);
-    }
+    if (data.society_id) setSocietyId(data.society_id);
     await loadGuards();
 
     setLoading(true);
@@ -125,7 +142,7 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
         <ThemeToggle />
       </div>
       <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-10">
+        <div className="flex flex-col items-center mb-8">
           <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Shield className="w-10 h-10 text-primary" />
           </div>
@@ -133,42 +150,72 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
           <p className="text-muted-foreground text-sm mt-1">{t('login.guardLogin')}</p>
         </div>
 
-        {bioAvailable && (
-          <button onClick={handleBiometricLogin} disabled={bioLoading}
-            className="w-full mb-4 py-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-2 hover:bg-primary/10 transition-colors">
-            <Fingerprint className="w-8 h-8 text-primary" />
-            <span className="text-sm font-medium text-primary">{t('biometric.loginButton')}</span>
+        {/* Mode Toggle */}
+        <div className="flex gap-1 p-1 bg-muted rounded-xl mb-4">
+          <button onClick={() => { setLoginMode('password'); setError(''); }}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+              loginMode === 'password' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+            }`}>
+            <Shield className="w-3.5 h-3.5" /> Password
           </button>
+          <button onClick={() => { setLoginMode('otp'); setError(''); }}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+              loginMode === 'otp' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+            }`}>
+            <Phone className="w-3.5 h-3.5" /> OTP
+          </button>
+        </div>
+
+        {loginMode === 'otp' ? (
+          <>
+            <OTPLoginFlow
+              onVerified={handleOtpVerified}
+              title="Guard OTP Login"
+              subtitle="Enter your registered phone number"
+            />
+            {error && <p className="text-destructive text-sm text-center mt-2">{error}</p>}
+          </>
+        ) : (
+          <>
+            {bioAvailable && (
+              <button onClick={handleBiometricLogin} disabled={bioLoading}
+                className="w-full mb-4 py-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-2 hover:bg-primary/10 transition-colors">
+                <Fingerprint className="w-8 h-8 text-primary" />
+                <span className="text-sm font-medium text-primary">{t('biometric.loginButton')}</span>
+              </button>
+            )}
+
+            <form onSubmit={handleLogin} className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('login.guardId')}</label>
+                <input className="input-field font-mono uppercase" placeholder={t('login.guardIdPlaceholder')}
+                  value={guardId} onChange={e => setGuardId(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('login.password')}</label>
+                <div className="relative">
+                  <input className="input-field pr-10" type={showPassword ? 'text' : 'password'}
+                    placeholder={t('login.passwordPlaceholder')} value={password} onChange={e => setPassword(e.target.value)} />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              {error && <p className="text-destructive text-sm text-center">{error}</p>}
+              <button type="submit" className="btn-primary mt-2" disabled={loading}>
+                {loading ? t('login.loggingIn') : t('login.startShift')}
+              </button>
+            </form>
+          </>
         )}
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('login.guardId')}</label>
-            <input className="input-field font-mono uppercase" placeholder={t('login.guardIdPlaceholder')}
-              value={guardId} onChange={e => setGuardId(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('login.password')}</label>
-            <div className="relative">
-              <input className="input-field pr-10" type={showPassword ? 'text' : 'password'}
-                placeholder={t('login.passwordPlaceholder')} value={password} onChange={e => setPassword(e.target.value)} />
-              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          {error && <p className="text-destructive text-sm text-center">{error}</p>}
-          <button type="submit" className="btn-primary mt-2" disabled={loading}>
-            {loading ? t('login.loggingIn') : t('login.startShift')}
+        {onSwitchToResident && (
+          <button type="button" className="w-full text-xs text-muted-foreground text-center mt-4 underline" onClick={onSwitchToResident}>
+            {t('login.switchToResident')}
           </button>
-          {onSwitchToResident && (
-            <button type="button" className="text-xs text-muted-foreground text-center mt-2 underline" onClick={onSwitchToResident}>
-              {t('login.switchToResident')}
-            </button>
-          )}
-          <p className="text-xs text-muted-foreground text-center mt-4">{t('login.demo')}</p>
-        </form>
+        )}
+        <p className="text-xs text-muted-foreground text-center mt-4">{t('login.demo')}</p>
       </div>
       <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-muted-foreground">{t('app.footer')}</p>
     </div>

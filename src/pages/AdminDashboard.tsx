@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
@@ -43,11 +43,25 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, loadGuards } = useStore();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [stats, setStats] = useState({ visitors: 0, guards: 0, flats: 0, vehicles: 0, blacklist: 0 });
+  const [kycPending, setKycPending] = useState<{ id: string; name: string; guard_id: string; kyc_alert_days: number; created_at: string }[]>([]);
 
   useEffect(() => {
     loadVisitors(); loadResidentVehicles(); loadBlacklist(); loadFlats(); loadMembers(); loadGuards();
-    loadStats();
+    loadStats(); loadKycPending();
   }, []);
+
+  const loadKycPending = async () => {
+    let q = supabase.from('guards').select('id, name, guard_id, kyc_alert_days, created_at').eq('police_verification', 'pending');
+    if (admin.societyId) q = q.eq('society_id', admin.societyId);
+    const { data } = await q;
+    if (data) {
+      const alerts = data.filter(g => {
+        const daysElapsed = (Date.now() - new Date(g.created_at).getTime()) / (1000 * 60 * 60 * 24);
+        return daysElapsed >= (g.kyc_alert_days || 7);
+      });
+      setKycPending(alerts as any);
+    }
+  };
 
   const loadStats = async () => {
     const sid = admin.societyId;
@@ -165,6 +179,22 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               </div>
             ))}
           </div>
+
+          {/* KYC Pending Alerts */}
+          {kycPending.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <span className="text-sm font-semibold text-amber-700">Guard KYC Pending ({kycPending.length})</span>
+              </div>
+              {kycPending.map(g => (
+                <button key={g.id} onClick={() => setActiveTab('guards')}
+                  className="text-xs text-amber-600 ml-6 block hover:underline">
+                  • {g.name} ({g.guard_id}) - Police verification overdue
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Quick access grid */}
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick Access</p>
