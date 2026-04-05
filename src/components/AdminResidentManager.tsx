@@ -418,15 +418,24 @@ const AdminResidentManager = () => {
                             <input className="input-field text-xs" placeholder="Name *" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} />
                             <input className="input-field text-xs" placeholder="Phone (for login)" value={memberForm.phone} onChange={e => setMemberForm({...memberForm, phone: e.target.value.replace(/\D/g, '')})} maxLength={10} />
                             <select className="input-field text-xs" value={memberForm.relation} onChange={e => setMemberForm({...memberForm, relation: e.target.value})}>
-                              <option value="owner">Owner</option>
-                              <option value="spouse">Spouse</option>
-                              <option value="son">Son</option>
-                              <option value="daughter">Daughter</option>
-                              <option value="father">Father</option>
-                              <option value="mother">Mother</option>
-                              <option value="family">Family</option>
-                              <option value="tenant">Tenant</option>
-                              <option value="other">Other</option>
+                              <optgroup label="Household">
+                                <option value="owner">Owner</option>
+                                <option value="spouse">Spouse</option>
+                                <option value="son">Son</option>
+                                <option value="daughter">Daughter</option>
+                                <option value="father">Father</option>
+                                <option value="mother">Mother</option>
+                                <option value="family">Family</option>
+                                <option value="tenant">Tenant</option>
+                                <option value="other">Other</option>
+                              </optgroup>
+                              <optgroup label="Staff / service (Quick Entry)">
+                                <option value="cook">Cook</option>
+                                <option value="maid">Maid</option>
+                                <option value="washerman">Washerman</option>
+                                <option value="newspaper">Newspaper</option>
+                                <option value="driver">Driver</option>
+                              </optgroup>
                             </select>
                             <input className="input-field text-xs" placeholder="Age" type="number" value={memberForm.age} onChange={e => setMemberForm({...memberForm, age: e.target.value})} />
                             <select className="input-field text-xs" value={memberForm.gender} onChange={e => setMemberForm({...memberForm, gender: e.target.value})}>

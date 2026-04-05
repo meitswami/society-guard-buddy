@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { Shield, Plus, Trash2, Eye, EyeOff, KeyRound, Upload, FileImage, AlertTriangle, Phone } from 'lucide-react';
+import { Shield, Plus, Trash2, Eye, EyeOff, KeyRound, Upload, FileImage, AlertTriangle, Phone, Pencil } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import { auditPasswordReset } from '@/lib/auditLogger';
@@ -98,25 +98,66 @@ const AdminGuardManager = () => {
   };
 
   const updateGuard = async (id: string) => {
-    const updates: any = { ...editFields };
+    const name = (editFields.name as string | undefined)?.trim();
+    const gid = (editFields.guard_id as string | undefined)?.trim().toUpperCase();
+    if (!name) {
+      toast.error('Name is required');
+      return;
+    }
+    if (!gid) {
+      toast.error('Guard ID is required');
+      return;
+    }
+    const mode = editFields.auth_mode || 'password';
+    const phoneDigits = (editFields.phone as string)?.replace(/\D/g, '') || '';
+    if (mode === 'otp' && phoneDigits.length < 10) {
+      toast.error('OTP login requires a 10-digit phone number');
+      return;
+    }
+    const updates: Record<string, unknown> = {
+      name,
+      guard_id: gid,
+      auth_mode: mode,
+      police_verification: editFields.police_verification,
+      kyc_alert_days: editFields.kyc_alert_days,
+      phone: phoneDigits ? phoneDigits : null,
+    };
     await supabase.from('guards').update(updates).eq('id', id);
     toast.success('Guard updated');
     setEditingGuard(null); setEditFields({});
     loadGuards();
   };
 
-  const uploadDoc = async (guardId: string, file: File, side: 'front' | 'back', existingDocId?: string) => {
+  const countIdPhotosForGuard = (guardUuid: string) => {
+    const docs = guardDocs[guardUuid] || [];
+    return docs.reduce((n, d) => n + (d.front_url ? 1 : 0) + (d.back_url ? 1 : 0), 0);
+  };
+
+  const uploadDoc = async (guardUuid: string, file: File, side: 'front' | 'back', existingDocId?: string) => {
+    const docs = guardDocs[guardUuid] || [];
+    const urlKey = `${side}_url` as 'front_url' | 'back_url';
+    let addedSlots = 1;
+    if (existingDocId) {
+      const row = docs.find(d => d.id === existingDocId);
+      addedSlots = row?.[urlKey] ? 0 : 1;
+    }
+    const current = countIdPhotosForGuard(guardUuid);
+    if (current + addedSlots > 2) {
+      toast.error('Maximum 2 ID photos per guard (e.g. front + back). Remove a photo or replace an existing one.');
+      return;
+    }
+
     setUploadingDoc(true);
-    const path = `${guardId}/${Date.now()}_${side}_${file.name}`;
-    const { data: uploaded, error } = await supabase.storage.from('guard-documents').upload(path, file);
+    const path = `${guardUuid}/${Date.now()}_${side}_${file.name}`;
+    const { error } = await supabase.storage.from('guard-documents').upload(path, file);
     if (error) { toast.error('Upload failed'); setUploadingDoc(false); return; }
     const { data: { publicUrl } } = supabase.storage.from('guard-documents').getPublicUrl(path);
 
     if (existingDocId) {
-      await supabase.from('guard_documents').update({ [`${side}_url`]: publicUrl }).eq('id', existingDocId);
+      await supabase.from('guard_documents').update({ [urlKey]: publicUrl }).eq('id', existingDocId);
     } else {
       await supabase.from('guard_documents').insert({
-        guard_id: guardId, doc_label: docLabel, [`${side}_url`]: publicUrl,
+        guard_id: guardUuid, doc_label: docLabel, [urlKey]: publicUrl,
       });
     }
     setUploadingDoc(false);
@@ -256,11 +297,28 @@ const AdminGuardManager = () => {
                   className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
                   <FileImage className="w-4 h-4" />
                 </button>
-                <button onClick={() => {
-                  if (editingGuard === g.id) { setEditingGuard(null); setEditFields({}); }
-                  else { setEditingGuard(g.id); setEditFields({ auth_mode: g.auth_mode, police_verification: g.police_verification, kyc_alert_days: g.kyc_alert_days, phone: g.phone || '' }); }
-                }} className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <Shield className="w-4 h-4" />
+                <button
+                  type="button"
+                  title="Edit guard details"
+                  onClick={() => {
+                    if (editingGuard === g.id) {
+                      setEditingGuard(null);
+                      setEditFields({});
+                    } else {
+                      setEditingGuard(g.id);
+                      setEditFields({
+                        name: g.name,
+                        guard_id: g.guard_id,
+                        auth_mode: g.auth_mode,
+                        police_verification: g.police_verification,
+                        kyc_alert_days: g.kyc_alert_days,
+                        phone: g.phone || '',
+                      });
+                    }
+                  }}
+                  className="p-2 rounded-lg bg-primary/10 text-primary"
+                >
+                  <Pencil className="w-4 h-4" />
                 </button>
                 <button onClick={() => { setResetId(resetId === g.id ? null : g.id); setNewPassword(''); }}
                   className="p-2 rounded-lg bg-amber-500/10 text-amber-600">
@@ -272,29 +330,66 @@ const AdminGuardManager = () => {
               </div>
             </div>
 
-            {/* Edit Panel */}
+            {/* Edit Panel — full guard profile (same fields as add, except password uses Reset) */}
             {editingGuard === g.id && (
-              <div className="mt-3 space-y-2 p-3 bg-muted/50 rounded-lg">
+              <div className="mt-3 space-y-2 p-3 bg-muted/50 rounded-lg border border-border">
+                <p className="text-xs font-semibold text-foreground">Edit guard</p>
+                <input
+                  className="input-field text-sm font-mono uppercase"
+                  placeholder="Guard ID"
+                  value={(editFields.guard_id as string) || ''}
+                  onChange={e => setEditFields(f => ({ ...f, guard_id: e.target.value.toUpperCase() }))}
+                />
+                <input
+                  className="input-field text-sm"
+                  placeholder="Full name"
+                  value={(editFields.name as string) || ''}
+                  onChange={e => setEditFields(f => ({ ...f, name: e.target.value }))}
+                />
                 <div className="flex gap-2">
-                  <select className="input-field flex-1 text-sm" value={editFields.auth_mode || 'password'}
-                    onChange={e => setEditFields(f => ({ ...f, auth_mode: e.target.value }))}>
+                  <select
+                    className="input-field flex-1 text-sm"
+                    value={editFields.auth_mode || 'password'}
+                    onChange={e => setEditFields(f => ({ ...f, auth_mode: e.target.value }))}
+                  >
                     <option value="password">Password Login</option>
                     <option value="otp">OTP Login</option>
                   </select>
-                  <select className="input-field flex-1 text-sm" value={editFields.police_verification || 'pending'}
-                    onChange={e => setEditFields(f => ({ ...f, police_verification: e.target.value }))}>
+                  <select
+                    className="input-field flex-1 text-sm"
+                    value={editFields.police_verification || 'pending'}
+                    onChange={e => setEditFields(f => ({ ...f, police_verification: e.target.value }))}
+                  >
                     <option value="pending">KYC Pending</option>
                     <option value="done">KYC Done</option>
                   </select>
                 </div>
-                <input className="input-field text-sm font-mono" placeholder="Phone (for OTP)" type="tel" maxLength={10}
-                  value={(editFields.phone as string) || ''} onChange={e => setEditFields(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))} />
                 <div className="flex gap-2 items-center">
-                  <label className="text-xs text-muted-foreground whitespace-nowrap">KYC Alert Days:</label>
-                  <input className="input-field flex-1 text-sm" type="number" min={1} max={365}
-                    value={editFields.kyc_alert_days || 7} onChange={e => setEditFields(f => ({ ...f, kyc_alert_days: parseInt(e.target.value) || 7 }))} />
+                  <Phone className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <input
+                    className="input-field flex-1 text-sm font-mono"
+                    placeholder={(editFields.auth_mode || g.auth_mode) === 'otp' ? 'Phone (10 digits, required for OTP)' : 'Phone (optional)'}
+                    type="tel"
+                    maxLength={10}
+                    value={(editFields.phone as string) || ''}
+                    onChange={e => setEditFields(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))}
+                  />
                 </div>
-                <button onClick={() => updateGuard(g.id)} className="btn-primary w-full text-sm">Save Changes</button>
+                <div className="flex gap-2 items-center">
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">KYC alert (days):</label>
+                  <input
+                    className="input-field flex-1 text-sm"
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={editFields.kyc_alert_days ?? 7}
+                    onChange={e => setEditFields(f => ({ ...f, kyc_alert_days: parseInt(e.target.value, 10) || 7 }))}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">Use the key button below to change password. OTP guards use the phone number above.</p>
+                <button type="button" onClick={() => updateGuard(g.id)} className="btn-primary w-full text-sm">
+                  Save changes
+                </button>
               </div>
             )}
 
@@ -312,7 +407,13 @@ const AdminGuardManager = () => {
             {/* Documents Panel */}
             {expandedGuard === g.id && (
               <div className="mt-3 space-y-2 p-3 bg-muted/50 rounded-lg">
-                <p className="text-xs font-semibold mb-2">Identity Documents</p>
+                <p className="text-xs font-semibold mb-1">Photo ID</p>
+                <p className="text-[10px] text-muted-foreground mb-2">
+                  Up to <span className="font-medium text-foreground">2 photos</span> total per guard (e.g. ID front + back). Replacing a photo does not use an extra slot.
+                </p>
+                <p className="text-[10px] text-muted-foreground mb-2">
+                  Current: {countIdPhotosForGuard(g.id)} / 2
+                </p>
 
                 {/* Existing docs */}
                 {(guardDocs[g.id] || []).map(doc => (
@@ -329,15 +430,19 @@ const AdminGuardManager = () => {
                       </div>
                       <div className="flex gap-1 mt-1">
                         <label className="text-[10px] text-muted-foreground cursor-pointer underline">
-                          + Front
+                          {doc.front_url ? 'Replace front' : '+ Front'}
                           <input type="file" accept="image/*" className="hidden" onChange={e => {
-                            if (e.target.files?.[0]) uploadDoc(g.id, e.target.files[0], 'front', doc.id);
+                            const f = e.target.files?.[0];
+                            e.target.value = '';
+                            if (f) void uploadDoc(g.id, f, 'front', doc.id);
                           }} />
                         </label>
                         <label className="text-[10px] text-muted-foreground cursor-pointer underline">
-                          + Back
+                          {doc.back_url ? 'Replace back' : '+ Back'}
                           <input type="file" accept="image/*" className="hidden" onChange={e => {
-                            if (e.target.files?.[0]) uploadDoc(g.id, e.target.files[0], 'back', doc.id);
+                            const f = e.target.files?.[0];
+                            e.target.value = '';
+                            if (f) void uploadDoc(g.id, f, 'back', doc.id);
                           }} />
                         </label>
                       </div>
@@ -348,28 +453,41 @@ const AdminGuardManager = () => {
                   </div>
                 ))}
 
-                {/* Add new doc */}
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <label className="text-[10px] text-muted-foreground">Document Label</label>
-                    <select className="input-field text-sm" value={docLabel} onChange={e => setDocLabel(e.target.value)}>
-                      <option>Aadhaar Card</option>
-                      <option>PAN Card</option>
-                      <option>Driving License</option>
-                      <option>Voter ID</option>
-                      <option>Passport</option>
-                      <option>Other</option>
-                    </select>
+                {/* Add first photo (starts a row); second photo via + Back on that row or second upload if only one slot left */}
+                {countIdPhotosForGuard(g.id) < 2 && (
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="text-[10px] text-muted-foreground">Document label</label>
+                      <select className="input-field text-sm" value={docLabel} onChange={e => setDocLabel(e.target.value)}>
+                        <option>Aadhaar Card</option>
+                        <option>PAN Card</option>
+                        <option>Driving License</option>
+                        <option>Voter ID</option>
+                        <option>Passport</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+                    <label
+                      className={`p-2 rounded-lg bg-primary/10 text-primary cursor-pointer ${uploadingDoc ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <Upload className="w-4 h-4" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingDoc}
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          e.target.value = '';
+                          if (f) void uploadDoc(g.id, f, 'front');
+                        }}
+                      />
+                    </label>
                   </div>
-                  <label className="p-2 rounded-lg bg-primary/10 text-primary cursor-pointer">
-                    <Upload className="w-4 h-4" />
-                    <input type="file" accept="image/*" className="hidden" disabled={uploadingDoc}
-                      onChange={e => {
-                        if (e.target.files?.[0]) uploadDoc(g.id, e.target.files[0], 'front');
-                      }} />
-                  </label>
-                </div>
-                <p className="text-[9px] text-muted-foreground">Upload front side first, then add back side. Multiple IDs supported.</p>
+                )}
+                {countIdPhotosForGuard(g.id) >= 2 && (
+                  <p className="text-[10px] text-muted-foreground">Remove a document or replace an image to change ID photos.</p>
+                )}
               </div>
             )}
           </div>

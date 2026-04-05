@@ -134,12 +134,25 @@ const translations: Record<string, Record<Lang, string>> = {
 
   // Quick Entry
   'quick.title': { en: 'Quick Entry', hi: 'क्विक एंट्री' },
-  'quick.subtitle': { en: 'One-tap re-entry for frequent visitors', hi: 'नियमित आगंतुकों के लिए एक-टैप प्रवेश' },
-  'quick.searchPlaceholder': { en: 'Search by name, phone, or flat...', hi: 'नाम, फोन, या फ्लैट से खोजें...' },
+  'quick.subtitle': {
+    en: 'Registered staff, photos, and frequent visitors — search by name, phone, or flat',
+    hi: 'पंजीकृत स्टाफ, फोटो और बार-बार आने वाले — नाम, फोन या फ्लैट से खोजें',
+  },
+  'quick.searchPlaceholder': {
+    en: 'Search by name, phone, flat, or role...',
+    hi: 'नाम, फोन, फ्लैट या भूमिका से खोजें...',
+  },
   'quick.noFrequent': { en: 'No frequent visitors yet. Visitors with 2+ entries will appear here.', hi: 'अभी कोई नियमित आगंतुक नहीं। 2+ बार आने वाले यहां दिखेंगे।' },
-  'quick.noMatch': { en: 'No matching frequent visitors', hi: 'कोई मिलता-जुलता आगंतुक नहीं' },
+  'quick.emptyHint': {
+    en: 'No one listed yet. Residents add staff under Family & Staff; frequent guests appear after 2 visits.',
+    hi: 'अभी कोई सूची नहीं। निवासी फैमिली और स्टाफ में स्टाफ जोड़ते हैं; 2 बार आने के बाद मेहमान दिखेंगे।',
+  },
+  'quick.noMatch': { en: 'No matching people', hi: 'कोई मेल खाता व्यक्ति नहीं' },
   'quick.visits': { en: 'visits', hi: 'बार आया' },
   'quick.loggedIn': { en: 'logged in', hi: 'प्रवेश दर्ज' },
+  'quick.staffBadge': { en: 'Staff', hi: 'स्टाफ' },
+  'quick.exited': { en: 'exit marked', hi: 'बाहर दर्ज' },
+  'quick.noPhoneOnFile': { en: 'No phone on file', hi: 'फोन दर्ज नहीं' },
 
   // Delivery
   'delivery.title': { en: 'Delivery / Service', hi: 'डिलीवरी / सेवा' },
