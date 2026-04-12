@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser } from 'lucide-react';
@@ -12,6 +12,7 @@ import NotificationCenter from '@/components/NotificationCenter';
 import PollManager from '@/components/PollManager';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
+import { isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
 
 interface Resident {
   id: string; name: string; phone: string; flatId: string; flatNumber: string;
@@ -75,7 +76,27 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [myMembers, setMyMembers] = useState<any[]>([]);
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
-  const [memberForm, setMemberForm] = useState({ name: '', phone: '', relation: 'Spouse', age: '', gender: 'male', isServiceman: false, serviceType: '', customServiceType: '', photo: '' });
+  const [memberForm, setMemberForm] = useState({
+    name: '',
+    phone: '',
+    relation: 'Spouse',
+    age: '',
+    gender: 'male',
+    isServiceman: false,
+    serviceType: '',
+    customServiceType: '',
+    photo: '',
+    idPhotoFront: '',
+    idPhotoBack: '',
+    policeVerification: '',
+    spouseName: '',
+    dateJoining: '',
+    dateLeave: '',
+    vehicleCategory: 'car',
+    vehicleName: '',
+    vehicleNumber: '',
+    vehicleColor: '',
+  });
 
   // Vehicles state
   const [myVehicles, setMyVehicles] = useState<any[]>([]);
@@ -88,6 +109,10 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [allVehicles, setAllVehicles] = useState<any[]>([]);
   const [dirSearch, setDirSearch] = useState('');
   const [expandedFlat, setExpandedFlat] = useState<string | null>(null);
+  const [residentSelfIdUploadEnabled, setResidentSelfIdUploadEnabled] = useState(false);
+  const [selfIdFront, setSelfIdFront] = useState('');
+  const [selfIdBack, setSelfIdBack] = useState('');
+  const [savingSelfId, setSavingSelfId] = useState(false);
 
   const loadRequests = useCallback(async () => {
     const { data } = await supabase.from('approval_requests').select('*')
@@ -128,18 +153,73 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   };
 
   const loadDirectory = async () => {
-    // Get society_id from flat
     const { data: flat } = await supabase.from('flats').select('society_id').eq('id', resident.flatId).single();
     if (!flat?.society_id) return;
     const { data: flats } = await supabase.from('flats').select('*').eq('society_id', flat.society_id).order('flat_number');
-    const { data: members } = await supabase.from('members').select('*');
+    const flatIds = (flats || []).map((f) => f.id);
+    const flatNumbers = new Set((flats || []).map((f) => f.flat_number));
+    const membersRes = flatIds.length
+      ? await supabase
+          .from('members')
+          .select('id, flat_id, name, phone, relation, age, gender, photo, is_primary, created_at')
+          .in('flat_id', flatIds)
+      : { data: [] as any[] };
     const { data: vehicles } = await supabase.from('resident_vehicles').select('*');
+    const vehFiltered = (vehicles || []).filter((v) => flatNumbers.has(v.flat_number));
     if (flats) setAllFlats(flats);
-    if (members) setAllMembers(members);
-    if (vehicles) setAllVehicles(vehicles);
+    setAllMembers(membersRes.data || []);
+    setAllVehicles(vehFiltered);
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: flat } = await supabase.from('flats').select('society_id').eq('id', resident.flatId).single();
+      if (!flat?.society_id || cancelled) return;
+      const { data: soc } = await supabase.from('societies').select('resident_self_id_upload_enabled').eq('id', flat.society_id).single();
+      if (!cancelled) setResidentSelfIdUploadEnabled(!!soc?.resident_self_id_upload_enabled);
+    })();
+    return () => { cancelled = true; };
+  }, [resident.flatId]);
+
+  const normPhone = (p: string) => p.replace(/\D/g, '');
+  const myMemberRecord = useMemo(() => {
+    const myPhone = normPhone(resident.phone || '');
+    if (!myPhone) return null;
+    return myMembers.find((m: any) => m.phone && normPhone(m.phone) === myPhone) || null;
+  }, [myMembers, resident.phone]);
+
+  useEffect(() => {
+    if (!residentSelfIdUploadEnabled || !myMemberRecord) {
+      setSelfIdFront('');
+      setSelfIdBack('');
+      return;
+    }
+    setSelfIdFront(myMemberRecord.id_photo_front || '');
+    setSelfIdBack(myMemberRecord.id_photo_back || '');
+  }, [residentSelfIdUploadEnabled, myMemberRecord?.id, myMemberRecord?.id_photo_front, myMemberRecord?.id_photo_back]);
+
   useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); loadFlatmates(); loadMyMembers(); loadMyVehicles(); loadDirectory(); }, []);
+
+  const handleSaveSelfIdPhotos = async () => {
+    if (!myMemberRecord?.id) return;
+    if (normPhone(myMemberRecord.phone || '') !== normPhone(resident.phone || '')) {
+      toast.error('Profile does not match your login');
+      return;
+    }
+    setSavingSelfId(true);
+    const { error } = await supabase
+      .from('members')
+      .update({ id_photo_front: selfIdFront || null, id_photo_back: selfIdBack || null })
+      .eq('id', myMemberRecord.id);
+    setSavingSelfId(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Photo ID saved');
+    loadMyMembers();
+  };
 
   const handlePasswordChange = async () => {
     if (!currentPass || !newPass || !confirmPass) { toast.error('Fill all fields'); return; }
@@ -203,33 +283,116 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     input.click();
   };
 
+  const syncResidentStaffVehicle = async (memberId: string) => {
+    const { data: existing } = await supabase.from('resident_vehicles').select('id').eq('member_id', memberId).maybeSingle();
+    const num = memberForm.vehicleNumber.trim();
+    const hasVehicle = num.length > 0 || memberForm.vehicleName.trim().length > 0;
+    if (!hasVehicle) {
+      if (existing?.id) await supabase.from('resident_vehicles').delete().eq('id', existing.id);
+      return;
+    }
+    const row = {
+      flat_id: resident.flatId,
+      flat_number: resident.flatNumber,
+      resident_name: memberForm.name,
+      vehicle_number: num || 'N/A',
+      vehicle_type: memberForm.vehicleCategory || 'other',
+      vehicle_display_name: memberForm.vehicleName.trim() || null,
+      vehicle_color: memberForm.vehicleColor.trim() || null,
+      member_id: memberId,
+    };
+    if (existing?.id) await supabase.from('resident_vehicles').update(row).eq('id', existing.id);
+    else await supabase.from('resident_vehicles').insert(row);
+  };
+
+  const emptyMemberForm = () => ({
+    name: '',
+    phone: '',
+    relation: 'Spouse',
+    age: '',
+    gender: 'male',
+    isServiceman: false,
+    serviceType: '',
+    customServiceType: '',
+    photo: '',
+    idPhotoFront: '',
+    idPhotoBack: '',
+    policeVerification: '',
+    spouseName: '',
+    dateJoining: '',
+    dateLeave: '',
+    vehicleCategory: 'car',
+    vehicleName: '',
+    vehicleNumber: '',
+    vehicleColor: '',
+  });
+
   const handleAddMember = async () => {
     if (!memberForm.name) { toast.error('Name is required'); return; }
-    const relation = memberForm.isServiceman
-      ? (memberForm.serviceType === 'Others' ? memberForm.customServiceType || 'Others' : memberForm.serviceType)
-      : (memberForm.relation === 'Others' ? 'Others' : memberForm.relation);
+    const relationRaw = memberForm.isServiceman
+      ? (memberForm.serviceType === 'Others' ? memberForm.customServiceType || 'others' : memberForm.serviceType)
+      : (memberForm.relation === 'Others' ? 'others' : memberForm.relation);
+    const relNorm = relationRaw.toLowerCase();
+    const restricted = isRestrictedMemberCategory(relNorm);
+    const idFront = memberForm.idPhotoFront || memberForm.photo || null;
+    if (restricted && !idFront && !(editingMember?.id_photo_front)) {
+      toast.error('Photo ID (front) is required for tenant, other, and staff');
+      return;
+    }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       flat_id: resident.flatId,
       name: memberForm.name,
       phone: memberForm.phone || null,
-      relation: relation.toLowerCase(),
-      age: memberForm.age ? parseInt(memberForm.age) : null,
+      relation: relNorm,
+      age: memberForm.age ? parseInt(memberForm.age, 10) : null,
       gender: memberForm.gender || null,
       photo: memberForm.photo || null,
       is_primary: false,
     };
 
+    if (restricted) {
+      payload.id_photo_front = idFront;
+      payload.id_photo_back = memberForm.idPhotoBack || null;
+      payload.police_verification = memberForm.policeVerification.trim() || null;
+      payload.spouse_name = memberForm.spouseName.trim() || null;
+      payload.date_joining = memberForm.dateJoining || null;
+      payload.date_leave = memberForm.dateLeave || null;
+    } else {
+      payload.id_photo_front = null;
+      payload.id_photo_back = null;
+      payload.police_verification = null;
+      payload.spouse_name = null;
+      payload.date_joining = null;
+      payload.date_leave = null;
+    }
+
+    const prev = editingMember;
+
+    if (prev?.phone && (restricted || !memberForm.phone || memberForm.phone !== prev.phone)) {
+      await supabase.from('resident_users').delete().eq('phone', prev.phone).eq('flat_id', resident.flatId);
+    }
+    if (restricted && memberForm.phone) {
+      await supabase.from('resident_users').delete().eq('phone', memberForm.phone).eq('flat_id', resident.flatId);
+    }
+
+    let memberId: string | null = prev?.id ?? null;
+
     if (editingMember) {
       await supabase.from('members').update(payload).eq('id', editingMember.id);
       toast.success('Member updated');
+      memberId = editingMember.id;
     } else {
-      await supabase.from('members').insert(payload);
-      // Also create resident_user login if phone provided
-      if (memberForm.phone) {
-        const { data: existing } = await supabase.from('resident_users').select('id').eq('phone', memberForm.phone).single();
+      const { data: ins, error } = await supabase.from('members').insert(payload).select('id').single();
+      if (error || !ins) {
+        toast.error(error?.message || 'Could not add member');
+        return;
+      }
+      memberId = ins.id;
+      if (!restricted && memberForm.phone) {
+        const { data: existing } = await supabase.from('resident_users').select('id').eq('phone', memberForm.phone).maybeSingle();
         if (!existing) {
-          const { data: flatmate } = await supabase.from('resident_users').select('password').eq('flat_id', resident.flatId).limit(1).single();
+          const { data: flatmate } = await supabase.from('resident_users').select('password').eq('flat_id', resident.flatId).limit(1).maybeSingle();
           const pw = flatmate?.password || 'Welcome123!';
           await supabase.from('resident_users').insert({
             phone: memberForm.phone, name: memberForm.name, password: pw,
@@ -240,17 +403,25 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       toast.success('Member added');
     }
 
-    setMemberForm({ name: '', phone: '', relation: 'Spouse', age: '', gender: 'male', isServiceman: false, serviceType: '', customServiceType: '', photo: '' });
+    if (restricted && memberId) await syncResidentStaffVehicle(memberId);
+    else if (memberId) {
+      const { data: vdel } = await supabase.from('resident_vehicles').select('id').eq('member_id', memberId).maybeSingle();
+      if (vdel?.id) await supabase.from('resident_vehicles').delete().eq('id', vdel.id);
+    }
+
+    setMemberForm(emptyMemberForm());
     setShowAddMember(false);
     setEditingMember(null);
     loadMyMembers();
     loadDirectory();
+    useStore.getState().loadResidentVehicles();
   };
 
   const handleDeleteMember = async (member: any) => {
     if (member.is_primary) { toast.error('Cannot delete primary member'); return; }
     const confirmed = await confirmAction('Delete member?', `Remove ${member.name}?`, 'Yes', 'No');
     if (!confirmed) return;
+    await supabase.from('resident_vehicles').delete().eq('member_id', member.id);
     await supabase.from('members').delete().eq('id', member.id);
     if (member.phone) {
       await supabase.from('resident_users').delete().eq('phone', member.phone).eq('flat_id', resident.flatId);
@@ -260,16 +431,42 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     loadDirectory();
   };
 
-  const startEditMember = (m: any) => {
+  const startEditMember = async (m: any) => {
     const isService = SERVICE_TYPES.map(s => s.toLowerCase()).includes(m.relation?.toLowerCase());
+    const relLower = (m.relation || '').toLowerCase();
+    const relationCap = RELATION_TYPES.find((r) => r.toLowerCase() === relLower) || 'Spouse';
     setEditingMember(m);
     setMemberForm({
-      name: m.name, phone: m.phone || '', relation: isService ? 'Spouse' : (m.relation || 'Spouse'),
-      age: m.age?.toString() || '', gender: m.gender || 'male',
+      name: m.name,
+      phone: m.phone || '',
+      relation: isService ? 'Spouse' : relationCap,
+      age: m.age?.toString() || '',
+      gender: m.gender || 'male',
       isServiceman: isService,
       serviceType: isService ? SERVICE_TYPES.find(s => s.toLowerCase() === m.relation?.toLowerCase()) || 'Others' : '',
-      customServiceType: '', photo: m.photo || '',
+      customServiceType: '',
+      photo: m.photo || '',
+      idPhotoFront: m.id_photo_front || '',
+      idPhotoBack: m.id_photo_back || '',
+      policeVerification: m.police_verification || '',
+      spouseName: m.spouse_name || '',
+      dateJoining: m.date_joining || '',
+      dateLeave: m.date_leave || '',
+      vehicleCategory: 'car',
+      vehicleName: '',
+      vehicleNumber: '',
+      vehicleColor: '',
     });
+    const { data: vrow } = await supabase.from('resident_vehicles').select('*').eq('member_id', m.id).maybeSingle();
+    if (vrow) {
+      setMemberForm((f) => ({
+        ...f,
+        vehicleCategory: vrow.vehicle_type || 'car',
+        vehicleName: vrow.vehicle_display_name || '',
+        vehicleNumber: vrow.vehicle_number === 'N/A' ? '' : vrow.vehicle_number,
+        vehicleColor: vrow.vehicle_color || '',
+      }));
+    }
     setShowAddMember(true);
   };
 
@@ -489,7 +686,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
           <div className="flex flex-col gap-3">
             <div className="flex justify-between items-center">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">My Family & Staff ({myMembers.length})</p>
-              <button onClick={() => { setShowAddMember(true); setEditingMember(null); setMemberForm({ name: '', phone: '', relation: 'Spouse', age: '', gender: 'male', isServiceman: false, serviceType: '', customServiceType: '', photo: '' }); }}
+              <button onClick={() => { setShowAddMember(true); setEditingMember(null); setMemberForm(emptyMemberForm()); }}
                 className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
                 <Plus className="w-3 h-3" /> Add
               </button>
@@ -513,8 +710,18 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
                 <input className="input-field" placeholder="Full Name *" value={memberForm.name}
                   onChange={e => setMemberForm(f => ({ ...f, name: e.target.value }))} />
-                <input className="input-field font-mono" placeholder="Phone (optional)" type="tel" maxLength={10}
-                  value={memberForm.phone} onChange={e => setMemberForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))} />
+                <input
+                  className="input-field font-mono"
+                  placeholder={
+                    memberForm.isServiceman || memberForm.relation === 'Tenant' || memberForm.relation === 'Others'
+                      ? 'Phone (contact only — no app login)'
+                      : 'Phone (optional, for shared flat login)'
+                  }
+                  type="tel"
+                  maxLength={10}
+                  value={memberForm.phone}
+                  onChange={e => setMemberForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))}
+                />
 
                 {!memberForm.isServiceman ? (
                   <div>
@@ -556,22 +763,94 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   </div>
                 </div>
 
-                {/* Photo (for servicemen ID) */}
-                {memberForm.isServiceman && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">ID Photo</label>
-                    {memberForm.photo ? (
-                      <div className="relative w-24 h-24">
-                        <img src={memberForm.photo} alt="ID" className="w-24 h-24 rounded-lg object-cover border border-border" />
-                        <button onClick={() => setMemberForm(f => ({ ...f, photo: '' }))}
-                          className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs">×</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => handlePhotoCapture(val => setMemberForm(f => ({ ...f, photo: val })))}
-                        className="w-full py-3 rounded-lg border-2 border-dashed border-border flex items-center justify-center gap-2 text-sm text-muted-foreground hover:border-primary/50">
-                        <Camera className="w-4 h-4" /> Capture ID Photo
+                {!memberForm.isServiceman && memberForm.relation !== 'Tenant' && memberForm.relation !== 'Others' && (
+                  <div className="space-y-2 border border-border/60 rounded-lg p-3 bg-secondary/10">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase">Profile photo (optional)</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePhotoCapture((val) => setMemberForm((f) => ({ ...f, photo: val })))}
+                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                      >
+                        <Camera className="w-3.5 h-3.5" /> Upload photo
                       </button>
-                    )}
+                      {memberForm.photo && <span className="text-[10px] text-green-600">✓</span>}
+                      {memberForm.photo && (
+                        <img src={memberForm.photo} alt="" className="h-12 w-12 rounded-full object-cover border border-border" />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(memberForm.isServiceman || memberForm.relation === 'Tenant' || memberForm.relation === 'Others') && (
+                  <div className="space-y-2 border border-border/60 rounded-lg p-3 bg-secondary/20">
+                    <p className="text-[10px] text-muted-foreground">
+                      Tenant, other, and staff are not given resident app login. Add ID and optional details below.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePhotoCapture((val) => setMemberForm((f) => ({ ...f, idPhotoFront: val, photo: f.photo || val })))}
+                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                      >
+                        <Camera className="w-3.5 h-3.5" /> ID front *
+                      </button>
+                      {(memberForm.idPhotoFront || memberForm.photo) && <span className="text-[10px] text-green-600 self-center">✓</span>}
+                      <button
+                        type="button"
+                        onClick={() => handlePhotoCapture((val) => setMemberForm((f) => ({ ...f, idPhotoBack: val })))}
+                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                      >
+                        <Camera className="w-3.5 h-3.5" /> ID back (optional)
+                      </button>
+                      {memberForm.idPhotoBack && <span className="text-[10px] text-green-600 self-center">✓</span>}
+                    </div>
+                    <select
+                      className="input-field text-sm"
+                      value={memberForm.policeVerification}
+                      onChange={(e) => setMemberForm((f) => ({ ...f, policeVerification: e.target.value }))}
+                    >
+                      <option value="">Police verification (optional)</option>
+                      <option value="pending">Pending</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="verified">Verified</option>
+                    </select>
+                    <input
+                      className="input-field text-sm"
+                      placeholder="Spouse / husband name (optional)"
+                      value={memberForm.spouseName}
+                      onChange={(e) => setMemberForm((f) => ({ ...f, spouseName: e.target.value }))}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Date of joining</label>
+                        <input className="input-field text-sm" type="date" value={memberForm.dateJoining}
+                          onChange={(e) => setMemberForm((f) => ({ ...f, dateJoining: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Date of leave</label>
+                        <input className="input-field text-sm" type="date" value={memberForm.dateLeave}
+                          onChange={(e) => setMemberForm((f) => ({ ...f, dateLeave: e.target.value }))} />
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase">Vehicle (optional)</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        className="input-field text-sm"
+                        value={memberForm.vehicleCategory}
+                        onChange={(e) => setMemberForm((f) => ({ ...f, vehicleCategory: e.target.value }))}
+                      >
+                        {STAFF_VEHICLE_TYPES.map((vt) => (
+                          <option key={vt} value={vt}>{vt}</option>
+                        ))}
+                      </select>
+                      <input className="input-field text-sm" placeholder="Vehicle name" value={memberForm.vehicleName}
+                        onChange={(e) => setMemberForm((f) => ({ ...f, vehicleName: e.target.value }))} />
+                      <input className="input-field text-sm font-mono" placeholder="Registration no." value={memberForm.vehicleNumber}
+                        onChange={(e) => setMemberForm((f) => ({ ...f, vehicleNumber: e.target.value }))} />
+                      <input className="input-field text-sm" placeholder="Color" value={memberForm.vehicleColor}
+                        onChange={(e) => setMemberForm((f) => ({ ...f, vehicleColor: e.target.value }))} />
+                    </div>
                   </div>
                 )}
 
@@ -579,7 +858,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   <button onClick={handleAddMember} className="btn-primary flex-1">
                     {editingMember ? 'Update' : 'Add Member'}
                   </button>
-                  <button onClick={() => { setShowAddMember(false); setEditingMember(null); }}
+                  <button onClick={() => { setShowAddMember(false); setEditingMember(null); setMemberForm(emptyMemberForm()); }}
                     className="px-4 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm">Cancel</button>
                 </div>
               </div>
@@ -803,6 +1082,56 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 </div>
               )}
             </div>
+
+            {residentSelfIdUploadEnabled && (
+              <div className="card-section p-4">
+                <p className="text-sm font-semibold mb-1">Your Photo ID</p>
+                <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">
+                  Upload or update the ID images for your own member record only (linked to your login phone). Other flats never see this here.
+                </p>
+                {!myMemberRecord && (
+                  <p className="text-xs text-amber-600 dark:text-amber-500">
+                    No household member row matches your login phone. Ask the society admin to set your phone on your member profile so you can upload ID.
+                  </p>
+                )}
+                {myMemberRecord && (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePhotoCapture((val) => setSelfIdFront(val))}
+                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                      >
+                        <Camera className="w-3.5 h-3.5" /> ID front
+                      </button>
+                      {selfIdFront && <span className="text-[10px] text-green-600 self-center">✓</span>}
+                      <button
+                        type="button"
+                        onClick={() => handlePhotoCapture((val) => setSelfIdBack(val))}
+                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                      >
+                        <Camera className="w-3.5 h-3.5" /> ID back (optional)
+                      </button>
+                      {selfIdBack && <span className="text-[10px] text-green-600 self-center">✓</span>}
+                    </div>
+                    {(selfIdFront || selfIdBack) && (
+                      <div className="flex gap-2 flex-wrap">
+                        {selfIdFront && <img src={selfIdFront} alt="" className="h-20 w-32 object-cover rounded-lg border border-border" />}
+                        {selfIdBack && <img src={selfIdBack} alt="" className="h-20 w-32 object-cover rounded-lg border border-border" />}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSaveSelfIdPhotos}
+                      disabled={savingSelfId}
+                      className="btn-primary text-sm self-start"
+                    >
+                      {savingSelfId ? 'Saving…' : 'Save Photo ID'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="card-section p-4">
               <div className="flex items-center gap-2 mb-3">

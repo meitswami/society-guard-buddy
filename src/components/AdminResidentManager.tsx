@@ -2,12 +2,55 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { Plus, Trash2, Edit2, Search, Users, Home, ChevronDown, ChevronUp, Car, Phone, Star, UserPlus, Key, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Users, Home, ChevronDown, ChevronUp, Car, Phone, Star, UserPlus, Key, Eye, EyeOff, RefreshCw, Camera, FileDown } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import { generateFlatPassword } from '@/lib/passwordGenerator';
 import { floorLabelFromFlatNumber } from '@/lib/flatFloor';
-import type { Flat, Member, ResidentVehicle } from '@/types';
+import { allowsResidentLoginAndPrimary, isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
+import type { Flat, Member } from '@/types';
+import { Switch } from '@/components/ui/switch';
+import { exportResidentsDirectoryPdf, type PdfFlat, type PdfMember } from '@/lib/exportResidentsPdf';
+
+type MemberFormState = {
+  name: string;
+  phone: string;
+  relation: string;
+  age: string;
+  gender: string;
+  isPrimary: boolean;
+  photo: string;
+  idPhotoFront: string;
+  idPhotoBack: string;
+  policeVerification: string;
+  spouseName: string;
+  dateJoining: string;
+  dateLeave: string;
+  vehicleCategory: string;
+  vehicleName: string;
+  vehicleNumber: string;
+  vehicleColor: string;
+};
+
+const initialMemberForm = (): MemberFormState => ({
+  name: '',
+  phone: '',
+  relation: 'family',
+  age: '',
+  gender: 'Male',
+  isPrimary: false,
+  photo: '',
+  idPhotoFront: '',
+  idPhotoBack: '',
+  policeVerification: '',
+  spouseName: '',
+  dateJoining: '',
+  dateLeave: '',
+  vehicleCategory: 'car',
+  vehicleName: '',
+  vehicleNumber: '',
+  vehicleColor: '',
+});
 
 type ViewTab = 'flats' | 'addFlat';
 
@@ -29,14 +72,29 @@ const AdminResidentManager = () => {
 
   // Add member form
   const [showMemberForm, setShowMemberForm] = useState<string | null>(null);
-  const [memberForm, setMemberForm] = useState({ name: '', phone: '', relation: 'family', age: '', gender: 'Male', isPrimary: false });
+  const [memberForm, setMemberForm] = useState<MemberFormState>(initialMemberForm);
   const [editingMember, setEditingMember] = useState<string | null>(null);
 
   const floorFieldTouched = useRef(false);
   const [flatMetaEditId, setFlatMetaEditId] = useState<string | null>(null);
   const [flatMetaForm, setFlatMetaForm] = useState({ floor: '', wing: '', intercom: '' });
+  const [residentSelfIdUploadEnabled, setResidentSelfIdUploadEnabled] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => { loadFlats(); loadMembers(); loadResidentVehicles(); loadResidentUsers(); }, []);
+
+  useEffect(() => {
+    if (!societyId) {
+      setResidentSelfIdUploadEnabled(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from('societies').select('resident_self_id_upload_enabled').eq('id', societyId).single();
+      if (!cancelled) setResidentSelfIdUploadEnabled(!!data?.resident_self_id_upload_enabled);
+    })();
+    return () => { cancelled = true; };
+  }, [societyId]);
 
   const loadResidentUsers = async () => {
     const { data } = await supabase.from('resident_users').select('*');
@@ -126,10 +184,12 @@ const AdminResidentManager = () => {
 
   // === SYNC RESIDENT USERS for a flat ===
   const syncResidentUsersForFlat = async (flatId: string, flatNumber: string) => {
-    const flatMembers = members.filter(m => m.flatId === flatId && m.phone);
     // Re-fetch to get latest after member add
     const { data: latestMembers } = await supabase.from('members').select('*').eq('flat_id', flatId);
-    const membersWithPhone = (latestMembers || []).filter((m: any) => m.phone);
+    const membersWithPhone = (latestMembers || []).filter(
+      (m: { phone?: string | null; relation?: string | null }) =>
+        !!m.phone && allowsResidentLoginAndPrimary(m.relation),
+    );
     if (membersWithPhone.length === 0) return;
 
     // Get existing resident_users for this flat
@@ -157,72 +217,238 @@ const AdminResidentManager = () => {
     }
   };
 
+  const toggleResidentSelfIdUpload = async (on: boolean) => {
+    if (!societyId) {
+      toast.error('Select a society first');
+      return;
+    }
+    setResidentSelfIdUploadEnabled(on);
+    const { error } = await supabase.from('societies').update({ resident_self_id_upload_enabled: on }).eq('id', societyId);
+    if (error) {
+      setResidentSelfIdUploadEnabled(!on);
+      toast.error(error.message);
+      return;
+    }
+    toast.success(on ? 'Residents can add or edit their own Photo ID in the app (Profile).' : 'Self-service Photo ID turned off');
+  };
+
+  const handleExportResidentsPdf = async () => {
+    if (!societyId) {
+      toast.error('Select a society first');
+      return;
+    }
+    setExportingPdf(true);
+    try {
+      const { data: soc } = await supabase.from('societies').select('name').eq('id', societyId).single();
+      const pdfFlats: PdfFlat[] = flats.map((f) => ({
+        id: f.id,
+        flat_number: f.flatNumber,
+        owner_name: f.ownerName ?? null,
+        floor: f.floor ?? null,
+        wing: f.wing ?? null,
+      }));
+      const pdfMembers: PdfMember[] = members.map((m) => ({
+        flat_id: m.flatId,
+        name: m.name,
+        relation: m.relation,
+        phone: m.phone ?? null,
+        age: m.age ?? null,
+        gender: m.gender ?? null,
+        is_primary: m.isPrimary,
+        spouse_name: m.spouseName ?? null,
+        police_verification: m.policeVerification ?? null,
+        date_joining: m.dateJoining ?? null,
+        date_leave: m.dateLeave ?? null,
+        id_photo_front: m.idPhotoFront ?? null,
+        id_photo_back: m.idPhotoBack ?? null,
+      }));
+      exportResidentsDirectoryPdf(soc?.name || 'Society', pdfFlats, pdfMembers);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const pickIdImage = (field: 'idPhotoFront' | 'idPhotoBack' | 'photo') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onloadend = () => setMemberForm((f) => ({ ...f, [field]: reader.result as string }));
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const syncStaffVehicleRow = async (memberId: string, flatId: string, flatNumber: string, residentName: string) => {
+    const { data: existing } = await supabase.from('resident_vehicles').select('id').eq('member_id', memberId).maybeSingle();
+    const num = memberForm.vehicleNumber.trim();
+    const hasVehicle = num.length > 0 || memberForm.vehicleName.trim().length > 0;
+    if (!hasVehicle) {
+      if (existing?.id) await supabase.from('resident_vehicles').delete().eq('id', existing.id);
+      return;
+    }
+    const row = {
+      flat_id: flatId,
+      flat_number: flatNumber,
+      resident_name: residentName,
+      vehicle_number: num || 'N/A',
+      vehicle_type: memberForm.vehicleCategory || 'other',
+      vehicle_display_name: memberForm.vehicleName.trim() || null,
+      vehicle_color: memberForm.vehicleColor.trim() || null,
+      member_id: memberId,
+    };
+    if (existing?.id) await supabase.from('resident_vehicles').update(row).eq('id', existing.id);
+    else await supabase.from('resident_vehicles').insert(row);
+  };
+
   // === ADD/EDIT MEMBER ===
   const saveMember = async (flatId: string) => {
     if (!memberForm.name) { toast.error('Name is required'); return; }
 
-    // If marking as primary, unset existing primary
-    if (memberForm.isPrimary) {
+    const restricted = isRestrictedMemberCategory(memberForm.relation);
+    if (restricted && !memberForm.idPhotoFront && !(editingMember && members.find((x) => x.id === editingMember)?.idPhotoFront)) {
+      toast.error('Photo ID (front) is required for tenant, other, and staff/service');
+      return;
+    }
+
+    const flat = flats.find((f) => f.id === flatId);
+    const existing = getMembersForFlat(flatId);
+    const prev = editingMember ? members.find((m) => m.id === editingMember) : null;
+    const primaryExists = !!getPrimaryMember(flatId);
+    const showPrimaryCheckbox =
+      allowsResidentLoginAndPrimary(memberForm.relation) && !primaryExists && existing.length > 0;
+
+    let isPrimary = false;
+    if (allowsResidentLoginAndPrimary(memberForm.relation)) {
+      if (prev?.isPrimary) isPrimary = true;
+      else if (!editingMember && existing.length === 0) isPrimary = true;
+      else if (memberForm.isPrimary && showPrimaryCheckbox) isPrimary = true;
+    }
+
+    if (isPrimary) {
       const existingPrimary = getPrimaryMember(flatId);
       if (existingPrimary && existingPrimary.id !== editingMember) {
         await supabase.from('members').update({ is_primary: false }).eq('id', existingPrimary.id);
       }
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       flat_id: flatId,
       name: memberForm.name,
       phone: memberForm.phone || null,
       relation: memberForm.relation,
-      age: memberForm.age ? parseInt(memberForm.age) : null,
+      age: memberForm.age ? parseInt(memberForm.age, 10) : null,
       gender: memberForm.gender || null,
-      is_primary: memberForm.isPrimary,
+      is_primary: isPrimary,
+      photo: memberForm.photo || null,
     };
 
-    const flat = flats.find(f => f.id === flatId);
+    if (restricted) {
+      payload.id_photo_front = memberForm.idPhotoFront || null;
+      payload.id_photo_back = memberForm.idPhotoBack || null;
+      payload.police_verification = memberForm.policeVerification.trim() || null;
+      payload.spouse_name = memberForm.spouseName.trim() || null;
+      payload.date_joining = memberForm.dateJoining || null;
+      payload.date_leave = memberForm.dateLeave || null;
+    } else {
+      payload.id_photo_front = null;
+      payload.id_photo_back = null;
+      payload.police_verification = null;
+      payload.spouse_name = null;
+      payload.date_joining = null;
+      payload.date_leave = null;
+    }
+
+    if (prev?.phone && (restricted || !memberForm.phone || memberForm.phone !== prev.phone)) {
+      await supabase.from('resident_users').delete().eq('phone', prev.phone).eq('flat_id', flatId);
+    }
+    if (restricted && memberForm.phone) {
+      await supabase.from('resident_users').delete().eq('phone', memberForm.phone).eq('flat_id', flatId);
+    }
+
+    let memberId = editingMember;
 
     if (editingMember) {
       await supabase.from('members').update(payload).eq('id', editingMember);
-      // Update resident_user name if phone matches
-      if (memberForm.phone) {
-        await supabase.from('resident_users').update({ name: memberForm.name }).eq('phone', memberForm.phone).eq('flat_id', flatId);
+      if (allowsResidentLoginAndPrimary(memberForm.relation) && memberForm.phone) {
+        await supabase
+          .from('resident_users')
+          .update({ name: memberForm.name })
+          .eq('phone', memberForm.phone)
+          .eq('flat_id', flatId);
       }
       showSuccess('Updated!', 'Member updated successfully');
     } else {
-      const existing = getMembersForFlat(flatId);
-      if (existing.length === 0) payload.is_primary = true;
-      await supabase.from('members').insert(payload);
+      const { data: ins, error: insErr } = await supabase.from('members').insert(payload).select('id').single();
+      if (insErr || !ins) {
+        toast.error(insErr?.message || 'Could not add member');
+        return;
+      }
+      memberId = ins.id;
       toast.success('Member added');
     }
 
-    // Update flat owner_name if primary
-    if (payload.is_primary && flat) {
-      await supabase.from('flats').update({ owner_name: payload.name, is_occupied: true }).eq('id', flatId);
+    if (isPrimary && flat) {
+      await supabase.from('flats').update({ owner_name: memberForm.name, is_occupied: true }).eq('id', flatId);
+    }
+
+    if (restricted && memberId && flat) {
+      await syncStaffVehicleRow(memberId, flatId, flat.flatNumber, memberForm.name);
+    } else if (memberId) {
+      const { data: vdel } = await supabase.from('resident_vehicles').select('id').eq('member_id', memberId).maybeSingle();
+      if (vdel?.id) await supabase.from('resident_vehicles').delete().eq('id', vdel.id);
     }
 
     resetMemberForm();
     await loadMembers();
+    loadResidentVehicles();
     loadFlats();
 
-    // Auto-create resident login if member has phone
-    if (memberForm.phone && flat) {
+    if (allowsResidentLoginAndPrimary(memberForm.relation) && memberForm.phone && flat) {
       await syncResidentUsersForFlat(flatId, flat.flatNumber);
     }
+    loadResidentUsers();
   };
 
-  const editMember = (m: Member) => {
+  const editMember = async (m: Member) => {
     setMemberForm({
-      name: m.name, phone: m.phone || '', relation: m.relation,
-      age: m.age ? String(m.age) : '', gender: m.gender || 'Male', isPrimary: m.isPrimary,
+      ...initialMemberForm(),
+      name: m.name,
+      phone: m.phone || '',
+      relation: m.relation,
+      age: m.age ? String(m.age) : '',
+      gender: m.gender || 'Male',
+      isPrimary: m.isPrimary,
+      photo: m.photo || '',
+      idPhotoFront: m.idPhotoFront || '',
+      idPhotoBack: m.idPhotoBack || '',
+      policeVerification: m.policeVerification || '',
+      spouseName: m.spouseName || '',
+      dateJoining: m.dateJoining || '',
+      dateLeave: m.dateLeave || '',
     });
     setEditingMember(m.id);
     setShowMemberForm(m.flatId);
+    const { data: vrow } = await supabase.from('resident_vehicles').select('*').eq('member_id', m.id).maybeSingle();
+    if (vrow) {
+      setMemberForm((f) => ({
+        ...f,
+        vehicleCategory: vrow.vehicle_type || 'car',
+        vehicleName: vrow.vehicle_display_name || '',
+        vehicleNumber: vrow.vehicle_number === 'N/A' ? '' : vrow.vehicle_number,
+        vehicleColor: vrow.vehicle_color || '',
+      }));
+    }
   };
 
   const removeMember = async (id: string) => {
     const ok = await confirmAction('Delete Member?', 'This member will be removed permanently.', 'Delete', 'Cancel');
     if (!ok) return;
     const member = members.find(m => m.id === id);
+    await supabase.from('resident_vehicles').delete().eq('member_id', id);
     await supabase.from('members').delete().eq('id', id);
     // Also remove resident_user if exists
     if (member?.phone) {
@@ -234,12 +460,17 @@ const AdminResidentManager = () => {
   };
 
   const resetMemberForm = () => {
-    setMemberForm({ name: '', phone: '', relation: 'family', age: '', gender: 'Male', isPrimary: false });
+    setMemberForm(initialMemberForm());
     setShowMemberForm(null);
     setEditingMember(null);
   };
 
   const setPrimaryMember = async (memberId: string, flatId: string) => {
+    const target = members.find((m) => m.id === memberId);
+    if (!target || !allowsResidentLoginAndPrimary(target.relation)) {
+      toast.error('Only household members can be primary (not tenant, staff, or other)');
+      return;
+    }
     const flatMembers = getMembersForFlat(flatId);
     for (const m of flatMembers) {
       if (m.isPrimary) await supabase.from('members').update({ is_primary: false }).eq('id', m.id);
@@ -283,15 +514,42 @@ const AdminResidentManager = () => {
 
   return (
     <div className="page-container">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-primary" />
-          <h2 className="font-semibold">{t('admin.manageResidents')}</h2>
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold">{t('admin.manageResidents')}</h2>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button
+              type="button"
+              onClick={handleExportResidentsPdf}
+              disabled={exportingPdf || !societyId}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium disabled:opacity-50"
+            >
+              <FileDown className="w-3.5 h-3.5" /> {exportingPdf ? 'PDF…' : 'Export PDF'}
+            </button>
+            <button onClick={openAddFlatTab}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+              <Plus className="w-3.5 h-3.5" /> Add Flat
+            </button>
+          </div>
         </div>
-        <button onClick={openAddFlatTab}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">
-          <Plus className="w-3.5 h-3.5" /> Add Flat
-        </button>
+        {societyId && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground">Resident self-service Photo ID</p>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                When on, logged-in residents see Profile options to upload or change their own ID (front/back) only for their linked member row.
+              </p>
+            </div>
+            <Switch
+              checked={residentSelfIdUploadEnabled}
+              onCheckedChange={toggleResidentSelfIdUpload}
+              aria-label="Allow residents to upload their own photo ID"
+            />
+          </div>
+        )}
       </div>
 
       {/* Add Flat Form */}
@@ -527,9 +785,9 @@ const AdminResidentManager = () => {
                       {flatMembers.length > 0 && (
                         <div className="space-y-1.5">
                           {flatMembers.map(m => (
-                            <div key={m.id} className="flex items-center gap-2 bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
-                                {m.name.charAt(0)}
+                            <div key={m.id} className="flex items-start gap-2 bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0 overflow-hidden">
+                                {m.photo ? <img src={m.photo} alt="" className="w-full h-full object-cover" /> : m.name.charAt(0)}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium truncate">
@@ -540,10 +798,20 @@ const AdminResidentManager = () => {
                                   {m.relation}{m.age ? ` · ${m.age}y` : ''}{m.gender ? ` · ${m.gender}` : ''}
                                   {m.phone ? ` · 📱${m.phone}` : ''}
                                 </p>
+                                {(m.idPhotoFront || m.idPhotoBack) && (
+                                  <div className="flex gap-1 mt-1 flex-wrap">
+                                    {m.idPhotoFront && (
+                                      <img src={m.idPhotoFront} alt="" className="h-9 w-14 object-cover rounded border border-border" />
+                                    )}
+                                    {m.idPhotoBack && (
+                                      <img src={m.idPhotoBack} alt="" className="h-9 w-14 object-cover rounded border border-border" />
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               <div className="flex items-center gap-0.5 flex-shrink-0">
-                                {!m.isPrimary && (
-                                  <button onClick={() => setPrimaryMember(m.id, flat.id)} className="p-1 text-muted-foreground hover:text-primary" title="Set Primary">
+                                {!m.isPrimary && allowsResidentLoginAndPrimary(m.relation) && (
+                                  <button onClick={() => setPrimaryMember(m.id, flat.id)} className="p-1 text-muted-foreground hover:text-primary" title="Set primary (household only)">
                                     <Star className="w-3 h-3" />
                                   </button>
                                 )}
@@ -560,13 +828,23 @@ const AdminResidentManager = () => {
                       )}
 
                       {/* Add/Edit Member Form */}
-                      {showMemberForm === flat.id && (
+                      {showMemberForm === flat.id && (() => {
+                        const restrictedForm = isRestrictedMemberCategory(memberForm.relation);
+                        const showPrimaryCheckbox =
+                          allowsResidentLoginAndPrimary(memberForm.relation) && !primary && flatMembers.length > 0;
+                        return (
                         <div className="mt-2 p-3 bg-secondary/30 rounded-lg space-y-2">
                           <p className="text-xs font-semibold">{editingMember ? 'Edit Member' : 'Add Member'}</p>
                           <div className="grid grid-cols-2 gap-2">
                             <input className="input-field text-xs" placeholder="Name *" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} />
-                            <input className="input-field text-xs" placeholder="Phone (for login)" value={memberForm.phone} onChange={e => setMemberForm({...memberForm, phone: e.target.value.replace(/\D/g, '')})} maxLength={10} />
-                            <select className="input-field text-xs" value={memberForm.relation} onChange={e => setMemberForm({...memberForm, relation: e.target.value})}>
+                            <input
+                              className="input-field text-xs"
+                              placeholder={restrictedForm ? 'Phone (contact only, no login)' : 'Phone (for login)'}
+                              value={memberForm.phone}
+                              onChange={e => setMemberForm({...memberForm, phone: e.target.value.replace(/\D/g, '')})}
+                              maxLength={10}
+                            />
+                            <select className="input-field text-xs col-span-2" value={memberForm.relation} onChange={e => setMemberForm({...memberForm, relation: e.target.value, isPrimary: false})}>
                               <optgroup label="Household">
                                 <option value="owner">Owner</option>
                                 <option value="spouse">Spouse</option>
@@ -592,18 +870,118 @@ const AdminResidentManager = () => {
                               <option value="Female">Female</option>
                               <option value="Other">Other</option>
                             </select>
-                            <label className="flex items-center gap-2 text-xs">
-                              <input type="checkbox" checked={memberForm.isPrimary} onChange={e => setMemberForm({...memberForm, isPrimary: e.target.checked})} className="rounded" />
-                              Primary Member
-                            </label>
+                            {!restrictedForm && (
+                              <div className="col-span-2 space-y-1">
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase">Profile photo (optional)</p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button type="button" onClick={() => pickIdImage('photo')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
+                                    <Camera className="w-3 h-3" /> Upload photo
+                                  </button>
+                                  {memberForm.photo && <span className="text-[10px] text-green-600">✓</span>}
+                                  {memberForm.photo && (
+                                    <img src={memberForm.photo} alt="" className="h-10 w-10 rounded-full object-cover border border-border" />
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            {restrictedForm && (
+                              <>
+                                <div className="col-span-2 space-y-1">
+                                  <p className="text-[10px] font-medium text-muted-foreground uppercase">Photo ID (front required)</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    <button type="button" onClick={() => pickIdImage('idPhotoFront')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
+                                      <Camera className="w-3 h-3" /> Front
+                                    </button>
+                                    {memberForm.idPhotoFront && <span className="text-[10px] text-green-600">✓</span>}
+                                    <button type="button" onClick={() => pickIdImage('idPhotoBack')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
+                                      <Camera className="w-3 h-3" /> Back (optional)
+                                    </button>
+                                    {memberForm.idPhotoBack && <span className="text-[10px] text-green-600">✓</span>}
+                                  </div>
+                                </div>
+                                <select
+                                  className="input-field text-xs col-span-2"
+                                  value={memberForm.policeVerification}
+                                  onChange={e => setMemberForm({ ...memberForm, policeVerification: e.target.value })}
+                                >
+                                  <option value="">Police verification (optional)</option>
+                                  <option value="pending">Pending</option>
+                                  <option value="submitted">Submitted</option>
+                                  <option value="verified">Verified</option>
+                                </select>
+                                <input
+                                  className="input-field text-xs col-span-2"
+                                  placeholder="Spouse / husband name (optional)"
+                                  value={memberForm.spouseName}
+                                  onChange={e => setMemberForm({ ...memberForm, spouseName: e.target.value })}
+                                />
+                                <input
+                                  className="input-field text-xs"
+                                  type="date"
+                                  value={memberForm.dateJoining}
+                                  onChange={e => setMemberForm({ ...memberForm, dateJoining: e.target.value })}
+                                />
+                                <input
+                                  className="input-field text-xs"
+                                  type="date"
+                                  placeholder="Date left"
+                                  value={memberForm.dateLeave}
+                                  onChange={e => setMemberForm({ ...memberForm, dateLeave: e.target.value })}
+                                />
+                                <p className="col-span-2 text-[10px] font-medium text-muted-foreground uppercase">Vehicle (optional)</p>
+                                <select
+                                  className="input-field text-xs"
+                                  value={memberForm.vehicleCategory}
+                                  onChange={e => setMemberForm({ ...memberForm, vehicleCategory: e.target.value })}
+                                >
+                                  {STAFF_VEHICLE_TYPES.map((vt) => (
+                                    <option key={vt} value={vt}>{vt}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  className="input-field text-xs"
+                                  placeholder="Vehicle name / model"
+                                  value={memberForm.vehicleName}
+                                  onChange={e => setMemberForm({ ...memberForm, vehicleName: e.target.value })}
+                                />
+                                <input
+                                  className="input-field text-xs font-mono"
+                                  placeholder="Registration no."
+                                  value={memberForm.vehicleNumber}
+                                  onChange={e => setMemberForm({ ...memberForm, vehicleNumber: e.target.value })}
+                                />
+                                <input
+                                  className="input-field text-xs"
+                                  placeholder="Color"
+                                  value={memberForm.vehicleColor}
+                                  onChange={e => setMemberForm({ ...memberForm, vehicleColor: e.target.value })}
+                                />
+                              </>
+                            )}
+                            {showPrimaryCheckbox && (
+                              <label className="flex items-center gap-2 text-xs col-span-2">
+                                <input type="checkbox" checked={memberForm.isPrimary} onChange={e => setMemberForm({...memberForm, isPrimary: e.target.checked})} className="rounded" />
+                                Set as primary member
+                              </label>
+                            )}
+                            {primary && !showPrimaryCheckbox && allowsResidentLoginAndPrimary(memberForm.relation) && (
+                              <p className="text-[10px] text-muted-foreground col-span-2">
+                                Primary is already set. Use ★ on a household member in the list to change it.
+                              </p>
+                            )}
                           </div>
-                          <p className="text-[10px] text-muted-foreground">💡 Members with phone numbers will automatically get a login account. All flatmates share the same password.</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {restrictedForm
+                              ? '💡 Tenant, other, and staff do not get resident app login. Phone is for contact only.'
+                              : '💡 Household members with a phone number get a shared flat login password.'}
+                          </p>
                           <div className="flex gap-2">
-                            <button onClick={() => saveMember(flat.id)} className="btn-primary flex-1 text-xs py-1.5">{editingMember ? 'Update' : 'Add'}</button>
-                            <button onClick={resetMemberForm} className="btn-secondary flex-1 text-xs py-1.5">Cancel</button>
+                            <button type="button" onClick={() => saveMember(flat.id)} className="btn-primary flex-1 text-xs py-1.5">{editingMember ? 'Update' : 'Add'}</button>
+                            <button type="button" onClick={resetMemberForm} className="btn-secondary flex-1 text-xs py-1.5">Cancel</button>
                           </div>
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
 
                     {/* Vehicles */}

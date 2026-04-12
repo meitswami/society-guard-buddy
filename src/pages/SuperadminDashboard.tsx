@@ -2,21 +2,139 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield } from 'lucide-react';
+import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield, Pencil, X } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import BiometricSetup from '@/components/BiometricSetup';
+import { trimSocietyFlatsToConfiguredRange } from '@/lib/societyFlatRangeTrim';
 
 interface Props {
   superadmin: { id: string; name: string; username: string };
   onLogout: () => void;
 }
 
+type TriState = '' | 'yes' | 'no';
+
 interface Society {
   id: string; name: string; address: string | null; city: string | null;
   state: string | null; pincode: string | null; is_active: boolean;
   logo_url: string | null; contact_person: string | null;
   contact_email: string | null; contact_phone: string | null;
+  photo_urls?: string[] | null;
+  total_flats?: number | null;
+  total_floors?: number | null;
+  block_names?: string[] | null;
+  terrace_accessible?: boolean | null;
+  has_basement?: boolean | null;
+  basement_usable_for_residents?: boolean | null;
+  flats_per_floor?: number | null;
+  flat_series_start?: string | null;
+  flat_series_end?: string | null;
+}
+
+interface SocietyFormState {
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  contact_person: string;
+  contact_email: string;
+  contact_phone: string;
+  logo_url: string;
+  total_flats: string;
+  total_floors: string;
+  blocks_csv: string;
+  terrace: TriState;
+  basement: TriState;
+  basement_usable: TriState;
+  flats_per_floor: string;
+  flat_series_from: string;
+  flat_series_to: string;
+  existingPhotoUrls: string[];
+}
+
+const MAX_SOCIETY_PHOTOS = 12;
+const MAX_SOCIETY_PHOTO_BYTES = 8 * 1024 * 1024;
+
+function emptySocietyForm(): SocietyFormState {
+  return {
+    name: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    contact_person: '',
+    contact_email: '',
+    contact_phone: '',
+    logo_url: '',
+    total_flats: '',
+    total_floors: '',
+    blocks_csv: '',
+    terrace: '',
+    basement: '',
+    basement_usable: '',
+    flats_per_floor: '',
+    flat_series_from: '',
+    flat_series_to: '',
+    existingPhotoUrls: [],
+  };
+}
+
+function boolToTri(v: boolean | null | undefined): TriState {
+  if (v === null || v === undefined) return '';
+  return v ? 'yes' : 'no';
+}
+
+function societyToForm(s: Society): SocietyFormState {
+  return {
+    name: s.name,
+    address: s.address ?? '',
+    city: s.city ?? '',
+    state: s.state ?? '',
+    pincode: s.pincode ?? '',
+    contact_person: s.contact_person ?? '',
+    contact_email: s.contact_email ?? '',
+    contact_phone: s.contact_phone ?? '',
+    logo_url: s.logo_url ?? '',
+    total_flats: s.total_flats != null ? String(s.total_flats) : '',
+    total_floors: s.total_floors != null ? String(s.total_floors) : '',
+    blocks_csv: (s.block_names ?? []).join(', '),
+    terrace: boolToTri(s.terrace_accessible),
+    basement: boolToTri(s.has_basement),
+    basement_usable: boolToTri(s.basement_usable_for_residents),
+    flats_per_floor: s.flats_per_floor != null ? String(s.flats_per_floor) : '',
+    flat_series_from: s.flat_series_start ?? '',
+    flat_series_to: s.flat_series_end ?? '',
+    existingPhotoUrls: [...(s.photo_urls ?? [])],
+  };
+}
+
+async function uploadSocietyPhotos(societyId: string, files: File[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) {
+      toast.error(`Not an image: ${file.name}`);
+      continue;
+    }
+    if (file.size > MAX_SOCIETY_PHOTO_BYTES) {
+      toast.error(`Image too large (max 8 MB): ${file.name}`);
+      continue;
+    }
+    const safe = file.name.replace(/[^\w.-]/g, '_');
+    const path = `${societyId}/${crypto.randomUUID()}_${safe}`;
+    const { error } = await supabase.storage.from('society-photos').upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+    if (error) {
+      toast.error(`Upload failed: ${file.name}`);
+      continue;
+    }
+    const { data } = supabase.storage.from('society-photos').getPublicUrl(path);
+    urls.push(data.publicUrl);
+  }
+  return urls;
 }
 interface SocietyRole { id: string; society_id: string; role_name: string; }
 interface Admin {
@@ -37,7 +155,10 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const [exporting, setExporting] = useState(false);
 
   const [showSocietyForm, setShowSocietyForm] = useState(false);
-  const [sf, setSf] = useState({ name: '', address: '', city: '', state: '', pincode: '', contact_person: '', contact_email: '', contact_phone: '', logo_url: '' });
+  const [editingSocietyId, setEditingSocietyId] = useState<string | null>(null);
+  const [sf, setSf] = useState<SocietyFormState>(() => emptySocietyForm());
+  const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
+  const [societySaving, setSocietySaving] = useState(false);
 
   const [newRole, setNewRole] = useState('');
 
@@ -70,18 +191,137 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     if (s.data && s.data.length > 0 && !selectedSociety) setSelectedSociety(s.data[0].id);
   };
 
-  const addSociety = async () => {
-    if (!sf.name.trim()) return;
-    await supabase.from('societies').insert({
-      name: sf.name, address: sf.address || null, city: sf.city || null,
-      state: sf.state || null, pincode: sf.pincode || null,
-      contact_person: sf.contact_person || null, contact_email: sf.contact_email || null,
-      contact_phone: sf.contact_phone || null, logo_url: sf.logo_url || null,
-    });
-    setSf({ name: '', address: '', city: '', state: '', pincode: '', contact_person: '', contact_email: '', contact_phone: '', logo_url: '' });
+  const closeSocietyForm = () => {
     setShowSocietyForm(false);
-    toast.success(t('superadmin.societyAdded'));
-    loadAll();
+    setEditingSocietyId(null);
+    setSf(emptySocietyForm());
+    setPendingPhotoFiles([]);
+  };
+
+  const openNewSocietyForm = () => {
+    setEditingSocietyId(null);
+    setSf(emptySocietyForm());
+    setPendingPhotoFiles([]);
+    setShowSocietyForm(true);
+  };
+
+  const openEditSociety = (s: Society) => {
+    setEditingSocietyId(s.id);
+    setSf(societyToForm(s));
+    setPendingPhotoFiles([]);
+    setShowSocietyForm(true);
+  };
+
+  const triToBool = (v: TriState): boolean | null => (v === '' ? null : v === 'yes');
+
+  const saveSociety = async () => {
+    if (!sf.name.trim()) return;
+    const blockParts = sf.blocks_csv.split(/[,;]+/).map((x) => x.trim()).filter(Boolean);
+    const block_names = blockParts.length ? blockParts : null;
+
+    const parseIntOrNull = (v: string) => {
+      const trimmed = v.trim();
+      if (!trimmed) return null;
+      const n = parseInt(trimmed, 10);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const hasBasement = sf.basement === 'yes';
+    const baseRow = {
+      name: sf.name.trim(),
+      address: sf.address.trim() || null,
+      city: sf.city.trim() || null,
+      state: sf.state.trim() || null,
+      pincode: sf.pincode.trim() || null,
+      contact_person: sf.contact_person.trim() || null,
+      contact_email: sf.contact_email.trim() || null,
+      contact_phone: sf.contact_phone.trim() || null,
+      logo_url: sf.logo_url.trim() || null,
+      total_flats: parseIntOrNull(sf.total_flats),
+      total_floors: parseIntOrNull(sf.total_floors),
+      block_names,
+      terrace_accessible: triToBool(sf.terrace),
+      has_basement: triToBool(sf.basement),
+      basement_usable_for_residents: hasBasement ? triToBool(sf.basement_usable) : null,
+      flats_per_floor: parseIntOrNull(sf.flats_per_floor),
+      flat_series_start: sf.flat_series_from.trim() || null,
+      flat_series_end: sf.flat_series_to.trim() || null,
+    };
+
+    const totalPhotoCount = sf.existingPhotoUrls.length + pendingPhotoFiles.length;
+    if (totalPhotoCount > MAX_SOCIETY_PHOTOS) {
+      toast.error(t('superadmin.societyPhotosLimit'));
+      return;
+    }
+
+    setSocietySaving(true);
+    try {
+      let societyIdForTrim: string;
+
+      if (editingSocietyId) {
+        societyIdForTrim = editingSocietyId;
+        let photo_urls = [...sf.existingPhotoUrls];
+        if (pendingPhotoFiles.length) {
+          const uploaded = await uploadSocietyPhotos(editingSocietyId, pendingPhotoFiles);
+          photo_urls = [...photo_urls, ...uploaded];
+        }
+        const { error } = await supabase
+          .from('societies')
+          .update({ ...baseRow, photo_urls })
+          .eq('id', editingSocietyId);
+        if (error) throw error;
+        toast.success(t('superadmin.societyUpdated'));
+      } else {
+        const { data, error } = await supabase
+          .from('societies')
+          .insert({ ...baseRow, photo_urls: [] })
+          .select('id')
+          .single();
+        if (error) throw error;
+        societyIdForTrim = data.id;
+        let photo_urls = [...sf.existingPhotoUrls];
+        if (pendingPhotoFiles.length) {
+          const uploaded = await uploadSocietyPhotos(societyIdForTrim, pendingPhotoFiles);
+          photo_urls = [...photo_urls, ...uploaded];
+        }
+        if (photo_urls.length) {
+          const { error: uerr } = await supabase.from('societies').update({ photo_urls }).eq('id', societyIdForTrim);
+          if (uerr) throw uerr;
+        }
+        toast.success(t('superadmin.societyAdded'));
+      }
+
+      const trimmed = await trimSocietyFlatsToConfiguredRange(supabase, societyIdForTrim, {
+        total_floors: baseRow.total_floors,
+        flat_series_start: baseRow.flat_series_start,
+        flat_series_end: baseRow.flat_series_end,
+        block_names,
+      });
+      if (trimmed > 0) {
+        toast.info(t('superadmin.flatsTrimmed').replace('{count}', String(trimmed)));
+      }
+
+      closeSocietyForm();
+      loadAll();
+    } catch (e) {
+      console.error(e);
+      toast.error(t('superadmin.societySaveFailed'));
+    }
+    setSocietySaving(false);
+  };
+
+  const onPickSocietyPhotos = (files: FileList | null) => {
+    if (!files?.length) return;
+    const next: File[] = [...pendingPhotoFiles];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (next.length + sf.existingPhotoUrls.length >= MAX_SOCIETY_PHOTOS) {
+        toast.error(t('superadmin.societyPhotosLimit'));
+        break;
+      }
+      next.push(f);
+    }
+    setPendingPhotoFiles(next);
   };
 
   const deleteSociety = async (id: string) => {
@@ -213,60 +453,243 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">{t('superadmin.societies')}</h2>
-              <button onClick={() => setShowSocietyForm(!showSocietyForm)}
-                className="p-2 rounded-lg bg-primary/10 text-primary"><Plus className="w-4 h-4" /></button>
+              <button
+                type="button"
+                onClick={() => (showSocietyForm ? closeSocietyForm() : openNewSocietyForm())}
+                className="p-2 rounded-lg bg-primary/10 text-primary"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
             {showSocietyForm && (
               <div className="card-section p-4 mb-4 flex flex-col gap-3">
-                <input className="input-field" placeholder={t('superadmin.societyName')} value={sf.name} onChange={e => setSf({...sf, name: e.target.value})} />
-                <input className="input-field" placeholder={t('superadmin.address')} value={sf.address} onChange={e => setSf({...sf, address: e.target.value})} />
+                <p className="text-sm font-medium">
+                  {editingSocietyId ? t('superadmin.editSociety') : t('superadmin.newSociety')}
+                </p>
+                <input className="input-field" placeholder={t('superadmin.societyName')} value={sf.name} onChange={e => setSf({ ...sf, name: e.target.value })} />
+                <input className="input-field" placeholder={t('superadmin.address')} value={sf.address} onChange={e => setSf({ ...sf, address: e.target.value })} />
                 <div className="grid grid-cols-2 gap-2">
-                  <input className="input-field" placeholder={t('superadmin.city')} value={sf.city} onChange={e => setSf({...sf, city: e.target.value})} />
-                  <input className="input-field" placeholder={t('superadmin.state')} value={sf.state} onChange={e => setSf({...sf, state: e.target.value})} />
+                  <input className="input-field" placeholder={t('superadmin.city')} value={sf.city} onChange={e => setSf({ ...sf, city: e.target.value })} />
+                  <input className="input-field" placeholder={t('superadmin.state')} value={sf.state} onChange={e => setSf({ ...sf, state: e.target.value })} />
                 </div>
-                <input className="input-field" placeholder={t('superadmin.pincode')} value={sf.pincode} onChange={e => setSf({...sf, pincode: e.target.value})} />
+                <input className="input-field" placeholder={t('superadmin.pincode')} value={sf.pincode} onChange={e => setSf({ ...sf, pincode: e.target.value })} />
+
+                <div className="border-t border-border pt-3 mt-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t('superadmin.societyBuilding')}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      className="input-field"
+                      inputMode="numeric"
+                      placeholder={t('superadmin.totalFlats')}
+                      value={sf.total_flats}
+                      onChange={e => setSf({ ...sf, total_flats: e.target.value })}
+                    />
+                    <input
+                      className="input-field"
+                      inputMode="numeric"
+                      placeholder={t('superadmin.totalFloors')}
+                      value={sf.total_floors}
+                      onChange={e => setSf({ ...sf, total_floors: e.target.value })}
+                    />
+                  </div>
+                  <input
+                    className="input-field mt-2"
+                    placeholder={t('superadmin.blocksPlaceholder')}
+                    value={sf.blocks_csv}
+                    onChange={e => setSf({ ...sf, blocks_csv: e.target.value })}
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">{t('superadmin.blocksHint')}</p>
+                  <div className="grid grid-cols-1 gap-2 mt-2">
+                    <label className="text-xs text-muted-foreground flex flex-col gap-1">
+                      <span>{t('superadmin.terraceAccessible')}</span>
+                      <select
+                        className="input-field"
+                        value={sf.terrace}
+                        onChange={e => setSf({ ...sf, terrace: e.target.value as TriState })}
+                      >
+                        <option value="">{t('superadmin.notSpecified')}</option>
+                        <option value="yes">{t('swal.yes')}</option>
+                        <option value="no">{t('swal.no')}</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-muted-foreground flex flex-col gap-1">
+                      <span>{t('superadmin.basement')}</span>
+                      <select
+                        className="input-field"
+                        value={sf.basement}
+                        onChange={e => setSf({ ...sf, basement: e.target.value as TriState, basement_usable: e.target.value !== 'yes' ? '' : sf.basement_usable })}
+                      >
+                        <option value="">{t('superadmin.notSpecified')}</option>
+                        <option value="yes">{t('swal.yes')}</option>
+                        <option value="no">{t('swal.no')}</option>
+                      </select>
+                    </label>
+                    {sf.basement === 'yes' && (
+                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
+                        <span>{t('superadmin.basementUsable')}</span>
+                        <select
+                          className="input-field"
+                          value={sf.basement_usable}
+                          onChange={e => setSf({ ...sf, basement_usable: e.target.value as TriState })}
+                        >
+                          <option value="">{t('superadmin.notSpecified')}</option>
+                          <option value="yes">{t('swal.yes')}</option>
+                          <option value="no">{t('swal.no')}</option>
+                        </select>
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-3 mt-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t('superadmin.flatNumbering')}</p>
+                  <input
+                    className="input-field"
+                    inputMode="numeric"
+                    placeholder={t('superadmin.flatsPerFloor')}
+                    value={sf.flats_per_floor}
+                    onChange={e => setSf({ ...sf, flats_per_floor: e.target.value })}
+                  />
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <input
+                      className="input-field"
+                      placeholder={t('superadmin.flatSeriesFrom')}
+                      value={sf.flat_series_from}
+                      onChange={e => setSf({ ...sf, flat_series_from: e.target.value })}
+                    />
+                    <input
+                      className="input-field"
+                      placeholder={t('superadmin.flatSeriesTo')}
+                      value={sf.flat_series_to}
+                      onChange={e => setSf({ ...sf, flat_series_to: e.target.value })}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t('superadmin.flatSeriesHelp')}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1.5 border-l-2 border-primary/30 pl-2">{t('superadmin.flatTrimHint')}</p>
+                </div>
+
+                <div className="border-t border-border pt-3 mt-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t('superadmin.societyPhotos')}</p>
+                  <p className="text-[10px] text-muted-foreground mb-2">{t('superadmin.societyPhotosHint')}</p>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {sf.existingPhotoUrls.map((url) => (
+                      <div key={url} className="relative w-16 h-16 rounded-lg overflow-hidden border border-border shrink-0">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          className="absolute top-0.5 right-0.5 p-0.5 rounded bg-background/90 text-destructive"
+                          onClick={() => setSf({ ...sf, existingPhotoUrls: sf.existingPhotoUrls.filter((u) => u !== url) })}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {pendingPhotoFiles.length > 0 && (
+                    <ul className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
+                      {pendingPhotoFiles.map((f, i) => (
+                        <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
+                          <span className="truncate">{f.name}</span>
+                          <button
+                            type="button"
+                            className="text-destructive shrink-0"
+                            onClick={() => setPendingPhotoFiles(pendingPhotoFiles.filter((_, j) => j !== i))}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <label className="btn-secondary inline-flex items-center justify-center gap-2 cursor-pointer text-sm py-2 px-3">
+                    <Image className="w-4 h-4" />
+                    {t('superadmin.addSocietyPhotos')}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        onPickSocietyPhotos(e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+
                 <div className="border-t border-border pt-3 mt-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t('superadmin.branding')}</p>
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <input className="input-field" placeholder={t('superadmin.contactPerson')} value={sf.contact_person} onChange={e => setSf({...sf, contact_person: e.target.value})} />
+                      <input className="input-field" placeholder={t('superadmin.contactPerson')} value={sf.contact_person} onChange={e => setSf({ ...sf, contact_person: e.target.value })} />
                     </div>
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <input className="input-field" type="email" placeholder={t('superadmin.contactEmail')} value={sf.contact_email} onChange={e => setSf({...sf, contact_email: e.target.value})} />
+                      <input className="input-field" type="email" placeholder={t('superadmin.contactEmail')} value={sf.contact_email} onChange={e => setSf({ ...sf, contact_email: e.target.value })} />
                     </div>
                     <div className="flex items-center gap-2">
                       <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <input className="input-field" placeholder={t('superadmin.contactPhone')} value={sf.contact_phone} onChange={e => setSf({...sf, contact_phone: e.target.value})} />
+                      <input className="input-field" placeholder={t('superadmin.contactPhone')} value={sf.contact_phone} onChange={e => setSf({ ...sf, contact_phone: e.target.value })} />
                     </div>
                     <div className="flex items-center gap-2">
                       <Image className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <input className="input-field" placeholder={t('superadmin.logoUrl')} value={sf.logo_url} onChange={e => setSf({...sf, logo_url: e.target.value})} />
+                      <input className="input-field" placeholder={t('superadmin.logoUrl')} value={sf.logo_url} onChange={e => setSf({ ...sf, logo_url: e.target.value })} />
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={addSociety} className="btn-primary flex-1">{t('common.save')}</button>
-                  <button onClick={() => setShowSocietyForm(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
+                  <button type="button" onClick={saveSociety} disabled={societySaving} className="btn-primary flex-1">
+                    {societySaving ? '…' : t('common.save')}
+                  </button>
+                  <button type="button" onClick={closeSocietyForm} className="btn-secondary flex-1">{t('common.cancel')}</button>
                 </div>
               </div>
             )}
-            {societies.map(s => (
-              <div key={s.id} className="card-section p-4 mb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {s.logo_url && <img src={s.logo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />}
-                    <div>
-                      <p className="font-medium">{s.name}</p>
-                      <p className="text-xs text-muted-foreground">{[s.address, s.city, s.state].filter(Boolean).join(', ')}</p>
-                      {s.contact_person && <p className="text-xs text-muted-foreground mt-0.5">👤 {s.contact_person} {s.contact_phone && `• ${s.contact_phone}`}</p>}
+            {societies.map(s => {
+              const photos = s.photo_urls ?? [];
+              const thumb = s.logo_url || photos[0];
+              return (
+                <div key={s.id} className="card-section p-4 mb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-3 min-w-0">
+                      {thumb && <img src={thumb} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />}
+                      <div className="min-w-0">
+                        <p className="font-medium">{s.name}</p>
+                        <p className="text-xs text-muted-foreground">{[s.address, s.city, s.state].filter(Boolean).join(', ')}</p>
+                        {s.contact_person && <p className="text-xs text-muted-foreground mt-0.5">👤 {s.contact_person} {s.contact_phone && `• ${s.contact_phone}`}</p>}
+                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1 text-[10px] text-muted-foreground">
+                          {s.total_flats != null && <span>{t('superadmin.totalFlats')}: {s.total_flats}</span>}
+                          {s.total_floors != null && <span>{t('superadmin.totalFloors')}: {s.total_floors}</span>}
+                          {(s.block_names?.length ?? 0) > 0 && <span>{(s.block_names ?? []).join(', ')}</span>}
+                          {s.flats_per_floor != null && s.flat_series_start && s.flat_series_end && (
+                            <span className="w-full">
+                              {s.flats_per_floor} {t('superadmin.flatsPerFloorShort')} · {s.flat_series_start}–{s.flat_series_end}
+                            </span>
+                          )}
+                        </div>
+                        {photos.length > 1 && (
+                          <div className="flex gap-1 mt-2 overflow-x-auto pb-1">
+                            {photos.slice(0, 6).map((u) => (
+                              <img key={u} src={u} alt="" className="w-8 h-8 rounded object-cover shrink-0 border border-border" />
+                            ))}
+                            {photos.length > 6 && <span className="text-[10px] self-center text-muted-foreground">+{photos.length - 6}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <button type="button" onClick={() => openEditSociety(s)} className="p-2 text-primary">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => deleteSociety(s.id)} className="p-2 text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  <button onClick={() => deleteSociety(s.id)} className="p-2 text-destructive"><Trash2 className="w-4 h-4" /></button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {societies.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">{t('superadmin.noSocieties')}</p>}
           </div>
         )}

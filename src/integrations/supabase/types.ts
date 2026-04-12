@@ -955,38 +955,56 @@ export type Database = {
         Row: {
           age: number | null
           created_at: string
+          date_joining: string | null
+          date_leave: string | null
           flat_id: string
           gender: string | null
           id: string
+          id_photo_back: string | null
+          id_photo_front: string | null
           is_primary: boolean | null
           name: string
           phone: string | null
           photo: string | null
+          police_verification: string | null
           relation: string | null
+          spouse_name: string | null
         }
         Insert: {
           age?: number | null
           created_at?: string
+          date_joining?: string | null
+          date_leave?: string | null
           flat_id: string
           gender?: string | null
           id?: string
+          id_photo_back?: string | null
+          id_photo_front?: string | null
           is_primary?: boolean | null
           name: string
           phone?: string | null
           photo?: string | null
+          police_verification?: string | null
           relation?: string | null
+          spouse_name?: string | null
         }
         Update: {
           age?: number | null
           created_at?: string
+          date_joining?: string | null
+          date_leave?: string | null
           flat_id?: string
           gender?: string | null
           id?: string
+          id_photo_back?: string | null
+          id_photo_front?: string | null
           is_primary?: boolean | null
           name?: string
           phone?: string | null
           photo?: string | null
+          police_verification?: string | null
           relation?: string | null
+          spouse_name?: string | null
         }
         Relationships: [
           {
@@ -1374,7 +1392,10 @@ export type Database = {
           flat_id: string | null
           flat_number: string
           id: string
+          member_id: string | null
           resident_name: string
+          vehicle_color: string | null
+          vehicle_display_name: string | null
           vehicle_number: string
           vehicle_photo: string | null
           vehicle_type: string
@@ -1384,7 +1405,10 @@ export type Database = {
           flat_id?: string | null
           flat_number: string
           id?: string
+          member_id?: string | null
           resident_name: string
+          vehicle_color?: string | null
+          vehicle_display_name?: string | null
           vehicle_number: string
           vehicle_photo?: string | null
           vehicle_type?: string
@@ -1394,7 +1418,10 @@ export type Database = {
           flat_id?: string | null
           flat_number?: string
           id?: string
+          member_id?: string | null
           resident_name?: string
+          vehicle_color?: string | null
+          vehicle_display_name?: string | null
           vehicle_number?: string
           vehicle_photo?: string | null
           vehicle_type?: string
@@ -1407,50 +1434,90 @@ export type Database = {
             referencedRelation: "flats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "resident_vehicles_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
         ]
       }
       societies: {
         Row: {
           address: string | null
+          basement_usable_for_residents: boolean | null
+          block_names: string[] | null
           city: string | null
           contact_email: string | null
           contact_person: string | null
           contact_phone: string | null
           created_at: string
+          flat_series_end: string | null
+          flat_series_start: string | null
+          flats_per_floor: number | null
+          has_basement: boolean | null
           id: string
           is_active: boolean
           logo_url: string | null
           name: string
+          photo_urls: string[]
           pincode: string | null
+          resident_self_id_upload_enabled: boolean
           state: string | null
+          terrace_accessible: boolean | null
+          total_flats: number | null
+          total_floors: number | null
         }
         Insert: {
           address?: string | null
+          basement_usable_for_residents?: boolean | null
+          block_names?: string[] | null
           city?: string | null
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
           created_at?: string
+          flat_series_end?: string | null
+          flat_series_start?: string | null
+          flats_per_floor?: number | null
+          has_basement?: boolean | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
           name: string
+          photo_urls?: string[]
           pincode?: string | null
+          resident_self_id_upload_enabled?: boolean
           state?: string | null
+          terrace_accessible?: boolean | null
+          total_flats?: number | null
+          total_floors?: number | null
         }
         Update: {
           address?: string | null
+          basement_usable_for_residents?: boolean | null
+          block_names?: string[] | null
           city?: string | null
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
           created_at?: string
+          flat_series_end?: string | null
+          flat_series_start?: string | null
+          flats_per_floor?: number | null
+          has_basement?: boolean | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
           name?: string
+          photo_urls?: string[]
           pincode?: string | null
+          resident_self_id_upload_enabled?: boolean
           state?: string | null
+          terrace_accessible?: boolean | null
+          total_flats?: number | null
+          total_floors?: number | null
         }
         Relationships: []
       }

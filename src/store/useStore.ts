@@ -165,6 +165,9 @@ export const useStore = create<AppState>()((set, get) => ({
           id: v.id, flatNumber: v.flat_number, residentName: v.resident_name,
           vehicleNumber: v.vehicle_number, vehicleType: v.vehicle_type as ResidentVehicle['vehicleType'],
           vehiclePhoto: v.vehicle_photo || undefined, flatId: v.flat_id || undefined,
+          memberId: v.member_id || undefined,
+          vehicleColor: v.vehicle_color || undefined,
+          vehicleDisplayName: v.vehicle_display_name || undefined,
         })),
       });
     }
@@ -254,6 +257,12 @@ export const useStore = create<AppState>()((set, get) => ({
           id: m.id, flatId: m.flat_id, name: m.name, phone: m.phone || undefined,
           relation: m.relation || 'owner', age: m.age || undefined, gender: m.gender || undefined,
           photo: m.photo || undefined, isPrimary: m.is_primary ?? false,
+          idPhotoFront: m.id_photo_front || undefined,
+          idPhotoBack: m.id_photo_back || undefined,
+          policeVerification: m.police_verification || undefined,
+          spouseName: m.spouse_name || undefined,
+          dateJoining: m.date_joining || undefined,
+          dateLeave: m.date_leave || undefined,
         })),
       });
     }
