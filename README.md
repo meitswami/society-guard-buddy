@@ -276,8 +276,10 @@ npx cap run android  # or ios
 **Super Admin:**
 ```
 Username: SUPERADMIN
-Password: super123
+Password: Hello#123
 ```
+
+After migration, first login walks through Microsoft Authenticator (TOTP) setup, then recovery email. Email recovery needs Edge Function secrets `RESEND_API_KEY` (and optional `RESEND_FROM`), or local dev `ALLOW_SUPERADMIN_RECOVERY_DEV_CODE=true`.
 
 **Admin:**
 ```

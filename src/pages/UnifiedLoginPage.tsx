@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Shield, Eye, EyeOff, Fingerprint, Phone } from 'lucide-react';
+import SuperadminLoginForm from '@/components/SuperadminLoginForm';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -148,25 +149,6 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     setError(t('login.invalidCredentials'));
   };
 
-  const handleSuperadminSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!identifier || !password) {
-      setError(t('login.enterBoth'));
-      return;
-    }
-    setLoading(true);
-    const { data: sa } = await supabase.from('super_admins').select('*').eq('username', identifier.trim()).eq('password', password).single();
-    setLoading(false);
-    if (sa) {
-      auditLoginSuccess('superadmin', sa.id, sa.name);
-      onSuperadminLogin({ id: sa.id, name: sa.name, username: sa.username });
-    } else {
-      auditLoginFailed('superadmin', identifier.trim());
-      setError(t('login.invalidCredentials'));
-    }
-  };
-
   const handleCredentialLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -310,42 +292,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
             >
               {t('login.backToSociety')}
             </button>
-            <form onSubmit={handleSuperadminSubmit} className="flex flex-col gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">
-                  {t('superadmin.username')}
-                </label>
-                <input
-                  className="input-field font-mono"
-                  placeholder={t('superadmin.username')}
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">{t('login.password')}</label>
-                <div className="relative">
-                  <input
-                    className="input-field pr-10"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder={t('login.passwordPlaceholder')}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              {error && <p className="text-destructive text-sm text-center">{error}</p>}
-              <button type="submit" className="btn-primary mt-1" disabled={loading}>
-                {loading ? t('login.loggingIn') : t('superadmin.loginButton')}
-              </button>
-            </form>
+            <SuperadminLoginForm variant="embedded" onLogin={onSuperadminLogin} />
           </div>
         ) : (
           <>

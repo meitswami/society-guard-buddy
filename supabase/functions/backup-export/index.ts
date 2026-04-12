@@ -21,17 +21,61 @@ serve(async (req) => {
     const sendEmail = body.send_email || false;
     const emailTo = body.email_to || 'meit10swami@gmail.com';
 
-    // Tables to backup
+    // All public app tables (order stable for diffs)
     const tables = [
-      'societies', 'admins', 'society_roles', 'guards', 'guard_shifts',
-      'flats', 'members', 'resident_users', 'resident_vehicles',
-      'visitors', 'blacklist', 'approval_requests', 'visitor_passes',
-      'maintenance_charges', 'maintenance_payments',
-      'donation_campaigns', 'donation_payments',
-      'events', 'event_rsvps', 'event_contributions',
-      'polls', 'poll_options', 'poll_votes',
-      'notifications', 'parking_spaces', 'expense_groups', 'expenses', 'expense_splits',
-      'geofence_settings', 'biometric_credentials', 'audit_logs',
+      'admins',
+      'approval_requests',
+      'audit_logs',
+      'biometric_credentials',
+      'blacklist',
+      'donation_campaigns',
+      'donation_payments',
+      'event_contributions',
+      'event_rsvps',
+      'events',
+      'expense_groups',
+      'expense_splits',
+      'expenses',
+      'fcm_web_tokens',
+      'flats',
+      'geofence_settings',
+      'guard_documents',
+      'guard_shifts',
+      'guards',
+      'maintenance_charges',
+      'maintenance_payments',
+      'members',
+      'notification_comments',
+      'notifications',
+      'otp_codes',
+      'parking_spaces',
+      'password_reset_tokens',
+      'poll_options',
+      'poll_votes',
+      'polls',
+      'resident_users',
+      'resident_vehicles',
+      'societies',
+      'society_roles',
+      'super_admins',
+      'superadmin_recovery_challenges',
+      'visitor_passes',
+      'visitors',
+    ];
+
+    const societyScopedTables = [
+      'admins',
+      'donation_campaigns',
+      'events',
+      'expense_groups',
+      'fcm_web_tokens',
+      'flats',
+      'guards',
+      'maintenance_charges',
+      'notifications',
+      'parking_spaces',
+      'polls',
+      'society_roles',
     ];
 
     const backup: Record<string, any[]> = {};
@@ -46,8 +90,7 @@ serve(async (req) => {
     for (const table of tables) {
       let query = supabase.from(table).select('*');
       // Filter by society_id if the table has it and a filter is provided
-      if (societyId && ['admins', 'guards', 'flats', 'maintenance_charges', 'donation_campaigns',
-        'events', 'polls', 'notifications', 'parking_spaces', 'expense_groups'].includes(table)) {
+      if (societyId && societyScopedTables.includes(table)) {
         query = query.eq('society_id', societyId);
       }
       const { data, error } = await query;
@@ -67,6 +110,8 @@ serve(async (req) => {
         exported_at: new Date().toISOString(),
         society_name: societyName,
         society_id: societyId,
+        full_database: !societyId,
+        tables_exported: tables,
         total_tables: Object.keys(backup).length,
         total_records: Object.values(backup).reduce((sum, arr) => sum + arr.length, 0),
       },

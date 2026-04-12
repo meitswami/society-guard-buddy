@@ -43,8 +43,20 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
 
   const [showAdminForm, setShowAdminForm] = useState(false);
   const [af, setAf] = useState({ name: '', admin_id: '', password: '', society_id: '', role_id: '', email: '' });
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoverySaving, setRecoverySaving] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
+
+  useEffect(() => {
+    if (tab !== 'settings') return;
+    void supabase
+      .from('super_admins')
+      .select('recovery_email')
+      .eq('id', superadmin.id)
+      .maybeSingle()
+      .then(({ data }) => setRecoveryEmail(data?.recovery_email?.trim() ?? ''));
+  }, [tab, superadmin.id]);
 
   const loadAll = async () => {
     const [s, r, a] = await Promise.all([
@@ -388,6 +400,38 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
         {tab === 'settings' && (
           <div className="space-y-4">
             <h2 className="font-semibold">{t('nav.settings')}</h2>
+            <div className="card-section p-4 space-y-3">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Mail className="w-4 h-4 text-primary" /> {t('superadmin.recoveryEmailSettings')}
+              </h3>
+              <p className="text-xs text-muted-foreground">{t('superadmin.recoveryEmailStepHelp')}</p>
+              <input
+                type="email"
+                className="input-field"
+                value={recoveryEmail}
+                onChange={(e) => setRecoveryEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+              <button
+                type="button"
+                className="btn-primary w-full"
+                disabled={recoverySaving}
+                onClick={async () => {
+                  const em = recoveryEmail.trim().toLowerCase();
+                  if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+                    toast.error(t('superadmin.invalidRecoveryEmail'));
+                    return;
+                  }
+                  setRecoverySaving(true);
+                  const { error } = await supabase.from('super_admins').update({ recovery_email: em }).eq('id', superadmin.id);
+                  setRecoverySaving(false);
+                  if (error) toast.error(t('superadmin.couldNotSaveRecovery'));
+                  else toast.success(t('superadmin.recoveryEmailSaved'));
+                }}
+              >
+                {recoverySaving ? '…' : t('superadmin.saveRecoveryEmail')}
+              </button>
+            </div>
             <BiometricSetup userType="superadmin" userId={superadmin.id} userName={superadmin.name} />
           </div>
         )}

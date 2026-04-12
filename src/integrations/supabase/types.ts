@@ -1483,12 +1483,47 @@ export type Database = {
           },
         ]
       }
+      superadmin_recovery_challenges: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          super_admin_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          super_admin_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          super_admin_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "superadmin_recovery_challenges_super_admin_id_fkey"
+            columns: ["super_admin_id"]
+            isOneToOne: false
+            referencedRelation: "super_admins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       super_admins: {
         Row: {
           created_at: string
           id: string
           name: string
           password: string
+          recovery_email: string | null
+          totp_enabled: boolean
+          totp_secret: string | null
           username: string
         }
         Insert: {
@@ -1496,6 +1531,9 @@ export type Database = {
           id?: string
           name: string
           password: string
+          recovery_email?: string | null
+          totp_enabled?: boolean
+          totp_secret?: string | null
           username: string
         }
         Update: {
@@ -1503,6 +1541,9 @@ export type Database = {
           id?: string
           name?: string
           password?: string
+          recovery_email?: string | null
+          totp_enabled?: boolean
+          totp_secret?: string | null
           username?: string
         }
         Relationships: []
