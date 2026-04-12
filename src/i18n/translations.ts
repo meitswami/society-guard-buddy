@@ -37,6 +37,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.footerTerms': { en: 'Terms of Service', hi: 'सेवा की शर्तें' },
   'login.footerContact': { en: 'Contact Us', hi: 'संपर्क करें' },
   'login.exportFullDb': { en: 'Export full database (JSON)', hi: 'पूर्ण डेटाबेस निर्यात (JSON)' },
+  'login.exportFullDbMysql': { en: 'Export full database (.sql)', hi: 'पूर्ण डेटाबेस निर्यात (.sql)' },
   'login.exportFullDbRunning': { en: 'Exporting…', hi: 'निर्यात हो रहा है…' },
   'login.exportFullDbSuccess': { en: 'Download started', hi: 'डाउनलोड शुरू' },
   'login.exportFullDbFailed': { en: 'Export failed — deploy backup-export function?', hi: 'निर्यात विफल — backup-export फ़ंक्शन डिप्लॉय करें?' },
