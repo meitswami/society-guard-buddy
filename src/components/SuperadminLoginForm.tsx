@@ -85,14 +85,34 @@ const SuperadminLoginForm = ({ onLogin, onBack, variant = 'full' }: Props) => {
     }
     setLoading(true);
     const u = username.trim().toUpperCase();
+    // Match by username only; compare password in-app so special characters (e.g. #) are not
+    // sent inside PostgREST filter URLs, and credentials do not appear in query strings.
     const { data, error: qErr } = await supabase
       .from('super_admins')
       .select('*')
       .eq('username', u)
-      .eq('password', password)
       .maybeSingle();
     setLoading(false);
-    if (qErr || !data) {
+    if (qErr) {
+      console.error('[superadmin login] Supabase query error', qErr);
+      auditLoginFailed('superadmin', u, qErr.code ?? qErr.message);
+      const msg = (qErr.message ?? '').toLowerCase();
+      const looksLikeNetwork =
+        msg.includes('failed to fetch') ||
+        msg.includes('network') ||
+        msg.includes('load failed') ||
+        msg.includes('err_network');
+      setError(looksLikeNetwork ? t('login.connectionProblem') : t('login.invalidCredentials'));
+      return;
+    }
+    if (!data) {
+      auditLoginFailed('superadmin', u);
+      setError(t('login.invalidCredentials'));
+      return;
+    }
+    const stored = (data.password ?? '').trim();
+    const typed = password.trim();
+    if (stored !== typed) {
       auditLoginFailed('superadmin', u);
       setError(t('login.invalidCredentials'));
       return;

@@ -29,6 +29,10 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.startShift': { en: 'Start Shift', hi: 'शिफ्ट शुरू करें' },
   'login.loggingIn': { en: 'Logging in...', hi: 'लॉगिन हो रहा है...' },
   'login.invalidCredentials': { en: 'Invalid credentials', hi: 'गलत प्रमाण-पत्र' },
+  'login.connectionProblem': {
+    en: 'Could not reach the database. Check network, or that this site was built with the correct Supabase URL and anon key.',
+    hi: 'डेटाबेस तक पहुँच नहीं हो सकी। नेटवर्क जाँचें, या सुनिश्चित करें कि साइट सही Supabase URL और कुंजी के साथ बनी हो।',
+  },
   'login.enterBoth': { en: 'Enter Guard ID and Password', hi: 'गार्ड आईडी और पासवर्ड दर्ज करें' },
   'login.demo': { en: 'Demo: G001 / guard123', hi: 'डेमो: G001 / guard123' },
   'login.guardLogin': { en: 'Guard Login', hi: 'गार्ड लॉगिन' },
