@@ -9,12 +9,16 @@ import {
   type ConfirmationResult,
 } from 'firebase/auth';
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase';
+import { executeRecaptchaEnterpriseAction, RECAPTCHA_PHONE_ACTION } from '@/lib/recaptchaEnterprise';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   onVerified: (phone: string) => void;
   onBack?: () => void;
   title?: string;
   subtitle?: string;
+  /** When true, skip the inner icon/title/subtitle on the phone step (parent page already shows them). */
+  embedded?: boolean;
 }
 
 function formatFirebaseAuthError(err: unknown): string {
@@ -72,7 +76,13 @@ function formatFirebaseAuthError(err: unknown): string {
   }
 }
 
-const OTPLoginFlow = ({ onVerified, onBack, title = 'Login with OTP', subtitle = 'Enter your registered phone number' }: Props) => {
+const OTPLoginFlow = ({
+  onVerified,
+  onBack,
+  title = 'Login with OTP',
+  subtitle = 'Enter your registered phone number',
+  embedded = false,
+}: Props) => {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -151,6 +161,34 @@ const OTPLoginFlow = ({ onVerified, onBack, title = 'Login with OTP', subtitle =
     auth.languageCode = 'en';
 
     try {
+      if (import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY?.trim()) {
+        const assessmentToken = await executeRecaptchaEnterpriseAction(RECAPTCHA_PHONE_ACTION);
+        if (!assessmentToken) {
+          setError('Security check could not run. Refresh the page and try again.');
+          setLoading(false);
+          return;
+        }
+        const { data: assess, error: assessErr } = await supabase.functions.invoke(
+          'recaptcha-assessment',
+          { body: { token: assessmentToken, action: RECAPTCHA_PHONE_ACTION } },
+        );
+        if (assessErr) {
+          console.warn('[reCAPTCHA] assessment invoke:', assessErr.message);
+          setError('Security verification failed. Try again in a moment.');
+          setLoading(false);
+          return;
+        }
+        if (assess && assess.skipped !== true && assess.ok !== true) {
+          setError(
+            typeof assess.error === 'string'
+              ? assess.error
+              : 'Security verification failed. Please try again.',
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
       await initializeRecaptchaConfig(auth).catch(() => {});
 
       const el = recaptchaContainerRef.current;
@@ -240,13 +278,15 @@ const OTPLoginFlow = ({ onVerified, onBack, title = 'Login with OTP', subtitle =
 
       {step === 'phone' ? (
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col items-center mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
-              <Phone className="w-8 h-8 text-primary" />
+          {!embedded && (
+            <div className="flex flex-col items-center mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+                <Phone className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-lg font-bold">{title}</h2>
+              <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
             </div>
-            <h2 className="text-lg font-bold">{title}</h2>
-            <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-          </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">

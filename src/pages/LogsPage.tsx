@@ -45,7 +45,7 @@ const LogsPage = () => {
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `evergreen-heights-log-${dateFilter}.csv`; a.click();
+    a.href = url; a.download = `kutumbika-log-${dateFilter}.csv`; a.click();
   };
 
   const categoryLabels: Record<string, string> = {

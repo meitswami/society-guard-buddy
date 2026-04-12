@@ -5,6 +5,7 @@ import { DollarSign, Plus, Check, X, Upload, Eye, Filter, AlertTriangle } from '
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
+import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 
 interface Props {
   adminName?: string;
@@ -19,7 +20,17 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [form, setForm] = useState({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
-  const [payForm, setPayForm] = useState({ charge_id: '', flat_number: '', resident_name: '', amount: '', payment_method: 'cash', transaction_id: '', screenshot_url: '', notes: '', due_date: format(new Date(), 'yyyy-MM-dd') });
+  const [payForm, setPayForm] = useState({
+    charge_id: '',
+    selected_flats: [] as string[],
+    resident_name: '',
+    amount: '',
+    payment_method: 'cash',
+    transaction_id: '',
+    screenshot_url: '',
+    notes: '',
+    due_date: format(new Date(), 'yyyy-MM-dd'),
+  });
   const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => { loadAll(); }, []);
@@ -48,19 +59,43 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   };
 
   const recordPayment = async () => {
-    if (!payForm.flat_number || !payForm.amount || !payForm.charge_id) return;
-    const flat = flats.find(f => f.flat_number === payForm.flat_number);
-    await supabase.from('maintenance_payments').insert([{
-      charge_id: payForm.charge_id, flat_id: flat?.id || null, flat_number: payForm.flat_number,
-      resident_name: payForm.resident_name, amount: Number(payForm.amount),
-      payment_method: payForm.payment_method, payment_status: payForm.payment_method === 'cash' || payForm.payment_method === 'upi' ? 'verified' : 'pending',
-      payment_date: new Date().toISOString(), due_date: payForm.due_date,
-      transaction_id: payForm.transaction_id || null, screenshot_url: payForm.screenshot_url || null,
-      notes: payForm.notes || null, verified_by: adminName, verified_at: new Date().toISOString(),
-    }]);
-    setPayForm({ charge_id: '', flat_number: '', resident_name: '', amount: '', payment_method: 'cash', transaction_id: '', screenshot_url: '', notes: '', due_date: format(new Date(), 'yyyy-MM-dd') });
+    if (payForm.selected_flats.length === 0 || !payForm.amount || !payForm.charge_id) return;
+    const now = new Date().toISOString();
+    const rows = payForm.selected_flats.map(flat_number => {
+      const flat = flats.find(f => f.flat_number === flat_number);
+      return {
+        charge_id: payForm.charge_id,
+        flat_id: flat?.id || null,
+        flat_number,
+        resident_name: payForm.resident_name,
+        amount: Number(payForm.amount),
+        payment_method: payForm.payment_method,
+        payment_status:
+          payForm.payment_method === 'cash' || payForm.payment_method === 'upi' ? 'verified' : 'pending',
+        payment_date: now,
+        due_date: payForm.due_date,
+        transaction_id: payForm.transaction_id || null,
+        screenshot_url: payForm.screenshot_url || null,
+        notes: payForm.notes || null,
+        verified_by: adminName,
+        verified_at: now,
+      };
+    });
+    await supabase.from('maintenance_payments').insert(rows);
+    setPayForm({
+      charge_id: '',
+      selected_flats: [],
+      resident_name: '',
+      amount: '',
+      payment_method: 'cash',
+      transaction_id: '',
+      screenshot_url: '',
+      notes: '',
+      due_date: format(new Date(), 'yyyy-MM-dd'),
+    });
     setShowPaymentForm(false);
-    toast.success('Payment recorded');
+    const n = rows.length;
+    toast.success(n > 1 ? `Payments recorded for ${n} flats` : 'Payment recorded');
     loadAll();
   };
 
@@ -166,10 +201,12 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
                 <option value="">Select Charge</option>
                 {charges.map(c => <option key={c.id} value={c.id}>{c.title} - ₹{c.amount}</option>)}
               </select>
-              <select className="input-field" value={payForm.flat_number} onChange={e => setPayForm({...payForm, flat_number: e.target.value})}>
-                <option value="">Select Flat</option>
-                {flats.map(f => <option key={f.id} value={f.flat_number}>{f.flat_number}</option>)}
-              </select>
+              <FlatMultiSelect
+                flats={flats.map(f => ({ id: f.id, flat_number: f.flat_number }))}
+                selected={payForm.selected_flats}
+                onChange={nums => setPayForm({ ...payForm, selected_flats: nums })}
+                label="Flats (multi-select)"
+              />
               <input className="input-field" placeholder="Resident Name" value={payForm.resident_name} onChange={e => setPayForm({...payForm, resident_name: e.target.value})} />
               <input className="input-field" placeholder="Amount (₹)" type="number" value={payForm.amount} onChange={e => setPayForm({...payForm, amount: e.target.value})} />
               <select className="input-field" value={payForm.payment_method} onChange={e => setPayForm({...payForm, payment_method: e.target.value})}>

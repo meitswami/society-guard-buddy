@@ -11,11 +11,12 @@ import { LoginFooter } from '@/components/LoginFooter';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 
 interface Props {
+  societyId: string;
   onLogin: (admin: { id: string; name: string; adminId: string; societyId: string | null }) => void;
   onBack?: () => void;
 }
 
-const AdminLoginPage = ({ onLogin, onBack }: Props) => {
+const AdminLoginPage = ({ societyId, onLogin, onBack }: Props) => {
   const { t } = useLanguage();
   const [showResetFlow, setShowResetFlow] = useState(false);
   const [adminId, setAdminId] = useState('');
@@ -33,11 +34,17 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
     setError('');
     if (!adminId || !password) { setError(t('login.enterBoth')); return; }
     setLoading(true);
-    const { data } = await supabase.from('admins').select('*').eq('admin_id', adminId.toUpperCase()).eq('password', password).single();
+    const { data } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('admin_id', adminId.toUpperCase())
+      .eq('password', password)
+      .eq('society_id', societyId)
+      .maybeSingle();
     setLoading(false);
     if (data) {
       auditLoginSuccess('admin', data.id, data.name);
-      registerOneSignalUser({ userType: 'admin', userId: data.id, userName: data.name });
+      registerOneSignalUser({ userType: 'admin', userId: data.id, userName: data.name, societyId });
       promptPushPermission();
       onLogin({ id: data.id, name: data.name, adminId: data.admin_id, societyId: data.society_id });
     } else {
@@ -51,7 +58,11 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
     const result = await authenticate('admin');
     if (!result) { setError(t('biometric.notRegistered')); return; }
     const { data } = await supabase.from('admins').select('*').eq('id', result.userId).single();
-    if (!data) { auditLoginFailed('admin', result.userId, 'biometric_user_not_found'); setError(t('login.invalidCredentials')); return; }
+    if (!data || data.society_id !== societyId) {
+      auditLoginFailed('admin', result.userId, 'biometric_user_not_found');
+      setError(t('login.invalidCredentials'));
+      return;
+    }
     auditBiometricLogin('admin', data.id, data.name);
     onLogin({ id: data.id, name: data.name, adminId: data.admin_id, societyId: data.society_id });
   };
@@ -67,7 +78,10 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
           <div className="w-20 h-20 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
             <Shield className="w-10 h-10 text-destructive" />
           </div>
-          <h1 className="page-title text-2xl">{t('admin.login')}</h1>
+          <h1 className="page-title text-2xl text-center">{t('app.name')}</h1>
+          <p className="text-muted-foreground text-xs mt-1 text-center">{t('app.subtitle')}</p>
+          <p className="text-muted-foreground/80 text-[11px] mt-0.5 text-center">{t('app.tagline')}</p>
+          <h2 className="page-title text-xl mt-4">{t('admin.login')}</h2>
           <p className="text-muted-foreground text-sm mt-1">{t('admin.loginSubtitle')}</p>
         </div>
 
@@ -113,7 +127,7 @@ const AdminLoginPage = ({ onLogin, onBack }: Props) => {
       <LoginFooter />
       {showResetFlow && (
         <div className="fixed inset-0 z-50 bg-background">
-          <PasswordResetFlow userType="admin" onBack={() => setShowResetFlow(false)} />
+          <PasswordResetFlow userType="admin" societyId={societyId} onBack={() => setShowResetFlow(false)} />
         </div>
       )}
     </div>

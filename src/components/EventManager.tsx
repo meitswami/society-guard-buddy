@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Plus, Users, Upload } from 'lucide-react';
+import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -14,7 +15,13 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
   const [showForm, setShowForm] = useState(false);
   const [showContrib, setShowContrib] = useState<string | null>(null);
   const [ef, setEf] = useState({ title: '', description: '', event_date: '', event_time: '', location: '', contribution_amount: '' });
-  const [cf, setCf] = useState({ flat_number: '', resident_name: '', amount: '', payment_method: 'cash', screenshot_url: '' });
+  const [cf, setCf] = useState({
+    selected_flats: [] as string[],
+    resident_name: '',
+    amount: '',
+    payment_method: 'cash',
+    screenshot_url: '',
+  });
 
   useEffect(() => { loadAll(); }, []);
   const loadAll = async () => {
@@ -49,15 +56,34 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
   };
 
   const recordContribution = async (eventId: string) => {
-    if (!cf.flat_number || !cf.amount) return;
-    const flat = flats.find(f => f.flat_number === cf.flat_number);
-    await supabase.from('event_contributions').insert([{
-      event_id: eventId, flat_id: flat?.id || null, flat_number: cf.flat_number,
-      resident_name: cf.resident_name, amount: Number(cf.amount), payment_method: cf.payment_method,
-      screenshot_url: cf.screenshot_url || null, verified_by: adminName, verified_at: new Date().toISOString(),
-    }]);
-    setCf({ flat_number: '', resident_name: '', amount: '', payment_method: 'cash', screenshot_url: '' });
-    setShowContrib(null); toast.success('Contribution recorded'); loadAll();
+    if (cf.selected_flats.length === 0 || !cf.amount) return;
+    const amount = Number(cf.amount);
+    const verifiedAt = new Date().toISOString();
+    const rows = cf.selected_flats.map(flat_number => {
+      const flat = flats.find(f => f.flat_number === flat_number);
+      return {
+        event_id: eventId,
+        flat_id: flat?.id || null,
+        flat_number,
+        resident_name: cf.resident_name,
+        amount,
+        payment_method: cf.payment_method,
+        screenshot_url: cf.screenshot_url || null,
+        verified_by: adminName,
+        verified_at: verifiedAt,
+      };
+    });
+    await supabase.from('event_contributions').insert(rows);
+    setCf({
+      selected_flats: [],
+      resident_name: '',
+      amount: '',
+      payment_method: 'cash',
+      screenshot_url: '',
+    });
+    setShowContrib(null);
+    toast.success(rows.length > 1 ? `Contributions recorded for ${rows.length} flats` : 'Contribution recorded');
+    loadAll();
   };
 
   const sendContribReminders = async (event: any) => {
@@ -138,10 +164,13 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
 
             {showContrib === ev.id && (
               <div className="mt-3 flex flex-col gap-2 pt-3 border-t border-border">
-                <select className="input-field text-sm" value={cf.flat_number} onChange={e => setCf({...cf, flat_number: e.target.value})}>
-                  <option value="">Select Flat</option>
-                  {flats.map(f => <option key={f.id} value={f.flat_number}>{f.flat_number}</option>)}
-                </select>
+                <FlatMultiSelect
+                  compact
+                  flats={flats.map(f => ({ id: f.id, flat_number: f.flat_number }))}
+                  selected={cf.selected_flats}
+                  onChange={nums => setCf({ ...cf, selected_flats: nums })}
+                  label="Flats"
+                />
                 <input className="input-field text-sm" placeholder="Resident Name" value={cf.resident_name} onChange={e => setCf({...cf, resident_name: e.target.value})} />
                 <input className="input-field text-sm" placeholder="Amount (₹)" type="number" value={cf.amount} onChange={e => setCf({...cf, amount: e.target.value})} />
                 <select className="input-field text-sm" value={cf.payment_method} onChange={e => setCf({...cf, payment_method: e.target.value})}>

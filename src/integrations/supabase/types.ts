@@ -655,6 +655,44 @@ export type Database = {
           },
         ]
       }
+      fcm_web_tokens: {
+        Row: {
+          app_user_id: string
+          flat_number: string | null
+          id: string
+          society_id: string | null
+          token: string
+          updated_at: string
+          user_type: string
+        }
+        Insert: {
+          app_user_id: string
+          flat_number?: string | null
+          id?: string
+          society_id?: string | null
+          token: string
+          updated_at?: string
+          user_type: string
+        }
+        Update: {
+          app_user_id?: string
+          flat_number?: string | null
+          id?: string
+          society_id?: string | null
+          token?: string
+          updated_at?: string
+          user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fcm_web_tokens_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       geofence_settings: {
         Row: {
           created_at: string

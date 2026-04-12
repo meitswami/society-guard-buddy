@@ -12,6 +12,7 @@ import OTPLoginFlow from '@/components/OTPLoginFlow';
 import { LoginFooter } from '@/components/LoginFooter';
 
 interface Props {
+  societyId: string;
   onSwitchToResident?: () => void;
 }
 
@@ -23,7 +24,7 @@ function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-const LoginPage = ({ onSwitchToResident }: Props) => {
+const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
   const { t } = useLanguage();
   const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
   const [guardId, setGuardId] = useState('');
@@ -56,8 +57,14 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
   };
 
   const handleOtpVerified = async (phone: string) => {
-    const { data: guard } = await supabase.from('guards').select('*').eq('phone', phone).eq('auth_mode', 'otp').single();
-    if (!guard) { setError('No guard with OTP login found for this phone.'); return; }
+    const { data: guard } = await supabase
+      .from('guards')
+      .select('*')
+      .eq('phone', phone)
+      .eq('auth_mode', 'otp')
+      .eq('society_id', societyId)
+      .maybeSingle();
+    if (!guard) { setError(t('login.invalidCredentials')); return; }
 
     setLoading(true);
     setError(t('admin.gettingLocation'));
@@ -65,13 +72,13 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     if (!withinFence) { setLoading(false); return; }
     setError('');
 
-    if (guard.society_id) setSocietyId(guard.society_id);
+    setSocietyId(societyId);
     await loadGuards();
     const success = await login(guard.guard_id, guard.password);
     setLoading(false);
     if (success) {
       auditLoginSuccess('guard', guard.guard_id, guard.name);
-      registerOneSignalUser({ userType: 'guard', userId: guard.guard_id, userName: guard.name });
+      registerOneSignalUser({ userType: 'guard', userId: guard.guard_id, userName: guard.name, societyId });
       promptPushPermission();
     } else {
       setError(t('login.invalidCredentials'));
@@ -88,7 +95,13 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     if (!withinFence) { setLoading(false); return; }
     setError('');
 
-    const { data: guardData } = await supabase.from('guards').select('*').eq('guard_id', guardId.toUpperCase()).eq('password', password).single();
+    const { data: guardData } = await supabase
+      .from('guards')
+      .select('*')
+      .eq('guard_id', guardId.toUpperCase())
+      .eq('password', password)
+      .eq('society_id', societyId)
+      .maybeSingle();
     if (!guardData) {
       auditLoginFailed('guard', guardId.toUpperCase());
       setError(t('login.invalidCredentials'));
@@ -96,14 +109,14 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
       return;
     }
 
-    if (guardData.society_id) setSocietyId(guardData.society_id);
+    setSocietyId(societyId);
     await loadGuards();
 
     const success = await login(guardData.guard_id, guardData.password);
     setLoading(false);
     if (success) {
       auditLoginSuccess('guard', guardData.guard_id, guardData.name);
-      registerOneSignalUser({ userType: 'guard', userId: guardData.guard_id, userName: guardData.name });
+      registerOneSignalUser({ userType: 'guard', userId: guardData.guard_id, userName: guardData.name, societyId });
       promptPushPermission();
     } else {
       auditLoginFailed('guard', guardId.toUpperCase());
@@ -116,9 +129,9 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
     const result = await authenticate('guard');
     if (!result) { setError(t('biometric.notRegistered')); return; }
     const { data } = await supabase.from('guards').select('*').eq('id', result.userId).single();
-    if (!data) { setError(t('login.invalidCredentials')); return; }
+    if (!data || data.society_id !== societyId) { setError(t('login.invalidCredentials')); return; }
 
-    if (data.society_id) setSocietyId(data.society_id);
+    setSocietyId(societyId);
     await loadGuards();
 
     setLoading(true);
@@ -147,8 +160,10 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
           <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Shield className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="page-title text-2xl">{t('app.name')}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t('login.guardLogin')}</p>
+          <h1 className="page-title text-2xl text-center">{t('app.name')}</h1>
+          <p className="text-muted-foreground text-xs mt-1 text-center">{t('app.subtitle')}</p>
+          <p className="text-muted-foreground/80 text-[11px] mt-0.5 text-center">{t('app.tagline')}</p>
+          <h2 className="page-title text-lg mt-4">{t('login.guardLogin')}</h2>
         </div>
 
         {/* Mode Toggle */}
@@ -170,6 +185,7 @@ const LoginPage = ({ onSwitchToResident }: Props) => {
         {loginMode === 'otp' ? (
           <>
             <OTPLoginFlow
+              embedded
               onVerified={handleOtpVerified}
               title="Guard OTP Login"
               subtitle="Enter your registered phone number"

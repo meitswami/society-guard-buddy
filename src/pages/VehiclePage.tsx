@@ -4,6 +4,8 @@ import type { ResidentVehicle } from '@/types';
 import { Car, Plus, Search, Trash2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { confirmAction } from '@/lib/swal';
+import { FlatMultiSelect } from '@/components/FlatMultiSelect';
+import { toast } from 'sonner';
 
 const VEHICLE_TYPES = [
   { value: 'car', label: 'Car' },
@@ -17,7 +19,12 @@ const VehiclePage = () => {
   const { t } = useLanguage();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({ flatId: '', flatNumber: '', residentName: '', vehicleNumber: '', vehicleType: 'car' as ResidentVehicle['vehicleType'] });
+  const [selectedFlats, setSelectedFlats] = useState<string[]>([]);
+  const [form, setForm] = useState({
+    residentName: '',
+    vehicleNumber: '',
+    vehicleType: 'car' as ResidentVehicle['vehicleType'],
+  });
 
   const filtered = residentVehicles.filter(v =>
     v.vehicleNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -25,32 +32,42 @@ const VehiclePage = () => {
     v.residentName.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleFlatChange = (flatId: string) => {
-    const flat = flats.find(f => f.id === flatId);
-    if (!flat) return;
-    // Find primary member or owner name
-    const primary = members.find(m => m.flatId === flatId && m.isPrimary);
-    setForm(f => ({
-      ...f,
-      flatId,
-      flatNumber: flat.flatNumber,
-      residentName: primary?.name || flat.ownerName || '',
-    }));
-  };
-
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.flatNumber || !form.residentName || !form.vehicleNumber) return;
-    await addResidentVehicle({
-      id: `RV${Date.now()}`,
-      flatNumber: form.flatNumber,
-      residentName: form.residentName,
-      vehicleNumber: form.vehicleNumber.toUpperCase(),
-      vehicleType: form.vehicleType,
-      flatId: form.flatId || undefined,
-    });
-    setForm({ flatId: '', flatNumber: '', residentName: '', vehicleNumber: '', vehicleType: 'car' });
+    if (selectedFlats.length === 0) {
+      toast.error('Select at least one flat');
+      return;
+    }
+    if (!form.vehicleNumber.trim()) return;
+
+    const vnum = form.vehicleNumber.toUpperCase();
+    for (const flatNumber of selectedFlats) {
+      const flat = flats.find(f => f.flatNumber === flatNumber);
+      if (!flat) continue;
+      const primary = members.find(m => m.flatId === flat.id && m.isPrimary);
+      const residentName =
+        form.residentName.trim() || primary?.name || flat.ownerName || '';
+      if (!residentName) {
+        toast.error(
+          `${t('vehicle.residentName') || 'Resident'}: flat ${flatNumber} (add owner or primary member)`
+        );
+        return;
+      }
+      await addResidentVehicle({
+        id: `RV${Date.now()}-${flatNumber}`,
+        flatNumber,
+        residentName,
+        vehicleNumber: vnum,
+        vehicleType: form.vehicleType,
+        flatId: flat.id,
+      });
+    }
+
+    const count = selectedFlats.length;
+    setForm({ residentName: '', vehicleNumber: '', vehicleType: 'car' });
+    setSelectedFlats([]);
     setShowAdd(false);
+    toast.success(count > 1 ? `Vehicles saved for ${count} flats` : t('vehicle.saveVehicle'));
   };
 
   const handleRemove = async (id: string) => {
@@ -77,16 +94,24 @@ const VehiclePage = () => {
 
       {showAdd && (
         <form onSubmit={handleAdd} className="card-section mb-4 flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <select className="input-field" value={form.flatId} onChange={e => handleFlatChange(e.target.value)}>
-              <option value="">Select Flat</option>
-              {flats.filter(f => f.isOccupied).map(f => (
-                <option key={f.id} value={f.id}>{f.flatNumber} - {f.ownerName || 'No owner'}</option>
-              ))}
-            </select>
-            <input className="input-field" placeholder={t('vehicle.residentName')} value={form.residentName}
-              onChange={e => setForm(f => ({ ...f, residentName: e.target.value }))} />
-          </div>
+          <FlatMultiSelect
+            flats={flats
+              .filter(f => f.isOccupied)
+              .map(f => ({
+                id: f.id,
+                flat_number: f.flatNumber,
+                subtitle: f.ownerName || undefined,
+              }))}
+            selected={selectedFlats}
+            onChange={setSelectedFlats}
+            label={t('vehicle.flatNo')}
+          />
+          <input
+            className="input-field"
+            placeholder={t('vehicle.residentName')}
+            value={form.residentName}
+            onChange={e => setForm(f => ({ ...f, residentName: e.target.value }))}
+          />
           <input className="input-field font-mono uppercase" placeholder={t('visitor.vehicleNumber')} value={form.vehicleNumber}
             onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value.toUpperCase() }))} />
           <div className="flex gap-2">

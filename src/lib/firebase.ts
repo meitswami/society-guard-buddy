@@ -1,4 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
+import { getAnalytics, isSupported as isAnalyticsSupported, type Analytics } from 'firebase/analytics';
 import { getAuth, initializeRecaptchaConfig, type Auth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -45,6 +46,23 @@ export function getFirebaseAuth(): Auth {
 }
 
 /**
+ * Injects `<script src="https://www.google.com/recaptcha/enterprise.js?render=...">` into document head.
+ * Same effect as placing the tag in index.html; key comes from env so Vercel/hosting stays in sync.
+ */
+export function injectRecaptchaEnterpriseScript(): void {
+  if (typeof document === 'undefined') return;
+  const key = (import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY as string | undefined)?.trim();
+  if (!key) return;
+  if (document.querySelector('script[data-kutumbika-recaptcha-enterprise]')) return;
+  const s = document.createElement('script');
+  s.src = `https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(key)}`;
+  s.async = true;
+  s.defer = true;
+  s.dataset.kutumbikaRecaptchaEnterprise = '1';
+  document.head.appendChild(s);
+}
+
+/**
  * Loads reCAPTCHA Enterprise / enforcement config from Firebase for this web app.
  * Call once on startup (and before phone auth) so the SDK uses the site key linked in
  * Google Cloud / Firebase, not a mismatched client-side key.
@@ -56,4 +74,23 @@ export async function initFirebaseRecaptchaConfig(): Promise<void> {
   } catch {
     /* SDK retries on first phone auth if this fails */
   }
+}
+
+let analytics: Analytics | null = null;
+
+/** Google Analytics (web only), when `VITE_FIREBASE_MEASUREMENT_ID` is set. */
+export async function initFirebaseAnalytics(): Promise<void> {
+  if (!isFirebaseConfigured() || typeof window === 'undefined') return;
+  if (!firebaseConfig.measurementId) return;
+  try {
+    if (await isAnalyticsSupported()) {
+      analytics = getAnalytics(getFirebaseApp());
+    }
+  } catch {
+    /* optional */
+  }
+}
+
+export function getFirebaseAnalytics(): Analytics | null {
+  return analytics;
 }

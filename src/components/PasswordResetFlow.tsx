@@ -3,13 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Mail, KeyRound, ArrowLeft, Phone, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { auditPasswordReset } from '@/lib/auditLogger';
+import { getResidentByPhoneInSociety } from '@/lib/societiesLogin';
 
 interface Props {
   userType: 'admin' | 'resident';
+  /** When set, account lookup is limited to this society (recommended for multi-society installs). */
+  societyId?: string | null;
   onBack: () => void;
 }
 
-const PasswordResetFlow = ({ userType, onBack }: Props) => {
+const PasswordResetFlow = ({ userType, societyId, onBack }: Props) => {
   const [step, setStep] = useState<'input' | 'token' | 'done' | 'no-email'>('input');
   const [method, setMethod] = useState<'email' | 'phone'>('phone');
   const [identifier, setIdentifier] = useState('');
@@ -31,16 +34,32 @@ const PasswordResetFlow = ({ userType, onBack }: Props) => {
 
     let user: any = null;
     if (method === 'email') {
-      const { data } = await supabase.from(table).select('*').eq('email', identifier).single();
-      user = data;
-    } else {
-      if (userType === 'resident') {
-        const { data } = await supabase.from('resident_users').select('*').eq('phone', identifier).single();
+      if (userType === 'resident' && societyId) {
+        const { data: flats } = await supabase.from('flats').select('id').eq('society_id', societyId);
+        const flatIds = (flats ?? []).map((f) => f.id);
+        if (flatIds.length > 0) {
+          const { data } = await supabase.from('resident_users').select('*').eq('email', identifier).in('flat_id', flatIds).maybeSingle();
+          user = data;
+        }
+      } else if (userType === 'admin' && societyId) {
+        const { data } = await supabase.from('admins').select('*').eq('email', identifier).eq('society_id', societyId).maybeSingle();
         user = data;
       } else {
-        const { data } = await supabase.from('admins').select('*').eq('admin_id', identifier.toUpperCase()).single();
+        const { data } = await supabase.from(table).select('*').eq('email', identifier).single();
         user = data;
       }
+    } else if (userType === 'resident') {
+      if (societyId) {
+        user = await getResidentByPhoneInSociety(identifier, societyId);
+      } else {
+        const { data } = await supabase.from('resident_users').select('*').eq('phone', identifier).single();
+        user = data;
+      }
+    } else {
+      let q = supabase.from('admins').select('*').eq('admin_id', identifier.toUpperCase());
+      if (societyId) q = q.eq('society_id', societyId);
+      const { data } = await q.maybeSingle();
+      user = data;
     }
 
     if (!user) {
@@ -119,12 +138,12 @@ const PasswordResetFlow = ({ userType, onBack }: Props) => {
     setAskAdminLoading(true);
 
     // Find all admins for this user's society
-    let societyId: string | null = null;
-    if (userType === 'resident') {
+    let resolvedSocietyId: string | null = societyId ?? null;
+    if (userType === 'resident' && !resolvedSocietyId) {
       const { data: resUser } = await supabase.from('resident_users').select('flat_id').eq('id', userId).single();
       if (resUser) {
         const { data: flat } = await supabase.from('flats').select('society_id').eq('id', resUser.flat_id).single();
-        if (flat) societyId = flat.society_id;
+        if (flat) resolvedSocietyId = flat.society_id;
       }
     }
 
@@ -134,7 +153,7 @@ const PasswordResetFlow = ({ userType, onBack }: Props) => {
       message: `${userName} (${userType}, ${flatNumber ? 'Flat ' + flatNumber : 'ID: ' + identifier}) is requesting a password reset. They don't have an email set. Please reset their password from the admin panel.`,
       type: 'password_reset_request',
       target_type: 'admin',
-      society_id: societyId,
+      society_id: resolvedSocietyId,
     });
 
     toast.success('Request sent to admin! They will reset your password.');

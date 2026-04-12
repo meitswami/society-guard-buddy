@@ -8,6 +8,7 @@ import {
   NotificationMediaBadges,
   type NotificationMediaItem,
 } from '@/components/NotificationDetailModal';
+import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import type { Tables } from '@/integrations/supabase/types';
 
 interface ResidentRef {
@@ -21,6 +22,8 @@ interface Props {
   isResident?: boolean;
   flatNumber?: string;
   resident?: ResidentRef;
+  /** When set, FCM sends only to tokens registered for this society */
+  societyId?: string | null;
 }
 
 type TargetMode = 'all' | 'flat' | 'user';
@@ -69,6 +72,7 @@ const NotificationCenter = ({
   isResident = false,
   flatNumber = '',
   resident,
+  societyId = null,
 }: Props) => {
   const [notifications, setNotifications] = useState<Tables<'notifications'>[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -137,6 +141,14 @@ const NotificationCenter = ({
 
   const sendNotification = async () => {
     if (!nf.title || !nf.message) return;
+    if (targetMode === 'flat' && selectedFlats.length === 0) {
+      toast.error('Select at least one flat');
+      return;
+    }
+    if (targetMode === 'user' && selectedResidents.length === 0) {
+      toast.error('Select at least one resident');
+      return;
+    }
     setSending(true);
 
     let mediaItems: NotificationMediaItem[] = [];
@@ -202,6 +214,7 @@ const NotificationCenter = ({
           target_flat_numbers: targetFlatNumbers,
           target_ids: targetUserIds,
           media_items: mediaItems,
+          society_id: societyId,
         },
       });
     } catch (e) {
@@ -217,10 +230,6 @@ const NotificationCenter = ({
     setSending(false);
     toast.success('Notification sent with push alert!');
     loadNotifications();
-  };
-
-  const toggleFlat = (flat: string) => {
-    setSelectedFlats(prev => (prev.includes(flat) ? prev.filter(f => f !== flat) : [...prev, flat]));
   };
 
   const toggleResident = (r: (typeof residents)[0]) => {
@@ -379,25 +388,17 @@ const NotificationCenter = ({
               </div>
 
               {targetMode === 'flat' && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Select flats ({selectedFlats.length} selected):</p>
-                  <div className="max-h-32 overflow-y-auto grid grid-cols-4 gap-1">
-                    {flats.map(f => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => toggleFlat(f.flat_number)}
-                        className={`text-xs p-1.5 rounded border ${
-                          selectedFlats.includes(f.flat_number)
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-card border-border'
-                        }`}
-                      >
-                        {f.flat_number}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <FlatMultiSelect
+                  compact
+                  flats={flats.map(f => ({
+                    id: f.id,
+                    flat_number: f.flat_number,
+                    subtitle: f.owner_name || undefined,
+                  }))}
+                  selected={selectedFlats}
+                  onChange={setSelectedFlats}
+                  label="Select flats"
+                />
               )}
 
               {targetMode === 'user' && (

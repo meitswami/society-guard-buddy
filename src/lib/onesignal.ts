@@ -1,3 +1,5 @@
+import { registerFcmWebUser } from '@/lib/fcmWeb';
+
 // OneSignal helper for user registration & tagging
 declare global {
   interface Window {
@@ -24,7 +26,7 @@ export const registerOneSignalUser = (opts: {
   userId: string;
   userName: string;
   flatNumber?: string;
-  societyId?: string;
+  societyId?: string | null;
 }) => {
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   window.OneSignalDeferred.push(async (OneSignal: any) => {
@@ -39,6 +41,13 @@ export const registerOneSignalUser = (opts: {
       ...(opts.flatNumber ? { flat_number: opts.flatNumber } : {}),
       ...(opts.societyId ? { society_id: opts.societyId } : {}),
     });
+  });
+  void registerFcmWebUser({
+    userType: opts.userType,
+    userId: opts.userId,
+    userName: opts.userName,
+    flatNumber: opts.flatNumber,
+    societyId: opts.societyId ?? null,
   });
 };
 

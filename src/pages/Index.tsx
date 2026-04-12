@@ -10,6 +10,7 @@ import SuperadminLoginPage from '@/pages/SuperadminLoginPage';
 import SuperadminDashboard from '@/pages/SuperadminDashboard';
 import DashboardPage from '@/pages/DashboardPage';
 import UnifiedLoginPage from '@/pages/UnifiedLoginPage';
+import SocietyLoginGate from '@/components/SocietyLoginGate';
 import { useIsMobile } from '@/hooks/use-mobile';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
@@ -37,6 +38,7 @@ const AppContent = () => {
   const [residentUser, setResidentUser] = useState<{ id: string; name: string; phone: string; flatId: string; flatNumber: string } | null>(null);
   const [adminUser, setAdminUser] = useState<{ id: string; name: string; adminId: string; societyId: string | null } | null>(null);
   const [superadminUser, setSuperadminUser] = useState<{ id: string; name: string; username: string } | null>(null);
+  const [loginSociety, setLoginSociety] = useState<{ id: string; name: string } | null>(null);
 
   const goHome = useCallback(() => setActiveTab('dashboard'), []);
 
@@ -84,7 +86,16 @@ const AppContent = () => {
 
   // Superadmin logged in
   if (superadminUser) {
-    return <SuperadminDashboard superadmin={superadminUser} onLogout={() => { setSuperadminUser(null); setUserMode('choosing'); }} />;
+    return (
+      <SuperadminDashboard
+        superadmin={superadminUser}
+        onLogout={() => {
+          setSuperadminUser(null);
+          setUserMode('choosing');
+          setLoginSociety(null);
+        }}
+      />
+    );
   }
 
   // Admin logged in
@@ -111,14 +122,35 @@ const AppContent = () => {
       );
     }
 
-    // Desktop: 4-button chooser
+    if (userMode === 'superadmin') {
+      return <SuperadminLoginPage onLogin={setSuperadminUser} onBack={() => setUserMode('choosing')} />;
+    }
+
+    if (!loginSociety) {
+      return (
+        <SocietyLoginGate
+          onContinue={(s) => setLoginSociety(s)}
+          onSuperadmin={() => setUserMode('superadmin')}
+        />
+      );
+    }
+
     if (userMode === 'choosing') {
       return (
         <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-36">
           <div className="flex w-full max-w-sm flex-col items-center gap-4">
             <div className="flex flex-col items-center mb-4">
-              <h1 className="page-title text-2xl">{t('app.name')}</h1>
-              <p className="text-muted-foreground text-sm mt-1">{t('app.subtitle')}</p>
+              <h1 className="page-title text-2xl text-center">{t('app.name')}</h1>
+              <p className="text-muted-foreground text-sm mt-1 text-center">{t('app.subtitle')}</p>
+              <p className="text-muted-foreground/80 text-xs mt-1 text-center">{t('app.tagline')}</p>
+              <p className="text-xs text-primary font-medium mt-3 text-center px-2">{loginSociety.name}</p>
+              <button
+                type="button"
+                className="text-[11px] text-muted-foreground underline mt-1"
+                onClick={() => setLoginSociety(null)}
+              >
+                {t('login.changeSociety')}
+              </button>
             </div>
             <button onClick={() => setUserMode('guard')}
               className="btn-primary w-full py-4 text-base">
@@ -143,23 +175,36 @@ const AppContent = () => {
     }
 
     if (userMode === 'admin') {
-      return <AdminLoginPage onLogin={(admin) => {
-        setSocietyId(admin.societyId);
-        setAdminUser(admin);
-      }} onBack={() => setUserMode('choosing')} />;
-    }
-
-    if (userMode === 'superadmin') {
-      return <SuperadminLoginPage onLogin={setSuperadminUser} onBack={() => setUserMode('choosing')} />;
+      return (
+        <AdminLoginPage
+          societyId={loginSociety.id}
+          onLogin={(admin) => {
+            setSocietyId(admin.societyId);
+            setAdminUser(admin);
+          }}
+          onBack={() => setUserMode('choosing')}
+        />
+      );
     }
 
     if (userMode === 'resident') {
-      return <ResidentLoginPage onLogin={(resident) => {
-        setResidentUser(resident);
-      }} onSwitchToGuard={() => setUserMode('guard')} />;
+      return (
+        <ResidentLoginPage
+          societyId={loginSociety.id}
+          onLogin={(resident) => {
+            setResidentUser(resident);
+          }}
+          onSwitchToGuard={() => setUserMode('guard')}
+        />
+      );
     }
 
-    return <LoginPage onSwitchToResident={() => setUserMode('resident')} />;
+    return (
+      <LoginPage
+        societyId={loginSociety.id}
+        onSwitchToResident={() => setUserMode('resident')}
+      />
+    );
   }
 
   // Guard tabs

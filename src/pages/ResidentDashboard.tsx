@@ -11,6 +11,7 @@ import BiometricSetup from '@/components/BiometricSetup';
 import NotificationCenter from '@/components/NotificationCenter';
 import PollManager from '@/components/PollManager';
 import { auditLogout } from '@/lib/auditLogger';
+import { useStore } from '@/store/useStore';
 
 interface Resident {
   id: string; name: string; phone: string; flatId: string; flatNumber: string;
@@ -52,6 +53,7 @@ const notificationSound = () => {
 
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
+  const societyId = useStore((s) => s.societyId);
   const [tab, setTab] = useState<'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'family' | 'vehicles' | 'directory' | 'profile'>('approvals');
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -746,6 +748,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             isResident
             flatNumber={resident.flatNumber}
             resident={{ id: resident.id, name: resident.name, flatNumber: resident.flatNumber }}
+            societyId={societyId}
           />
         )}
 

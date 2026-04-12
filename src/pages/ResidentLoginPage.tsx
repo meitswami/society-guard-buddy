@@ -11,13 +11,15 @@ import OTPLoginFlow from '@/components/OTPLoginFlow';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 import { useStore } from '@/store/useStore';
 import { LoginFooter } from '@/components/LoginFooter';
+import { getResidentByPhoneInSociety } from '@/lib/societiesLogin';
 
 interface Props {
+  societyId: string;
   onLogin: (resident: { id: string; name: string; phone: string; flatId: string; flatNumber: string }) => void;
   onSwitchToGuard: () => void;
 }
 
-const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
+const ResidentLoginPage = ({ societyId, onLogin, onSwitchToGuard }: Props) => {
   const { t } = useLanguage();
   const { setSocietyId } = useStore();
   const [loginMode, setLoginMode] = useState<'otp' | 'password'>('otp');
@@ -32,18 +34,13 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
 
   useEffect(() => { isAvailable().then(setBioAvailable); }, []);
 
-  const setSocietyFromFlat = async (flatId: string) => {
-    const { data: flat } = await supabase.from('flats').select('society_id').eq('id', flatId).single();
-    if (flat?.society_id) setSocietyId(flat.society_id);
-  };
-
   const handleOtpVerified = async (verifiedPhone: string) => {
-    const { data } = await supabase.from('resident_users').select('*').eq('phone', verifiedPhone).single();
-    if (!data) { setError('No resident account found for this phone. Contact your admin.'); return; }
+    const data = await getResidentByPhoneInSociety(verifiedPhone, societyId);
+    if (!data) { setError('No resident account found for this phone in this society. Contact your admin.'); return; }
     auditLoginSuccess('resident', data.id, data.name);
-    registerOneSignalUser({ userType: 'resident', userId: data.id, userName: data.name, flatNumber: data.flat_number });
+    registerOneSignalUser({ userType: 'resident', userId: data.id, userName: data.name, flatNumber: data.flat_number, societyId });
     promptPushPermission();
-    await setSocietyFromFlat(data.flat_id);
+    setSocietyId(societyId);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 
@@ -52,13 +49,25 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     setError('');
     if (!phone || !password) { setError(t('resident.enterBoth')); return; }
     setLoading(true);
-    const { data, error: err } = await supabase.from('resident_users').select('*').eq('phone', phone).eq('password', password).single();
+    const { data: flats } = await supabase.from('flats').select('id').eq('society_id', societyId);
+    const flatIds = (flats ?? []).map((f) => f.id);
+    let data = null;
+    if (flatIds.length > 0) {
+      const { data: r } = await supabase
+        .from('resident_users')
+        .select('*')
+        .eq('phone', phone)
+        .eq('password', password)
+        .in('flat_id', flatIds)
+        .maybeSingle();
+      data = r;
+    }
     setLoading(false);
-    if (err || !data) { auditLoginFailed('resident', phone); setError(t('login.invalidCredentials')); return; }
+    if (!data) { auditLoginFailed('resident', phone); setError(t('login.invalidCredentials')); return; }
     auditLoginSuccess('resident', data.id, data.name);
-    registerOneSignalUser({ userType: 'resident', userId: data.id, userName: data.name, flatNumber: data.flat_number });
+    registerOneSignalUser({ userType: 'resident', userId: data.id, userName: data.name, flatNumber: data.flat_number, societyId });
     promptPushPermission();
-    await setSocietyFromFlat(data.flat_id);
+    setSocietyId(societyId);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 
@@ -68,8 +77,10 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
     if (!result) { setError(t('biometric.notRegistered')); return; }
     const { data } = await supabase.from('resident_users').select('*').eq('id', result.userId).single();
     if (!data) { auditLoginFailed('resident', result.userId, 'biometric_user_not_found'); setError(t('login.invalidCredentials')); return; }
+    const { data: flat } = await supabase.from('flats').select('society_id').eq('id', data.flat_id).single();
+    if (flat?.society_id !== societyId) { setError(t('login.invalidCredentials')); return; }
     auditBiometricLogin('resident', data.id, data.name);
-    await setSocietyFromFlat(data.flat_id);
+    setSocietyId(societyId);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
 
@@ -84,7 +95,10 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
           <div className="w-20 h-20 rounded-2xl bg-accent/20 flex items-center justify-center mb-4">
             <Home className="w-10 h-10 text-accent-foreground" />
           </div>
-          <h1 className="page-title text-2xl">{t('resident.loginTitle')}</h1>
+          <h1 className="page-title text-2xl text-center">{t('app.name')}</h1>
+          <p className="text-muted-foreground text-xs mt-1 text-center">{t('app.subtitle')}</p>
+          <p className="text-muted-foreground/80 text-[11px] mt-0.5 text-center">{t('app.tagline')}</p>
+          <h2 className="page-title text-xl mt-4">{t('resident.loginTitle')}</h2>
           <p className="text-muted-foreground text-sm mt-1">{t('resident.loginSubtitle')}</p>
         </div>
 
@@ -106,9 +120,10 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
 
         {loginMode === 'otp' ? (
           <OTPLoginFlow
+            embedded
             onVerified={handleOtpVerified}
             title={t('resident.loginTitle')}
-            subtitle="Enter your registered phone number"
+            subtitle={t('resident.loginSubtitle')}
           />
         ) : (
           <>
@@ -157,7 +172,7 @@ const ResidentLoginPage = ({ onLogin, onSwitchToGuard }: Props) => {
       <LoginFooter />
       {showResetFlow && (
         <div className="fixed inset-0 z-50 bg-background">
-          <PasswordResetFlow userType="resident" onBack={() => setShowResetFlow(false)} />
+          <PasswordResetFlow userType="resident" societyId={societyId} onBack={() => setShowResetFlow(false)} />
         </div>
       )}
     </div>

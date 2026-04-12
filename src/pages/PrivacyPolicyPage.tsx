@@ -9,7 +9,7 @@ const PrivacyPolicyPage = () => {
           <strong className="font-medium text-foreground">Last updated:</strong> April 5, 2026
         </p>
         <p>
-          BrandZaha (“we,” “us,” or “our”) operates Society Guard Buddy (the “Service”). This Privacy Policy
+          BrandZaha (“we,” “us,” or “our”) operates Kutumbika (the “Service”). This Privacy Policy
           describes how we collect, use, and share information when you use our websites, mobile applications,
           and related services.
         </p>

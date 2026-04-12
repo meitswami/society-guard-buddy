@@ -1,14 +1,17 @@
-# 🏢 Evergreen Heights — Society Management System
+# 🏢 Kutumbika — Society Management System
 
-A comprehensive, mobile-first society gate management application built for security guards, residents, admins, and super admins to manage visitor entries, approvals, vehicle tracking, finance, events, notifications, and daily reporting.
+*Parivaar Jaisi Society*
+
+A comprehensive, mobile-first multi-society gate management application built for security guards, residents, admins, and super admins to manage visitor entries, approvals, vehicle tracking, finance, events, notifications, and daily reporting. Users choose their society before signing in so credentials are always scoped to the correct community.
 
 ## ✨ Features
 
 ### 🔐 Multi-Tier Authentication
+- **Society selection first** — active societies (same order as the superadmin list: A–Z by name), then role-specific login
 - **Guard login** with ID & password — shift tracking with timestamps
 - **Resident login** with phone & password — manage approvals & visitor passes
 - **Admin login** with ID & password — full society management
-- **Super Admin login** — multi-society management
+- **Super Admin login** — platform-wide multi-society management (no society required)
 - **Biometric login** — fingerprint/face unlock via WebAuthn API (all user types)
 - **Password reset** — email-based OTP reset for admins & residents; admin-only guard reset
 - Role-based dashboards for each tier

@@ -1,4 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getGoogleAccessToken, parseServiceAccountJson } from '../_shared/googleAccessToken.ts'
+import { createRecaptchaAssessment } from '../_shared/recaptchaAssessment.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,11 +13,53 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { phone, countryCode = '+91' } = await req.json()
+    const body = await req.json() as {
+      phone?: string
+      countryCode?: string
+      recaptcha_token?: string
+      recaptcha_action?: string
+    }
+    const { phone, countryCode = '+91', recaptcha_token, recaptcha_action = 'send_otp' } = body
     if (!phone) {
       return new Response(JSON.stringify({ error: 'Phone number required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
+    }
+
+    const rawSa =
+      Deno.env.get('FIREBASE_SERVICE_ACCOUNT_JSON') ??
+      Deno.env.get('RECAPTCHA_SERVICE_ACCOUNT_JSON')
+    const sa = parseServiceAccountJson(rawSa ?? undefined)
+    const siteKey = Deno.env.get('RECAPTCHA_ENTERPRISE_SITE_KEY')?.trim()
+    const requireRecaptcha = Deno.env.get('REQUIRE_RECAPTCHA_FOR_SEND_OTP') === 'true'
+
+    if (requireRecaptcha || (recaptcha_token && sa && siteKey)) {
+      if (!recaptcha_token || !sa || !siteKey) {
+        return new Response(JSON.stringify({ error: 'reCAPTCHA token required' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      const minScore = Number(Deno.env.get('RECAPTCHA_MIN_SCORE') ?? '0.35')
+      const accessToken = await getGoogleAccessToken(sa, [
+        'https://www.googleapis.com/auth/cloud-platform',
+      ])
+      const assess = await createRecaptchaAssessment(
+        accessToken,
+        sa.project_id,
+        siteKey,
+        recaptcha_token,
+        recaptcha_action,
+      )
+      if (!assess.ok) {
+        return new Response(JSON.stringify({ error: 'reCAPTCHA assessment failed' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      if (assess.score < minScore) {
+        return new Response(JSON.stringify({ error: 'reCAPTCHA score too low' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
     }
 
     const FIREBASE_API_KEY = Deno.env.get('FIREBASE_API_KEY')

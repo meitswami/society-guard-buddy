@@ -9,7 +9,7 @@ const TermsOfServicePage = () => {
           <strong className="font-medium text-foreground">Last updated:</strong> April 5, 2026
         </p>
         <p>
-          These Terms of Service (“Terms”) govern your access to and use of Society Guard Buddy (the
+          These Terms of Service (“Terms”) govern your access to and use of Kutumbika (the
           “Service”), provided by BrandZaha (“we,” “us,” or “our”). By using the Service, you agree to these
           Terms. If you do not agree, do not use the Service.
         </p>
@@ -17,7 +17,7 @@ const TermsOfServicePage = () => {
         <section className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">1. The Service</h2>
           <p>
-            Society Guard Buddy offers tools for residential societies and related workflows, such as visitor
+            Kutumbika offers tools for residential societies and related workflows, such as visitor
             management, logs, and associated features. Features may change over time. We do not guarantee
             uninterrupted or error-free operation.
           </p>

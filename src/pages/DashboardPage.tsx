@@ -78,6 +78,7 @@ const DashboardPage = () => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="page-title">{t('app.name')}</h1>
+          <p className="text-[10px] text-muted-foreground/80 mt-0.5">{t('app.tagline')}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             <Clock className="w-3 h-3 inline mr-1" />
             {format(new Date(), 'dd MMM yyyy, hh:mm a')}

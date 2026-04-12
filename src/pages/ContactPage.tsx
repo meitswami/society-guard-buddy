@@ -12,7 +12,7 @@ const ContactPage = () => {
     <LegalPageLayout title="Contact us">
       <div className="space-y-8">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Reach BrandZaha for support, billing, or questions about Society Guard Buddy. We aim to respond
+          Reach BrandZaha for support, billing, or questions about Kutumbika. We aim to respond
           within reasonable business hours.
         </p>
 

@@ -1,4 +1,4 @@
--- Evergreen Heights: map 1xx–6xx flat numbers to 1st–6th floor (first digit = floor).
+-- Kutumbika / default society: map 1xx–6xx flat numbers to 1st–6th floor (first digit = floor).
 -- Does not change flats that do not match the 3-digit pattern (e.g. PH1, shops).
 
 UPDATE public.flats

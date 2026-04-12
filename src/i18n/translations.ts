@@ -2,8 +2,9 @@ export type Lang = 'en' | 'hi';
 
 const translations: Record<string, Record<Lang, string>> = {
   // Common
-  'app.name': { en: 'Evergreen Heights', hi: 'एवरग्रीन हाइट्स' },
+  'app.name': { en: 'Kutumbika', hi: 'कुटुम्बिका' },
   'app.subtitle': { en: 'Society Management System', hi: 'सोसाइटी प्रबंधन प्रणाली' },
+  'app.tagline': { en: 'Parivaar Jaisi Society', hi: 'परिवार जैसी सोसाइटी' },
   'app.footer': { en: 'Copyright © 2026. Developed By MCSPL with ❤️', hi: 'कॉपीराइट © 2026. MCSPL द्वारा ❤️ से विकसित' },
   'app.loading': { en: 'Loading...', hi: 'लोड हो रहा है...' },
   'common.add': { en: 'Add', hi: 'जोड़ें' },
@@ -35,6 +36,13 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.footerPrivacy': { en: 'Privacy Policy', hi: 'गोपनीयता नीति' },
   'login.footerTerms': { en: 'Terms of Service', hi: 'सेवा की शर्तें' },
   'login.footerContact': { en: 'Contact Us', hi: 'संपर्क करें' },
+  'login.selectSociety': { en: 'Select your society', hi: 'अपनी सोसाइटी चुनें' },
+  'login.societyPlaceholder': { en: 'Choose society…', hi: 'सोसाइटी चुनें…' },
+  'login.continueToLogin': { en: 'Continue to login', hi: 'लॉगिन पर जाएँ' },
+  'login.superadminPlatform': { en: 'Platform superadmin login', hi: 'प्लेटफ़ॉर्म सुपरएडमिन लॉगिन' },
+  'login.changeSociety': { en: 'Change society', hi: 'सोसाइटी बदलें' },
+  'login.backToSociety': { en: '← Back to society selection', hi: '← सोसाइटी चयन पर वापस' },
+  'login.pickSocietyFirst': { en: 'Select a society to sign in.', hi: 'साइन इन के लिए सोसाइटी चुनें।' },
 
   // Guard (in-session)
   'guard.geofenceLeftZone': {

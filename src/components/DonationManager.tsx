@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Heart, Plus, Upload } from 'lucide-react';
+import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { toast } from 'sonner';
 
 interface Props { adminName?: string; }
@@ -12,7 +13,14 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
   const [showForm, setShowForm] = useState(false);
   const [showDonateForm, setShowDonateForm] = useState<string | null>(null);
   const [cf, setCf] = useState({ title: '', description: '', target_amount: '', end_date: '' });
-  const [df, setDf] = useState({ flat_number: '', resident_name: '', amount: '', payment_method: 'cash', transaction_id: '', screenshot_url: '' });
+  const [df, setDf] = useState({
+    selected_flats: [] as string[],
+    resident_name: '',
+    amount: '',
+    payment_method: 'cash',
+    transaction_id: '',
+    screenshot_url: '',
+  });
 
   useEffect(() => { loadAll(); }, []);
   const loadAll = async () => {
@@ -37,21 +45,43 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
   };
 
   const addDonation = async (campaignId: string) => {
-    if (!df.flat_number || !df.amount) return;
-    const flat = flats.find(f => f.flat_number === df.flat_number);
-    await supabase.from('donation_payments').insert([{
-      campaign_id: campaignId, flat_id: flat?.id || null, flat_number: df.flat_number,
-      resident_name: df.resident_name, amount: Number(df.amount), payment_method: df.payment_method,
-      transaction_id: df.transaction_id || null, screenshot_url: df.screenshot_url || null,
-      verified_by: adminName, verified_at: new Date().toISOString(),
-    }]);
-    // Update collected amount
+    if (df.selected_flats.length === 0 || !df.amount) return;
+    const amount = Number(df.amount);
+    const verifiedAt = new Date().toISOString();
+    const rows = df.selected_flats.map(flat_number => {
+      const flat = flats.find(f => f.flat_number === flat_number);
+      return {
+        campaign_id: campaignId,
+        flat_id: flat?.id || null,
+        flat_number,
+        resident_name: df.resident_name,
+        amount,
+        payment_method: df.payment_method,
+        transaction_id: df.transaction_id || null,
+        screenshot_url: df.screenshot_url || null,
+        verified_by: adminName,
+        verified_at: verifiedAt,
+      };
+    });
+    await supabase.from('donation_payments').insert(rows);
     const camp = campaigns.find(c => c.id === campaignId);
     if (camp) {
-      await supabase.from('donation_campaigns').update({ collected_amount: (camp.collected_amount || 0) + Number(df.amount) }).eq('id', campaignId);
+      await supabase
+        .from('donation_campaigns')
+        .update({ collected_amount: (camp.collected_amount || 0) + amount * rows.length })
+        .eq('id', campaignId);
     }
-    setDf({ flat_number: '', resident_name: '', amount: '', payment_method: 'cash', transaction_id: '', screenshot_url: '' });
-    setShowDonateForm(null); toast.success('Donation recorded'); loadAll();
+    setDf({
+      selected_flats: [],
+      resident_name: '',
+      amount: '',
+      payment_method: 'cash',
+      transaction_id: '',
+      screenshot_url: '',
+    });
+    setShowDonateForm(null);
+    toast.success(rows.length > 1 ? `Donations recorded for ${rows.length} flats` : 'Donation recorded');
+    loadAll();
   };
 
   return (
@@ -107,10 +137,13 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
             </button>
             {showDonateForm === c.id && (
               <div className="mt-3 flex flex-col gap-2 pt-3 border-t border-border">
-                <select className="input-field text-sm" value={df.flat_number} onChange={e => setDf({...df, flat_number: e.target.value})}>
-                  <option value="">Select Flat</option>
-                  {flats.map(f => <option key={f.id} value={f.flat_number}>{f.flat_number}</option>)}
-                </select>
+                <FlatMultiSelect
+                  compact
+                  flats={flats.map(f => ({ id: f.id, flat_number: f.flat_number }))}
+                  selected={df.selected_flats}
+                  onChange={nums => setDf({ ...df, selected_flats: nums })}
+                  label="Flats"
+                />
                 <input className="input-field text-sm" placeholder="Resident Name" value={df.resident_name} onChange={e => setDf({...df, resident_name: e.target.value})} />
                 <input className="input-field text-sm" placeholder="Amount (₹)" type="number" value={df.amount} onChange={e => setDf({...df, amount: e.target.value})} />
                 <select className="input-field text-sm" value={df.payment_method} onChange={e => setDf({...df, payment_method: e.target.value})}>

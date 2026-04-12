@@ -62,7 +62,10 @@ const SuperadminLoginPage = ({ onLogin, onBack }: Props) => {
           <div className="w-20 h-20 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
             <Crown className="w-10 h-10 text-amber-500" />
           </div>
-          <h1 className="page-title text-2xl">{t('superadmin.login')}</h1>
+          <h1 className="page-title text-2xl text-center">{t('app.name')}</h1>
+          <p className="text-muted-foreground text-xs mt-1 text-center">{t('app.subtitle')}</p>
+          <p className="text-muted-foreground/80 text-[11px] mt-0.5 text-center">{t('app.tagline')}</p>
+          <h2 className="page-title text-xl mt-4">{t('superadmin.login')}</h2>
           <p className="text-muted-foreground text-sm mt-1">{t('superadmin.loginSubtitle')}</p>
         </div>
 
