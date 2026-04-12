@@ -5,6 +5,8 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  // Allow NEXT_PUBLIC_* on hosts (e.g. Vercel) that use Next.js-style names; Vite only exposes VITE_* by default.
+  envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   server: {
     host: "::",
     port: 8080,

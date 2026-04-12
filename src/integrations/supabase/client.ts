@@ -2,13 +2,18 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() ?? '';
+const SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() ||
+  (import.meta.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined)?.trim() ||
+  '';
 const SUPABASE_PUBLISHABLE_KEY =
-  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim() ?? '';
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim() ||
+  (import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim() ||
+  '';
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   console.error(
-    '[supabase] VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY must be set at build time. Logins will fail until they match your Supabase project.',
+    '[supabase] Set VITE_SUPABASE_URL + VITE_SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_* equivalents) at build time. They must match your Supabase project.',
   );
 }
 
