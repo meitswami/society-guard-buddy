@@ -1525,19 +1525,25 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          permissions: Json
           role_name: string
+          slug: string | null
           society_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          permissions?: Json
           role_name: string
+          slug?: string | null
           society_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          permissions?: Json
           role_name?: string
+          slug?: string | null
           society_id?: string
         }
         Relationships: [

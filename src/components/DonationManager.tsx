@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Heart, Plus, Upload } from 'lucide-react';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
+import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { toast } from 'sonner';
 
 interface Props { adminName?: string; }
@@ -9,13 +10,13 @@ interface Props { adminName?: string; }
 const DonationManager = ({ adminName = 'Admin' }: Props) => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [donations, setDonations] = useState<any[]>([]);
-  const [flats, setFlats] = useState<any[]>([]);
+  const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null }[]>([]);
+  const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [showForm, setShowForm] = useState(false);
   const [showDonateForm, setShowDonateForm] = useState<string | null>(null);
   const [cf, setCf] = useState({ title: '', description: '', target_amount: '', end_date: '' });
   const [df, setDf] = useState({
     selected_flats: [] as string[],
-    resident_name: '',
     amount: '',
     payment_method: 'cash',
     transaction_id: '',
@@ -24,14 +25,20 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
 
   useEffect(() => { loadAll(); }, []);
   const loadAll = async () => {
-    const [c, d, f] = await Promise.all([
+    const [c, d, f, m] = await Promise.all([
       supabase.from('donation_campaigns').select('*').order('created_at', { ascending: false }),
       supabase.from('donation_payments').select('*').order('created_at', { ascending: false }),
-      supabase.from('flats').select('flat_number, id').order('flat_number'),
+      supabase.from('flats').select('flat_number, id, owner_name').order('flat_number'),
+      supabase.from('members').select('flat_id, name').eq('is_primary', true),
     ]);
     if (c.data) setCampaigns(c.data);
     if (d.data) setDonations(d.data);
     if (f.data) setFlats(f.data);
+    const map = new Map<string, string>();
+    for (const row of m.data ?? []) {
+      if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
+    }
+    setPrimaryByFlatId(map);
   };
 
   const addCampaign = async () => {
@@ -54,7 +61,7 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
         campaign_id: campaignId,
         flat_id: flat?.id || null,
         flat_number,
-        resident_name: df.resident_name,
+        resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
         amount,
         payment_method: df.payment_method,
         transaction_id: df.transaction_id || null,
@@ -73,7 +80,6 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
     }
     setDf({
       selected_flats: [],
-      resident_name: '',
       amount: '',
       payment_method: 'cash',
       transaction_id: '',
@@ -139,12 +145,11 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
               <div className="mt-3 flex flex-col gap-2 pt-3 border-t border-border">
                 <FlatMultiSelect
                   compact
-                  flats={flats.map(f => ({ id: f.id, flat_number: f.flat_number }))}
+                  flats={flatOptionsWithPrimaryLabel(flats, primaryByFlatId)}
                   selected={df.selected_flats}
                   onChange={nums => setDf({ ...df, selected_flats: nums })}
                   label="Flats"
                 />
-                <input className="input-field text-sm" placeholder="Resident Name" value={df.resident_name} onChange={e => setDf({...df, resident_name: e.target.value})} />
                 <input className="input-field text-sm" placeholder="Amount (₹)" type="number" value={df.amount} onChange={e => setDf({...df, amount: e.target.value})} />
                 <select className="input-field text-sm" value={df.payment_method} onChange={e => setDf({...df, payment_method: e.target.value})}>
                   <option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank Transfer</option>
@@ -162,7 +167,7 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
               <div className="mt-3 space-y-1">
                 {campDonations.slice(0, 5).map(d => (
                   <div key={d.id} className="flex justify-between text-xs bg-muted/50 rounded p-2">
-                    <span>{d.flat_number} · {d.resident_name}</span>
+                    <span>{d.flat_number}{d.resident_name ? ` · ${d.resident_name}` : ''}</span>
                     <span className="font-bold">₹{d.amount}</span>
                   </div>
                 ))}

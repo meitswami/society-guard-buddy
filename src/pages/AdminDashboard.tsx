@@ -28,15 +28,18 @@ import ParkingManager from '@/components/ParkingManager';
 import ExpenseSplitter from '@/components/ExpenseSplitter';
 import NotificationCenter from '@/components/NotificationCenter';
 import { auditLogout } from '@/lib/auditLogger';
+import { isAdminTabAllowed, type AdminPanelPermissions, type AdminTab } from '@/lib/adminPermissions';
 
 interface Props {
-  admin: { id: string; name: string; adminId: string; societyId: string | null };
+  admin: {
+    id: string;
+    name: string;
+    adminId: string;
+    societyId: string | null;
+    permissions: AdminPanelPermissions;
+  };
   onLogout: () => void;
 }
-
-type AdminTab = 'overview' | 'guards' | 'residents' | 'geofence' | 'password' | 'biometric' | 'audit' |
-  'finance' | 'donations' | 'events' | 'polls' | 'parking' | 'splits' | 'notifications' |
-  'visitor' | 'delivery' | 'vehicle' | 'blacklist' | 'directory' | 'quick' | 'report' | 'logs' | 'settings';
 
 const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { t } = useLanguage();
@@ -120,10 +123,18 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'settings', label: 'Settings', icon: Settings, group: 'system' },
   ];
 
+  const visibleTabs = tabs.filter((tab) => isAdminTabAllowed(tab.id, admin.permissions));
+
+  useEffect(() => {
+    if (!isAdminTabAllowed(activeTab, admin.permissions)) setActiveTab('overview');
+  }, [activeTab, admin.permissions]);
+
   const renderContent = () => {
     switch (activeTab) {
       case 'guards': return <AdminGuardManager />;
-      case 'residents': return <AdminResidentManager />;
+      case 'residents': return (
+        <AdminResidentManager verifyAdminId={admin.id} verifyAdminName={admin.name} />
+      );
       case 'geofence': return <GeofenceSetup adminName={admin.name} />;
       case 'password': return <AdminPasswordChange adminId={admin.id} />;
       case 'biometric': return (
@@ -199,7 +210,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           {/* Quick access grid */}
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick Access</p>
           <div className="grid grid-cols-4 gap-2 mb-4">
-            {tabs.filter(t => t.id !== 'overview').slice(0, 12).map(tab => {
+            {visibleTabs.filter(t => t.id !== 'overview').slice(0, 12).map(tab => {
               const Icon = tab.icon;
               return (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -220,7 +231,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       {renderContent()}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
         <div className="max-w-lg mx-auto flex items-center overflow-x-auto gap-0 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1 scrollbar-hide">
-          {tabs.map(tab => {
+          {visibleTabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (

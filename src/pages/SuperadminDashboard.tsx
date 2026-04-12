@@ -7,6 +7,7 @@ import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import BiometricSetup from '@/components/BiometricSetup';
 import { trimSocietyFlatsToConfiguredRange } from '@/lib/societyFlatRangeTrim';
+import { NEW_CUSTOM_ROLE_PERMISSIONS } from '@/lib/adminPermissions';
 
 interface Props {
   superadmin: { id: string; name: string; username: string };
@@ -136,7 +137,13 @@ async function uploadSocietyPhotos(societyId: string, files: File[]): Promise<st
   }
   return urls;
 }
-interface SocietyRole { id: string; society_id: string; role_name: string; }
+interface SocietyRole {
+  id: string;
+  society_id: string;
+  role_name: string;
+  slug?: string | null;
+  permissions?: unknown;
+}
 interface Admin {
   id: string; name: string; admin_id: string; password: string;
   society_id: string | null; role_id: string | null; email: string | null;
@@ -333,8 +340,25 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   };
 
   const addRole = async () => {
-    if (!newRole.trim() || !selectedSociety) return;
-    await supabase.from('society_roles').insert({ society_id: selectedSociety, role_name: newRole.trim() });
+    const name = newRole.trim();
+    if (!name) {
+      toast.error(t('superadmin.roleNameRequired'));
+      return;
+    }
+    if (!selectedSociety) {
+      toast.error(t('superadmin.selectSocietyFirst'));
+      return;
+    }
+    const { error } = await supabase.from('society_roles').insert({
+      society_id: selectedSociety,
+      role_name: name,
+      permissions: NEW_CUSTOM_ROLE_PERMISSIONS as unknown as Record<string, boolean>,
+    });
+    if (error) {
+      if (error.code === '23505') toast.error(t('superadmin.roleDuplicate'));
+      else toast.error(error.message || t('superadmin.roleAddFailed'));
+      return;
+    }
     setNewRole('');
     toast.success(t('superadmin.roleAdded'));
     loadAll();
@@ -703,7 +727,9 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                 <div className="flex gap-2 mb-4">
                   <input className="input-field flex-1" placeholder={t('superadmin.roleName')}
                     value={newRole} onChange={e => setNewRole(e.target.value)} />
-                  <button onClick={addRole} className="btn-primary px-4">{t('common.add')}</button>
+                  <button type="button" onClick={() => void addRole()} className="btn-primary px-4">
+                    {t('common.add')}
+                  </button>
                 </div>
                 {filteredRoles.map(r => (
                   <div key={r.id} className="card-section p-3 mb-2 flex items-center justify-between">

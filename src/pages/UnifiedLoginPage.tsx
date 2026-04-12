@@ -13,11 +13,18 @@ import PasswordResetFlow from '@/components/PasswordResetFlow';
 import OTPLoginFlow from '@/components/OTPLoginFlow';
 import { LoginFooter } from '@/components/LoginFooter';
 import { fetchActiveSocietiesByName, getResidentByPhoneInSociety, type LoginSocietyRow } from '@/lib/societiesLogin';
+import { permissionsFromAdminJoin, type AdminPanelPermissions } from '@/lib/adminPermissions';
 
 interface Props {
   onGuardLogin: () => void;
   onResidentLogin: (resident: { id: string; name: string; phone: string; flatId: string; flatNumber: string }) => void;
-  onAdminLogin: (admin: { id: string; name: string; adminId: string; societyId: string | null }) => void;
+  onAdminLogin: (admin: {
+    id: string;
+    name: string;
+    adminId: string;
+    societyId: string | null;
+    permissions: AdminPanelPermissions;
+  }) => void;
   onSuperadminLogin: (sa: { id: string; name: string; username: string }) => void;
 }
 
@@ -166,7 +173,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
 
     const { data: admin } = await supabase
       .from('admins')
-      .select('*')
+      .select('*, society_roles(permissions, slug, role_name)')
       .eq('admin_id', id.toUpperCase())
       .eq('password', password)
       .eq('society_id', selectedSocietyId)
@@ -182,7 +189,13 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
         societyId: selectedSocietyId,
       });
       promptPushPermission();
-      onAdminLogin({ id: admin.id, name: admin.name, adminId: admin.admin_id, societyId: admin.society_id });
+      onAdminLogin({
+        id: admin.id,
+        name: admin.name,
+        adminId: admin.admin_id,
+        societyId: admin.society_id,
+        permissions: permissionsFromAdminJoin(admin),
+      });
       return;
     }
 

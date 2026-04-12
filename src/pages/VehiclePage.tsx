@@ -21,7 +21,6 @@ const VehiclePage = () => {
   const [search, setSearch] = useState('');
   const [selectedFlats, setSelectedFlats] = useState<string[]>([]);
   const [form, setForm] = useState({
-    residentName: '',
     vehicleNumber: '',
     vehicleType: 'car' as ResidentVehicle['vehicleType'],
   });
@@ -45,8 +44,7 @@ const VehiclePage = () => {
       const flat = flats.find(f => f.flatNumber === flatNumber);
       if (!flat) continue;
       const primary = members.find(m => m.flatId === flat.id && m.isPrimary);
-      const residentName =
-        form.residentName.trim() || primary?.name || flat.ownerName || '';
+      const residentName = primary?.name?.trim() || flat.ownerName?.trim() || '';
       if (!residentName) {
         toast.error(
           `${t('vehicle.residentName') || 'Resident'}: flat ${flatNumber} (add owner or primary member)`
@@ -64,7 +62,7 @@ const VehiclePage = () => {
     }
 
     const count = selectedFlats.length;
-    setForm({ residentName: '', vehicleNumber: '', vehicleType: 'car' });
+    setForm({ vehicleNumber: '', vehicleType: 'car' });
     setSelectedFlats([]);
     setShowAdd(false);
     toast.success(count > 1 ? `Vehicles saved for ${count} flats` : t('vehicle.saveVehicle'));
@@ -97,20 +95,17 @@ const VehiclePage = () => {
           <FlatMultiSelect
             flats={flats
               .filter(f => f.isOccupied)
-              .map(f => ({
-                id: f.id,
-                flat_number: f.flatNumber,
-                subtitle: f.ownerName || undefined,
-              }))}
+              .map(f => {
+                const primary = members.find(m => m.flatId === f.id && m.isPrimary)?.name?.trim();
+                return {
+                  id: f.id,
+                  flat_number: f.flatNumber,
+                  subtitle: primary || f.ownerName?.trim() || undefined,
+                };
+              })}
             selected={selectedFlats}
             onChange={setSelectedFlats}
             label={t('vehicle.flatNo')}
-          />
-          <input
-            className="input-field"
-            placeholder={t('vehicle.residentName')}
-            value={form.residentName}
-            onChange={e => setForm(f => ({ ...f, residentName: e.target.value }))}
           />
           <input className="input-field font-mono uppercase" placeholder={t('visitor.vehicleNumber')} value={form.vehicleNumber}
             onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value.toUpperCase() }))} />

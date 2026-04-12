@@ -79,9 +79,9 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [memberForm, setMemberForm] = useState({
     name: '',
     phone: '',
-    relation: 'Spouse',
+    relation: '',
     age: '',
-    gender: 'male',
+    gender: '',
     isServiceman: false,
     serviceType: '',
     customServiceType: '',
@@ -92,7 +92,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     spouseName: '',
     dateJoining: '',
     dateLeave: '',
-    vehicleCategory: 'car',
+    vehicleCategory: '',
     vehicleName: '',
     vehicleNumber: '',
     vehicleColor: '',
@@ -101,7 +101,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   // Vehicles state
   const [myVehicles, setMyVehicles] = useState<any[]>([]);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
-  const [vehicleForm, setVehicleForm] = useState({ vehicleNumber: '', vehicleType: 'car' as string });
+  const [vehicleForm, setVehicleForm] = useState({ vehicleNumber: '', vehicleType: '' as string });
 
   // Directory state (all flats)
   const [allFlats, setAllFlats] = useState<any[]>([]);
@@ -308,9 +308,9 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const emptyMemberForm = () => ({
     name: '',
     phone: '',
-    relation: 'Spouse',
+    relation: '',
     age: '',
-    gender: 'male',
+    gender: '',
     isServiceman: false,
     serviceType: '',
     customServiceType: '',
@@ -321,7 +321,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     spouseName: '',
     dateJoining: '',
     dateLeave: '',
-    vehicleCategory: 'car',
+    vehicleCategory: '',
     vehicleName: '',
     vehicleNumber: '',
     vehicleColor: '',
@@ -329,6 +329,12 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
   const handleAddMember = async () => {
     if (!memberForm.name) { toast.error('Name is required'); return; }
+    if (memberForm.isServiceman) {
+      if (!memberForm.serviceType) { toast.error('Please select a service type'); return; }
+    } else if (!memberForm.relation) {
+      toast.error('Please select a relation');
+      return;
+    }
     const relationRaw = memberForm.isServiceman
       ? (memberForm.serviceType === 'Others' ? memberForm.customServiceType || 'others' : memberForm.serviceType)
       : (memberForm.relation === 'Others' ? 'others' : memberForm.relation);
@@ -435,13 +441,15 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     const isService = SERVICE_TYPES.map(s => s.toLowerCase()).includes(m.relation?.toLowerCase());
     const relLower = (m.relation || '').toLowerCase();
     const relationCap = RELATION_TYPES.find((r) => r.toLowerCase() === relLower) || 'Spouse';
+    const gNorm = (m.gender || '').trim().toLowerCase();
+    const genderVal = gNorm === 'male' || gNorm === 'female' || gNorm === 'other' ? gNorm : '';
     setEditingMember(m);
     setMemberForm({
       name: m.name,
       phone: m.phone || '',
       relation: isService ? 'Spouse' : relationCap,
       age: m.age?.toString() || '',
-      gender: m.gender || 'male',
+      gender: genderVal,
       isServiceman: isService,
       serviceType: isService ? SERVICE_TYPES.find(s => s.toLowerCase() === m.relation?.toLowerCase()) || 'Others' : '',
       customServiceType: '',
@@ -452,7 +460,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       spouseName: m.spouse_name || '',
       dateJoining: m.date_joining || '',
       dateLeave: m.date_leave || '',
-      vehicleCategory: 'car',
+      vehicleCategory: '',
       vehicleName: '',
       vehicleNumber: '',
       vehicleColor: '',
@@ -461,7 +469,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     if (vrow) {
       setMemberForm((f) => ({
         ...f,
-        vehicleCategory: vrow.vehicle_type || 'car',
+        vehicleCategory: vrow.vehicle_type || '',
         vehicleName: vrow.vehicle_display_name || '',
         vehicleNumber: vrow.vehicle_number === 'N/A' ? '' : vrow.vehicle_number,
         vehicleColor: vrow.vehicle_color || '',
@@ -473,13 +481,14 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   // ========== VEHICLE HANDLERS ==========
   const handleAddVehicle = async () => {
     if (!vehicleForm.vehicleNumber) { toast.error('Vehicle number required'); return; }
+    if (!vehicleForm.vehicleType) { toast.error('Please select a vehicle type'); return; }
     await supabase.from('resident_vehicles').insert({
       flat_number: resident.flatNumber, flat_id: resident.flatId,
       resident_name: resident.name, vehicle_number: vehicleForm.vehicleNumber.toUpperCase(),
       vehicle_type: vehicleForm.vehicleType,
     });
     toast.success('Vehicle added');
-    setVehicleForm({ vehicleNumber: '', vehicleType: 'car' });
+    setVehicleForm({ vehicleNumber: '', vehicleType: '' });
     setShowAddVehicle(false);
     loadMyVehicles();
     loadDirectory();
@@ -728,6 +737,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                     <label className="text-xs text-muted-foreground mb-1 block">Relation</label>
                     <select className="input-field" value={memberForm.relation}
                       onChange={e => setMemberForm(f => ({ ...f, relation: e.target.value }))}>
+                      <option value="" disabled>---Select---</option>
                       {RELATION_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
@@ -736,7 +746,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                     <label className="text-xs text-muted-foreground mb-1 block">Service Type</label>
                     <select className="input-field" value={memberForm.serviceType}
                       onChange={e => setMemberForm(f => ({ ...f, serviceType: e.target.value }))}>
-                      <option value="">Select...</option>
+                      <option value="" disabled>---Select---</option>
                       {SERVICE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                     {memberForm.serviceType === 'Others' && (
@@ -756,6 +766,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                     <label className="text-xs text-muted-foreground mb-1 block">Gender</label>
                     <select className="input-field" value={memberForm.gender}
                       onChange={e => setMemberForm(f => ({ ...f, gender: e.target.value }))}>
+                      <option value="" disabled>---Select---</option>
                       <option value="male">Male</option>
                       <option value="female">Female</option>
                       <option value="other">Other</option>
@@ -810,7 +821,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                       value={memberForm.policeVerification}
                       onChange={(e) => setMemberForm((f) => ({ ...f, policeVerification: e.target.value }))}
                     >
-                      <option value="">Police verification (optional)</option>
+                      <option value="" disabled>---Select---</option>
                       <option value="pending">Pending</option>
                       <option value="submitted">Submitted</option>
                       <option value="verified">Verified</option>
@@ -821,18 +832,26 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                       value={memberForm.spouseName}
                       onChange={(e) => setMemberForm((f) => ({ ...f, spouseName: e.target.value }))}
                     />
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Date of joining</label>
-                        <input className="input-field text-sm" type="date" value={memberForm.dateJoining}
-                          onChange={(e) => setMemberForm((f) => ({ ...f, dateJoining: e.target.value }))} />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Date of leave</label>
-                        <input className="input-field text-sm" type="date" value={memberForm.dateLeave}
-                          onChange={(e) => setMemberForm((f) => ({ ...f, dateLeave: e.target.value }))} />
+                    <hr className="border-border" />
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Service dates (optional)</p>
+                      <p className="text-[10px] text-muted-foreground leading-snug">
+                        When this person started / finished working for your flat (e.g. staff start date, last working day).
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-medium text-muted-foreground mb-0.5 block">Date of joining</label>
+                          <input className="input-field text-sm w-full" type="date" value={memberForm.dateJoining}
+                            onChange={(e) => setMemberForm((f) => ({ ...f, dateJoining: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-muted-foreground mb-0.5 block">Date of leave</label>
+                          <input className="input-field text-sm w-full" type="date" value={memberForm.dateLeave}
+                            onChange={(e) => setMemberForm((f) => ({ ...f, dateLeave: e.target.value }))} />
+                        </div>
                       </div>
                     </div>
+                    <hr className="border-border" />
                     <p className="text-[10px] font-medium text-muted-foreground uppercase">Vehicle (optional)</p>
                     <div className="grid grid-cols-2 gap-2">
                       <select
@@ -840,6 +859,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                         value={memberForm.vehicleCategory}
                         onChange={(e) => setMemberForm((f) => ({ ...f, vehicleCategory: e.target.value }))}
                       >
+                        <option value="" disabled>---Select---</option>
                         {STAFF_VEHICLE_TYPES.map((vt) => (
                           <option key={vt} value={vt}>{vt}</option>
                         ))}
@@ -920,6 +940,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   value={vehicleForm.vehicleNumber} onChange={e => setVehicleForm(f => ({ ...f, vehicleNumber: e.target.value }))} />
                 <select className="input-field" value={vehicleForm.vehicleType}
                   onChange={e => setVehicleForm(f => ({ ...f, vehicleType: e.target.value }))}>
+                  <option value="" disabled>---Select---</option>
                   <option value="car">🚗 Car</option>
                   <option value="bike">🏍️ Bike</option>
                   <option value="other">🚐 Other</option>

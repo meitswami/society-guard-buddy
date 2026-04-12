@@ -11,6 +11,7 @@ import { allowsResidentLoginAndPrimary, isRestrictedMemberCategory, STAFF_VEHICL
 import type { Flat, Member } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { exportResidentsDirectoryPdf, type PdfFlat, type PdfMember } from '@/lib/exportResidentsPdf';
+import SensitiveAdminVerifyModal from '@/components/SensitiveAdminVerifyModal';
 
 type MemberFormState = {
   name: string;
@@ -35,9 +36,9 @@ type MemberFormState = {
 const initialMemberForm = (): MemberFormState => ({
   name: '',
   phone: '',
-  relation: 'family',
+  relation: '',
   age: '',
-  gender: 'Male',
+  gender: '',
   isPrimary: false,
   photo: '',
   idPhotoFront: '',
@@ -46,7 +47,7 @@ const initialMemberForm = (): MemberFormState => ({
   spouseName: '',
   dateJoining: '',
   dateLeave: '',
-  vehicleCategory: 'car',
+  vehicleCategory: '',
   vehicleName: '',
   vehicleNumber: '',
   vehicleColor: '',
@@ -58,7 +59,18 @@ interface ResidentUser {
   id: string; name: string; phone: string; flat_id: string; flat_number: string; password: string;
 }
 
-const AdminResidentManager = () => {
+interface AdminResidentManagerProps {
+  verifyAdminId: string;
+  verifyAdminName: string;
+  /** When true, password/biometric step runs before mutating resident or flat records. */
+  requireSensitiveVerify?: boolean;
+}
+
+const AdminResidentManager = ({
+  verifyAdminId,
+  verifyAdminName,
+  requireSensitiveVerify = true,
+}: AdminResidentManagerProps) => {
   const { t } = useLanguage();
   const { flats, members, residentVehicles, loadFlats, loadMembers, loadResidentVehicles, societyId } = useStore();
   const [search, setSearch] = useState('');
@@ -80,6 +92,28 @@ const AdminResidentManager = () => {
   const [flatMetaForm, setFlatMetaForm] = useState({ floor: '', wing: '', intercom: '' });
   const [residentSelfIdUploadEnabled, setResidentSelfIdUploadEnabled] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+
+  const pendingSensitive = useRef<null | (() => Promise<void>)>(null);
+  const [sensitiveOpen, setSensitiveOpen] = useState(false);
+  const [sensitiveTitle, setSensitiveTitle] = useState('');
+  const [sensitiveActionLabel, setSensitiveActionLabel] = useState('');
+
+  const runSensitive = (actionLabel: string, title: string, fn: () => Promise<void>) => {
+    if (!requireSensitiveVerify) {
+      void fn();
+      return;
+    }
+    pendingSensitive.current = fn;
+    setSensitiveActionLabel(actionLabel);
+    setSensitiveTitle(title);
+    setSensitiveOpen(true);
+  };
+
+  const handleSensitiveVerified = () => {
+    const fn = pendingSensitive.current;
+    pendingSensitive.current = null;
+    if (fn) void fn();
+  };
 
   useEffect(() => { loadFlats(); loadMembers(); loadResidentVehicles(); loadResidentUsers(); }, []);
 
@@ -126,26 +160,28 @@ const AdminResidentManager = () => {
     const existing = flats.find(f => f.flatNumber === flatForm.flat_number);
     if (existing) { toast.error('Flat number already exists'); return; }
 
-    const suggested = floorLabelFromFlatNumber(flatForm.flat_number);
-    const floorValue = (flatForm.floor.trim() || suggested || '').trim() || null;
+    runSensitive('add_flat', 'Add flat', async () => {
+      const suggested = floorLabelFromFlatNumber(flatForm.flat_number);
+      const floorValue = (flatForm.floor.trim() || suggested || '').trim() || null;
 
-    await supabase.from('flats').insert({
-      flat_number: flatForm.flat_number,
-      floor: floorValue,
-      wing: flatForm.wing || null,
-      flat_type: 'residential',
-      owner_name: flatForm.owner_name || null,
-      owner_phone: flatForm.owner_phone || null,
-      intercom: flatForm.intercom || null,
-      is_occupied: !!flatForm.owner_name,
-      society_id: societyId || null,
+      await supabase.from('flats').insert({
+        flat_number: flatForm.flat_number,
+        floor: floorValue,
+        wing: flatForm.wing || null,
+        flat_type: 'residential',
+        owner_name: flatForm.owner_name || null,
+        owner_phone: flatForm.owner_phone || null,
+        intercom: flatForm.intercom || null,
+        is_occupied: !!flatForm.owner_name,
+        society_id: societyId || null,
+      });
+
+      toast.success('Flat added successfully');
+      floorFieldTouched.current = false;
+      setFlatForm({ flat_number: '', floor: '', wing: 'A', owner_name: '', owner_phone: '', intercom: '' });
+      setViewTab('flats');
+      loadFlats();
     });
-
-    toast.success('Flat added successfully');
-    floorFieldTouched.current = false;
-    setFlatForm({ flat_number: '', floor: '', wing: 'A', owner_name: '', owner_phone: '', intercom: '' });
-    setViewTab('flats');
-    loadFlats();
   };
 
   const openAddFlatTab = () => {
@@ -169,17 +205,20 @@ const AdminResidentManager = () => {
 
   const saveFlatMeta = async () => {
     if (!flatMetaEditId) return;
-    await supabase
-      .from('flats')
-      .update({
-        floor: flatMetaForm.floor.trim() || null,
-        wing: flatMetaForm.wing.trim() || null,
-        intercom: flatMetaForm.intercom.trim() || null,
-      })
-      .eq('id', flatMetaEditId);
-    toast.success('Flat details updated');
-    setFlatMetaEditId(null);
-    loadFlats();
+    const id = flatMetaEditId;
+    runSensitive('edit_flat_meta', 'Update flat details', async () => {
+      await supabase
+        .from('flats')
+        .update({
+          floor: flatMetaForm.floor.trim() || null,
+          wing: flatMetaForm.wing.trim() || null,
+          intercom: flatMetaForm.intercom.trim() || null,
+        })
+        .eq('id', id);
+      toast.success('Flat details updated');
+      setFlatMetaEditId(null);
+      loadFlats();
+    });
   };
 
   // === SYNC RESIDENT USERS for a flat ===
@@ -222,14 +261,15 @@ const AdminResidentManager = () => {
       toast.error('Select a society first');
       return;
     }
-    setResidentSelfIdUploadEnabled(on);
-    const { error } = await supabase.from('societies').update({ resident_self_id_upload_enabled: on }).eq('id', societyId);
-    if (error) {
-      setResidentSelfIdUploadEnabled(!on);
-      toast.error(error.message);
-      return;
-    }
-    toast.success(on ? 'Residents can add or edit their own Photo ID in the app (Profile).' : 'Self-service Photo ID turned off');
+    runSensitive('resident_self_id_policy', 'Change resident ID upload policy', async () => {
+      const { error } = await supabase.from('societies').update({ resident_self_id_upload_enabled: on }).eq('id', societyId);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setResidentSelfIdUploadEnabled(on);
+      toast.success(on ? 'Residents can add or edit their own Photo ID in the app (Profile).' : 'Self-service Photo ID turned off');
+    });
   };
 
   const handleExportResidentsPdf = async () => {
@@ -307,6 +347,7 @@ const AdminResidentManager = () => {
   // === ADD/EDIT MEMBER ===
   const saveMember = async (flatId: string) => {
     if (!memberForm.name) { toast.error('Name is required'); return; }
+    if (!memberForm.relation) { toast.error('Please select a relation or role'); return; }
 
     const restricted = isRestrictedMemberCategory(memberForm.relation);
     if (restricted && !memberForm.idPhotoFront && !(editingMember && members.find((x) => x.id === editingMember)?.idPhotoFront)) {
@@ -314,6 +355,10 @@ const AdminResidentManager = () => {
       return;
     }
 
+    runSensitive(
+      editingMember ? 'update_member' : 'add_member',
+      editingMember ? 'Update household member' : 'Add household member',
+      async () => {
     const flat = flats.find((f) => f.id === flatId);
     const existing = getMembersForFlat(flatId);
     const prev = editingMember ? members.find((m) => m.id === editingMember) : null;
@@ -411,6 +456,17 @@ const AdminResidentManager = () => {
       await syncResidentUsersForFlat(flatId, flat.flatNumber);
     }
     loadResidentUsers();
+      },
+    );
+  };
+
+  const mapGenderForAdminForm = (g: string | undefined) => {
+    const x = (g ?? '').trim().toLowerCase();
+    if (x === 'male') return 'Male';
+    if (x === 'female') return 'Female';
+    if (x === 'other') return 'Other';
+    if (g === 'Male' || g === 'Female' || g === 'Other') return g;
+    return '';
   };
 
   const editMember = async (m: Member) => {
@@ -420,7 +476,7 @@ const AdminResidentManager = () => {
       phone: m.phone || '',
       relation: m.relation,
       age: m.age ? String(m.age) : '',
-      gender: m.gender || 'Male',
+      gender: mapGenderForAdminForm(m.gender),
       isPrimary: m.isPrimary,
       photo: m.photo || '',
       idPhotoFront: m.idPhotoFront || '',
@@ -436,7 +492,7 @@ const AdminResidentManager = () => {
     if (vrow) {
       setMemberForm((f) => ({
         ...f,
-        vehicleCategory: vrow.vehicle_type || 'car',
+        vehicleCategory: vrow.vehicle_type || '',
         vehicleName: vrow.vehicle_display_name || '',
         vehicleNumber: vrow.vehicle_number === 'N/A' ? '' : vrow.vehicle_number,
         vehicleColor: vrow.vehicle_color || '',
@@ -447,16 +503,17 @@ const AdminResidentManager = () => {
   const removeMember = async (id: string) => {
     const ok = await confirmAction('Delete Member?', 'This member will be removed permanently.', 'Delete', 'Cancel');
     if (!ok) return;
-    const member = members.find(m => m.id === id);
-    await supabase.from('resident_vehicles').delete().eq('member_id', id);
-    await supabase.from('members').delete().eq('id', id);
-    // Also remove resident_user if exists
-    if (member?.phone) {
-      await supabase.from('resident_users').delete().eq('phone', member.phone).eq('flat_id', member.flatId);
-    }
-    toast.success('Member removed');
-    loadMembers();
-    loadResidentUsers();
+    runSensitive('remove_member', 'Remove household member', async () => {
+      const member = members.find(m => m.id === id);
+      await supabase.from('resident_vehicles').delete().eq('member_id', id);
+      await supabase.from('members').delete().eq('id', id);
+      if (member?.phone) {
+        await supabase.from('resident_users').delete().eq('phone', member.phone).eq('flat_id', member.flatId);
+      }
+      toast.success('Member removed');
+      loadMembers();
+      loadResidentUsers();
+    });
   };
 
   const resetMemberForm = () => {
@@ -471,41 +528,47 @@ const AdminResidentManager = () => {
       toast.error('Only household members can be primary (not tenant, staff, or other)');
       return;
     }
-    const flatMembers = getMembersForFlat(flatId);
-    for (const m of flatMembers) {
-      if (m.isPrimary) await supabase.from('members').update({ is_primary: false }).eq('id', m.id);
-    }
-    await supabase.from('members').update({ is_primary: true }).eq('id', memberId);
-    const member = members.find(m => m.id === memberId);
-    if (member) {
-      await supabase.from('flats').update({ owner_name: member.name }).eq('id', flatId);
-    }
-    showSuccess('Updated!', 'Primary member changed');
-    loadMembers();
-    loadFlats();
+    runSensitive('set_primary_member', 'Change primary member', async () => {
+      const flatMembers = getMembersForFlat(flatId);
+      for (const m of flatMembers) {
+        if (m.isPrimary) await supabase.from('members').update({ is_primary: false }).eq('id', m.id);
+      }
+      await supabase.from('members').update({ is_primary: true }).eq('id', memberId);
+      const member = members.find(m => m.id === memberId);
+      if (member) {
+        await supabase.from('flats').update({ owner_name: member.name }).eq('id', flatId);
+      }
+      showSuccess('Updated!', 'Primary member changed');
+      loadMembers();
+      loadFlats();
+    });
   };
 
   // === RESET PASSWORD for flat ===
   const resetFlatPassword = async (flatId: string) => {
     const ok = await confirmAction('Reset Password?', 'Generate a new password for all members of this flat?', 'Yes, Reset', 'Cancel');
     if (!ok) return;
-    const newPass = generateFlatPassword();
-    await supabase.from('resident_users').update({ password: newPass }).eq('flat_id', flatId);
-    showSuccess('Password Reset!', `New password: ${newPass}`);
-    loadResidentUsers();
+    runSensitive('reset_flat_password', 'Reset resident login password', async () => {
+      const newPass = generateFlatPassword();
+      await supabase.from('resident_users').update({ password: newPass }).eq('flat_id', flatId);
+      showSuccess('Password Reset!', `New password: ${newPass}`);
+      loadResidentUsers();
+    });
   };
 
   // === DELETE FLAT ===
   const removeFlat = async (flatId: string) => {
     const ok = await confirmAction('Delete Flat?', 'This will remove the flat, all members and login accounts.', 'Delete', 'Cancel');
     if (!ok) return;
-    await supabase.from('resident_users').delete().eq('flat_id', flatId);
-    await supabase.from('members').delete().eq('flat_id', flatId);
-    await supabase.from('flats').delete().eq('id', flatId);
-    showSuccess('Deleted!', 'Flat and all data removed');
-    loadFlats();
-    loadMembers();
-    loadResidentUsers();
+    runSensitive('remove_flat', 'Delete flat and all members', async () => {
+      await supabase.from('resident_users').delete().eq('flat_id', flatId);
+      await supabase.from('members').delete().eq('flat_id', flatId);
+      await supabase.from('flats').delete().eq('id', flatId);
+      showSuccess('Deleted!', 'Flat and all data removed');
+      loadFlats();
+      loadMembers();
+      loadResidentUsers();
+    });
   };
 
   const togglePasswordVisibility = (flatId: string) => {
@@ -845,6 +908,7 @@ const AdminResidentManager = () => {
                               maxLength={10}
                             />
                             <select className="input-field text-xs col-span-2" value={memberForm.relation} onChange={e => setMemberForm({...memberForm, relation: e.target.value, isPrimary: false})}>
+                              <option value="" disabled>---Select---</option>
                               <optgroup label="Household">
                                 <option value="owner">Owner</option>
                                 <option value="spouse">Spouse</option>
@@ -866,6 +930,7 @@ const AdminResidentManager = () => {
                             </select>
                             <input className="input-field text-xs" placeholder="Age" type="number" value={memberForm.age} onChange={e => setMemberForm({...memberForm, age: e.target.value})} />
                             <select className="input-field text-xs" value={memberForm.gender} onChange={e => setMemberForm({...memberForm, gender: e.target.value})}>
+                              <option value="" disabled>---Select---</option>
                               <option value="Male">Male</option>
                               <option value="Female">Female</option>
                               <option value="Other">Other</option>
@@ -904,7 +969,7 @@ const AdminResidentManager = () => {
                                   value={memberForm.policeVerification}
                                   onChange={e => setMemberForm({ ...memberForm, policeVerification: e.target.value })}
                                 >
-                                  <option value="">Police verification (optional)</option>
+                                  <option value="" disabled>---Select---</option>
                                   <option value="pending">Pending</option>
                                   <option value="submitted">Submitted</option>
                                   <option value="verified">Verified</option>
@@ -915,25 +980,41 @@ const AdminResidentManager = () => {
                                   value={memberForm.spouseName}
                                   onChange={e => setMemberForm({ ...memberForm, spouseName: e.target.value })}
                                 />
-                                <input
-                                  className="input-field text-xs"
-                                  type="date"
-                                  value={memberForm.dateJoining}
-                                  onChange={e => setMemberForm({ ...memberForm, dateJoining: e.target.value })}
-                                />
-                                <input
-                                  className="input-field text-xs"
-                                  type="date"
-                                  placeholder="Date left"
-                                  value={memberForm.dateLeave}
-                                  onChange={e => setMemberForm({ ...memberForm, dateLeave: e.target.value })}
-                                />
+                                <hr className="col-span-2 border-border" />
+                                <div className="col-span-2 space-y-2">
+                                  <p className="text-[10px] font-medium text-muted-foreground uppercase">Service dates (optional)</p>
+                                  <p className="text-[10px] text-muted-foreground leading-snug">
+                                    When this person started / finished working for the flat (for staff, maid, driver, etc.).
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] font-medium text-muted-foreground block mb-0.5">Date of joining</label>
+                                      <input
+                                        className="input-field text-xs w-full"
+                                        type="date"
+                                        value={memberForm.dateJoining}
+                                        onChange={e => setMemberForm({ ...memberForm, dateJoining: e.target.value })}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] font-medium text-muted-foreground block mb-0.5">Date of leave</label>
+                                      <input
+                                        className="input-field text-xs w-full"
+                                        type="date"
+                                        value={memberForm.dateLeave}
+                                        onChange={e => setMemberForm({ ...memberForm, dateLeave: e.target.value })}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                                <hr className="col-span-2 border-border" />
                                 <p className="col-span-2 text-[10px] font-medium text-muted-foreground uppercase">Vehicle (optional)</p>
                                 <select
                                   className="input-field text-xs"
                                   value={memberForm.vehicleCategory}
                                   onChange={e => setMemberForm({ ...memberForm, vehicleCategory: e.target.value })}
                                 >
+                                  <option value="" disabled>---Select---</option>
                                   {STAFF_VEHICLE_TYPES.map((vt) => (
                                     <option key={vt} value={vt}>{vt}</option>
                                   ))}
@@ -1011,6 +1092,18 @@ const AdminResidentManager = () => {
           })}
         </div>
       )}
+      <SensitiveAdminVerifyModal
+        open={sensitiveOpen}
+        title={sensitiveTitle}
+        actionLabel={sensitiveActionLabel}
+        adminId={verifyAdminId}
+        adminName={verifyAdminName}
+        onClose={() => {
+          pendingSensitive.current = null;
+          setSensitiveOpen(false);
+        }}
+        onVerified={handleSensitiveVerified}
+      />
     </div>
   );
 };

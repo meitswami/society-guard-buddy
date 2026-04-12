@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Plus, Users, Upload } from 'lucide-react';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
+import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -11,13 +12,13 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
   const [events, setEvents] = useState<any[]>([]);
   const [rsvps, setRsvps] = useState<any[]>([]);
   const [contributions, setContributions] = useState<any[]>([]);
-  const [flats, setFlats] = useState<any[]>([]);
+  const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null }[]>([]);
+  const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [showForm, setShowForm] = useState(false);
   const [showContrib, setShowContrib] = useState<string | null>(null);
   const [ef, setEf] = useState({ title: '', description: '', event_date: '', event_time: '', location: '', contribution_amount: '' });
   const [cf, setCf] = useState({
     selected_flats: [] as string[],
-    resident_name: '',
     amount: '',
     payment_method: 'cash',
     screenshot_url: '',
@@ -25,16 +26,22 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
 
   useEffect(() => { loadAll(); }, []);
   const loadAll = async () => {
-    const [e, r, c, f] = await Promise.all([
+    const [e, r, c, f, m] = await Promise.all([
       supabase.from('events').select('*').order('event_date', { ascending: false }),
       supabase.from('event_rsvps').select('*'),
       supabase.from('event_contributions').select('*'),
-      supabase.from('flats').select('flat_number, id').order('flat_number'),
+      supabase.from('flats').select('flat_number, id, owner_name').order('flat_number'),
+      supabase.from('members').select('flat_id, name').eq('is_primary', true),
     ]);
     if (e.data) setEvents(e.data);
     if (r.data) setRsvps(r.data);
     if (c.data) setContributions(c.data);
     if (f.data) setFlats(f.data);
+    const map = new Map<string, string>();
+    for (const row of m.data ?? []) {
+      if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
+    }
+    setPrimaryByFlatId(map);
   };
 
   const addEvent = async () => {
@@ -65,7 +72,7 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
         event_id: eventId,
         flat_id: flat?.id || null,
         flat_number,
-        resident_name: cf.resident_name,
+        resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
         amount,
         payment_method: cf.payment_method,
         screenshot_url: cf.screenshot_url || null,
@@ -76,7 +83,6 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
     await supabase.from('event_contributions').insert(rows);
     setCf({
       selected_flats: [],
-      resident_name: '',
       amount: '',
       payment_method: 'cash',
       screenshot_url: '',
@@ -166,12 +172,11 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
               <div className="mt-3 flex flex-col gap-2 pt-3 border-t border-border">
                 <FlatMultiSelect
                   compact
-                  flats={flats.map(f => ({ id: f.id, flat_number: f.flat_number }))}
+                  flats={flatOptionsWithPrimaryLabel(flats, primaryByFlatId)}
                   selected={cf.selected_flats}
                   onChange={nums => setCf({ ...cf, selected_flats: nums })}
                   label="Flats"
                 />
-                <input className="input-field text-sm" placeholder="Resident Name" value={cf.resident_name} onChange={e => setCf({...cf, resident_name: e.target.value})} />
                 <input className="input-field text-sm" placeholder="Amount (₹)" type="number" value={cf.amount} onChange={e => setCf({...cf, amount: e.target.value})} />
                 <select className="input-field text-sm" value={cf.payment_method} onChange={e => setCf({...cf, payment_method: e.target.value})}>
                   <option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank Transfer</option>
@@ -187,7 +192,7 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
               <div className="mt-3 space-y-1">
                 {evContribs.slice(0, 5).map(c => (
                   <div key={c.id} className="flex justify-between text-xs bg-muted/50 rounded p-2">
-                    <span>{c.flat_number} · {c.resident_name}</span>
+                    <span>{c.flat_number}{c.resident_name ? ` · ${c.resident_name}` : ''}</span>
                     <span className="font-bold">₹{c.amount}</span>
                   </div>
                 ))}

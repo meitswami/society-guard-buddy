@@ -9,6 +9,7 @@ import {
   type NotificationMediaItem,
 } from '@/components/NotificationDetailModal';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
+import { flatOptionsWithPrimaryLabel } from '@/lib/flatMultiSelectOptions';
 import type { Tables } from '@/integrations/supabase/types';
 
 interface ResidentRef {
@@ -81,6 +82,7 @@ const NotificationCenter = ({
   const [selectedFlats, setSelectedFlats] = useState<string[]>([]);
   const [selectedResidents, setSelectedResidents] = useState<{ id: string; name: string; flatNumber: string }[]>([]);
   const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null }[]>([]);
+  const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [residents, setResidents] = useState<{ id: string; name: string; flat_number: string; flat_id: string }[]>([]);
   const [sending, setSending] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -99,12 +101,18 @@ const NotificationCenter = ({
   useEffect(() => {
     loadNotifications();
     void (async () => {
-      const [fRes, rRes] = await Promise.all([
+      const [fRes, rRes, mRes] = await Promise.all([
         supabase.from('flats').select('id, flat_number, owner_name').order('flat_number'),
         supabase.from('resident_users').select('id, name, flat_number, flat_id').order('name'),
+        supabase.from('members').select('flat_id, name').eq('is_primary', true),
       ]);
       if (fRes.data) setFlats(fRes.data);
       if (rRes.data) setResidents(rRes.data);
+      const map = new Map<string, string>();
+      for (const row of mRes.data ?? []) {
+        if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
+      }
+      setPrimaryByFlatId(map);
     })();
   }, [loadNotifications]);
 
@@ -390,11 +398,7 @@ const NotificationCenter = ({
               {targetMode === 'flat' && (
                 <FlatMultiSelect
                   compact
-                  flats={flats.map(f => ({
-                    id: f.id,
-                    flat_number: f.flat_number,
-                    subtitle: f.owner_name || undefined,
-                  }))}
+                  flats={flatOptionsWithPrimaryLabel(flats, primaryByFlatId)}
                   selected={selectedFlats}
                   onChange={setSelectedFlats}
                   label="Select flats"

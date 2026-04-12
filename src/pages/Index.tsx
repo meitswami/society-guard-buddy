@@ -8,6 +8,7 @@ import AdminLoginPage from '@/pages/AdminLoginPage';
 import AdminDashboard from '@/pages/AdminDashboard';
 import SuperadminLoginPage from '@/pages/SuperadminLoginPage';
 import SuperadminDashboard from '@/pages/SuperadminDashboard';
+import type { AdminPanelPermissions } from '@/lib/adminPermissions';
 import DashboardPage from '@/pages/DashboardPage';
 import UnifiedLoginPage from '@/pages/UnifiedLoginPage';
 import SocietyLoginGate from '@/components/SocietyLoginGate';
@@ -36,7 +37,13 @@ const AppContent = () => {
   const [loaded, setLoaded] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>('choosing');
   const [residentUser, setResidentUser] = useState<{ id: string; name: string; phone: string; flatId: string; flatNumber: string } | null>(null);
-  const [adminUser, setAdminUser] = useState<{ id: string; name: string; adminId: string; societyId: string | null } | null>(null);
+  const [adminUser, setAdminUser] = useState<{
+    id: string;
+    name: string;
+    adminId: string;
+    societyId: string | null;
+    permissions: AdminPanelPermissions;
+  } | null>(null);
   const [superadminUser, setSuperadminUser] = useState<{ id: string; name: string; username: string } | null>(null);
   const [loginSociety, setLoginSociety] = useState<{ id: string; name: string } | null>(null);
 

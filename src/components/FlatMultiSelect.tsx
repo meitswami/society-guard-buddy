@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 export type FlatMultiSelectOption = {
   id: string;
   flat_number: string;
+  /** Shown under the flat number (e.g. primary member or owner). */
   subtitle?: string;
 };
 
@@ -52,8 +53,10 @@ export function FlatMultiSelect({
     onChange(selected.filter(x => !nums.has(x)));
   };
 
-  const gridClass = compact ? 'grid grid-cols-4 gap-1' : 'grid grid-cols-3 sm:grid-cols-4 gap-1.5';
-  const btnClass = compact ? 'text-xs p-1.5 rounded border' : 'text-xs p-2 rounded-lg border';
+  const gridClass = compact ? 'grid grid-cols-3 sm:grid-cols-4 gap-1' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5';
+  const btnClass = compact
+    ? 'text-xs px-1 py-1.5 rounded border min-h-[2.75rem]'
+    : 'text-xs p-2 rounded-lg border min-h-[3.25rem]';
 
   return (
     <div className={className}>
@@ -84,12 +87,12 @@ export function FlatMultiSelect({
       <input
         type="search"
         className={`input-field mb-2 ${compact ? 'text-sm py-1.5' : ''}`}
-        placeholder="Search flat number…"
+        placeholder="Search flat or resident…"
         value={q}
         onChange={e => setQ(e.target.value)}
         autoComplete="off"
       />
-      <div className={`max-h-36 overflow-y-auto ${gridClass}`}>
+      <div className={`max-h-48 overflow-y-auto ${gridClass}`}>
         {filtered.length === 0 ? (
           <p className="col-span-full text-xs text-muted-foreground py-2">{emptyHint}</p>
         ) : (
@@ -100,14 +103,23 @@ export function FlatMultiSelect({
                 key={f.id}
                 type="button"
                 onClick={() => toggle(f.flat_number)}
-                title={f.subtitle || undefined}
-                className={`${btnClass} transition-colors ${
+                title={f.subtitle ? `${f.flat_number} · ${f.subtitle}` : f.flat_number}
+                className={`${btnClass} flex flex-col items-center justify-center gap-0.5 text-center transition-colors ${
                   on
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-card border-border text-foreground hover:bg-muted/60'
                 }`}
               >
-                <span className="font-mono">{f.flat_number}</span>
+                <span className="font-mono font-semibold leading-none tabular-nums">{f.flat_number}</span>
+                {f.subtitle ? (
+                  <span
+                    className={`w-full text-[9px] leading-[1.15] font-normal line-clamp-2 break-words hyphens-auto ${
+                      on ? 'text-primary-foreground/90' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {f.subtitle}
+                  </span>
+                ) : null}
               </button>
             );
           })

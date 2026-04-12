@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
+import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 
 interface Props {
   adminName?: string;
@@ -16,14 +17,14 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   const [subTab, setSubTab] = useState<'maintenance' | 'payments' | 'reminders'>('maintenance');
   const [charges, setCharges] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
-  const [flats, setFlats] = useState<any[]>([]);
+  const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null }[]>([]);
+  const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [form, setForm] = useState({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
   const [payForm, setPayForm] = useState({
     charge_id: '',
     selected_flats: [] as string[],
-    resident_name: '',
     amount: '',
     payment_method: 'cash',
     transaction_id: '',
@@ -36,14 +37,20 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [c, p, f] = await Promise.all([
+    const [c, p, f, m] = await Promise.all([
       supabase.from('maintenance_charges').select('*').order('created_at', { ascending: false }),
       supabase.from('maintenance_payments').select('*').order('created_at', { ascending: false }).limit(200),
-      supabase.from('flats').select('flat_number, id').order('flat_number'),
+      supabase.from('flats').select('flat_number, id, owner_name').order('flat_number'),
+      supabase.from('members').select('flat_id, name').eq('is_primary', true),
     ]);
     if (c.data) setCharges(c.data);
     if (p.data) setPayments(p.data);
     if (f.data) setFlats(f.data);
+    const map = new Map<string, string>();
+    for (const row of m.data ?? []) {
+      if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
+    }
+    setPrimaryByFlatId(map);
   };
 
   const addCharge = async () => {
@@ -67,7 +74,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
         charge_id: payForm.charge_id,
         flat_id: flat?.id || null,
         flat_number,
-        resident_name: payForm.resident_name,
+        resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
         amount: Number(payForm.amount),
         payment_method: payForm.payment_method,
         payment_status:
@@ -85,7 +92,6 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     setPayForm({
       charge_id: '',
       selected_flats: [],
-      resident_name: '',
       amount: '',
       payment_method: 'cash',
       transaction_id: '',
@@ -202,12 +208,11 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
                 {charges.map(c => <option key={c.id} value={c.id}>{c.title} - ₹{c.amount}</option>)}
               </select>
               <FlatMultiSelect
-                flats={flats.map(f => ({ id: f.id, flat_number: f.flat_number }))}
+                flats={flatOptionsWithPrimaryLabel(flats, primaryByFlatId)}
                 selected={payForm.selected_flats}
                 onChange={nums => setPayForm({ ...payForm, selected_flats: nums })}
                 label="Flats (multi-select)"
               />
-              <input className="input-field" placeholder="Resident Name" value={payForm.resident_name} onChange={e => setPayForm({...payForm, resident_name: e.target.value})} />
               <input className="input-field" placeholder="Amount (₹)" type="number" value={payForm.amount} onChange={e => setPayForm({...payForm, amount: e.target.value})} />
               <select className="input-field" value={payForm.payment_method} onChange={e => setPayForm({...payForm, payment_method: e.target.value})}>
                 <option value="cash">💵 Cash</option>
@@ -241,7 +246,9 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-sm font-semibold">Flat {p.flat_number}</p>
-                  <p className="text-xs text-muted-foreground">{p.resident_name} · {p.payment_method.toUpperCase()}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[p.resident_name, p.payment_method.toUpperCase()].filter(Boolean).join(' · ')}
+                  </p>
                   {p.transaction_id && <p className="text-[10px] text-muted-foreground font-mono">TXN: {p.transaction_id}</p>}
                   <p className="text-[10px] text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</p>
                 </div>

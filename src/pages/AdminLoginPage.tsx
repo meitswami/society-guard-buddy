@@ -9,10 +9,17 @@ import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/
 import PasswordResetFlow from '@/components/PasswordResetFlow';
 import { LoginFooter } from '@/components/LoginFooter';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
+import { permissionsFromAdminJoin, type AdminPanelPermissions } from '@/lib/adminPermissions';
 
 interface Props {
   societyId: string;
-  onLogin: (admin: { id: string; name: string; adminId: string; societyId: string | null }) => void;
+  onLogin: (admin: {
+    id: string;
+    name: string;
+    adminId: string;
+    societyId: string | null;
+    permissions: AdminPanelPermissions;
+  }) => void;
   onBack?: () => void;
 }
 
@@ -36,7 +43,7 @@ const AdminLoginPage = ({ societyId, onLogin, onBack }: Props) => {
     setLoading(true);
     const { data } = await supabase
       .from('admins')
-      .select('*')
+      .select('*, society_roles(permissions, slug, role_name)')
       .eq('admin_id', adminId.toUpperCase())
       .eq('password', password)
       .eq('society_id', societyId)
@@ -46,7 +53,13 @@ const AdminLoginPage = ({ societyId, onLogin, onBack }: Props) => {
       auditLoginSuccess('admin', data.id, data.name);
       registerOneSignalUser({ userType: 'admin', userId: data.id, userName: data.name, societyId });
       promptPushPermission();
-      onLogin({ id: data.id, name: data.name, adminId: data.admin_id, societyId: data.society_id });
+      onLogin({
+        id: data.id,
+        name: data.name,
+        adminId: data.admin_id,
+        societyId: data.society_id,
+        permissions: permissionsFromAdminJoin(data),
+      });
     } else {
       auditLoginFailed('admin', adminId.toUpperCase());
       setError(t('login.invalidCredentials'));
@@ -57,14 +70,24 @@ const AdminLoginPage = ({ societyId, onLogin, onBack }: Props) => {
     setError('');
     const result = await authenticate('admin');
     if (!result) { setError(t('biometric.notRegistered')); return; }
-    const { data } = await supabase.from('admins').select('*').eq('id', result.userId).single();
+    const { data } = await supabase
+      .from('admins')
+      .select('*, society_roles(permissions, slug, role_name)')
+      .eq('id', result.userId)
+      .single();
     if (!data || data.society_id !== societyId) {
       auditLoginFailed('admin', result.userId, 'biometric_user_not_found');
       setError(t('login.invalidCredentials'));
       return;
     }
     auditBiometricLogin('admin', data.id, data.name);
-    onLogin({ id: data.id, name: data.name, adminId: data.admin_id, societyId: data.society_id });
+    onLogin({
+      id: data.id,
+      name: data.name,
+      adminId: data.admin_id,
+      societyId: data.society_id,
+      permissions: permissionsFromAdminJoin(data),
+    });
   };
 
   return (
