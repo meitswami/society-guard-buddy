@@ -11,6 +11,31 @@ import {
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase';
 import { executeRecaptchaEnterpriseAction, RECAPTCHA_PHONE_ACTION } from '@/lib/recaptchaEnterprise';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
+
+type RecaptchaAssessPayload = {
+  ok?: boolean;
+  skipped?: boolean;
+  error?: string;
+  score?: number;
+  minScore?: number;
+  invalidReason?: string;
+};
+
+async function readRecaptchaAssessPayload(
+  data: RecaptchaAssessPayload | null,
+  assessErr: unknown,
+): Promise<RecaptchaAssessPayload | null> {
+  if (data) return data;
+  if (assessErr instanceof FunctionsHttpError && assessErr.context && typeof assessErr.context.json === 'function') {
+    try {
+      return (await assessErr.context.clone().json()) as RecaptchaAssessPayload;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
 
 interface Props {
   onVerified: (phone: string) => void;
@@ -168,22 +193,38 @@ const OTPLoginFlow = ({
           setLoading(false);
           return;
         }
-        const { data: assess, error: assessErr } = await supabase.functions.invoke(
+        const { data: assess, error: assessErr } = await supabase.functions.invoke<RecaptchaAssessPayload>(
           'recaptcha-assessment',
           { body: { token: assessmentToken, action: RECAPTCHA_PHONE_ACTION } },
         );
-        if (assessErr) {
-          console.warn('[reCAPTCHA] assessment invoke:', assessErr.message);
+        const payload = await readRecaptchaAssessPayload(assess ?? null, assessErr);
+        if (assessErr && !(assessErr instanceof FunctionsHttpError)) {
+          console.warn('[reCAPTCHA] assessment invoke:', assessErr instanceof Error ? assessErr.message : assessErr);
           setError('Security verification failed. Try again in a moment.');
           setLoading(false);
           return;
         }
-        if (assess && assess.skipped !== true && assess.ok !== true) {
-          setError(
-            typeof assess.error === 'string'
-              ? assess.error
-              : 'Security verification failed. Please try again.',
-          );
+        if (!payload) {
+          console.warn('[reCAPTCHA] assessment: empty response');
+          setError('Security verification failed. Try again in a moment.');
+          setLoading(false);
+          return;
+        }
+        if (payload.skipped !== true && payload.ok !== true) {
+          const detail = payload.error;
+          if (detail === 'Risk score too low') {
+            setError(
+              'Security check scored this attempt as risky. Try again on Wi‑Fi or wait a minute. If it keeps happening, your admin may need to lower RECAPTCHA_MIN_SCORE or tune reCAPTCHA Enterprise.',
+            );
+          } else if (detail === 'Invalid token' || payload.invalidReason) {
+            setError(
+              'reCAPTCHA did not accept this site. Add your exact URL (e.g. evergreen-heights-society-guard-bud.vercel.app) under reCAPTCHA Enterprise key domains, and set Supabase RECAPTCHA_ENTERPRISE_SITE_KEY to the same key as VITE_RECAPTCHA_ENTERPRISE_SITE_KEY.',
+            );
+          } else if (typeof detail === 'string' && detail.includes('Action mismatch')) {
+            setError('Security check misconfigured (action mismatch). Contact support.');
+          } else {
+            setError(typeof detail === 'string' ? detail : 'Security verification failed. Please try again.');
+          }
           setLoading(false);
           return;
         }
