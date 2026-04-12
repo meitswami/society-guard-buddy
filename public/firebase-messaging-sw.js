@@ -1,4 +1,18 @@
 /* Keep firebaseConfig in sync with your Firebase web app (same as VITE_FIREBASE_* in .env). */
+/* Also acts as the root PWA service worker (one scope `/` — do not add a second SW from PWABuilder). */
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', (event) => {
+  event.respondWith(fetch(event.request));
+});
+
 importScripts('https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/12.11.0/firebase-messaging-compat.js');
 
