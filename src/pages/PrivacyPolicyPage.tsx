@@ -80,6 +80,12 @@ const PrivacyPolicyPage = () => {
             of your personal information, or to object to certain processing. Contact us using the details on
             the Contact page. We may need to verify your request.
           </p>
+          <p>
+            For account deletion instructions, see{" "}
+            <Link to="/delete-account" className="text-primary underline underline-offset-4 hover:text-primary/90">
+              Delete Account
+            </Link>.
+          </p>
         </section>
 
         <section className="space-y-3">
