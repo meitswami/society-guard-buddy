@@ -66,11 +66,15 @@ const SuperadminLoginForm = ({ onLogin, onBack, variant = 'full' }: Props) => {
     setCameFromBiometric(fromBio);
     setTotpCode('');
     setError('');
-    if (!row.totp_secret) {
+    if (row.totp_enabled && !row.totp_secret) {
       const secret = generateTotpSecret();
       setSetupSecret(secret);
       setRecoveryEmailInput(row.recovery_email?.trim() ?? '');
       setStep('setup-qr');
+      return;
+    }
+    if (!row.totp_enabled) {
+      finishLogin(row, fromBio ? 'biometric' : 'password');
       return;
     }
     setStep('totp');
@@ -133,7 +137,7 @@ const SuperadminLoginForm = ({ onLogin, onBack, variant = 'full' }: Props) => {
       setError(t('login.invalidCredentials'));
       return;
     }
-    if (!data.totp_secret) {
+    if (data.totp_enabled && !data.totp_secret) {
       setError(t('superadmin.completeMfaWithPassword'));
       return;
     }
