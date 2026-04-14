@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import BiometricSetup from '@/components/BiometricSetup';
 import { trimSocietyFlatsToConfiguredRange } from '@/lib/societyFlatRangeTrim';
 import { NEW_CUSTOM_ROLE_PERMISSIONS } from '@/lib/adminPermissions';
+import { Switch } from '@/components/ui/switch';
 
 interface Props {
   superadmin: { id: string; name: string; username: string };
@@ -173,6 +174,9 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const [af, setAf] = useState({ name: '', admin_id: '', password: '', society_id: '', role_id: '', email: '' });
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoverySaving, setRecoverySaving] = useState(false);
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpConfigured, setTotpConfigured] = useState(false);
+  const [totpSaving, setTotpSaving] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -180,10 +184,14 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     if (tab !== 'settings') return;
     void supabase
       .from('super_admins')
-      .select('recovery_email')
+      .select('recovery_email, totp_enabled, totp_secret')
       .eq('id', superadmin.id)
       .maybeSingle()
-      .then(({ data }) => setRecoveryEmail(data?.recovery_email?.trim() ?? ''));
+      .then(({ data }) => {
+        setRecoveryEmail(data?.recovery_email?.trim() ?? '');
+        setTotpEnabled(!!data?.totp_enabled);
+        setTotpConfigured(!!data?.totp_secret);
+      });
   }, [tab, superadmin.id]);
 
   const loadAll = async () => {
@@ -849,6 +857,63 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
         {tab === 'settings' && (
           <div className="space-y-4">
             <h2 className="font-semibold">{t('nav.settings')}</h2>
+            <div className="card-section p-4 space-y-3">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" /> Authenticator App (TOTP)
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Turn on/off 2-step verification for Superadmin login.
+              </p>
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                <div>
+                  <p className="text-sm font-medium">{totpEnabled ? 'Enabled' : 'Disabled'}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {totpConfigured
+                      ? 'Authenticator is currently configured.'
+                      : 'No authenticator secret configured yet.'}
+                  </p>
+                </div>
+                <Switch
+                  checked={totpEnabled}
+                  disabled={totpSaving}
+                  onCheckedChange={async (on) => {
+                    if (totpSaving) return;
+                    if (!on) {
+                      const ok = await confirmAction(
+                        'Disable Authenticator?',
+                        'This will turn off authenticator verification and remove current authenticator setup for Superadmin.',
+                        'Disable',
+                        t('swal.no'),
+                      );
+                      if (!ok) return;
+                    }
+                    setTotpSaving(true);
+                    const updateRow = on
+                      ? { totp_enabled: true }
+                      : { totp_enabled: false, totp_secret: null };
+                    const { error } = await supabase.from('super_admins').update(updateRow).eq('id', superadmin.id);
+                    setTotpSaving(false);
+                    if (error) {
+                      toast.error(error.message || 'Could not update authenticator setting');
+                      return;
+                    }
+                    setTotpEnabled(on);
+                    if (!on) setTotpConfigured(false);
+                    toast.success(
+                      on
+                        ? 'Authenticator enabled. Complete setup on next Superadmin login.'
+                        : 'Authenticator disabled for Superadmin.',
+                    );
+                  }}
+                  aria-label="Toggle superadmin authenticator"
+                />
+              </div>
+              {totpEnabled && !totpConfigured && (
+                <p className="text-[10px] text-amber-600 dark:text-amber-500">
+                  Enabled but not configured yet. You will be asked to scan QR and verify code on next Superadmin login.
+                </p>
+              )}
+            </div>
             <div className="card-section p-4 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <Mail className="w-4 h-4 text-primary" /> {t('superadmin.recoveryEmailSettings')}
