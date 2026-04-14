@@ -17,7 +17,8 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   const [subTab, setSubTab] = useState<'maintenance' | 'payments' | 'reminders'>('maintenance');
   const [charges, setCharges] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
-  const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null }[]>([]);
+  const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null; is_occupied: boolean | null }[]>([]);
+  const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
   const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -40,7 +41,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     const [c, p, f, m] = await Promise.all([
       supabase.from('maintenance_charges').select('*').order('created_at', { ascending: false }),
       supabase.from('maintenance_payments').select('*').order('created_at', { ascending: false }).limit(200),
-      supabase.from('flats').select('flat_number, id, owner_name').order('flat_number'),
+      supabase.from('flats').select('flat_number, id, owner_name, is_occupied').order('flat_number'),
       supabase.from('members').select('flat_id, name').eq('is_primary', true),
     ]);
     if (c.data) setCharges(c.data);
@@ -121,7 +122,8 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     loadAll();
   };
 
-  const unpaidFlats = flats.filter(f => !payments.some(p => p.flat_number === f.flat_number && p.payment_status === 'verified'));
+  const targetFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
+  const unpaidFlats = targetFlats.filter(f => !payments.some(p => p.flat_number === f.flat_number && p.payment_status === 'verified'));
 
   const filteredPayments = filterStatus === 'all' ? payments : payments.filter(p => p.payment_status === filterStatus);
 
@@ -148,6 +150,26 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
         <div>
           <h1 className="page-title">Finance Management</h1>
           <p className="text-xs text-muted-foreground">{charges.length} charges · {payments.length} payments</p>
+        </div>
+      </div>
+
+      <div className="card-section p-3 mb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-foreground">Reminder base</p>
+            <p className="text-[10px] text-muted-foreground">
+              {includeVacantFlats
+                ? `Using all flats (${flats.length})`
+                : `Using occupied/sold flats (${targetFlats.length})`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIncludeVacantFlats((v) => !v)}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-border"
+          >
+            {includeVacantFlats ? 'Include vacant: ON' : 'Include vacant: OFF'}
+          </button>
         </div>
       </div>
 

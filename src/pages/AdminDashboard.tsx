@@ -150,7 +150,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'polls': return <PollManager adminName={admin.name} />;
       case 'parking': return <ParkingManager />;
       case 'splits': return <ExpenseSplitter adminName={admin.name} />;
-      case 'notifications': return <NotificationCenter adminName={admin.name} societyId={admin.societyId} />;
+      case 'notifications': return <NotificationCenter adminName={admin.name} adminId={admin.id} societyId={admin.societyId} />;
       case 'report': return <ReportPage />;
       case 'logs': return <LogsPage />;
       case 'visitor': return <VisitorEntryPage onDone={() => setActiveTab('overview')} />;

@@ -3,9 +3,11 @@ import { Users, Car, Truck, LogIn, ShieldAlert, LogOut, Clock, ChevronLeft, Chev
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format, subDays } from 'date-fns';
 import { confirmAction, showSuccess } from '@/lib/swal';
+import { supabase } from '@/integrations/supabase/client';
+import BiometricSetup from '@/components/BiometricSetup';
 
 type StatFilter = 'all' | 'visitor' | 'vehicle' | 'delivery' | 'inside';
 
@@ -14,11 +16,33 @@ const DashboardPage = () => {
   const { t } = useLanguage();
   const [dayOffset, setDayOffset] = useState(0); // 0 = today, 1 = yesterday
   const [activeFilter, setActiveFilter] = useState<StatFilter>('all');
+  const [guardDbId, setGuardDbId] = useState<string | null>(null);
 
   const selectedDate = format(subDays(new Date(), dayOffset), 'yyyy-MM-dd');
   const isToday = dayOffset === 0;
 
   const dayVisitors = useMemo(() => visitors.filter(v => v.entryTime.startsWith(selectedDate)), [visitors, selectedDate]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentGuard?.id) {
+      setGuardDbId(null);
+      return;
+    }
+
+    (async () => {
+      const { data } = await supabase
+        .from('guards')
+        .select('id')
+        .eq('guard_id', currentGuard.id)
+        .maybeSingle();
+      if (!cancelled) setGuardDbId(data?.id ?? null);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentGuard?.id]);
 
   const stats = useMemo(() => ({
     totalVisitors: dayVisitors.filter(v => v.category === 'visitor').length,
@@ -215,6 +239,12 @@ const DashboardPage = () => {
           </div>
         )}
       </div>
+
+      {currentGuard && guardDbId && (
+        <div className="mt-6">
+          <BiometricSetup userType="guard" userId={guardDbId} userName={currentGuard.name} />
+        </div>
+      )}
     </div>
   );
 };

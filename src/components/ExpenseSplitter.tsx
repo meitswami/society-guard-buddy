@@ -11,6 +11,9 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [splits, setSplits] = useState<any[]>([]);
   const [flats, setFlats] = useState<any[]>([]);
+  const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
+  const [splitMode, setSplitMode] = useState<'even' | 'custom'>('even');
+  const [customSplits, setCustomSplits] = useState<Record<string, string>>({});
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState<string | null>(null);
   const [gf, setGf] = useState({ name: '', description: '' });
@@ -22,7 +25,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       supabase.from('expense_groups').select('*').order('created_at', { ascending: false }),
       supabase.from('expenses').select('*').order('created_at', { ascending: false }),
       supabase.from('expense_splits').select('*'),
-      supabase.from('flats').select('flat_number, id').order('flat_number'),
+      supabase.from('flats').select('flat_number, id, is_occupied').order('flat_number'),
     ]);
     if (g.data) setGroups(g.data);
     if (e.data) setExpenses(e.data);
@@ -37,24 +40,88 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     toast.success('Group created'); loadAll();
   };
 
+  const activeFlats = includeVacantFlats
+    ? flats
+    : flats.filter((f) => f.is_occupied);
+
+  const resetExpenseForm = () => {
+    setEf({ title: '', total_amount: '', paid_by_flat: '' });
+    setSplitMode('even');
+    setCustomSplits({});
+    setShowExpenseForm(null);
+  };
+
+  const toggleCustomFlat = (flatNumber: string, on: boolean) => {
+    setCustomSplits((prev) => {
+      const next = { ...prev };
+      if (on) next[flatNumber] = next[flatNumber] ?? '';
+      else delete next[flatNumber];
+      return next;
+    });
+  };
+
+  const setCustomFlatAmount = (flatNumber: string, amount: string) => {
+    setCustomSplits((prev) => ({ ...prev, [flatNumber]: amount }));
+  };
+
   const addExpense = async (groupId: string) => {
     if (!ef.title || !ef.total_amount || !ef.paid_by_flat) return;
-    const splitAmount = Number(ef.total_amount) / flats.length;
+    const total = Number(ef.total_amount);
+    if (!total || total <= 0) {
+      toast.error('Enter a valid total amount');
+      return;
+    }
+    if (activeFlats.length === 0) {
+      toast.error('No eligible flats found for split');
+      return;
+    }
     const { data: expense } = await supabase.from('expenses').insert([{
-      group_id: groupId, title: ef.title, total_amount: Number(ef.total_amount),
+      group_id: groupId, title: ef.title, total_amount: total,
       paid_by_flat: ef.paid_by_flat, paid_by_name: adminName,
     }]).select().single();
     if (expense) {
-      const splitRows = flats.map(f => ({
-        expense_id: expense.id, flat_number: f.flat_number,
-        amount: Number(splitAmount.toFixed(2)),
-        is_settled: f.flat_number === ef.paid_by_flat,
-        settled_at: f.flat_number === ef.paid_by_flat ? new Date().toISOString() : null,
-      }));
+      let splitRows: Array<{
+        expense_id: string;
+        flat_number: string;
+        amount: number;
+        is_settled: boolean;
+        settled_at: string | null;
+      }> = [];
+
+      if (splitMode === 'even') {
+        const splitAmount = total / activeFlats.length;
+        splitRows = activeFlats.map(f => ({
+          expense_id: expense.id, flat_number: f.flat_number,
+          amount: Number(splitAmount.toFixed(2)),
+          is_settled: f.flat_number === ef.paid_by_flat,
+          settled_at: f.flat_number === ef.paid_by_flat ? new Date().toISOString() : null,
+        }));
+      } else {
+        const entries = Object.entries(customSplits).filter(([_, v]) => Number(v) > 0);
+        if (entries.length === 0) {
+          toast.error('Select flats and enter custom amounts');
+          return;
+        }
+        const customTotal = Number(
+          entries.reduce((sum, [_, v]) => sum + Number(v), 0).toFixed(2),
+        );
+        if (Math.abs(customTotal - total) > 0.01) {
+          toast.error(`Custom split total ₹${customTotal.toFixed(2)} must match expense total ₹${total.toFixed(2)}`);
+          return;
+        }
+        splitRows = entries.map(([flatNumber, amount]) => ({
+          expense_id: expense.id,
+          flat_number: flatNumber,
+          amount: Number(Number(amount).toFixed(2)),
+          is_settled: flatNumber === ef.paid_by_flat,
+          settled_at: flatNumber === ef.paid_by_flat ? new Date().toISOString() : null,
+        }));
+      }
       await supabase.from('expense_splits').insert(splitRows);
     }
-    setEf({ title: '', total_amount: '', paid_by_flat: '' }); setShowExpenseForm(null);
-    toast.success('Expense added & split equally'); loadAll();
+    resetExpenseForm();
+    toast.success(splitMode === 'custom' ? 'Expense added with custom split' : 'Expense added & split equally');
+    loadAll();
   };
 
   const settleUp = async (splitId: string) => {
@@ -102,6 +169,26 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         </div>
       </div>
 
+      <div className="card-section p-3 mb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-foreground">Split target flats</p>
+            <p className="text-[10px] text-muted-foreground">
+              {includeVacantFlats
+                ? `Using all flats (${flats.length})`
+                : `Using occupied/sold flats (${activeFlats.length})`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIncludeVacantFlats((v) => !v)}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-border"
+          >
+            {includeVacantFlats ? 'Include vacant: ON' : 'Include vacant: OFF'}
+          </button>
+        </div>
+      </div>
+
       <button onClick={() => setShowGroupForm(!showGroupForm)} className="btn-primary w-full mb-4 flex items-center justify-center gap-2">
         <Plus className="w-4 h-4" /> New Expense Group
       </button>
@@ -121,7 +208,13 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
             <p className="font-semibold mb-1">{g.name}</p>
             {g.description && <p className="text-xs text-muted-foreground mb-2">{g.description}</p>}
 
-            <button onClick={() => setShowExpenseForm(showExpenseForm === g.id ? null : g.id)}
+            <button onClick={() => {
+              if (showExpenseForm === g.id) {
+                resetExpenseForm();
+              } else {
+                setShowExpenseForm(g.id);
+              }
+            }}
               className="text-xs text-primary underline mb-2 flex items-center gap-1">
               <Plus className="w-3 h-3" /> Add Expense
             </button>
@@ -132,9 +225,65 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                 <input className="input-field text-sm" placeholder="Total Amount (₹)" type="number" value={ef.total_amount} onChange={e => setEf({...ef, total_amount: e.target.value})} />
                 <select className="input-field text-sm" value={ef.paid_by_flat} onChange={e => setEf({...ef, paid_by_flat: e.target.value})}>
                   <option value="">Paid By (Flat)</option>
-                  {flats.map(f => <option key={f.id} value={f.flat_number}>Flat {f.flat_number}</option>)}
+                  {activeFlats.map(f => <option key={f.id} value={f.flat_number}>Flat {f.flat_number}</option>)}
                 </select>
-                <button onClick={() => addExpense(g.id)} className="btn-primary text-sm">Add & Split Equally</button>
+                <select
+                  className="input-field text-sm"
+                  value={splitMode}
+                  onChange={(e) => {
+                    const mode = e.target.value as 'even' | 'custom';
+                    setSplitMode(mode);
+                    if (mode === 'even') setCustomSplits({});
+                  }}
+                >
+                  <option value="even">Even split across eligible flats</option>
+                  <option value="custom">Custom split (selected flats + amount each)</option>
+                </select>
+                {splitMode === 'even' ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    This expense will be split equally across {activeFlats.length} eligible flats.
+                  </p>
+                ) : (
+                  <div className="rounded-lg border border-border p-2.5 space-y-2">
+                    <p className="text-[11px] font-medium text-foreground">Custom split</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Select flats and enter amount per flat. Sum must equal total amount.
+                    </p>
+                    <div className="max-h-48 overflow-y-auto space-y-1.5">
+                      {activeFlats.map((f) => {
+                        const checked = customSplits[f.flat_number] !== undefined;
+                        return (
+                          <div key={f.id} className="flex items-center gap-2">
+                            <label className="flex items-center gap-2 text-xs flex-1">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => toggleCustomFlat(f.flat_number, e.target.checked)}
+                              />
+                              <span>Flat {f.flat_number}</span>
+                            </label>
+                            {checked && (
+                              <input
+                                className="input-field text-xs w-28"
+                                placeholder="₹ amount"
+                                type="number"
+                                value={customSplits[f.flat_number] ?? ''}
+                                onChange={(e) => setCustomFlatAmount(f.flat_number, e.target.value)}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Current custom total: ₹
+                      {Object.values(customSplits).reduce((sum, v) => sum + (Number(v) || 0), 0).toFixed(2)}
+                    </p>
+                  </div>
+                )}
+                <button onClick={() => addExpense(g.id)} className="btn-primary text-sm">
+                  {splitMode === 'custom' ? 'Add with Custom Split' : 'Add & Split Equally'}
+                </button>
               </div>
             )}
 

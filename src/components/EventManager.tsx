@@ -12,7 +12,8 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
   const [events, setEvents] = useState<any[]>([]);
   const [rsvps, setRsvps] = useState<any[]>([]);
   const [contributions, setContributions] = useState<any[]>([]);
-  const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null }[]>([]);
+  const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null; is_occupied: boolean | null }[]>([]);
+  const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
   const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [showForm, setShowForm] = useState(false);
   const [showContrib, setShowContrib] = useState<string | null>(null);
@@ -30,7 +31,7 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
       supabase.from('events').select('*').order('event_date', { ascending: false }),
       supabase.from('event_rsvps').select('*'),
       supabase.from('event_contributions').select('*'),
-      supabase.from('flats').select('flat_number, id, owner_name').order('flat_number'),
+      supabase.from('flats').select('flat_number, id, owner_name, is_occupied').order('flat_number'),
       supabase.from('members').select('flat_id, name').eq('is_primary', true),
     ]);
     if (e.data) setEvents(e.data);
@@ -92,9 +93,11 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
     loadAll();
   };
 
+  const targetFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
+
   const sendContribReminders = async (event: any) => {
     const paidFlats = contributions.filter(c => c.event_id === event.id).map(c => c.flat_number);
-    const unpaid = flats.filter(f => !paidFlats.includes(f.flat_number));
+    const unpaid = targetFlats.filter(f => !paidFlats.includes(f.flat_number));
     for (const flat of unpaid) {
       await supabase.from('notifications').insert([{
         title: `Payment Due: ${event.title}`,
@@ -112,6 +115,26 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
           <Calendar className="w-5 h-5 text-blue-500" />
         </div>
         <h1 className="page-title">Events & Functions</h1>
+      </div>
+
+      <div className="card-section p-3 mb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-foreground">Contribution base</p>
+            <p className="text-[10px] text-muted-foreground">
+              {includeVacantFlats
+                ? `Using all flats (${flats.length})`
+                : `Using occupied/sold flats (${targetFlats.length})`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIncludeVacantFlats((v) => !v)}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-border"
+          >
+            {includeVacantFlats ? 'Include vacant: ON' : 'Include vacant: OFF'}
+          </button>
+        </div>
       </div>
 
       <button onClick={() => setShowForm(!showForm)} className="btn-primary w-full mb-4 flex items-center justify-center gap-2">
@@ -150,7 +173,7 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
 
             <div className="flex gap-3 text-xs text-muted-foreground mb-2">
               <span><Users className="w-3 h-3 inline" /> {evRsvps.length} RSVPs</span>
-              {ev.contribution_amount > 0 && <span>₹{totalCollected} / ₹{ev.contribution_amount * flats.length}</span>}
+              {ev.contribution_amount > 0 && <span>₹{totalCollected} / ₹{ev.contribution_amount * targetFlats.length}</span>}
             </div>
 
             <div className="flex gap-2">

@@ -373,47 +373,75 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                       <button
                         onClick={async () => {
                           setError('');
-                          const result = await authenticate('guard');
-                          if (!result) {
-                            const resResult = await authenticate('resident');
-                            if (!resResult) {
-                              setError(t('biometric.notRegistered'));
+                          const adminResult = await authenticate('admin');
+                          if (adminResult) {
+                            const { data: admin } = await supabase
+                              .from('admins')
+                              .select('*, society_roles(permissions, slug, role_name)')
+                              .eq('id', adminResult.userId)
+                              .maybeSingle();
+                            if (admin && admin.society_id === selectedSocietyId) {
+                              setSocietyId(selectedSocietyId);
+                              registerOneSignalUser({
+                                userType: 'admin',
+                                userId: admin.id,
+                                userName: admin.name,
+                                societyId: selectedSocietyId,
+                              });
+                              promptPushPermission();
+                              onAdminLogin({
+                                id: admin.id,
+                                name: admin.name,
+                                adminId: admin.admin_id,
+                                societyId: admin.society_id,
+                                permissions: permissionsFromAdminJoin(admin),
+                              });
                               return;
                             }
-                            const { data } = await supabase.from('resident_users').select('*').eq('id', resResult.userId).single();
-                            if (!data) {
-                              setError(t('login.invalidCredentials'));
-                              return;
-                            }
-                            const { data: flat } = await supabase.from('flats').select('society_id').eq('id', data.flat_id).single();
-                            if (flat?.society_id !== selectedSocietyId) {
+                          }
+
+                          const guardResult = await authenticate('guard');
+                          if (guardResult) {
+                            const { data: guard } = await supabase.from('guards').select('*').eq('id', guardResult.userId).single();
+                            if (!guard || guard.society_id !== selectedSocietyId) {
                               setError(t('login.invalidCredentials'));
                               return;
                             }
                             setSocietyId(selectedSocietyId);
-                            onResidentLogin({
-                              id: data.id,
-                              name: data.name,
-                              phone: data.phone,
-                              flatId: data.flat_id,
-                              flatNumber: data.flat_number,
-                            });
+                            await loadGuards();
+                            const withinFence = await checkGeofence();
+                            if (!withinFence) {
+                              setError(t('admin.geofenceBlocked'));
+                              return;
+                            }
+                            const success = await login(guard.guard_id, guard.password);
+                            if (success) onGuardLogin();
                             return;
                           }
-                          const { data } = await supabase.from('guards').select('*').eq('id', result.userId).single();
-                          if (!data || data.society_id !== selectedSocietyId) {
+
+                          const residentResult = await authenticate('resident');
+                          if (!residentResult) {
+                            setError(t('biometric.notRegistered'));
+                            return;
+                          }
+                          const { data: resident } = await supabase.from('resident_users').select('*').eq('id', residentResult.userId).single();
+                          if (!resident) {
+                            setError(t('login.invalidCredentials'));
+                            return;
+                          }
+                          const { data: flat } = await supabase.from('flats').select('society_id').eq('id', resident.flat_id).single();
+                          if (flat?.society_id !== selectedSocietyId) {
                             setError(t('login.invalidCredentials'));
                             return;
                           }
                           setSocietyId(selectedSocietyId);
-                          await loadGuards();
-                          const withinFence = await checkGeofence();
-                          if (!withinFence) {
-                            setError(t('admin.geofenceBlocked'));
-                            return;
-                          }
-                          const success = await login(data.guard_id, data.password);
-                          if (success) onGuardLogin();
+                          onResidentLogin({
+                            id: resident.id,
+                            name: resident.name,
+                            phone: resident.phone,
+                            flatId: resident.flat_id,
+                            flatNumber: resident.flat_number,
+                          });
                         }}
                         disabled={bioLoading}
                         className="w-full mb-4 py-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-1 hover:bg-primary/10 transition-colors"

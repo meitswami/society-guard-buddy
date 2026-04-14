@@ -93,6 +93,7 @@ serve(async (req) => {
       target_type,
       target_ids,
       target_flat_numbers,
+      target_tokens,
       media_items,
       society_id,
     } = await req.json();
@@ -116,27 +117,31 @@ serve(async (req) => {
         });
       }
 
-      let tokenQuery = supabase.from("fcm_web_tokens").select("token");
+      let tokens: string[] = [];
+      if (Array.isArray(target_tokens) && target_tokens.length > 0) {
+        tokens = [...new Set(target_tokens.filter(Boolean))];
+      } else {
+        let tokenQuery = supabase.from("fcm_web_tokens").select("token");
 
-      if (society_id) {
-        tokenQuery = tokenQuery.eq("society_id", society_id);
+        if (society_id) {
+          tokenQuery = tokenQuery.eq("society_id", society_id);
+        }
+
+        if (target_type === "flat" && Array.isArray(target_flat_numbers) && target_flat_numbers.length > 0) {
+          tokenQuery = tokenQuery.in("flat_number", target_flat_numbers);
+        } else if (target_type === "user" && Array.isArray(target_ids) && target_ids.length > 0) {
+          tokenQuery = tokenQuery.in("app_user_id", target_ids);
+        }
+
+        const { data: tokenRows, error: tErr } = await tokenQuery;
+        if (tErr) {
+          return new Response(JSON.stringify({ error: tErr.message }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        tokens = [...new Set((tokenRows ?? []).map((r: { token: string }) => r.token).filter(Boolean))];
       }
-
-      if (target_type === "flat" && Array.isArray(target_flat_numbers) && target_flat_numbers.length > 0) {
-        tokenQuery = tokenQuery.in("flat_number", target_flat_numbers);
-      } else if (target_type === "user" && Array.isArray(target_ids) && target_ids.length > 0) {
-        tokenQuery = tokenQuery.eq("user_type", "resident").in("app_user_id", target_ids);
-      }
-
-      const { data: tokenRows, error: tErr } = await tokenQuery;
-      if (tErr) {
-        return new Response(JSON.stringify({ error: tErr.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const tokens = [...new Set((tokenRows ?? []).map((r: { token: string }) => r.token).filter(Boolean))];
       if (tokens.length === 0) {
         return new Response(JSON.stringify({ success: true, channel: "fcm", sent: 0, note: "no_tokens" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

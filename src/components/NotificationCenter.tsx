@@ -11,6 +11,15 @@ import {
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel } from '@/lib/flatMultiSelectOptions';
 import type { Tables } from '@/integrations/supabase/types';
+import { isFcmWebPushConfigured, registerFcmWebUser } from '@/lib/fcmWeb';
+import { isSupported as isFcmSupported } from 'firebase/messaging';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface ResidentRef {
   id: string;
@@ -20,6 +29,7 @@ interface ResidentRef {
 
 interface Props {
   adminName?: string;
+  adminId?: string;
   isResident?: boolean;
   flatNumber?: string;
   resident?: ResidentRef;
@@ -28,6 +38,7 @@ interface Props {
 }
 
 type TargetMode = 'all' | 'flat' | 'user';
+type HealthStep = { label: string; ok: boolean; detail: string };
 
 const MAX_ATTACHMENTS = 8;
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
@@ -70,6 +81,7 @@ async function uploadNotificationMedia(files: File[]): Promise<NotificationMedia
 
 const NotificationCenter = ({
   adminName = 'Admin',
+  adminId,
   isResident = false,
   flatNumber = '',
   resident,
@@ -88,6 +100,10 @@ const NotificationCenter = ({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeNotification, setActiveNotification] = useState<Tables<'notifications'> | null>(null);
+  const [checkingPushHealth, setCheckingPushHealth] = useState(false);
+  const [healthOpen, setHealthOpen] = useState(false);
+  const [healthSteps, setHealthSteps] = useState<HealthStep[]>([]);
+  const [healthSummary, setHealthSummary] = useState('');
 
   const loadNotifications = useCallback(async () => {
     let query = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(100);
@@ -240,6 +256,127 @@ const NotificationCenter = ({
     loadNotifications();
   };
 
+  const runPushHealthCheck = async () => {
+    if (isResident) return;
+    if (!adminId) {
+      toast.error('Admin ID missing for health check');
+      return;
+    }
+    setCheckingPushHealth(true);
+    setHealthOpen(true);
+    setHealthSteps([]);
+    setHealthSummary('');
+    const issues: string[] = [];
+    const ok: string[] = [];
+    let token: string | null = null;
+    const steps: HealthStep[] = [];
+    const step = (label: string, pass: boolean, detail: string) => {
+      steps.push({ label, ok: pass, detail });
+      setHealthSteps([...steps]);
+    };
+
+    try {
+      if (!isFcmWebPushConfigured()) {
+        issues.push('Env config: missing Firebase or VAPID key in frontend env');
+        step('Environment', false, 'Missing Firebase or VAPID key in frontend env');
+      } else {
+        ok.push('Env config: Firebase + VAPID key present');
+        step('Environment', true, 'Firebase + VAPID key found');
+      }
+
+      if (!(await isFcmSupported())) {
+        issues.push('Browser support: Firebase messaging unsupported in this browser/context');
+        step('Browser support', false, 'Firebase messaging unsupported in this browser/context');
+      } else {
+        ok.push('Browser support: supported');
+        step('Browser support', true, 'Firebase messaging is supported');
+      }
+
+      if (typeof Notification !== 'undefined') {
+        if (Notification.permission === 'denied') {
+          issues.push('Permission: blocked in browser settings');
+          step('Notification permission', false, 'Blocked in browser settings');
+        } else if (Notification.permission === 'default') {
+          issues.push('Permission: not granted yet (prompt not accepted)');
+          step('Notification permission', false, 'Not granted yet (prompt not accepted)');
+        } else {
+          ok.push('Permission: granted');
+          step('Notification permission', true, 'Granted');
+        }
+      }
+
+      await registerFcmWebUser({
+        userType: 'admin',
+        userId: adminId,
+        userName: adminName,
+        societyId: societyId ?? null,
+      });
+      step('Token registration', true, 'Registration attempt completed');
+
+      const tokenQuery = supabase
+        .from('fcm_web_tokens')
+        .select('token, updated_at')
+        .eq('user_type', 'admin')
+        .eq('app_user_id', adminId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      const { data: tokenRows, error: tokenErr } = societyId
+        ? await tokenQuery.eq('society_id', societyId)
+        : await tokenQuery;
+
+      if (tokenErr) {
+        issues.push(`Token DB: query failed (${tokenErr.message})`);
+        step('Token in database', false, tokenErr.message);
+      } else if (!tokenRows?.length) {
+        issues.push('Token DB: no FCM token found for this admin/device');
+        step('Token in database', false, 'No FCM token found for this admin/device');
+      } else {
+        token = tokenRows[0].token;
+        ok.push('Token DB: token present');
+        step('Token in database', true, 'Token found');
+      }
+
+      if (token) {
+        const { data: pushData, error: pushErr } = await supabase.functions.invoke('send-push-notification', {
+          body: {
+            title: 'Push Health Check',
+            message: `Test push from ${adminName} (${new Date().toLocaleTimeString()})`,
+            target_tokens: [token],
+            target_type: 'user',
+            society_id: societyId,
+          },
+        });
+        if (pushErr) {
+          issues.push(`Edge function: invoke failed (${pushErr.message})`);
+          step('Edge function invoke', false, pushErr.message);
+        } else if ((pushData as any)?.error) {
+          issues.push(`Edge secret/config: ${(pushData as any).error}`);
+          step('Edge secret/config', false, (pushData as any).error);
+        } else if ((pushData as any)?.channel === 'fcm' && Number((pushData as any)?.sent ?? 0) > 0) {
+          ok.push('Delivery: accepted by FCM for this device token');
+          step('Push delivery', true, 'Accepted by FCM for this device token');
+        } else {
+          issues.push(`Delivery: not confirmed (${JSON.stringify(pushData)})`);
+          step('Push delivery', false, `Not confirmed: ${JSON.stringify(pushData)}`);
+        }
+      }
+
+      if (issues.length === 0) {
+        setHealthSummary('All checks passed. Push pipeline looks healthy.');
+        toast.success(`Push Health Check OK\n${ok.join(' | ')}`);
+      } else {
+        setHealthSummary('Some checks failed. See details below.');
+        toast.error(`Push Health Check failed\n${issues.join(' | ')}`);
+      }
+    } catch (e: any) {
+      setHealthSummary('Health check crashed unexpectedly.');
+      step('Unexpected error', false, e?.message || String(e));
+      toast.error(`Push Health Check crashed: ${e?.message || String(e)}`);
+    } finally {
+      setCheckingPushHealth(false);
+    }
+  };
+
   const toggleResident = (r: (typeof residents)[0]) => {
     setSelectedResidents(prev =>
       prev.find(p => p.id === r.id) ? prev.filter(p => p.id !== r.id) : [...prev, r]
@@ -307,6 +444,14 @@ const NotificationCenter = ({
             className="btn-primary w-full mb-4 flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" /> Send Push Notification
+          </button>
+          <button
+            type="button"
+            onClick={() => void runPushHealthCheck()}
+            disabled={checkingPushHealth}
+            className="w-full mb-4 py-2 rounded-lg border border-border text-xs font-medium"
+          >
+            {checkingPushHealth ? 'Running Push Health Check…' : 'Push Health Check'}
           </button>
           {showForm && (
             <div className="card-section p-4 mb-4 flex flex-col gap-3">
@@ -493,6 +638,28 @@ const NotificationCenter = ({
         resident={resident}
         adminName={adminName}
       />
+
+      <Dialog open={healthOpen} onOpenChange={setHealthOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Push Health Check</DialogTitle>
+            <DialogDescription>{healthSummary || 'Running diagnostics...'}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {healthSteps.length === 0 && (
+              <p className="text-sm text-muted-foreground">Checking environment, permission, token, and delivery path...</p>
+            )}
+            {healthSteps.map((s, i) => (
+              <div key={`${s.label}-${i}`} className="rounded-lg border border-border p-2.5">
+                <p className="text-sm font-medium">
+                  {s.ok ? '✅' : '❌'} {s.label}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 break-words">{s.detail}</p>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
