@@ -22,6 +22,8 @@ type RecaptchaAssessPayload = {
   invalidReason?: string;
 };
 
+const RECAPTCHA_ASSESSMENT_STRICT = import.meta.env.VITE_RECAPTCHA_ASSESSMENT_STRICT === 'true';
+
 async function readRecaptchaAssessPayload(
   data: RecaptchaAssessPayload | null,
   assessErr: unknown,
@@ -199,18 +201,23 @@ const OTPLoginFlow = ({
         );
         const payload = await readRecaptchaAssessPayload(assess ?? null, assessErr);
         if (assessErr && !(assessErr instanceof FunctionsHttpError)) {
-          console.warn('[reCAPTCHA] assessment invoke:', assessErr instanceof Error ? assessErr.message : assessErr);
-          setError('Security verification failed. Try again in a moment.');
-          setLoading(false);
-          return;
+          const errMsg = assessErr instanceof Error ? assessErr.message : String(assessErr);
+          console.warn('[reCAPTCHA] assessment invoke:', errMsg);
+          if (RECAPTCHA_ASSESSMENT_STRICT) {
+            setError('Security verification failed. Try again in a moment.');
+            setLoading(false);
+            return;
+          }
         }
         if (!payload) {
           console.warn('[reCAPTCHA] assessment: empty response');
-          setError('Security verification failed. Try again in a moment.');
-          setLoading(false);
-          return;
+          if (RECAPTCHA_ASSESSMENT_STRICT) {
+            setError('Security verification failed. Try again in a moment.');
+            setLoading(false);
+            return;
+          }
         }
-        if (payload.skipped !== true && payload.ok !== true) {
+        if (payload && payload.skipped !== true && payload.ok !== true) {
           const detail = payload.error;
           if (detail === 'Risk score too low') {
             setError(

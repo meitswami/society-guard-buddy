@@ -17,6 +17,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_VAPID_KEY?: string;
   /** reCAPTCHA Enterprise site key — Google Cloud reCAPTCHA; must match Firebase Auth / App Check linkage */
   readonly VITE_RECAPTCHA_ENTERPRISE_SITE_KEY?: string;
+  /** If true, block OTP when server-side recaptcha-assessment has transient errors. */
+  readonly VITE_RECAPTCHA_ASSESSMENT_STRICT?: string;
 }
 
 interface ImportMeta {
