@@ -377,6 +377,26 @@ const NotificationCenter = ({
     }
   };
 
+  const copyHealthReport = async () => {
+    const lines = [
+      `Push Health Check Report`,
+      `Time: ${new Date().toISOString()}`,
+      `Admin: ${adminName}${adminId ? ` (${adminId})` : ''}`,
+      `Society: ${societyId ?? 'N/A'}`,
+      '',
+      `Summary: ${healthSummary || 'N/A'}`,
+      '',
+      ...healthSteps.map((s, i) => `${i + 1}. ${s.ok ? 'PASS' : 'FAIL'} - ${s.label}: ${s.detail}`),
+    ];
+    const report = lines.join('\n');
+    try {
+      await navigator.clipboard.writeText(report);
+      toast.success('Push health report copied');
+    } catch {
+      toast.error('Could not copy report');
+    }
+  };
+
   const toggleResident = (r: (typeof residents)[0]) => {
     setSelectedResidents(prev =>
       prev.find(p => p.id === r.id) ? prev.filter(p => p.id !== r.id) : [...prev, r]
@@ -645,6 +665,16 @@ const NotificationCenter = ({
             <DialogTitle>Push Health Check</DialogTitle>
             <DialogDescription>{healthSummary || 'Running diagnostics...'}</DialogDescription>
           </DialogHeader>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => void copyHealthReport()}
+              disabled={healthSteps.length === 0}
+              className="text-xs px-2.5 py-1.5 rounded-lg border border-border disabled:opacity-50"
+            >
+              Copy report
+            </button>
+          </div>
           <div className="space-y-2 max-h-[60vh] overflow-y-auto">
             {healthSteps.length === 0 && (
               <p className="text-sm text-muted-foreground">Checking environment, permission, token, and delivery path...</p>
