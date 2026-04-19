@@ -426,29 +426,64 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     }
   };
 
-  const handleExportBackup = async (societyId?: string) => {
+  const handleExportBackup = async (
+    societyId?: string | null,
+    opts?: { completeDb?: boolean; sendEmail?: boolean },
+  ) => {
     setExporting(true);
     try {
       const { data, error } = await supabase.functions.invoke('backup-export', {
-        body: { society_id: societyId || null },
+        body: {
+          society_id: societyId ?? null,
+          complete_db: Boolean(opts?.completeDb),
+          send_email: Boolean(opts?.sendEmail),
+        },
       });
       if (error) throw error;
+      if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
+        throw new Error(String((data as { error: string }).error));
+      }
 
-      // Download the JSON
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      if (opts?.sendEmail) {
+        const emailed = Boolean((data as { emailed?: boolean })?.emailed);
+        const note = (data as { email_note?: string })?.email_note;
+        if (emailed) {
+          toast.success('Backup emailed (check inbox and spam).');
+        } else {
+          toast.error(note || 'Backup was not emailed. Set RESEND_API_KEY on the project or check function logs.');
+        }
+        return;
+      }
+
+      const backup = (data as { backup?: unknown; filename?: string })?.backup;
+      if (!backup) {
+        throw new Error(
+          'Unexpected export response. Deploy the latest backup-export Edge Function (JSON envelope with { backup }).',
+        );
+      }
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const socName = societies.find(s => s.id === societyId)?.name || 'AllSocieties';
-      a.download = `backup_${socName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+      const socName = opts?.completeDb
+        ? 'CompleteDatabase'
+        : societies.find((s) => s.id === societyId)?.name || 'AllSocieties';
+      const serverName = (data as { filename?: string }).filename;
+      a.download =
+        typeof serverName === 'string' && serverName.endsWith('.json')
+          ? serverName
+          : `${opts?.completeDb ? 'complete_database' : 'backup'}_${socName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Backup exported successfully!');
-    } catch (e) {
-      toast.error('Backup export failed');
+      toast.success('Backup downloaded successfully.');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Backup export failed';
+      toast.error(msg);
       console.error(e);
+    } finally {
+      setExporting(false);
     }
-    setExporting(false);
   };
 
   const filteredRoles = roles.filter(r => r.society_id === selectedSociety);
@@ -826,26 +861,58 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                 <Download className="w-4 h-4 text-primary" /> Backup Export
               </h3>
               <p className="text-xs text-muted-foreground mb-3">
-                Download a complete JSON backup of all data. Auto-backup runs every 15 days and is emailed to meit10swami@gmail.com.
+                Download JSON backups of app tables (includes support tickets, approvals, audit logs, and all
+                society data). Manual exports always return a file; emailed backups use Resend when{' '}
+                <span className="font-mono">RESEND_API_KEY</span> is set on Supabase.
               </p>
               <div className="flex flex-col gap-2">
-                <button onClick={() => handleExportBackup()} disabled={exporting}
-                  className="btn-primary w-full flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleExportBackup(null)}
+                  disabled={exporting}
+                  className="btn-primary w-full flex items-center justify-center gap-2"
+                >
                   <Download className="w-4 h-4" />
                   {exporting ? 'Exporting...' : 'Export All Societies Backup'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => void handleExportBackup(null, { completeDb: true })}
+                  disabled={exporting}
+                  className="btn-secondary w-full flex items-center justify-center gap-2 border-primary/30"
+                >
+                  <Database className="w-4 h-4" />
+                  {exporting ? 'Exporting...' : 'Complete Database Export'}
+                </button>
                 {selectedSociety && (
-                  <button onClick={() => handleExportBackup(selectedSociety)} disabled={exporting}
-                    className="btn-secondary w-full flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleExportBackup(selectedSociety)}
+                    disabled={exporting}
+                    className="btn-secondary w-full flex items-center justify-center gap-2"
+                  >
                     <Download className="w-4 h-4" />
-                    Export {societies.find(s => s.id === selectedSociety)?.name || 'Selected'} Only
+                    Export {societies.find((s) => s.id === selectedSociety)?.name || 'Selected'} Only
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => void handleExportBackup(null, { sendEmail: true })}
+                  disabled={exporting}
+                  className="text-xs w-full py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/60 flex items-center justify-center gap-2"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  Email full backup now (test / manual)
+                </button>
               </div>
-              <div className="mt-3 p-2 bg-muted/50 rounded-lg">
+              <div className="mt-3 p-2 bg-muted/50 rounded-lg space-y-1">
                 <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <Shield className="w-3 h-3" />
-                  Auto-backup: Every 15 days → meit10swami@gmail.com
+                  <Shield className="w-3 h-3 shrink-0" />
+                  Auto-backup email: set <span className="font-mono">RESEND_API_KEY</span> and{' '}
+                  <span className="font-mono">BACKUP_EMAIL</span> (optional; defaults to meit10swami@gmail.com), then
+                  schedule the <span className="font-mono">backup-export</span> function in the Supabase Dashboard with
+                  body <span className="font-mono">{`{"send_email":true}`}</span> on your desired cadence (e.g. twice a
+                  month). Large backups email a summary without an attachment.
                 </p>
               </div>
             </div>

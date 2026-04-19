@@ -1,19 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Vote, Plus, BarChart3, Trash2 } from 'lucide-react';
+import { Vote, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
-interface Props { adminName?: string; isResident?: boolean; voterId?: string; flatNumber?: string; }
+interface Props {
+  adminName?: string;
+  isResident?: boolean;
+  voterId?: string;
+  flatNumber?: string;
+}
+
+type VoterProfile = { name: string; flatNumber: string };
 
 const PollManager = ({ adminName = 'Admin', isResident = false, voterId = '', flatNumber = '' }: Props) => {
   const [polls, setPolls] = useState<any[]>([]);
   const [options, setOptions] = useState<any[]>([]);
   const [votes, setVotes] = useState<any[]>([]);
+  const [voterProfiles, setVoterProfiles] = useState<Record<string, VoterProfile>>({});
+  const [voteDetailOption, setVoteDetailOption] = useState<{ optionId: string; optionText: string } | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [pf, setPf] = useState({ question: '', description: '', options: ['', ''] });
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    void loadAll();
+  }, []);
+
   const loadAll = async () => {
     const [p, o, v] = await Promise.all([
       supabase.from('polls').select('*').order('created_at', { ascending: false }),
@@ -22,8 +41,44 @@ const PollManager = ({ adminName = 'Admin', isResident = false, voterId = '', fl
     ]);
     if (p.data) setPolls(p.data);
     if (o.data) setOptions(o.data);
-    if (v.data) setVotes(v.data);
+    if (v.data) {
+      setVotes(v.data);
+      const ids = [...new Set(v.data.map((row) => row.voter_id).filter(Boolean))] as string[];
+      if (ids.length === 0) {
+        setVoterProfiles({});
+      } else {
+        const { data: mems } = await supabase.from('members').select('id, name, flat_id').in('id', ids);
+        const flatIds = [...new Set((mems ?? []).map((m) => m.flat_id).filter(Boolean))] as string[];
+        const { data: flatRows } =
+          flatIds.length > 0
+            ? await supabase.from('flats').select('id, flat_number').in('id', flatIds)
+            : { data: [] as { id: string; flat_number: string }[] };
+        const flatNumById = new Map((flatRows ?? []).map((f) => [f.id, f.flat_number]));
+        const map: Record<string, VoterProfile> = {};
+        for (const m of mems ?? []) {
+          map[m.id] = {
+            name: (m.name as string)?.trim() || 'Member',
+            flatNumber: flatNumById.get(m.flat_id) ?? '',
+          };
+        }
+        setVoterProfiles(map);
+      }
+    } else {
+      setVotes([]);
+      setVoterProfiles({});
+    }
   };
+
+  const detailVoters = useMemo(() => {
+    if (!voteDetailOption) return [];
+    return votes
+      .filter((row) => row.option_id === voteDetailOption.optionId)
+      .sort((a, b) => {
+        const na = voterProfiles[a.voter_id]?.name ?? '';
+        const nb = voterProfiles[b.voter_id]?.name ?? '';
+        return na.localeCompare(nb);
+      });
+  }, [voteDetailOption, votes, voterProfiles]);
 
   const addPoll = async () => {
     if (!pf.question || pf.options.filter(o => o.trim()).length < 2) return;
@@ -59,8 +114,55 @@ const PollManager = ({ adminName = 'Admin', isResident = false, voterId = '', fl
     showSuccess('Closed!', 'Poll has been closed'); loadAll();
   };
 
+  const openVoteDetail = (opt: { id: string; option_text: string; votes_count?: number | null }) => {
+    const c = Number(opt.votes_count) || 0;
+    const actual = votes.filter((v) => v.option_id === opt.id).length;
+    if (c === 0 && actual === 0) {
+      toast.message('No votes for this option yet');
+      return;
+    }
+    setVoteDetailOption({ optionId: opt.id, optionText: opt.option_text });
+  };
+
   return (
     <div className="page-container pb-24">
+      <Dialog open={!!voteDetailOption} onOpenChange={(open) => !open && setVoteDetailOption(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Votes: {voteDetailOption?.optionText}</DialogTitle>
+            <DialogDescription>
+              {detailVoters.length > 0
+                ? `${detailVoters.length} ${detailVoters.length === 1 ? 'person' : 'people'} chose this option.`
+                : 'Individual votes are loaded from the database.'}
+            </DialogDescription>
+          </DialogHeader>
+          {detailVoters.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No vote rows in the database for this option. Try refreshing; option totals may need to be reconciled.
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm pr-1">
+              {detailVoters.map((v) => {
+                const prof = voterProfiles[v.voter_id];
+                const flatLabel = prof?.flatNumber || v.flat_number || '—';
+                const label =
+                  prof?.name ??
+                  (String(v.voter_type || '').toLowerCase() === 'resident' ? 'Resident' : v.voter_type || 'Voter');
+                return (
+                  <li
+                    key={v.id}
+                    className="flex flex-col gap-0.5 rounded-lg border border-border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <span className="font-medium">{label}</span>
+                    <span className="text-xs text-muted-foreground">Flat {flatLabel}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
           <Vote className="w-5 h-5 text-purple-500" />
@@ -120,13 +222,28 @@ const PollManager = ({ adminName = 'Admin', isResident = false, voterId = '', fl
                         {opt.option_text}
                       </button>
                     ) : (
-                      <div className="relative p-2 rounded-lg bg-muted/50 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => openVoteDetail(opt)}
+                        className={`relative w-full rounded-lg bg-muted/50 p-2 text-left overflow-hidden transition ring-offset-background ${
+                          (opt.votes_count || 0) > 0 || votes.some((x) => x.option_id === opt.id)
+                            ? 'cursor-pointer hover:ring-2 hover:ring-primary/40 focus:outline-none focus:ring-2 focus:ring-primary'
+                            : 'cursor-default opacity-90'
+                        }`}
+                        title={
+                          (opt.votes_count || 0) > 0 || votes.some((x) => x.option_id === opt.id)
+                            ? 'Who voted for this option?'
+                            : undefined
+                        }
+                      >
                         <div className="absolute inset-0 bg-primary/10 rounded-lg" style={{ width: `${pct}%` }} />
-                        <div className="relative flex justify-between text-sm">
+                        <div className="relative flex justify-between gap-2 text-sm">
                           <span>{opt.option_text}</span>
-                          <span className="font-mono text-xs">{opt.votes_count || 0} ({pct.toFixed(0)}%)</span>
+                          <span className="shrink-0 font-mono text-xs">
+                            {opt.votes_count || 0} ({pct.toFixed(0)}%)
+                          </span>
                         </div>
-                      </div>
+                      </button>
                     )}
                   </div>
                 );
