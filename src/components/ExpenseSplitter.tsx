@@ -1,63 +1,167 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Split, Plus, Check } from 'lucide-react';
+import { Split, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
+import { useStore } from '@/store/useStore';
+import { FlatMultiSelect } from '@/components/FlatMultiSelect';
+import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
+import { format } from 'date-fns';
+import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
 
-interface Props { adminName?: string; }
+interface Props {
+  adminName?: string;
+}
+
+type FundingSource = 'residents' | 'society_fund';
+type SplitMode = 'even' | 'custom';
+
+function parsePaidByFlats(exp: { paid_by_flats?: unknown; paid_by_flat: string }): string[] {
+  const raw = exp.paid_by_flats;
+  if (Array.isArray(raw) && raw.length) return raw.map(String);
+  if (raw && typeof raw === 'object') {
+    const arr = raw as string[];
+    if (Array.isArray(arr) && arr.length) return arr.map(String);
+  }
+  return exp.paid_by_flat ? [exp.paid_by_flat] : [];
+}
+
+async function uploadExpenseBill(groupId: string, file: File): Promise<string | null> {
+  const safe = file.name.replace(/[^\w.-]/g, '_');
+  const path = `expense-bills/${groupId}/${crypto.randomUUID()}_${safe}`;
+  const { error } = await supabase.storage.from('notification-media').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) {
+    toast.error(error.message);
+    return null;
+  }
+  const { data } = supabase.storage.from('notification-media').getPublicUrl(path);
+  return data.publicUrl;
+}
 
 const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
+  const societyId = useStore((s) => s.societyId);
   const [groups, setGroups] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [splits, setSplits] = useState<any[]>([]);
-  const [flats, setFlats] = useState<any[]>([]);
+  const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null; is_occupied: boolean | null }[]>([]);
+  const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
-  const [splitMode, setSplitMode] = useState<'even' | 'custom'>('even');
+  const [fundingSource, setFundingSource] = useState<FundingSource>('residents');
+  const [splitMode, setSplitMode] = useState<SplitMode>('even');
+  const [splitFlats, setSplitFlats] = useState<string[]>([]);
+  const [paidByFlats, setPaidByFlats] = useState<string[]>([]);
   const [customSplits, setCustomSplits] = useState<Record<string, string>>({});
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState<string | null>(null);
   const [gf, setGf] = useState({ name: '', description: '' });
-  const [ef, setEf] = useState({ title: '', total_amount: '', paid_by_flat: '' });
+  const [ef, setEf] = useState({
+    title: '',
+    total_amount: '',
+    vendor_or_service: '',
+    service_kind: 'one_time' as 'recurring' | 'one_time' | 'temporary',
+    expense_date: format(new Date(), 'yyyy-MM-dd'),
+    payment_method: 'cash',
+    notes: '',
+  });
+  const [billUploading, setBillUploading] = useState(false);
+  const [expenseNotifyAudience, setExpenseNotifyAudience] = useState<AdminRecordNotifyAudience>('none');
 
-  useEffect(() => { loadAll(); }, []);
-  const loadAll = async () => {
-    const [g, e, s, f] = await Promise.all([
-      supabase.from('expense_groups').select('*').order('created_at', { ascending: false }),
-      supabase.from('expenses').select('*').order('created_at', { ascending: false }),
-      supabase.from('expense_splits').select('*'),
-      supabase.from('flats').select('flat_number, id, is_occupied').order('flat_number'),
-    ]);
-    if (g.data) setGroups(g.data);
-    if (e.data) setExpenses(e.data);
-    if (s.data) setSplits(s.data);
-    if (f.data) setFlats(f.data);
-  };
+  const activeFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
 
-  const addGroup = async () => {
-    if (!gf.name) return;
-    await supabase.from('expense_groups').insert([{ name: gf.name, description: gf.description || null, created_by: adminName }]);
-    setGf({ name: '', description: '' }); setShowGroupForm(false);
-    toast.success('Group created'); loadAll();
-  };
+  const loadAll = useCallback(async () => {
+    if (!societyId) {
+      setGroups([]);
+      setExpenses([]);
+      setSplits([]);
+      setFlats([]);
+      setPrimaryByFlatId(new Map());
+      return;
+    }
+    const { data: flatRows } = await supabase
+      .from('flats')
+      .select('flat_number, id, owner_name, is_occupied')
+      .eq('society_id', societyId)
+      .order('flat_number');
+    if (flatRows) setFlats(flatRows);
 
-  const activeFlats = includeVacantFlats
-    ? flats
-    : flats.filter((f) => f.is_occupied);
+    const flatIds = (flatRows ?? []).map((f) => f.id);
+    const mRes =
+      flatIds.length > 0
+        ? await supabase.from('members').select('flat_id, name').eq('is_primary', true).in('flat_id', flatIds)
+        : { data: [] as { flat_id: string; name: string }[] };
+    const map = new Map<string, string>();
+    for (const row of mRes.data ?? []) {
+      if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
+    }
+    setPrimaryByFlatId(map);
+
+    const { data: g } = await supabase
+      .from('expense_groups')
+      .select('*')
+      .eq('society_id', societyId)
+      .order('created_at', { ascending: false });
+    if (g) setGroups(g);
+
+    const groupIds = (g ?? []).map((x) => x.id);
+    if (groupIds.length === 0) {
+      setExpenses([]);
+      setSplits([]);
+      return;
+    }
+    const { data: e } = await supabase.from('expenses').select('*').in('group_id', groupIds).order('created_at', { ascending: false });
+    if (e) setExpenses(e);
+    const expIds = (e ?? []).map((x) => x.id);
+    if (expIds.length === 0) {
+      setSplits([]);
+      return;
+    }
+    const { data: s } = await supabase.from('expense_splits').select('*').in('expense_id', expIds);
+    if (s) setSplits(s);
+  }, [societyId]);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
   const resetExpenseForm = () => {
-    setEf({ title: '', total_amount: '', paid_by_flat: '' });
+    setEf({
+      title: '',
+      total_amount: '',
+      vendor_or_service: '',
+      service_kind: 'one_time',
+      expense_date: format(new Date(), 'yyyy-MM-dd'),
+      payment_method: 'cash',
+      notes: '',
+    });
     setSplitMode('even');
+    setSplitFlats([]);
+    setPaidByFlats([]);
     setCustomSplits({});
+    setFundingSource('residents');
+    setExpenseNotifyAudience('none');
     setShowExpenseForm(null);
   };
 
-  const toggleCustomFlat = (flatNumber: string, on: boolean) => {
-    setCustomSplits((prev) => {
-      const next = { ...prev };
-      if (on) next[flatNumber] = next[flatNumber] ?? '';
-      else delete next[flatNumber];
-      return next;
-    });
+  const addGroup = async () => {
+    if (!societyId) {
+      toast.error('Select a society from the admin context');
+      return;
+    }
+    if (!gf.name) return;
+    await supabase.from('expense_groups').insert([{ name: gf.name, description: gf.description || null, created_by: adminName, society_id: societyId }]);
+    setGf({ name: '', description: '' });
+    setShowGroupForm(false);
+    toast.success('Group created');
+    loadAll();
+  };
+
+  const targetFlatNumbers = (): string[] => {
+    const eligible = new Set(activeFlats.map((f) => f.flat_number));
+    const chosen = splitFlats.length > 0 ? splitFlats : [...eligible];
+    return [...new Set(chosen.filter((n) => eligible.has(n)))];
   };
 
   const setCustomFlatAmount = (flatNumber: string, amount: string) => {
@@ -65,62 +169,250 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
   };
 
   const addExpense = async (groupId: string) => {
-    if (!ef.title || !ef.total_amount || !ef.paid_by_flat) return;
+    if (!ef.title?.trim() || !ef.total_amount) {
+      toast.error('Title and total amount are required');
+      return;
+    }
     const total = Number(ef.total_amount);
     if (!total || total <= 0) {
       toast.error('Enter a valid total amount');
       return;
     }
-    if (activeFlats.length === 0) {
-      toast.error('No eligible flats found for split');
+
+    let billUrl: string | null = null;
+    const fileInput = document.getElementById(`expense-bill-${groupId}`) as HTMLInputElement | null;
+    const file = fileInput?.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/') && !file.type.startsWith('audio/') && file.type !== 'application/pdf') {
+        toast.error('Bill attachment: use image, PDF, or short audio');
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        toast.error('Bill file must be 8MB or smaller');
+        return;
+      }
+      setBillUploading(true);
+      billUrl = await uploadExpenseBill(groupId, file);
+      setBillUploading(false);
+      if (!billUrl) return;
+      if (fileInput) fileInput.value = '';
+    }
+
+    if (fundingSource === 'society_fund') {
+      const { error } = await supabase.from('expenses').insert([
+        {
+          group_id: groupId,
+          title: ef.title.trim(),
+          total_amount: total,
+          paid_by_flat: 'SOCIETY',
+          paid_by_flats: [],
+          paid_by_name: adminName,
+          split_type: 'society_fund',
+          payment_method: ef.payment_method,
+          bill_screenshot_url: billUrl,
+          service_kind: ef.service_kind,
+          vendor_or_service: ef.vendor_or_service?.trim() || null,
+          expense_date: ef.expense_date,
+          notes: ef.notes?.trim() || null,
+        },
+      ]);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      const notifyAudience = expenseNotifyAudience;
+      const groupName = groups.find((x) => x.id === groupId)?.name ?? 'Expense group';
+      const allFlatNums = flats.map((f) => f.flat_number);
+      const snapTitle = ef.title.trim();
+      const snapVendor = ef.vendor_or_service?.trim() || '';
+      const snapKind = ef.service_kind;
+      const snapPm = ef.payment_method;
+      const snapDate = ef.expense_date;
+      const snapNotes = ef.notes?.trim() || '';
+      const snapBill = billUrl;
+
+      resetExpenseForm();
+      let suffix = '';
+      if (notifyAudience === 'all' && societyId) {
+        const title = `Society expense: ${snapTitle}`;
+        const lines = [
+          `${adminName} recorded a society / corpus expense in “${groupName}”.`,
+          `“${snapTitle}” — ₹${total.toLocaleString('en-IN')} (${snapPm}, ${snapKind}). No per-flat split.`,
+        ];
+        if (snapVendor) lines.push(`Vendor / service: ${snapVendor}.`);
+        if (snapDate) lines.push(`Expense date: ${snapDate}.`);
+        if (snapNotes) lines.push(snapNotes);
+        lines.push(`Shared with all ${allFlatNums.length} society flat(s).`);
+        if (snapBill) lines.push('A receipt image may be attached when available.');
+        const ok = await notifyResidentsOfRecord({
+          societyId,
+          adminName,
+          audience: 'all',
+          selectedFlatNumbers: [],
+          title,
+          message: lines.join(' '),
+          notificationType: 'society_expense',
+          billUrl: snapBill,
+          saveSucceededHint:
+            'Expense saved, but notifying residents failed. You can send a manual notice from Notifications.',
+        });
+        if (ok) suffix = ' · Residents notified';
+      }
+      toast.success('Society expense recorded (no split to flats)' + suffix);
+      loadAll();
       return;
     }
-    const { data: expense } = await supabase.from('expenses').insert([{
-      group_id: groupId, title: ef.title, total_amount: total,
-      paid_by_flat: ef.paid_by_flat, paid_by_name: adminName,
-    }]).select().single();
-    if (expense) {
-      let splitRows: Array<{
-        expense_id: string;
-        flat_number: string;
-        amount: number;
-        is_settled: boolean;
-        settled_at: string | null;
-      }> = [];
 
-      if (splitMode === 'even') {
-        const splitAmount = total / activeFlats.length;
-        splitRows = activeFlats.map(f => ({
-          expense_id: expense.id, flat_number: f.flat_number,
+    if (paidByFlats.length === 0) {
+      toast.error('Select at least one flat under “Paid by (flats)” (who advanced the payment)');
+      return;
+    }
+
+    const targets = targetFlatNumbers();
+    if (targets.length === 0) {
+      toast.error('Select flats to split among, or leave empty to use all eligible flats');
+      return;
+    }
+
+    const paidBySorted = [...paidByFlats];
+    const primaryPaidBy = paidBySorted[0];
+
+    let splitRows: Array<{
+      expense_id: string;
+      flat_number: string;
+      amount: number;
+      is_settled: boolean;
+      settled_at: string | null;
+      resident_name: string | null;
+    }> = [];
+
+    const splitType = splitMode === 'custom' ? 'custom' : splitFlats.length > 0 ? 'equal_selected' : 'equal_all';
+
+    if (splitMode === 'even') {
+      const splitAmount = total / targets.length;
+      splitRows = targets.map((num) => {
+        const flat = activeFlats.find((f) => f.flat_number === num);
+        return {
+          expense_id: '',
+          flat_number: num,
           amount: Number(splitAmount.toFixed(2)),
-          is_settled: f.flat_number === ef.paid_by_flat,
-          settled_at: f.flat_number === ef.paid_by_flat ? new Date().toISOString() : null,
-        }));
-      } else {
-        const entries = Object.entries(customSplits).filter(([_, v]) => Number(v) > 0);
-        if (entries.length === 0) {
-          toast.error('Select flats and enter custom amounts');
-          return;
-        }
-        const customTotal = Number(
-          entries.reduce((sum, [_, v]) => sum + Number(v), 0).toFixed(2),
-        );
-        if (Math.abs(customTotal - total) > 0.01) {
-          toast.error(`Custom split total ₹${customTotal.toFixed(2)} must match expense total ₹${total.toFixed(2)}`);
-          return;
-        }
-        splitRows = entries.map(([flatNumber, amount]) => ({
-          expense_id: expense.id,
+          is_settled: paidBySorted.includes(num),
+          settled_at: paidBySorted.includes(num) ? new Date().toISOString() : null,
+          resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
+        };
+      });
+    } else {
+      const entries = targets
+        .map((num) => [num, customSplits[num] ?? ''] as const)
+        .filter(([, v]) => Number(v) > 0);
+      if (entries.length === 0) {
+        toast.error('Enter amounts for flats in custom split');
+        return;
+      }
+      const customTotal = Number(entries.reduce((sum, [, v]) => sum + Number(v), 0).toFixed(2));
+      if (Math.abs(customTotal - total) > 0.01) {
+        toast.error(`Custom split total ₹${customTotal.toFixed(2)} must match expense total ₹${total.toFixed(2)}`);
+        return;
+      }
+      splitRows = entries.map(([flatNumber, amount]) => {
+        const flat = activeFlats.find((f) => f.flat_number === flatNumber);
+        return {
+          expense_id: '',
           flat_number: flatNumber,
           amount: Number(Number(amount).toFixed(2)),
-          is_settled: flatNumber === ef.paid_by_flat,
-          settled_at: flatNumber === ef.paid_by_flat ? new Date().toISOString() : null,
-        }));
-      }
-      await supabase.from('expense_splits').insert(splitRows);
+          is_settled: paidBySorted.includes(flatNumber),
+          settled_at: paidBySorted.includes(flatNumber) ? new Date().toISOString() : null,
+          resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
+        };
+      });
     }
+
+    const { data: expense, error: insErr } = await supabase
+      .from('expenses')
+      .insert([
+        {
+          group_id: groupId,
+          title: ef.title.trim(),
+          total_amount: total,
+          paid_by_flat: primaryPaidBy,
+          paid_by_flats: paidBySorted,
+          paid_by_name: adminName,
+          split_type: splitType,
+          payment_method: ef.payment_method,
+          bill_screenshot_url: billUrl,
+          service_kind: ef.service_kind,
+          vendor_or_service: ef.vendor_or_service?.trim() || null,
+          expense_date: ef.expense_date,
+          notes: ef.notes?.trim() || null,
+        },
+      ])
+      .select()
+      .single();
+    if (insErr || !expense) {
+      toast.error(insErr?.message || 'Could not save expense');
+      return;
+    }
+
+    splitRows = splitRows.map((r) => ({ ...r, expense_id: expense.id }));
+    const { error: spErr } = await supabase.from('expense_splits').insert(splitRows);
+    if (spErr) {
+      toast.error(spErr.message);
+      await supabase.from('expenses').delete().eq('id', expense.id);
+      return;
+    }
+
+    const notifyAudience = expenseNotifyAudience;
+    const groupName = groups.find((x) => x.id === groupId)?.name ?? 'Expense group';
+    const allFlatNums = flats.map((f) => f.flat_number);
+    const notifyFlats = [...new Set([...targets, ...paidBySorted])];
+    const snapTitle = ef.title.trim();
+    const snapVendor = ef.vendor_or_service?.trim() || '';
+    const snapKind = ef.service_kind;
+    const snapPm = ef.payment_method;
+    const snapDate = ef.expense_date;
+    const snapNotes = ef.notes?.trim() || '';
+    const snapBill = billUrl;
+    const snapTotal = total;
+    const snapTargets = [...targets];
+    const snapPaidBy = [...paidBySorted];
+
     resetExpenseForm();
-    toast.success(splitMode === 'custom' ? 'Expense added with custom split' : 'Expense added & split equally');
+
+    let suffix = '';
+    if (notifyAudience !== 'none' && societyId) {
+      const methodLabel = snapPm.replace(/_/g, ' ');
+      const title = `Expense recorded: ${snapTitle}`;
+      const lines = [
+        `${adminName} added an expense in “${groupName}”.`,
+        `“${snapTitle}” — total ₹${snapTotal.toLocaleString('en-IN')} (${methodLabel}, ${snapKind}).`,
+        `Split across: ${snapTargets.join(', ')}.`,
+        `Paid by (advanced): ${snapPaidBy.join(', ')}.`,
+      ];
+      if (snapVendor) lines.push(`Vendor / service: ${snapVendor}.`);
+      if (snapDate) lines.push(`Expense date: ${snapDate}.`);
+      if (snapNotes) lines.push(snapNotes);
+      if (notifyAudience === 'all') {
+        lines.push(`This update was shared with all ${allFlatNums.length} society flat(s).`);
+      }
+      if (snapBill) lines.push('Open the notification to view the attached receipt image (when available).');
+      const message = lines.join(' ');
+      const ok = await notifyResidentsOfRecord({
+        societyId,
+        adminName,
+        audience: notifyAudience,
+        selectedFlatNumbers: notifyFlats,
+        title,
+        message,
+        notificationType: 'society_expense',
+        billUrl: snapBill,
+        saveSucceededHint:
+          'Expense saved, but notifying residents failed. You can send a manual notice from Notifications.',
+      });
+      if (ok) suffix = ' · Residents notified';
+    }
+
+    toast.success((splitMode === 'custom' ? 'Expense added with custom split' : 'Expense added & split') + suffix);
     loadAll();
   };
 
@@ -128,21 +420,47 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     const ok = await confirmAction('Settle Up?', 'Mark this split as settled?', 'Yes, Settle', 'Cancel');
     if (!ok) return;
     await supabase.from('expense_splits').update({ is_settled: true, settled_at: new Date().toISOString() }).eq('id', splitId);
-    showSuccess('Settled!', 'Payment marked as settled'); loadAll();
+    showSuccess('Settled!', 'Payment marked as settled');
+    loadAll();
   };
 
-  // Calculate balances per flat
+  const deleteExpense = async (expenseId: string) => {
+    const ok = await confirmAction('Delete expense?', 'This removes the expense and its flat splits.', 'Delete', 'Cancel');
+    if (!ok) return;
+    await supabase.from('expenses').delete().eq('id', expenseId);
+    toast.success('Expense deleted');
+    loadAll();
+  };
+
   const balances: Record<string, number> = {};
-  flats.forEach(f => { balances[f.flat_number] = 0; });
-  expenses.forEach(exp => {
-    const expSplits = splits.filter(s => s.expense_id === exp.id);
-    expSplits.forEach(s => {
-      if (!s.is_settled && s.flat_number !== exp.paid_by_flat) {
+  flats.forEach((f) => {
+    balances[f.flat_number] = 0;
+  });
+  expenses.forEach((exp) => {
+    if (exp.split_type === 'society_fund') return;
+    const creditors = parsePaidByFlats(exp);
+    if (creditors.length === 0) return;
+    const expSplits = splits.filter((s) => s.expense_id === exp.id);
+    expSplits.forEach((s) => {
+      if (!s.is_settled && !creditors.includes(s.flat_number)) {
         balances[s.flat_number] = (balances[s.flat_number] || 0) - s.amount;
-        balances[exp.paid_by_flat] = (balances[exp.paid_by_flat] || 0) + s.amount;
+        const share = s.amount / creditors.length;
+        creditors.forEach((c) => {
+          balances[c] = (balances[c] || 0) + share;
+        });
       }
     });
   });
+
+  const flatOptions = flatOptionsWithPrimaryLabel(flats, primaryByFlatId);
+
+  if (!societyId) {
+    return (
+      <div className="page-container pb-24">
+        <p className="text-sm text-muted-foreground text-center py-12">Select a society to use expense splitting.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container pb-24">
@@ -150,33 +468,18 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
           <Split className="w-5 h-5 text-orange-500" />
         </div>
-        <h1 className="page-title">Expense Splitter</h1>
-      </div>
-
-      {/* Balances */}
-      <div className="card-section p-4 mb-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Balances</p>
-        <div className="space-y-1">
-          {Object.entries(balances).filter(([_, v]) => v !== 0).map(([flat, amount]) => (
-            <div key={flat} className="flex justify-between text-sm">
-              <span>Flat {flat}</span>
-              <span className={amount > 0 ? 'text-green-600 font-bold' : 'text-destructive font-bold'}>
-                {amount > 0 ? `+₹${amount.toFixed(2)}` : `-₹${Math.abs(amount).toFixed(2)}`}
-              </span>
-            </div>
-          ))}
-          {Object.values(balances).every(v => v === 0) && <p className="text-xs text-muted-foreground">All settled! 🎉</p>}
+        <div>
+          <h1 className="page-title">Splitwise</h1>
+          <p className="text-xs text-muted-foreground">Society bills, shared costs, and per-flat balances</p>
         </div>
       </div>
 
       <div className="card-section p-3 mb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-medium text-foreground">Split target flats</p>
+            <p className="text-xs font-medium text-foreground">Eligible flats pool</p>
             <p className="text-[10px] text-muted-foreground">
-              {includeVacantFlats
-                ? `Using all flats (${flats.length})`
-                : `Using occupied/sold flats (${activeFlats.length})`}
+              {includeVacantFlats ? `All flats (${flats.length})` : `Occupied / sold (${activeFlats.length})`}
             </p>
           </div>
           <button
@@ -189,123 +492,340 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         </div>
       </div>
 
-      <button onClick={() => setShowGroupForm(!showGroupForm)} className="btn-primary w-full mb-4 flex items-center justify-center gap-2">
-        <Plus className="w-4 h-4" /> New Expense Group
+      <div className="card-section p-4 mb-4 space-y-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Balances</p>
+        <div className="space-y-1">
+          {Object.entries(balances)
+            .filter(([_, v]) => v !== 0)
+            .map(([flat, amount]) => (
+              <div key={flat} className="flex justify-between text-sm">
+                <span>Flat {flat}</span>
+                <span className={amount > 0 ? 'text-green-600 font-bold' : 'text-destructive font-bold'}>
+                  {amount > 0 ? `+₹${amount.toFixed(2)}` : `-₹${Math.abs(amount).toFixed(2)}`}
+                </span>
+              </div>
+            ))}
+          {Object.values(balances).every((v) => v === 0) && <p className="text-xs text-muted-foreground">All settled! 🎉</p>}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowGroupForm(!showGroupForm)}
+        className="btn-primary w-full mb-4 flex items-center justify-center gap-2"
+      >
+        <Plus className="w-4 h-4" /> New expense group
       </button>
 
       {showGroupForm && (
         <div className="card-section p-4 mb-4 flex flex-col gap-3">
-          <input className="input-field" placeholder="Group Name (e.g. Diwali Party)" value={gf.name} onChange={e => setGf({...gf, name: e.target.value})} />
-          <textarea className="input-field" placeholder="Description" value={gf.description} onChange={e => setGf({...gf, description: e.target.value})} />
-          <button onClick={addGroup} className="btn-primary">Create Group</button>
+          <input
+            className="input-field"
+            placeholder="Group name (e.g. Society operations, Diwali)"
+            value={gf.name}
+            onChange={(e) => setGf({ ...gf, name: e.target.value })}
+          />
+          <textarea
+            className="input-field"
+            placeholder="Description (optional)"
+            value={gf.description}
+            onChange={(e) => setGf({ ...gf, description: e.target.value })}
+          />
+          <button type="button" onClick={addGroup} className="btn-primary">
+            Create group
+          </button>
         </div>
       )}
 
-      {groups.map(g => {
-        const gExpenses = expenses.filter(e => e.group_id === g.id);
+      {groups.map((g) => {
+        const gExpenses = expenses.filter((e) => e.group_id === g.id);
         return (
           <div key={g.id} className="card-section p-4 mb-3">
             <p className="font-semibold mb-1">{g.name}</p>
             {g.description && <p className="text-xs text-muted-foreground mb-2">{g.description}</p>}
 
-            <button onClick={() => {
-              if (showExpenseForm === g.id) {
-                resetExpenseForm();
-              } else {
-                setShowExpenseForm(g.id);
-              }
-            }}
-              className="text-xs text-primary underline mb-2 flex items-center gap-1">
-              <Plus className="w-3 h-3" /> Add Expense
+            <button
+              type="button"
+              onClick={() => {
+                if (showExpenseForm === g.id) resetExpenseForm();
+                else setShowExpenseForm(g.id);
+              }}
+              className="text-xs text-primary underline mb-2 flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" /> Add expense
             </button>
 
             {showExpenseForm === g.id && (
               <div className="flex flex-col gap-2 mb-3 pt-2 border-t border-border">
-                <input className="input-field text-sm" placeholder="Expense Title" value={ef.title} onChange={e => setEf({...ef, title: e.target.value})} />
-                <input className="input-field text-sm" placeholder="Total Amount (₹)" type="number" value={ef.total_amount} onChange={e => setEf({...ef, total_amount: e.target.value})} />
-                <select className="input-field text-sm" value={ef.paid_by_flat} onChange={e => setEf({...ef, paid_by_flat: e.target.value})}>
-                  <option value="">Paid By (Flat)</option>
-                  {activeFlats.map(f => <option key={f.id} value={f.flat_number}>Flat {f.flat_number}</option>)}
-                </select>
+                <input
+                  className="input-field text-sm"
+                  placeholder="Expense title (e.g. Common area electricity)"
+                  value={ef.title}
+                  onChange={(e) => setEf({ ...ef, title: e.target.value })}
+                />
+                <input
+                  className="input-field text-sm"
+                  placeholder="Vendor / service (optional)"
+                  value={ef.vendor_or_service}
+                  onChange={(e) => setEf({ ...ef, vendor_or_service: e.target.value })}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    className="input-field text-sm"
+                    value={ef.service_kind}
+                    onChange={(e) => setEf({ ...ef, service_kind: e.target.value as typeof ef.service_kind })}
+                  >
+                    <option value="one_time">One-time</option>
+                    <option value="recurring">Recurring (monthly)</option>
+                    <option value="temporary">Temporary / ad-hoc</option>
+                  </select>
+                  <input
+                    className="input-field text-sm"
+                    type="date"
+                    value={ef.expense_date}
+                    onChange={(e) => setEf({ ...ef, expense_date: e.target.value })}
+                  />
+                </div>
+                <input
+                  className="input-field text-sm"
+                  placeholder="Total amount (₹)"
+                  type="number"
+                  value={ef.total_amount}
+                  onChange={(e) => setEf({ ...ef, total_amount: e.target.value })}
+                />
                 <select
                   className="input-field text-sm"
-                  value={splitMode}
-                  onChange={(e) => {
-                    const mode = e.target.value as 'even' | 'custom';
-                    setSplitMode(mode);
-                    if (mode === 'even') setCustomSplits({});
-                  }}
+                  value={ef.payment_method}
+                  onChange={(e) => setEf({ ...ef, payment_method: e.target.value })}
                 >
-                  <option value="even">Even split across eligible flats</option>
-                  <option value="custom">Custom split (selected flats + amount each)</option>
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI</option>
+                  <option value="bank_transfer">Bank transfer</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="other">Other</option>
                 </select>
-                {splitMode === 'even' ? (
-                  <p className="text-[11px] text-muted-foreground">
-                    This expense will be split equally across {activeFlats.length} eligible flats.
-                  </p>
-                ) : (
-                  <div className="rounded-lg border border-border p-2.5 space-y-2">
-                    <p className="text-[11px] font-medium text-foreground">Custom split</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Select flats and enter amount per flat. Sum must equal total amount.
-                    </p>
-                    <div className="max-h-48 overflow-y-auto space-y-1.5">
-                      {activeFlats.map((f) => {
-                        const checked = customSplits[f.flat_number] !== undefined;
-                        return (
-                          <div key={f.id} className="flex items-center gap-2">
-                            <label className="flex items-center gap-2 text-xs flex-1">
+                <textarea
+                  className="input-field text-sm min-h-[4rem]"
+                  placeholder="Internal notes (optional)"
+                  value={ef.notes}
+                  onChange={(e) => setEf({ ...ef, notes: e.target.value })}
+                />
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">Bill / receipt (optional)</label>
+                <input id={`expense-bill-${g.id}`} type="file" accept="image/*,application/pdf,audio/*" className="text-xs" />
+
+                <div className="rounded-lg border border-border bg-muted/20 p-2 space-y-2">
+                  <p className="text-xs font-medium">Who pays?</p>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="radio"
+                      name={`fund-${g.id}`}
+                      checked={fundingSource === 'residents'}
+                      onChange={() => {
+                        setFundingSource('residents');
+                        setExpenseNotifyAudience('none');
+                      }}
+                    />
+                    Split across flats (committee paid upfront, flats owe share)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="radio"
+                      name={`fund-${g.id}`}
+                      checked={fundingSource === 'society_fund'}
+                      onChange={() => {
+                        setFundingSource('society_fund');
+                        setExpenseNotifyAudience('none');
+                      }}
+                    />
+                    Society / corpus only (no split — e.g. absorbed from maintenance pool)
+                  </label>
+                </div>
+
+                {fundingSource === 'residents' && (
+                  <>
+                    <FlatMultiSelect
+                      flats={flatOptions}
+                      selected={paidByFlats}
+                      onChange={setPaidByFlats}
+                      label="Paid by (flats — who advanced)"
+                      compact
+                    />
+                    <FlatMultiSelect
+                      flats={flatOptions}
+                      selected={splitFlats}
+                      onChange={(nums) => {
+                        setSplitFlats(nums);
+                        setCustomSplits((prev) => {
+                          const next: Record<string, string> = {};
+                          for (const n of nums) {
+                            if (prev[n] !== undefined) next[n] = prev[n];
+                          }
+                          return next;
+                        });
+                      }}
+                      label="Split among (leave empty = all eligible flats)"
+                      compact
+                      emptyHint="Pick flats to limit who shares this bill."
+                    />
+                    <select
+                      className="input-field text-sm"
+                      value={splitMode}
+                      onChange={(e) => {
+                        const mode = e.target.value as SplitMode;
+                        setSplitMode(mode);
+                        if (mode === 'even') setCustomSplits({});
+                      }}
+                    >
+                      <option value="even">Equal split among flats above (or all if none selected)</option>
+                      <option value="custom">Custom amount per flat (only “split among” flats)</option>
+                    </select>
+                    {splitMode === 'even' ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        Each selected flat pays ₹
+                        {(() => {
+                          const t = targetFlatNumbers();
+                          const tot = Number(ef.total_amount) || 0;
+                          return t.length && tot ? (tot / t.length).toFixed(2) : '…'}
+                        )}{' '}
+                        (÷ {targetFlatNumbers().length || activeFlats.length} flats)
+                      </p>
+                    ) : (
+                      <div className="rounded-lg border border-border p-2.5 space-y-2">
+                        <p className="text-[10px] text-muted-foreground">Amounts must sum to total. Flats listed come from “Split among”.</p>
+                        <div className="max-h-48 overflow-y-auto space-y-1.5">
+                          {(splitFlats.length ? splitFlats : activeFlats.map((f) => f.flat_number)).map((num) => (
+                            <div key={num} className="flex items-center gap-2">
+                              <span className="text-xs w-16">Flat {num}</span>
                               <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => toggleCustomFlat(f.flat_number, e.target.checked)}
-                              />
-                              <span>Flat {f.flat_number}</span>
-                            </label>
-                            {checked && (
-                              <input
-                                className="input-field text-xs w-28"
-                                placeholder="₹ amount"
+                                className="input-field text-xs flex-1"
+                                placeholder="₹"
                                 type="number"
-                                value={customSplits[f.flat_number] ?? ''}
-                                onChange={(e) => setCustomFlatAmount(f.flat_number, e.target.value)}
+                                value={customSplits[num] ?? ''}
+                                onChange={(e) => setCustomFlatAmount(num, e.target.value)}
                               />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Current custom total: ₹
-                      {Object.values(customSplits).reduce((sum, v) => sum + (Number(v) || 0), 0).toFixed(2)}
-                    </p>
-                  </div>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Sum: ₹{Object.entries(customSplits).reduce((sum, [, v]) => sum + (Number(v) || 0), 0).toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
-                <button onClick={() => addExpense(g.id)} className="btn-primary text-sm">
-                  {splitMode === 'custom' ? 'Add with Custom Split' : 'Add & Split Equally'}
+
+                <div className="rounded-lg border border-border p-3 space-y-2 bg-muted/30">
+                  <p className="text-xs font-medium text-foreground">Notify residents</p>
+                  <p className="text-[10px] text-muted-foreground leading-snug">
+                    Optional: send an in-app notice (and push, if configured) when this expense or receipt is saved.
+                  </p>
+                  <label className="flex items-start gap-2 text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      name={`exp-notify-${g.id}`}
+                      className="mt-0.5"
+                      checked={expenseNotifyAudience === 'none'}
+                      onChange={() => setExpenseNotifyAudience('none')}
+                    />
+                    <span>Do not notify</span>
+                  </label>
+                  {fundingSource === 'residents' && (
+                    <label className="flex items-start gap-2 text-xs cursor-pointer">
+                      <input
+                        type="radio"
+                        name={`exp-notify-${g.id}`}
+                        className="mt-0.5"
+                        checked={expenseNotifyAudience === 'selected_flats'}
+                        onChange={() => setExpenseNotifyAudience('selected_flats')}
+                      />
+                      <span>
+                        Flats in this expense ({new Set([...targetFlatNumbers(), ...paidByFlats]).size}) — split
+                        participants and who advanced payment
+                      </span>
+                    </label>
+                  )}
+                  <label className="flex items-start gap-2 text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      name={`exp-notify-${g.id}`}
+                      className="mt-0.5"
+                      checked={expenseNotifyAudience === 'all'}
+                      onChange={() => setExpenseNotifyAudience('all')}
+                    />
+                    <span>All society flats ({flats.length}) — e.g. common-area or guard bills</span>
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void addExpense(g.id)}
+                  className="btn-primary text-sm"
+                  disabled={billUploading}
+                >
+                  {billUploading ? 'Uploading…' : fundingSource === 'society_fund' ? 'Record society expense' : splitMode === 'custom' ? 'Add with custom split' : 'Add & split equally'}
                 </button>
               </div>
             )}
 
-            {gExpenses.map(exp => {
-              const expSplits = splits.filter(s => s.expense_id === exp.id);
+            {gExpenses.map((exp) => {
+              const expSplits = splits.filter((s) => s.expense_id === exp.id);
+              const creditors = parsePaidByFlats(exp);
               return (
-                <div key={exp.id} className="bg-muted/30 rounded-lg p-3 mb-2">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium">{exp.title}</span>
-                    <span className="font-bold text-sm">₹{exp.total_amount}</span>
+                <div key={exp.id} className="bg-muted/30 rounded-lg p-3 mb-2 relative">
+                  <div className="flex justify-between gap-2 mb-1">
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium block truncate">{exp.title}</span>
+                      {exp.vendor_or_service && (
+                        <span className="text-[10px] text-muted-foreground block truncate">{exp.vendor_or_service}</span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground capitalize">
+                        {exp.service_kind || 'one_time'} · {exp.payment_method || 'cash'} · {exp.expense_date || ''}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-1 shrink-0">
+                      <span className="font-bold text-sm">₹{exp.total_amount}</span>
+                      <button
+                        type="button"
+                        className="p-1 text-muted-foreground hover:text-destructive"
+                        title="Delete expense"
+                        onClick={() => void deleteExpense(exp.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mb-2">Paid by Flat {exp.paid_by_flat}</p>
+                  {exp.split_type === 'society_fund' ? (
+                    <p className="text-[10px] text-muted-foreground mb-2">Paid from society / corpus — no flat split</p>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      Paid by: {creditors.map((c) => `Flat ${c}`).join(', ')}
+                    </p>
+                  )}
+                  {exp.bill_screenshot_url && (
+                    <a href={exp.bill_screenshot_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline block mb-2">
+                      View bill / receipt
+                    </a>
+                  )}
+                  {exp.notes && <p className="text-[10px] text-muted-foreground mb-2 italic">{exp.notes}</p>}
                   <div className="space-y-1">
-                    {expSplits.map(s => (
+                    {expSplits.map((s) => (
                       <div key={s.id} className="flex justify-between items-center text-xs">
-                        <span>Flat {s.flat_number}</span>
+                        <span>
+                          Flat {s.flat_number}
+                          {s.resident_name ? <span className="text-muted-foreground"> · {s.resident_name}</span> : null}
+                        </span>
                         <div className="flex items-center gap-2">
                           <span>₹{s.amount}</span>
                           {s.is_settled ? (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-600">✓</span>
                           ) : (
-                            <button onClick={() => settleUp(s.id)} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">Settle</button>
+                            <button
+                              type="button"
+                              onClick={() => void settleUp(s.id)}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary"
+                            >
+                              Settle
+                            </button>
                           )}
                         </div>
                       </div>

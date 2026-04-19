@@ -566,34 +566,55 @@ export type Database = {
       }
       expenses: {
         Row: {
+          bill_screenshot_url: string | null
           created_at: string
+          expense_date: string
           group_id: string | null
           id: string
+          notes: string | null
           paid_by_flat: string
+          paid_by_flats: unknown
           paid_by_name: string | null
+          payment_method: string
+          service_kind: string
           split_type: string
           title: string
           total_amount: number
+          vendor_or_service: string | null
         }
         Insert: {
+          bill_screenshot_url?: string | null
           created_at?: string
+          expense_date?: string
           group_id?: string | null
           id?: string
+          notes?: string | null
           paid_by_flat: string
+          paid_by_flats?: unknown
           paid_by_name?: string | null
+          payment_method?: string
+          service_kind?: string
           split_type?: string
           title: string
           total_amount: number
+          vendor_or_service?: string | null
         }
         Update: {
+          bill_screenshot_url?: string | null
           created_at?: string
+          expense_date?: string
           group_id?: string | null
           id?: string
+          notes?: string | null
           paid_by_flat?: string
+          paid_by_flats?: unknown
           paid_by_name?: string | null
+          payment_method?: string
+          service_kind?: string
           split_type?: string
           title?: string
           total_amount?: number
+          vendor_or_service?: string | null
         }
         Relationships: [
           {
