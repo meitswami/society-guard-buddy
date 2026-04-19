@@ -1,12 +1,19 @@
 import { LegalPageLayout } from "@/components/LegalPageLayout";
 import { Link } from "react-router-dom";
 
+const SUPPORT_EMAIL = "info@brandzaha.com";
+const SUPPORT_PHONE = "+91 86194 36041";
+
 const DeleteAccountPage = () => {
   return (
     <LegalPageLayout title="Delete Account">
       <div className="space-y-6 text-sm leading-relaxed text-muted-foreground">
         <p className="text-foreground">
           <strong className="font-medium text-foreground">Last updated:</strong> April 14, 2026
+        </p>
+        <p>
+          This page is for account deletion requests for <span className="text-foreground font-medium">Kutumbika</span>
+          {" "}by <span className="text-foreground font-medium">BrandZaha</span>.
         </p>
 
         <section className="space-y-2">
@@ -20,6 +27,16 @@ const DeleteAccountPage = () => {
                 Contact
               </Link>{" "}
               page with your registered phone number and society/flat details.
+            </li>
+            <li>
+              You can also email{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary underline underline-offset-4 hover:text-primary/90">
+                {SUPPORT_EMAIL}
+              </a>{" "}
+              or call{" "}
+              <a href="tel:+918619436041" className="text-primary underline underline-offset-4 hover:text-primary/90">
+                {SUPPORT_PHONE}
+              </a>.
             </li>
           </ol>
         </section>
