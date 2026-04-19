@@ -1,7 +1,7 @@
 import Swal from 'sweetalert2';
 
-// Get current theme for SWAL styling
-const getThemeColors = () => {
+// Get current theme for SWAL styling (exported for other Swal.fire calls)
+export const getSwalThemeColors = () => {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   return {
     background: isDark ? '#1a1a2e' : '#ffffff',
@@ -17,7 +17,7 @@ export const confirmAction = async (
   confirmText: string = 'Yes',
   cancelText: string = 'No',
 ): Promise<boolean> => {
-  const theme = getThemeColors();
+  const theme = getSwalThemeColors();
   const result = await Swal.fire({
     title,
     text,
@@ -37,7 +37,7 @@ export const confirmAction = async (
 };
 
 export const showSuccess = (title: string, text: string) => {
-  const theme = getThemeColors();
+  const theme = getSwalThemeColors();
   Swal.fire({
     title,
     text,
@@ -53,7 +53,7 @@ export const showSuccess = (title: string, text: string) => {
 };
 
 export const showToast = (title: string) => {
-  const theme = getThemeColors();
+  const theme = getSwalThemeColors();
   const Toast = Swal.mixin({
     toast: true,
     position: 'top',

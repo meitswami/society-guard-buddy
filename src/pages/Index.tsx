@@ -15,6 +15,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import UnifiedLoginPage from '@/pages/UnifiedLoginPage';
 import SocietyLoginGate from '@/components/SocietyLoginGate';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useShowSuperadminLogin } from '@/hooks/use-show-superadmin-login';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
 import VehiclePage from '@/pages/VehiclePage';
@@ -37,6 +38,7 @@ const AppContent = () => {
   const { t } = useLanguage();
   useGuardGeofenceMonitor(currentGuard);
   const isMobile = useIsMobile();
+  const showSuperadminEntry = useShowSuperadminLogin();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loaded, setLoaded] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -234,7 +236,7 @@ const AppContent = () => {
       return (
         <SocietyLoginGate
           onContinue={(s) => setLoginSociety(s)}
-          onSuperadmin={() => setUserMode('superadmin')}
+          onSuperadmin={showSuperadminEntry ? () => setUserMode('superadmin') : undefined}
         />
       );
     }
@@ -268,10 +270,12 @@ const AppContent = () => {
               className="w-full py-3 text-sm rounded-xl border border-border text-muted-foreground font-medium hover:bg-muted transition-colors">
               ⚙️ {t('login.adminLogin')}
             </button>
+            {showSuperadminEntry && (
             <button onClick={() => setUserMode('superadmin')}
               className="w-full py-2 text-xs rounded-xl text-muted-foreground/60 font-medium hover:text-muted-foreground transition-colors">
               👑 {t('login.superadminLogin')}
             </button>
+            )}
           </div>
           <LoginFooter />
         </div>

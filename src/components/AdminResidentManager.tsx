@@ -36,7 +36,7 @@ type MemberFormState = {
 const initialMemberForm = (): MemberFormState => ({
   name: '',
   phone: '',
-  relation: '',
+  relation: 'family',
   age: '',
   gender: '',
   isPrimary: false,

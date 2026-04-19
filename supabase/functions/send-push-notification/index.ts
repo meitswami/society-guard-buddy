@@ -51,15 +51,23 @@ async function sendFcmToToken(
   title: string,
   body: string,
   imageUrl?: string,
+  dataPayload?: Record<string, string>,
 ): Promise<{ ok: boolean; status: number; body: string }> {
+  const data: Record<string, string> = {
+    ...(dataPayload ?? {}),
+  };
   const message: Record<string, unknown> = {
     token: deviceToken,
     notification: { title, body },
+    data,
   };
   if (imageUrl) {
     message.webpush = {
       notification: { title, body, image: imageUrl },
+      fcm_options: { link: "/" },
     };
+  } else {
+    message.webpush = { fcm_options: { link: "/" } };
   }
 
   const res = await fetch(
@@ -96,6 +104,8 @@ serve(async (req) => {
       target_tokens,
       media_items,
       society_id,
+      sound_key,
+      sound_custom_url,
     } = await req.json();
 
     if (!title || !message) {
@@ -149,6 +159,12 @@ serve(async (req) => {
       }
 
       const accessToken = await getFcmAccessToken(sa);
+      const sk = typeof sound_key === "string" && sound_key ? String(sound_key) : "digital";
+      const scu = typeof sound_custom_url === "string" ? String(sound_custom_url) : "";
+      const fcmData: Record<string, string> = {
+        sound_key: sk,
+        sound_custom_url: scu,
+      };
       const firstImage = Array.isArray(media_items)
         ? media_items.find((m: { kind?: string; url?: string }) => m?.kind === "image" && m?.url)
         : undefined;
@@ -160,7 +176,7 @@ serve(async (req) => {
       let sent = 0;
       const errors: string[] = [];
       for (const tok of tokens) {
-        const r = await sendFcmToToken(accessToken, sa.project_id, tok, title, message, imageUrl);
+        const r = await sendFcmToToken(accessToken, sa.project_id, tok, title, message, imageUrl, fcmData);
         if (r.ok) sent++;
         else if (r.status === 404 || r.body.includes("NOT_FOUND") || r.body.includes("registration-token")) {
           await supabase.from("fcm_web_tokens").delete().eq("token", tok);

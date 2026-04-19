@@ -41,10 +41,14 @@ messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || 'Kutumbika';
   const body = payload.notification?.body || '';
   const icon = payload.notification?.icon || '/favicon.ico';
+  const data = payload.data || {};
   const options = {
     body,
     icon,
-    data: payload.data || {},
+    data,
+    tag: 'kutumbika-alert',
+    renotify: true,
+    vibrate: [180, 80, 180],
   };
   return self.registration.showNotification(title, options);
 });

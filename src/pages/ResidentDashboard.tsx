@@ -14,6 +14,8 @@ import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
 import { isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
 import { useNotificationsRealtimeRevision } from '@/hooks/useNotificationsRealtimeRevision';
+import { useBiometric } from '@/hooks/useBiometric';
+import { playNotificationAlert } from '@/lib/notificationSounds';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
 
@@ -57,11 +59,48 @@ const notificationSound = () => {
 
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
+  const { isAvailable, register: registerBiometric } = useBiometric();
   const societyId = useStore((s) => s.societyId);
-  const notificationFeedRevision = useNotificationsRealtimeRevision(true, `resident-${resident.id}`);
+
+  const notificationRowForResident = (row: Record<string, unknown>) => {
+    if (societyId && row.society_id && String(row.society_id) !== societyId) return false;
+    const tt = String(row.target_type ?? '');
+    const tid = String(row.target_id ?? '');
+    if (tt === 'all') return true;
+    if (tt === 'flat') {
+      if (tid === resident.flatNumber) return true;
+      if (tid.includes(',')) return tid.split(',').map((s) => s.trim()).includes(resident.flatNumber);
+    }
+    return false;
+  };
+
+  const notificationFeedRevision = useNotificationsRealtimeRevision(true, `resident-${resident.id}`, {
+    onNotificationInsert: (row) => {
+      if (!notificationRowForResident(row)) return;
+      const title = String(row.title ?? 'Alert');
+      const message = String(row.message ?? '');
+      toast.info(title, { description: message.slice(0, 200) || undefined, duration: 8000 });
+      playNotificationAlert(
+        String(row.sound_key ?? 'digital'),
+        (row.sound_custom_url as string | null | undefined) ?? null,
+      );
+    },
+  });
   const [tab, setTab] = useState<
     'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'family' | 'vehicles' | 'directory' | 'profile' | 'tour'
   >('approvals');
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('sgb_open_family_tab') === '1') {
+        sessionStorage.removeItem('sgb_open_family_tab');
+        setTab('family');
+        setShowAddMember(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
@@ -201,15 +240,12 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
   useEffect(() => {
     if (mandatoryPasswordOpen) return;
-    if (flatmates.length === 0 || myMembers.length === 0) return;
+    if (flatmates.length === 0) return;
     const self = flatmates.find((u: any) => u.id === resident.id);
     const must = !!(self as { must_change_password?: boolean })?.must_change_password;
     if (!must) return;
-    const primaryMatch = myMembers.some(
-      (m: any) => m.is_primary && m.phone && normPhone(String(m.phone)) === normPhone(resident.phone),
-    );
-    if (primaryMatch) setMandatoryPasswordOpen(true);
-  }, [flatmates, myMembers, resident.id, resident.phone, mandatoryPasswordOpen]);
+    setMandatoryPasswordOpen(true);
+  }, [flatmates, resident.id, mandatoryPasswordOpen]);
 
   useEffect(() => {
     if (!residentSelfIdUploadEnabled || !myMemberRecord) {
@@ -556,7 +592,22 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     setMandatoryPasswordOpen(false);
     setMandatoryNew('');
     setMandatoryConfirm('');
-    loadFlatmates();
+    await loadFlatmates();
+
+    const bioOk = await isAvailable();
+    if (bioOk) {
+      const enroll = await confirmAction(
+        t('resident.mandatoryBioTitle'),
+        t('resident.mandatoryBioBody'),
+        t('swal.yes'),
+        t('swal.no'),
+      );
+      if (enroll) {
+        const regOk = await registerBiometric('resident', resident.id, resident.name);
+        if (regOk) toast.success(t('biometric.registered'));
+        else toast.error(t('biometric.registerFailed'));
+      }
+    }
   };
 
   const handleLogout = async () => {
@@ -604,6 +655,8 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             <div>
               <h2 className="text-lg font-semibold">{t('resident.mandatoryPasswordTitle')}</h2>
               <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{t('resident.mandatoryPasswordSubtitle')}</p>
+              <p className="text-[11px] text-muted-foreground/90 mt-2 leading-relaxed">{t('resident.mandatoryPasswordNoCurrent')}</p>
+              <p className="text-[11px] text-muted-foreground/90 mt-1 leading-relaxed">{t('resident.mandatoryPasswordBioHint')}</p>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">

@@ -1025,6 +1025,8 @@ export type Database = {
           message: string
           media_items: unknown
           society_id: string | null
+          sound_custom_url: string | null
+          sound_key: string
           target_id: string | null
           target_type: string
           title: string
@@ -1038,6 +1040,8 @@ export type Database = {
           message: string
           media_items?: unknown
           society_id?: string | null
+          sound_custom_url?: string | null
+          sound_key?: string
           target_id?: string | null
           target_type?: string
           title: string
@@ -1051,6 +1055,8 @@ export type Database = {
           message?: string
           media_items?: unknown
           society_id?: string | null
+          sound_custom_url?: string | null
+          sound_key?: string
           target_id?: string | null
           target_type?: string
           title?: string
@@ -1449,6 +1455,7 @@ export type Database = {
       societies: {
         Row: {
           address: string | null
+          admin_push_sound_url: string | null
           basement_usable_for_residents: boolean | null
           block_names: string[] | null
           city: string | null
@@ -1474,6 +1481,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          admin_push_sound_url?: string | null
           basement_usable_for_residents?: boolean | null
           block_names?: string[] | null
           city?: string | null
@@ -1499,6 +1507,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          admin_push_sound_url?: string | null
           basement_usable_for_residents?: boolean | null
           block_names?: string[] | null
           city?: string | null

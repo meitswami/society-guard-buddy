@@ -12,6 +12,7 @@ import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel } from '@/lib/flatMultiSelectOptions';
 import type { Tables } from '@/integrations/supabase/types';
 import { isFcmWebPushConfigured, registerFcmWebUser } from '@/lib/fcmWeb';
+import { NOTIFICATION_SOUND_PRESETS, type NotificationSoundPresetId } from '@/lib/notificationSounds';
 import { isSupported as isFcmSupported } from 'firebase/messaging';
 import {
   Dialog,
@@ -107,6 +108,9 @@ const NotificationCenter = ({
   const [healthOpen, setHealthOpen] = useState(false);
   const [healthSteps, setHealthSteps] = useState<HealthStep[]>([]);
   const [healthSummary, setHealthSummary] = useState('');
+  const [alertSoundKey, setAlertSoundKey] = useState<NotificationSoundPresetId>('digital');
+  const [societyCustomSoundUrl, setSocietyCustomSoundUrl] = useState<string | null>(null);
+  const [uploadingSound, setUploadingSound] = useState(false);
 
   const loadNotifications = useCallback(async () => {
     let query = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(100);
@@ -120,26 +124,82 @@ const NotificationCenter = ({
   useEffect(() => {
     loadNotifications();
     void (async () => {
-      const [fRes, rRes, mRes] = await Promise.all([
-        supabase.from('flats').select('id, flat_number, owner_name').order('flat_number'),
-        supabase.from('resident_users').select('id, name, flat_number, flat_id').order('name'),
-        supabase.from('members').select('flat_id, name').eq('is_primary', true),
-      ]);
+      const fRes = societyId
+        ? await supabase.from('flats').select('id, flat_number, owner_name').eq('society_id', societyId).order('flat_number')
+        : await supabase.from('flats').select('id, flat_number, owner_name').order('flat_number');
+      const flatIds = (fRes.data ?? []).map((f) => f.id);
+      const fullResidents = await supabase.from('resident_users').select('id, name, flat_number, flat_id').order('name');
+      const rData =
+        societyId && flatIds.length > 0
+          ? (fullResidents.data ?? []).filter((u) => flatIds.includes(u.flat_id))
+          : (fullResidents.data ?? []);
+      const mRes =
+        flatIds.length > 0
+          ? await supabase.from('members').select('flat_id, name').eq('is_primary', true).in('flat_id', flatIds)
+          : await supabase.from('members').select('flat_id, name').eq('is_primary', true);
       if (fRes.data) setFlats(fRes.data);
-      if (rRes.data) setResidents(rRes.data);
+      setResidents(rData);
       const map = new Map<string, string>();
       for (const row of mRes.data ?? []) {
         if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
       }
       setPrimaryByFlatId(map);
     })();
-  }, [loadNotifications]);
+  }, [loadNotifications, societyId]);
+
+  useEffect(() => {
+    if (isResident || !societyId) {
+      setSocietyCustomSoundUrl(null);
+      return;
+    }
+    void supabase
+      .from('societies')
+      .select('admin_push_sound_url')
+      .eq('id', societyId)
+      .maybeSingle()
+      .then(({ data }) => setSocietyCustomSoundUrl(data?.admin_push_sound_url ?? null));
+  }, [isResident, societyId]);
 
   useEffect(() => {
     if (feedRevision > 0) {
       void loadNotifications();
     }
   }, [feedRevision, loadNotifications]);
+
+  const onUploadSocietySound = async (file: File | null) => {
+    if (!file || !societyId || isResident) return;
+    if (!file.type.startsWith('audio/')) {
+      toast.error('Please choose an audio file (MP3, WAV, OGG, …)');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Sound file must be 2MB or smaller');
+      return;
+    }
+    setUploadingSound(true);
+    const safe = file.name.replace(/[^\w.-]/g, '_');
+    const path = `admin-sounds/${societyId}/${Date.now()}_${safe}`;
+    const { error: upErr } = await supabase.storage.from('notification-media').upload(path, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+    if (upErr) {
+      toast.error(upErr.message);
+      setUploadingSound(false);
+      return;
+    }
+    const { data: pub } = supabase.storage.from('notification-media').getPublicUrl(path);
+    const url = pub.publicUrl;
+    const { error: dbErr } = await supabase.from('societies').update({ admin_push_sound_url: url }).eq('id', societyId);
+    setUploadingSound(false);
+    if (dbErr) {
+      toast.error(dbErr.message);
+      return;
+    }
+    setSocietyCustomSoundUrl(url);
+    setAlertSoundKey('custom');
+    toast.success('Society alert sound updated');
+  };
 
   const markRead = async (id: string) => {
     await supabase.from('notifications').update({ is_read: true }).eq('id', id);
@@ -172,6 +232,10 @@ const NotificationCenter = ({
       toast.error('Select at least one resident');
       return;
     }
+    if (alertSoundKey === 'custom' && !societyCustomSoundUrl?.trim()) {
+      toast.error('Upload a society custom sound first, or pick a preset tone');
+      return;
+    }
     setSending(true);
 
     let mediaItems: NotificationMediaItem[] = [];
@@ -200,12 +264,16 @@ const NotificationCenter = ({
       targetId = selectedResidents.map(r => r.name).join(',');
     }
 
+    const soundCustomUrl = alertSoundKey === 'custom' ? societyCustomSoundUrl?.trim() ?? null : null;
     const rowBase = {
       title: nf.title,
       message: nf.message,
       type: nf.type,
       created_by: adminName,
       media_items: mediaItems,
+      society_id: societyId,
+      sound_key: alertSoundKey,
+      sound_custom_url: soundCustomUrl,
     };
 
     if (targetMode === 'flat') {
@@ -238,6 +306,8 @@ const NotificationCenter = ({
           target_ids: targetUserIds,
           media_items: mediaItems,
           society_id: societyId,
+          sound_key: alertSoundKey,
+          sound_custom_url: soundCustomUrl ?? '',
         },
       });
     } catch (e) {
@@ -245,6 +315,7 @@ const NotificationCenter = ({
     }
 
     setNf({ title: '', message: '', type: 'general' });
+    setAlertSoundKey('digital');
     setShowForm(false);
     setSelectedFlats([]);
     setSelectedResidents([]);
@@ -343,6 +414,8 @@ const NotificationCenter = ({
             target_tokens: [token],
             target_type: 'user',
             society_id: societyId,
+            sound_key: 'digital',
+            sound_custom_url: '',
           },
         });
         if (pushErr) {
@@ -492,6 +565,52 @@ const NotificationCenter = ({
                 <option value="event">🎉 Event</option>
                 <option value="payment_reminder">💰 Payment Reminder</option>
               </select>
+
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Alert sound (in-app + push data)</p>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Presets play instantly on residents’ phones when the app is open. Custom sound is uploaded here by
+                  admin only (not residents). Web push tray sound still follows the device/browser; custom audio plays
+                  best in-app.
+                </p>
+                <select
+                  className="input-field text-sm"
+                  value={alertSoundKey}
+                  onChange={(e) => setAlertSoundKey(e.target.value as NotificationSoundPresetId)}
+                >
+                  {NOTIFICATION_SOUND_PRESETS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+                {societyId && (
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border bg-background/80 px-3 py-2 text-[11px] font-medium hover:bg-muted/60 w-fit">
+                      {uploadingSound ? 'Uploading…' : 'Upload / replace society sound'}
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        className="hidden"
+                        disabled={uploadingSound}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          void onUploadSocietySound(f ?? null);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                    {societyCustomSoundUrl && (
+                      <p className="text-[10px] text-muted-foreground break-all">
+                        Current file: {societyCustomSoundUrl.slice(-48)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {!societyId && alertSoundKey === 'custom' && (
+                  <p className="text-[10px] text-amber-600">Select a society context to use a custom uploaded sound.</p>
+                )}
+              </div>
 
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">Attachments (optional)</p>

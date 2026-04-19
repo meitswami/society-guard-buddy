@@ -8,7 +8,8 @@ import { fetchActiveSocietiesByName, type LoginSocietyRow } from '@/lib/societie
 
 interface Props {
   onContinue: (society: LoginSocietyRow) => void;
-  onSuperadmin: () => void;
+  /** Omitted on phones/tablets so superadmin entry is desktop-only. */
+  onSuperadmin?: () => void;
 }
 
 const SocietyLoginGate = ({ onContinue, onSuperadmin }: Props) => {
@@ -78,6 +79,7 @@ const SocietyLoginGate = ({ onContinue, onSuperadmin }: Props) => {
           >
             {t('login.continueToLogin')}
           </button>
+          {onSuperadmin && (
           <button
             type="button"
             className="text-xs text-muted-foreground text-center mt-2 underline"
@@ -85,6 +87,7 @@ const SocietyLoginGate = ({ onContinue, onSuperadmin }: Props) => {
           >
             {t('login.superadminPlatform')}
           </button>
+          )}
         </div>
       </div>
       <LoginFooter />
