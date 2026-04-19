@@ -1,1 +1,5 @@
 project_id = "izjfeqokkakkqrztcbfn"
+
+# Admins/residents use app-level login, not Supabase Auth JWT. Without this, invoke() gets 401.
+[functions.send-push-notification]
+verify_jwt = false
