@@ -13,6 +13,7 @@ import PollManager from '@/components/PollManager';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
 import { isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
+import { useNotificationsRealtimeRevision } from '@/hooks/useNotificationsRealtimeRevision';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
 
@@ -57,6 +58,7 @@ const notificationSound = () => {
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
+  const notificationFeedRevision = useNotificationsRealtimeRevision(true, `resident-${resident.id}`);
   const [tab, setTab] = useState<
     'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'family' | 'vehicles' | 'directory' | 'profile' | 'tour'
   >('approvals');
@@ -1149,6 +1151,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             flatNumber={resident.flatNumber}
             resident={{ id: resident.id, name: resident.name, flatNumber: resident.flatNumber }}
             societyId={societyId}
+            feedRevision={notificationFeedRevision}
           />
         )}
 

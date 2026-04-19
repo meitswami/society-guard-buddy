@@ -27,6 +27,7 @@ import PollManager from '@/components/PollManager';
 import ParkingManager from '@/components/ParkingManager';
 import ExpenseSplitter from '@/components/ExpenseSplitter';
 import NotificationCenter from '@/components/NotificationCenter';
+import { useNotificationsRealtimeRevision } from '@/hooks/useNotificationsRealtimeRevision';
 import { auditLogout } from '@/lib/auditLogger';
 import { isAdminTabAllowed, type AdminPanelPermissions, type AdminTab } from '@/lib/adminPermissions';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
@@ -46,6 +47,7 @@ interface Props {
 const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { t } = useLanguage();
   const { loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, loadGuards } = useStore();
+  const notificationFeedRevision = useNotificationsRealtimeRevision(true, `admin-${admin.id}`);
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [stats, setStats] = useState({ visitors: 0, guards: 0, flats: 0, vehicles: 0, blacklist: 0 });
   const [kycPending, setKycPending] = useState<{ id: string; name: string; guard_id: string; kyc_alert_days: number; created_at: string }[]>([]);
@@ -158,7 +160,14 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'polls': return <PollManager adminName={admin.name} />;
       case 'parking': return <ParkingManager />;
       case 'splits': return <ExpenseSplitter adminName={admin.name} />;
-      case 'notifications': return <NotificationCenter adminName={admin.name} adminId={admin.id} societyId={admin.societyId} />;
+      case 'notifications': return (
+        <NotificationCenter
+          adminName={admin.name}
+          adminId={admin.id}
+          societyId={admin.societyId}
+          feedRevision={notificationFeedRevision}
+        />
+      );
       case 'report': return <ReportPage />;
       case 'logs': return <LogsPage />;
       case 'visitor': return <VisitorEntryPage onDone={() => setActiveTab('overview')} />;

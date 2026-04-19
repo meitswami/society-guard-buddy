@@ -24,10 +24,36 @@ export function useBiometric() {
   const [loading, setLoading] = useState(false);
 
   const isAvailable = useCallback(async (): Promise<boolean> => {
+    if (!window.isSecureContext) return false;
     if (!window.PublicKeyCredential) return false;
+    if (typeof navigator.credentials?.create !== 'function') return false;
+
+    let uvpaa = false;
     try {
-      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    } catch { return false; }
+      uvpaa = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    } catch {
+      return false;
+    }
+    if (uvpaa) return true;
+
+    // Android WebView (Capacitor, many Play Store PWAs) and some TWAs often report
+    // UVPAA as false even though navigator.credentials.create({ publicKey }) still
+    // reaches the system biometric / passkey UI. Offer setup and let register() fail
+    // with a toast if the runtime truly cannot do WebAuthn.
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const android = /Android/i.test(ua);
+    const webViewHint = /\bwv\b/i.test(ua);
+    const capacitor = typeof (window as unknown as { Capacitor?: unknown }).Capacitor !== 'undefined';
+
+    if (capacitor || (android && webViewHint)) return true;
+
+    if (android) {
+      const m = ua.match(/Android\s+([\d.]+)/i);
+      const major = m ? parseInt(m[1].split('.')[0] ?? '0', 10) : 0;
+      if (major >= 10) return true;
+    }
+
+    return false;
   }, []);
 
   const register = useCallback(async (userType: string, userId: string, userName: string): Promise<boolean> => {

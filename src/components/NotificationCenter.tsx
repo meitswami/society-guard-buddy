@@ -35,6 +35,8 @@ interface Props {
   resident?: ResidentRef;
   /** When set, FCM sends only to tokens registered for this society */
   societyId?: string | null;
+  /** Bumps when a new notification row is inserted (dashboard-level Realtime). Refreshes list even when this tab is closed. */
+  feedRevision?: number;
 }
 
 type TargetMode = 'all' | 'flat' | 'user';
@@ -86,6 +88,7 @@ const NotificationCenter = ({
   flatNumber = '',
   resident,
   societyId = null,
+  feedRevision = 0,
 }: Props) => {
   const [notifications, setNotifications] = useState<Tables<'notifications'>[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -133,14 +136,10 @@ const NotificationCenter = ({
   }, [loadNotifications]);
 
   useEffect(() => {
-    const channel = supabase
-      .channel('notifications-rt')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => loadNotifications())
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadNotifications]);
+    if (feedRevision > 0) {
+      void loadNotifications();
+    }
+  }, [feedRevision, loadNotifications]);
 
   const markRead = async (id: string) => {
     await supabase.from('notifications').update({ is_read: true }).eq('id', id);

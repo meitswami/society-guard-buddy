@@ -9,8 +9,17 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+// Do not intercept cross-origin fetches (e.g. Supabase Edge Functions). Handling all URLs
+// with respondWith(fetch) can break CORS preflight from the controlled page to *.supabase.co.
 self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request));
+  try {
+    const url = new URL(event.request.url);
+    if (url.origin === self.location.origin) {
+      event.respondWith(fetch(event.request));
+    }
+  } catch {
+    /* ignore invalid URL */
+  }
 });
 
 importScripts('https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js');
