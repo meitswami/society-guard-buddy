@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield, Pencil, X, Sparkles } from 'lucide-react';
+import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield, Pencil, X, Sparkles, Headphones } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import BiometricSetup from '@/components/BiometricSetup';
@@ -11,6 +11,7 @@ import { NEW_CUSTOM_ROLE_PERMISSIONS } from '@/lib/adminPermissions';
 import { Switch } from '@/components/ui/switch';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
+import SuperadminSupportTickets from '@/components/SuperadminSupportTickets';
 
 interface Props {
   superadmin: { id: string; name: string; username: string };
@@ -152,7 +153,7 @@ interface Admin {
   society_id: string | null; role_id: string | null; email: string | null;
 }
 
-type Tab = 'societies' | 'admins' | 'roles' | 'maintenance' | 'settings' | 'tour';
+type Tab = 'societies' | 'admins' | 'roles' | 'maintenance' | 'settings' | 'support' | 'tour';
 
 const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const { t } = useLanguage();
@@ -459,6 +460,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     { id: 'admins', label: t('superadmin.admins'), icon: Users },
     { id: 'maintenance', label: 'Maintenance', icon: Database },
     { id: 'settings', label: t('nav.settings'), icon: Crown },
+    { id: 'support', label: 'Support', icon: Headphones },
     { id: 'tour', label: t('nav.tour'), icon: Sparkles },
   ];
 
@@ -958,6 +960,8 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
             <BiometricSetup userType="superadmin" userId={superadmin.id} userName={superadmin.name} />
           </div>
         )}
+
+        {tab === 'support' && <SuperadminSupportTickets superadmin={{ id: superadmin.id, name: superadmin.name }} />}
 
         {tab === 'tour' && <TourGuideHub role="superadmin" t={t} />}
       </div>

@@ -1568,6 +1568,76 @@ export type Database = {
           },
         ]
       }
+      support_tickets: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          flat_number: string
+          id: string
+          media_items: unknown
+          message: string
+          replied_at: string | null
+          replied_by_superadmin_id: string | null
+          society_id: string | null
+          society_name: string | null
+          status: string
+          submitter_kind: string
+          submitter_name: string
+          submitter_resident_id: string
+          superadmin_reply: string | null
+          ticket_number: number
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          flat_number: string
+          id?: string
+          media_items?: unknown
+          message?: string
+          replied_at?: string | null
+          replied_by_superadmin_id?: string | null
+          society_id?: string | null
+          society_name?: string | null
+          status?: string
+          submitter_kind?: string
+          submitter_name: string
+          submitter_resident_id: string
+          superadmin_reply?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          flat_number?: string
+          id?: string
+          media_items?: unknown
+          message?: string
+          replied_at?: string | null
+          replied_by_superadmin_id?: string | null
+          society_id?: string | null
+          society_name?: string | null
+          status?: string
+          submitter_kind?: string
+          submitter_name?: string
+          submitter_resident_id?: string
+          superadmin_reply?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_replied_by_superadmin_id_fkey"
+            columns: ["replied_by_superadmin_id"]
+            isOneToOne: false
+            referencedRelation: "super_admins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       superadmin_recovery_challenges: {
         Row: {
           code: string

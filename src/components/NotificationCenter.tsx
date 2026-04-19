@@ -12,7 +12,11 @@ import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel } from '@/lib/flatMultiSelectOptions';
 import type { Tables } from '@/integrations/supabase/types';
 import { isFcmWebPushConfigured, registerFcmWebUser } from '@/lib/fcmWeb';
-import { NOTIFICATION_SOUND_PRESETS, type NotificationSoundPresetId } from '@/lib/notificationSounds';
+import {
+  NOTIFICATION_SOUND_PRESETS,
+  type NotificationSoundPresetId,
+  playNotificationAlert,
+} from '@/lib/notificationSounds';
 import { isSupported as isFcmSupported } from 'firebase/messaging';
 import {
   Dialog,
@@ -113,13 +117,27 @@ const NotificationCenter = ({
   const [uploadingSound, setUploadingSound] = useState(false);
 
   const loadNotifications = useCallback(async () => {
-    let query = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(100);
-    if (isResident) {
-      query = query.or(`target_type.eq.all,target_id.eq.${flatNumber}`);
+    let query = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(150);
+    if (!isResident && societyId) {
+      query = query.eq('society_id', societyId);
     }
-    const { data } = await query;
+    if (isResident) {
+      if (societyId) query = query.eq('society_id', societyId);
+      if (resident?.id) {
+        query = query.or(
+          `target_type.eq.all,and(target_type.eq.flat,target_id.eq.${flatNumber}),and(target_type.eq.user,target_id.eq.${resident.id})`,
+        );
+      } else {
+        query = query.or(`target_type.eq.all,target_id.eq.${flatNumber}`);
+      }
+    }
+    const { data, error } = await query;
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     if (data) setNotifications(data as Tables<'notifications'>[]);
-  }, [isResident, flatNumber]);
+  }, [isResident, flatNumber, societyId, resident?.id]);
 
   useEffect(() => {
     loadNotifications();
@@ -198,6 +216,7 @@ const NotificationCenter = ({
     }
     setSocietyCustomSoundUrl(url);
     setAlertSoundKey('custom');
+    playNotificationAlert('custom', url);
     toast.success('Society alert sound updated');
   };
 
@@ -213,13 +232,35 @@ const NotificationCenter = ({
   };
 
   const markAllRead = async () => {
-    const ids = notifications.filter(n => !n.is_read).map(n => n.id);
-    if (ids.length === 0) return;
-    for (const id of ids) {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    if (isResident) {
+      const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
+      if (ids.length === 0) return;
+      const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', ids);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+    } else if (societyId) {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('society_id', societyId)
+        .eq('is_read', false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+    } else {
+      const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
+      if (ids.length === 0) return;
+      const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', ids);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
     }
     toast.success('All marked as read');
-    loadNotifications();
+    await loadNotifications();
   };
 
   const sendNotification = async () => {
@@ -569,14 +610,18 @@ const NotificationCenter = ({
               <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">Alert sound (in-app + push data)</p>
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  Presets play instantly on residents’ phones when the app is open. Custom sound is uploaded here by
-                  admin only (not residents). Web push tray sound still follows the device/browser; custom audio plays
-                  best in-app.
+                  Changing the preset plays a short preview here. Presets play instantly on residents’ phones when the
+                  app is open. Custom sound is uploaded here by admin only (not residents). Web push tray sound still
+                  follows the device/browser; custom audio plays best in-app.
                 </p>
                 <select
                   className="input-field text-sm"
                   value={alertSoundKey}
-                  onChange={(e) => setAlertSoundKey(e.target.value as NotificationSoundPresetId)}
+                  onChange={(e) => {
+                    const next = e.target.value as NotificationSoundPresetId;
+                    setAlertSoundKey(next);
+                    playNotificationAlert(next, societyCustomSoundUrl);
+                  }}
                 >
                   {NOTIFICATION_SOUND_PRESETS.map((p) => (
                     <option key={p.id} value={p.id}>

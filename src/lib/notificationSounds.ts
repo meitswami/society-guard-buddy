@@ -25,6 +25,7 @@ function getAudioContext(): AudioContext | null {
 function playTone(freq: number, durationMs: number, type: OscillatorType = 'sine', gain = 0.12) {
   const ctx = getAudioContext();
   if (!ctx) return;
+  if (ctx.state === 'suspended') void ctx.resume();
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = type;
@@ -68,6 +69,10 @@ export function playNotificationAlert(soundKey: string | null | undefined, sound
     void audio.play().catch(() => {
       playPresetNotificationSound('digital');
     });
+    return;
+  }
+  if (key === 'custom') {
+    playPresetNotificationSound('digital');
     return;
   }
   playPresetNotificationSound(key);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles } from 'lucide-react';
+import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { showSuccess, confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import { useBiometric } from '@/hooks/useBiometric';
 import { playNotificationAlert } from '@/lib/notificationSounds';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
+import ResidentFeedbackForm from '@/components/ResidentFeedbackForm';
 
 interface Resident {
   id: string; name: string; phone: string; flatId: string; flatNumber: string;
@@ -71,6 +72,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       if (tid === resident.flatNumber) return true;
       if (tid.includes(',')) return tid.split(',').map((s) => s.trim()).includes(resident.flatNumber);
     }
+    if (tt === 'user' && tid === resident.id) return true;
     return false;
   };
 
@@ -87,7 +89,17 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     },
   });
   const [tab, setTab] = useState<
-    'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'family' | 'vehicles' | 'directory' | 'profile' | 'tour'
+    | 'approvals'
+    | 'passes'
+    | 'notifications'
+    | 'polls'
+    | 'payments'
+    | 'family'
+    | 'vehicles'
+    | 'directory'
+    | 'profile'
+    | 'tour'
+    | 'feedback'
   >('approvals');
 
   useEffect(() => {
@@ -641,6 +653,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     { id: 'payments' as const, label: 'Payments', icon: DollarSign },
     { id: 'profile' as const, label: 'Profile', icon: User },
     { id: 'tour' as const, label: t('nav.tour'), icon: Sparkles },
+    { id: 'feedback' as const, label: 'Feedback', icon: MessageSquare },
   ];
 
   return (
@@ -1340,6 +1353,8 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         )}
 
         {tab === 'tour' && <TourGuideHub role="resident" t={t} />}
+
+        {tab === 'feedback' && <ResidentFeedbackForm resident={resident} societyId={societyId} />}
       </div>
     </div>
   );
