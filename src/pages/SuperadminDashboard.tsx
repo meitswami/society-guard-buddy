@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
@@ -413,6 +414,27 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     if (ok) onLogout();
   };
 
+  function describeBackupExportInvokeError(err: unknown): string {
+    if (err instanceof FunctionsHttpError) {
+      const status = err.context?.status;
+      if (status === 404) {
+        return 'Edge Function backup-export was not found (404). Deploy it to this Supabase project: run `supabase functions deploy backup-export` from the repo, or use Dashboard → Edge Functions → Deploy.';
+      }
+      if (status === 401 || status === 403) {
+        return 'Calling backup-export was rejected (401/403). Ensure supabase/config.toml has [functions.backup-export] verify_jwt = false, then run `supabase link` and `supabase functions deploy backup-export`.';
+      }
+      return err.message || `Edge function error (${status ?? 'unknown'})`;
+    }
+    if (err instanceof Error) {
+      const m = err.message || '';
+      if (/Failed to send a request to the Edge Function/i.test(m) || /fetch/i.test(m)) {
+        return `${m} If the Network tab shows 404 on backup-export, the function is not deployed to this project.`;
+      }
+      return m;
+    }
+    return 'Backup export failed';
+  }
+
   const handleClearAll = async () => {
     const confirmed = await confirmAction(
       '⚠️ Clear All Data?',
@@ -478,8 +500,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
       URL.revokeObjectURL(url);
       toast.success('Backup downloaded successfully.');
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Backup export failed';
-      toast.error(msg);
+      toast.error(describeBackupExportInvokeError(e));
       console.error(e);
     } finally {
       setExporting(false);
@@ -904,6 +925,12 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                   <Mail className="w-3.5 h-3.5" />
                   Email full backup now (test / manual)
                 </button>
+                <p className="text-[10px] text-amber-700 dark:text-amber-500/90 leading-snug rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5">
+                  If the browser shows <span className="font-mono">404</span> or <span className="font-mono">CORS</span>{' '}
+                  on <span className="font-mono">backup-export</span>, the function is not deployed to the Supabase
+                  project behind this app. From the repo:{' '}
+                  <span className="font-mono whitespace-pre-wrap">supabase functions deploy backup-export</span>
+                </p>
               </div>
               <div className="mt-3 p-2 bg-muted/50 rounded-lg space-y-1">
                 <p className="text-[10px] text-muted-foreground flex items-center gap-1">
