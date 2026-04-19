@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield, Pencil, X } from 'lucide-react';
+import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield, Pencil, X, Sparkles } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import BiometricSetup from '@/components/BiometricSetup';
 import { trimSocietyFlatsToConfiguredRange } from '@/lib/societyFlatRangeTrim';
 import { NEW_CUSTOM_ROLE_PERMISSIONS } from '@/lib/adminPermissions';
 import { Switch } from '@/components/ui/switch';
+import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
+import TourGuideHub from '@/components/TourGuideHub';
 
 interface Props {
   superadmin: { id: string; name: string; username: string };
@@ -150,7 +152,7 @@ interface Admin {
   society_id: string | null; role_id: string | null; email: string | null;
 }
 
-type Tab = 'societies' | 'admins' | 'roles' | 'maintenance' | 'settings';
+type Tab = 'societies' | 'admins' | 'roles' | 'maintenance' | 'settings' | 'tour';
 
 const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const { t } = useLanguage();
@@ -401,7 +403,12 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   };
 
   const handleLogout = async () => {
-    const ok = await confirmAction(t('swal.confirmLogout'), t('swal.confirmLogoutText'), t('swal.yes'), t('swal.no'));
+    const ok = await confirmAction(
+      t('swal.confirmLogoutUser'),
+      t('swal.confirmLogoutUserText'),
+      t('swal.yes'),
+      t('swal.no'),
+    );
     if (ok) onLogout();
   };
 
@@ -452,10 +459,12 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     { id: 'admins', label: t('superadmin.admins'), icon: Users },
     { id: 'maintenance', label: 'Maintenance', icon: Database },
     { id: 'settings', label: t('nav.settings'), icon: Crown },
+    { id: 'tour', label: t('nav.tour'), icon: Sparkles },
   ];
 
   return (
     <div className="min-h-screen bg-background pb-24">
+      <TourGuideFirstLogin role="superadmin" userId={superadmin.id} t={t} />
       <div className="page-container">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -949,6 +958,8 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
             <BiometricSetup userType="superadmin" userId={superadmin.id} userName={superadmin.name} />
           </div>
         )}
+
+        {tab === 'tour' && <TourGuideHub role="superadmin" t={t} />}
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">

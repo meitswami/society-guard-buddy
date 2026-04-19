@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser } from 'lucide-react';
+import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { showSuccess, confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
@@ -13,6 +13,8 @@ import PollManager from '@/components/PollManager';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
 import { isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
+import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
+import TourGuideHub from '@/components/TourGuideHub';
 
 interface Resident {
   id: string; name: string; phone: string; flatId: string; flatNumber: string;
@@ -55,7 +57,9 @@ const notificationSound = () => {
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
-  const [tab, setTab] = useState<'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'family' | 'vehicles' | 'directory' | 'profile'>('approvals');
+  const [tab, setTab] = useState<
+    'approvals' | 'passes' | 'notifications' | 'polls' | 'payments' | 'family' | 'vehicles' | 'directory' | 'profile' | 'tour'
+  >('approvals');
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
@@ -113,6 +117,10 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [selfIdFront, setSelfIdFront] = useState('');
   const [selfIdBack, setSelfIdBack] = useState('');
   const [savingSelfId, setSavingSelfId] = useState(false);
+  const [mandatoryPasswordOpen, setMandatoryPasswordOpen] = useState(false);
+  const [mandatoryNew, setMandatoryNew] = useState('');
+  const [mandatoryConfirm, setMandatoryConfirm] = useState('');
+  const [mandatorySaving, setMandatorySaving] = useState(false);
 
   const loadRequests = useCallback(async () => {
     const { data } = await supabase.from('approval_requests').select('*')
@@ -190,6 +198,18 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   }, [myMembers, resident.phone]);
 
   useEffect(() => {
+    if (mandatoryPasswordOpen) return;
+    if (flatmates.length === 0 || myMembers.length === 0) return;
+    const self = flatmates.find((u: any) => u.id === resident.id);
+    const must = !!(self as { must_change_password?: boolean })?.must_change_password;
+    if (!must) return;
+    const primaryMatch = myMembers.some(
+      (m: any) => m.is_primary && m.phone && normPhone(String(m.phone)) === normPhone(resident.phone),
+    );
+    if (primaryMatch) setMandatoryPasswordOpen(true);
+  }, [flatmates, myMembers, resident.id, resident.phone, mandatoryPasswordOpen]);
+
+  useEffect(() => {
     if (!residentSelfIdUploadEnabled || !myMemberRecord) {
       setSelfIdFront('');
       setSelfIdBack('');
@@ -228,7 +248,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     setPassLoading(true);
     const { data: user } = await supabase.from('resident_users').select('id').eq('id', resident.id).eq('password', currentPass).single();
     if (!user) { toast.error('Current password is wrong'); setPassLoading(false); return; }
-    await supabase.from('resident_users').update({ password: newPass }).eq('flat_id', resident.flatId);
+    await supabase.from('resident_users').update({ password: newPass, must_change_password: false }).eq('flat_id', resident.flatId);
     toast.success('Password changed for all flatmates');
     setCurrentPass(''); setNewPass(''); setConfirmPass('');
     setPassLoading(false);
@@ -506,8 +526,44 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const copyOTP = (code: string) => { navigator.clipboard.writeText(code); showSuccess('Copied!', code); };
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
+  const handleMandatoryPasswordSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mandatoryNew || !mandatoryConfirm) {
+      toast.error('Enter new password and confirmation');
+      return;
+    }
+    if (mandatoryNew !== mandatoryConfirm) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (mandatoryNew.length < 4) {
+      toast.error('Password must be at least 4 characters');
+      return;
+    }
+    setMandatorySaving(true);
+    const { error } = await supabase
+      .from('resident_users')
+      .update({ password: mandatoryNew, must_change_password: false })
+      .eq('flat_id', resident.flatId);
+    setMandatorySaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Password set for all flatmates');
+    setMandatoryPasswordOpen(false);
+    setMandatoryNew('');
+    setMandatoryConfirm('');
+    loadFlatmates();
+  };
+
   const handleLogout = async () => {
-    const confirmed = await confirmAction(t('swal.confirmLogout'), t('swal.confirmLogoutText'), t('swal.yes'), t('swal.no'));
+    const confirmed = await confirmAction(
+      t('swal.confirmLogoutUser'),
+      t('swal.confirmLogoutUserText'),
+      t('swal.yes'),
+      t('swal.no'),
+    );
     if (confirmed) {
       auditLogout('resident', resident.id, resident.name);
       onLogout();
@@ -531,10 +587,54 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     { id: 'polls' as const, label: 'Polls', icon: Vote },
     { id: 'payments' as const, label: 'Payments', icon: DollarSign },
     { id: 'profile' as const, label: 'Profile', icon: User },
+    { id: 'tour' as const, label: t('nav.tour'), icon: Sparkles },
   ];
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      {!mandatoryPasswordOpen && <TourGuideFirstLogin role="resident" userId={resident.id} t={t} />}
+      {mandatoryPasswordOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 p-4">
+          <form
+            onSubmit={handleMandatoryPasswordSave}
+            className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-lg space-y-4"
+          >
+            <div>
+              <h2 className="text-lg font-semibold">{t('resident.mandatoryPasswordTitle')}</h2>
+              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{t('resident.mandatoryPasswordSubtitle')}</p>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                {t('resident.mandatoryPasswordNew')}
+              </label>
+              <input
+                type="password"
+                className="input-field w-full"
+                value={mandatoryNew}
+                onChange={(e) => setMandatoryNew(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                {t('resident.mandatoryPasswordConfirm')}
+              </label>
+              <input
+                type="password"
+                className="input-field w-full"
+                value={mandatoryConfirm}
+                onChange={(e) => setMandatoryConfirm(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
+            </div>
+            <button type="submit" className="btn-primary w-full" disabled={mandatorySaving}>
+              {mandatorySaving ? 'Saving…' : t('resident.mandatoryPasswordSave')}
+            </button>
+          </form>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-card border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
@@ -1182,6 +1282,8 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             <BiometricSetup userId={resident.id} userType="resident" userName={resident.name} />
           </div>
         )}
+
+        {tab === 'tour' && <TourGuideHub role="resident" t={t} />}
       </div>
     </div>
   );

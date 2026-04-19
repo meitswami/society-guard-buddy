@@ -126,10 +126,12 @@ export type AdminTab =
   | 'quick'
   | 'report'
   | 'logs'
-  | 'settings';
+  | 'settings'
+  | 'tour';
 
 const TAB_PERM: Record<AdminTab, keyof AdminPanelPermissions | null> = {
   overview: null,
+  tour: null,
   guards: 'guards_rw',
   residents: 'residents_rw',
   geofence: 'geofence_rw',

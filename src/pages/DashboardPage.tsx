@@ -75,7 +75,10 @@ const DashboardPage = () => {
 
   const handleLogout = async () => {
     const confirmed = await confirmAction(
-      t('swal.confirmLogout'), t('swal.confirmLogoutText'), t('swal.yes'), t('swal.no')
+      t('swal.confirmLogoutGuard'),
+      t('swal.confirmLogoutGuardText'),
+      t('swal.yes'),
+      t('swal.no'),
     );
     if (confirmed) logout();
   };

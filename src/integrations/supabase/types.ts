@@ -1352,6 +1352,7 @@ export type Database = {
           flat_id: string
           flat_number: string
           id: string
+          must_change_password: boolean
           name: string
           password: string
           phone: string
@@ -1362,6 +1363,7 @@ export type Database = {
           flat_id: string
           flat_number: string
           id?: string
+          must_change_password?: boolean
           name: string
           password: string
           phone: string
@@ -1372,6 +1374,7 @@ export type Database = {
           flat_id?: string
           flat_number?: string
           id?: string
+          must_change_password?: boolean
           name?: string
           password?: string
           phone?: string

@@ -64,6 +64,14 @@ const translations: Record<string, Record<Lang, string>> = {
   'resident.login': { en: 'Login', hi: 'लॉगिन' },
   'resident.enterBoth': { en: 'Enter phone and password', hi: 'फोन और पासवर्ड दर्ज करें' },
   'resident.switchToGuard': { en: '← Guard Login', hi: '← गार्ड लॉगिन' },
+  'resident.mandatoryPasswordTitle': { en: 'Set your flat password', hi: 'अपना फ्लैट पासवर्ड सेट करें' },
+  'resident.mandatoryPasswordSubtitle': {
+    en: 'As the primary member, choose a new password for your flat. It will apply to all family logins for this flat.',
+    hi: 'प्राथमिक सदस्य के रूप में, अपने फ्लैट के लिए नया पासवर्ड चुनें। यह इस फ्लैट के सभी परिवार लॉगिन पर लागू होगा।',
+  },
+  'resident.mandatoryPasswordNew': { en: 'New password', hi: 'नया पासवर्ड' },
+  'resident.mandatoryPasswordConfirm': { en: 'Confirm password', hi: 'पासवर्ड की पुष्टि करें' },
+  'resident.mandatoryPasswordSave': { en: 'Save and continue', hi: 'सहेजें और जारी रखें' },
   'resident.demo': { en: 'Demo: 9876543210 / resident123', hi: 'डेमो: 9876543210 / resident123' },
   'resident.approvals': { en: 'Approvals', hi: 'अनुमोदन' },
   'resident.passes': { en: 'Visitor Passes', hi: 'विज़िटर पास' },
@@ -115,6 +123,310 @@ const translations: Record<string, Record<Lang, string>> = {
   'nav.report': { en: 'Report', hi: 'रिपोर्ट' },
   'nav.logs': { en: 'Logs', hi: 'लॉग्स' },
   'nav.settings': { en: 'Settings', hi: 'सेटिंग्स' },
+  'nav.tour': { en: 'Tour', hi: 'टूर' },
+
+  // App tour (role-based)
+  'tour.badge': { en: 'Guide', hi: 'गाइड' },
+  'tour.skip': { en: 'Skip', hi: 'छोड़ें' },
+  'tour.next': { en: 'Next', hi: 'आगे' },
+  'tour.done': { en: 'Got it', hi: 'समझ गया' },
+  'tour.step': { en: 'step', hi: 'चरण' },
+  'tour.steps': { en: 'steps', hi: 'चरण' },
+  'tour.hubTitle': { en: 'Tour guide', hi: 'ऐप टूर गाइड' },
+  'tour.hubSubtitle': {
+    en: 'Pick any topic to replay focused tips. Your role decides which areas appear here.',
+    hi: 'किसी भी विषय पर टैप करके टिप्स दोबारा देखें। आपकी भूमिका के अनुसार यहाँ विकल्प दिखते हैं।',
+  },
+  'tour.pickTopic': { en: 'Features', hi: 'फ़ीचर' },
+  'tour.tapToView': { en: 'Tap for steps →', hi: 'चरणों के लिए टैप करें →' },
+
+  'tour.ch.guard.welcome': { en: 'Gate desk', hi: 'गेट डेस्क' },
+  'tour.ch.guard.entries': { en: 'Entries', hi: 'प्रवेश' },
+  'tour.ch.guard.safety': { en: 'Safety & info', hi: 'सुरक्षा और जानकारी' },
+  'tour.guard.w1.title': { en: 'Welcome, guard', hi: 'स्वागत है, गार्ड' },
+  'tour.guard.w1.body': {
+    en: 'You run the society gate from this phone. Everything is organized in bottom tabs — start with Home, then use the tools your society needs most.',
+    hi: 'आप इस फ़ोन से सोसाइटी गेट चलाते हैं। सब कुछ नीचे टैब में है — पहले होम, फिर ज़रूरी टूल।',
+  },
+  'tour.guard.w2.title': { en: 'Home dashboard', hi: 'होम डैशबोर्ड' },
+  'tour.guard.w2.body': {
+    en: 'See who is still inside, mark exits, and review today’s flow at a glance. Use the arrows to switch the day if you need yesterday’s list.',
+    hi: 'कौन अंदर है, बाहर निकलना दर्ज करें, आज की गतिविधि देखें। कल की सूची के लिए तीर से दिन बदलें।',
+  },
+  'tour.guard.e1.title': { en: 'Quick entry', hi: 'क्विक एंट्री' },
+  'tour.guard.e1.body': {
+    en: 'Fast path for staff, frequent visitors, and anyone already on file. Search by flat, phone, or name to log in or out in seconds.',
+    hi: 'स्टाफ और बार-बार आने वालों के लिए तेज़ रास्ता। फ्लैट, फोन या नाम से खोजकर जल्दी एंट्री/एग्ज़िट।',
+  },
+  'tour.guard.e2.title': { en: 'Visitor entry', hi: 'विज़िटर एंट्री' },
+  'tour.guard.e2.body': {
+    en: 'Full visitor capture: ID, photos, flat, purpose. Use when someone is new or needs a complete record.',
+    hi: 'पूरा विज़िटर रिकॉर्ड: ID, फोटो, फ्लैट, उद्देश्य। नए या पूरे रिकॉर्ड के लिए।',
+  },
+  'tour.guard.e3.title': { en: 'Delivery & service', hi: 'डिलीवरी और सेवा' },
+  'tour.guard.e3.body': {
+    en: 'Separate flow for couriers and on-site staff. Pick delivery vs service, capture company, and log the visit.',
+    hi: 'कूरियर और ऑन-साइट स्टाफ के लिए अलग फ्लो। डिलीवरी/सेवा चुनें, कंपनी दर्ज करें।',
+  },
+  'tour.guard.s1.title': { en: 'Vehicles', hi: 'वाहन' },
+  'tour.guard.s1.body': {
+    en: 'Look up registered resident vehicles by number or flat before allowing vehicle entry.',
+    hi: 'वाहन प्रवेश से पहले नंबर या फ्लैट से पंजीकृत वाहन देखें।',
+  },
+  'tour.guard.s2.title': { en: 'Blacklist', hi: 'ब्लैकलिस्ट' },
+  'tour.guard.s2.body': {
+    en: 'Instant warning if a phone or vehicle is flagged. Add new flags with a clear reason when management asks.',
+    hi: 'फ्लैग किए फोन/वाहन पर तुरंत चेतावनी। प्रबंधन कहे तो कारण के साथ नया जोड़ें।',
+  },
+  'tour.guard.s3.title': { en: 'Directory', hi: 'डायरेक्टरी' },
+  'tour.guard.s3.body': {
+    en: 'Browse flats and members for intercom numbers and context — helpful when residents call the gate.',
+    hi: 'इंटरकॉम और जानकारी के लिए फ्लैट/सदस्य देखें — निवासी कॉल पर उपयोगी।',
+  },
+  'tour.guard.s4.title': { en: 'Settings & shift', hi: 'सेटिंग्स और शिफ्ट' },
+  'tour.guard.s4.body': {
+    en: 'Theme, language, biometric shortcuts, and end-of-shift logout live here. Always end your shift when handing over the device.',
+    hi: 'थीम, भाषा, बायोमेट्रिक, लॉगआउट यहाँ। डिवाइस सौंपते समय शिफ्ट समाप्त करें।',
+  },
+
+  'tour.ch.resident.welcome': { en: 'Resident home', hi: 'निवासी होम' },
+  'tour.ch.resident.gate': { en: 'Gate & passes', hi: 'गेट और पास' },
+  'tour.ch.resident.household': { en: 'Household', hi: 'परिवार' },
+  'tour.ch.resident.community': { en: 'Community', hi: 'समुदाय' },
+  'tour.res.r1.title': { en: 'Welcome home', hi: 'घर में स्वागत' },
+  'tour.res.r1.body': {
+    en: 'Approve visitors, create OTP passes, pay maintenance, vote in polls, and manage your flat — all from one app.',
+    hi: 'विज़िटर स्वीकृति, OTP पास, मेंटेनेंस, मतदान, फ्लैट प्रबंधन — एक ऐप में।',
+  },
+  'tour.res.r2.title': { en: 'Approvals', hi: 'अनुमोदन' },
+  'tour.res.r2.body': {
+    en: 'When a guard requests entry to your flat, respond here in real time. Pending items show a pulse on the tab.',
+    hi: 'जब गार्ड आपके फ्लैट के लिए प्रवेश मांगे, यहाँ तुरंत जवाब दें। लंबित पर टैब पर संकेत।',
+  },
+  'tour.res.r3.title': { en: 'Visitor passes', hi: 'विज़िटर पास' },
+  'tour.res.r3.body': {
+    en: 'Pre-create OTP passes for guests with date and time window. Share the code; guards verify it at the gate.',
+    hi: 'मेहमानों के लिए तारीख/समय के साथ OTP पास बनाएं। कोड साझा करें; गार्ड गेट पर सत्यापित करेंगे।',
+  },
+  'tour.res.r4.title': { en: 'Family & staff', hi: 'परिवार और स्टाफ' },
+  'tour.res.r4.body': {
+    en: 'Add members and household staff so guards see them in Quick Entry. Photo ID may be required for certain roles.',
+    hi: 'सदस्य और स्टाफ जोड़ें ताकि गार्ड क्विक एंट्री में देखें। कुछ भूमिकाओं के लिए फोटो ID ज़रूरी हो सकता है।',
+  },
+  'tour.res.r5.title': { en: 'Vehicles', hi: 'वाहन' },
+  'tour.res.r5.body': {
+    en: 'Register cars and bikes for your flat so gate staff can match plates quickly.',
+    hi: 'अपने फ्लैट के वाहन पंजीकृत करें ताकि गेट पर नंबर जल्दी मिल सके।',
+  },
+  'tour.res.r6.title': { en: 'Directory', hi: 'डायरेक्टरी' },
+  'tour.res.r6.body': {
+    en: 'Society-wide directory: browse other flats respectfully for contact context your society allows.',
+    hi: 'सोसाइटी डायरेक्टरी: अनुमत सीमा में अन्य फ्लैट की जानकारी।',
+  },
+  'tour.res.r7.title': { en: 'Alerts & notices', hi: 'अलर्ट और सूचनाएँ' },
+  'tour.res.r7.body': {
+    en: 'Society announcements and targeted notifications from admins appear here.',
+    hi: 'सोसाइटी घोषणाएँ और एडमिन की सूचनाएँ यहाँ।',
+  },
+  'tour.res.r8.title': { en: 'Polls', hi: 'मतदान' },
+  'tour.res.r8.body': {
+    en: 'Vote on society topics when your committee runs a poll.',
+    hi: 'जब समिति पोल चलाए, मत दें।',
+  },
+  'tour.res.r9.title': { en: 'Payments', hi: 'भुगतान' },
+  'tour.res.r9.body': {
+    en: 'Track maintenance and society dues your admin publishes to your flat.',
+    hi: 'वह मेंटेनेंस/शुल्क देखें जो एडमिन आपके फ्लैट के लिए दिखाता है।',
+  },
+  'tour.res.r10.title': { en: 'Profile & security', hi: 'प्रोफ़ाइल और सुरक्षा' },
+  'tour.res.r10.body': {
+    en: 'Password, biometrics, and optional ID uploads live under Profile. Flatmates may share the same flat login.',
+    hi: 'पासवर्ड, बायोमेट्रिक, वैकल्पिक ID अपलोड प्रोफ़ाइल में। फ्लैटमेट्स एक लॉगिन साझा कर सकते हैं।',
+  },
+
+  'tour.ch.super.welcome': { en: 'Platform', hi: 'प्लेटफ़ॉर्म' },
+  'tour.ch.super.access': { en: 'Access control', hi: 'एक्सेस नियंत्रण' },
+  'tour.super.s1.title': { en: 'Superadmin overview', hi: 'सुपरएडमिन अवलोकन' },
+  'tour.super.s1.body': {
+    en: 'You manage every society on the platform: branding, flat ranges, backups, and who can administer each site.',
+    hi: 'आप प्लेटफ़ॉर्म की हर सोसाइटी प्रबंधित करते हैं: ब्रांडिंग, फ्लैट रेंज, बैकअप, एडमिन पहुँच।',
+  },
+  'tour.super.s2.title': { en: 'Societies', hi: 'सोसाइटियाँ' },
+  'tour.super.s2.body': {
+    en: 'Create or edit societies, upload photos, define numbering, and trim stray flats after range changes.',
+    hi: 'सोसाइटी बनाएँ/संपादित करें, फोटो, नंबरिंग, रेंज बदलने पर अतिरिक्त फ्लैट ट्रिम।',
+  },
+  'tour.super.s3.title': { en: 'Custom roles', hi: 'कस्टम भूमिकाएँ' },
+  'tour.super.s3.body': {
+    en: 'Define role names per society and attach granular admin permissions — treasurer vs secretary vs guard supervisor.',
+    hi: 'प्रति सोसाइटी भूमिका नाम और विस्तृत एडमिन अनुमतियाँ — कोषाध्यक्ष, सचिव आदि।',
+  },
+  'tour.super.s4.title': { en: 'Admins', hi: 'एडमिन' },
+  'tour.super.s4.body': {
+    en: 'Provision society admins, assign roles, and keep recovery email ready for password resets.',
+    hi: 'सोसाइटी एडमिन बनाएँ, भूमिका दें, पासवर्ड रीसेट के लिए रिकवरी ईमेल रखें।',
+  },
+  'tour.super.s5.title': { en: 'Maintenance', hi: 'रखरखाव' },
+  'tour.super.s5.body': {
+    en: 'Exports, backups, and bulk tools for serious housekeeping — use carefully in production.',
+    hi: 'निर्यात, बैकअप, बल्क टूल — प्रोडक्शन में सावधानी से।',
+  },
+  'tour.super.s6.title': { en: 'Security settings', hi: 'सुरक्षा सेटिंग्स' },
+  'tour.super.s6.body': {
+    en: 'TOTP, recovery email, and biometric options protect this highest-privilege account.',
+    hi: 'TOTP, रिकवरी ईमेल, बायोमेट्रिक इस उच्चतम खाते की सुरक्षा करते हैं।',
+  },
+
+  'tour.ch.admin.welcome': { en: 'Admin basics', hi: 'एडमिन मूल बातें' },
+  'tour.ch.admin.guards': { en: 'Guards', hi: 'गार्ड' },
+  'tour.ch.admin.residents': { en: 'Residents', hi: 'निवासी' },
+  'tour.ch.admin.geofence': { en: 'Geofence', hi: 'जियोफ़ेंस' },
+  'tour.ch.admin.finance': { en: 'Finance', hi: 'वित्त' },
+  'tour.ch.admin.community': { en: 'Community', hi: 'समुदाय' },
+  'tour.ch.admin.ops': { en: 'Gate operations', hi: 'गेट संचालन' },
+  'tour.ch.admin.reports': { en: 'Reports & audit', hi: 'रिपोर्ट और ऑडिट' },
+  'tour.ch.admin.security': { en: 'Security', hi: 'सुरक्षा' },
+  'tour.admin.a1.title': { en: 'Society admin', hi: 'सोसाइटी एडमिन' },
+  'tour.admin.a1.body': {
+    en: 'You operate the society back-office: people, money, events, and gate workflows — based on permissions your superadmin assigned.',
+    hi: 'आप बैक-ऑफिस चलाते हैं: लोग, धन, इवेंट, गेट वर्कफ़्लो — सुपरएडमिन की अनुमतियों के अनुसार।',
+  },
+  'tour.admin.a2.title': { en: 'Home cards', hi: 'होम कार्ड' },
+  'tour.admin.a2.body': {
+    en: 'The overview shows counts and shortcuts. Tap any quick-access tile to jump straight to that module.',
+    hi: 'अवलोकन में गिनती और शॉर्टकट। किसी टाइल पर टैप करके मॉड्यूल खोलें।',
+  },
+  'tour.admin.a3.title': { en: 'Bottom navigation', hi: 'नीचे नेविगेशन' },
+  'tour.admin.a3.body': {
+    en: 'Tabs mirror your role: hidden items are not missing — your access profile simply does not include them.',
+    hi: 'टैब आपकी भूमिका के अनुसार। छुपी चीज़ें गायब नहीं — आपकी पहुँच में नहीं हैं।',
+  },
+  'tour.admin.g1.title': { en: 'Guard roster', hi: 'गार्ड सूची' },
+  'tour.admin.g1.body': {
+    en: 'Create guard IDs, set OTP/password modes, track KYC, and ensure shifts stay accountable.',
+    hi: 'गार्ड ID, OTP/पासवर्ड, KYC, शिफ्ट जवाबदेही प्रबंधित करें।',
+  },
+  'tour.admin.rv1.title': { en: 'Residents & flats', hi: 'निवासी और फ्लैट' },
+  'tour.admin.rv1.body': {
+    en: 'Manage flats, members, resident logins, and visitor data tied to each household.',
+    hi: 'फ्लैट, सदस्य, निवासी लॉगिन, परिवार से जुड़ा डेटा।',
+  },
+  'tour.admin.gf1.title': { en: 'Geofence policy', hi: 'जियोफ़ेंस नीति' },
+  'tour.admin.gf1.body': {
+    en: 'Draw the guard login perimeter so OTP guards cannot authenticate far away from the society.',
+    hi: 'OTP गार्ड लॉगिन की सीमा तय करें ताकि दूर से लॉगिन न हो सके।',
+  },
+  'tour.admin.fn1.title': { en: 'Maintenance billing', hi: 'मेंटेनेंस बिलिंग' },
+  'tour.admin.fn1.body': {
+    en: 'Define charges, record payments, and verify slips so flats stay current.',
+    hi: 'शुल्क, भुगतान, स्लिप सत्यापन।',
+  },
+  'tour.admin.fn2.title': { en: 'Donations', hi: 'दान' },
+  'tour.admin.fn2.body': {
+    en: 'Launch campaigns, track progress, and acknowledge resident contributions.',
+    hi: 'अभियान, प्रगति, योगदान ट्रैक करें।',
+  },
+  'tour.admin.fn3.title': { en: 'Expense splits', hi: 'खर्च बंटवारा' },
+  'tour.admin.fn3.body': {
+    en: 'Split ad-hoc society expenses across flats and settle who owes whom.',
+    hi: 'अतिरिक्त खर्च फ्लैटों में बाँटें और बकाया साफ़ करें।',
+  },
+  'tour.admin.cm1.title': { en: 'Events', hi: 'इवेंट' },
+  'tour.admin.cm1.body': {
+    en: 'Publish society events, RSVPs, and optional contribution tracking.',
+    hi: 'इवेंट, RSVP, योगदान ट्रैक।',
+  },
+  'tour.admin.cm2.title': { en: 'Polls', hi: 'पोल' },
+  'tour.admin.cm2.body': {
+    en: 'Run secure votes on society decisions with live totals.',
+    hi: 'सुरक्षित मतदान, लाइव योग।',
+  },
+  'tour.admin.cm3.title': { en: 'Notifications', hi: 'सूचनाएँ' },
+  'tour.admin.cm3.body': {
+    en: 'Push targeted announcements to residents or guards with delivery diagnostics.',
+    hi: 'निवासी/गार्ड को लक्षित सूचनाएँ, डिलीवरी डायग्नोस्टिक्स।',
+  },
+  'tour.admin.cm4.title': { en: 'Parking', hi: 'पार्किंग' },
+  'tour.admin.cm4.body': {
+    en: 'Allocate slots and keep vehicle records aligned with flats.',
+    hi: 'स्लॉट आवंटन, फ्लैट से वाहन रिकॉर्ड।',
+  },
+  'tour.admin.op1.title': { en: 'Visitor console', hi: 'विज़िटर कंसोल' },
+  'tour.admin.op1.body': {
+    en: 'Same visitor workflow guards use — helpful when you need to log someone from the office.',
+    hi: 'वही विज़िटर फ्लो जो गार्ड उपयोग करते हैं — ऑफिस से लॉग करने के लिए।',
+  },
+  'tour.admin.op2.title': { en: 'Delivery & service', hi: 'डिलीवरी और सेवा' },
+  'tour.admin.op2.body': {
+    en: 'Override or assist with courier/service entries when residents call the office.',
+    hi: 'कूरियर/सेवा एंट्री में मदद जब ऑफिस से कॉल आए।',
+  },
+  'tour.admin.op3.title': { en: 'Vehicle registry', hi: 'वाहन रजिस्ट्री' },
+  'tour.admin.op3.body': {
+    en: 'Audit resident vehicles and fix mismatches reported by guards.',
+    hi: 'निवासी वाहन ऑडिट, गार्ड की रिपोर्ट ठीक करें।',
+  },
+  'tour.admin.op4.title': { en: 'Blacklist control', hi: 'ब्लैकलिस्ट नियंत्रण' },
+  'tour.admin.op4.body': {
+    en: 'Add or remove flags after committee decisions; guards see updates instantly.',
+    hi: 'समिति निर्णय के बाद फ्लैग जोड़ें/हटाएं; गार्ड को तुरंत दिखेगा।',
+  },
+  'tour.admin.op5.title': { en: 'Directory oversight', hi: 'डायरेक्टरी निरीक्षण' },
+  'tour.admin.op5.body': {
+    en: 'Review historical visitor patterns for security investigations.',
+    hi: 'सुरक्षा जाँच के लिए पुराने विज़िटर पैटर्न।',
+  },
+  'tour.admin.op6.title': { en: 'Quick entry assist', hi: 'क्विक एंट्री सहायता' },
+  'tour.admin.op6.body': {
+    en: 'Jump into the same quick search guards rely on for staff and frequent visitors.',
+    hi: 'गार्ड जैसी क्विक खोज स्टाफ और नियमित विज़िटर के लिए।',
+  },
+  'tour.admin.rp1.title': { en: 'Reports', hi: 'रिपोर्ट' },
+  'tour.admin.rp1.body': {
+    en: 'Generate printable summaries for any date — great for committee meetings.',
+    hi: 'किसी भी तारीख के लिए प्रिंट योग्य सारांश।',
+  },
+  'tour.admin.rp2.title': { en: 'Logs', hi: 'लॉग' },
+  'tour.admin.rp2.body': {
+    en: 'Deep search across visitor rows with filters for category and guard.',
+    hi: 'विज़िटर लॉग में गहरी खोज, श्रेणी/गार्ड फ़िल्टर।',
+  },
+  'tour.admin.rp3.title': { en: 'Audit trail', hi: 'ऑडिट ट्रेल' },
+  'tour.admin.rp3.body': {
+    en: 'Immutable security events: who logged in, from where, and critical changes.',
+    hi: 'सुरक्षा घटनाएँ: किसने लॉगिन किया, कहाँ से, महत्वपूर्ण बदलाव।',
+  },
+  'tour.admin.sc1.title': { en: 'Password rotation', hi: 'पासवर्ड रोटेशन' },
+  'tour.admin.sc1.body': {
+    en: 'Change your admin password regularly and keep recovery email in sync with superadmin records.',
+    hi: 'पासवर्ड बदलते रहें; रिकवरी ईमेल अपडेट रखें।',
+  },
+  'tour.admin.sc2.title': { en: 'Biometric hardening', hi: 'बायोमेट्रिक सुरक्षा' },
+  'tour.admin.sc2.body': {
+    en: 'Optional WebAuthn login speeds up repeat access without weakening the primary password policy.',
+    hi: 'वैकल्पिक WebAuthn से तेज़ दोहरा लॉगिन, मुख्य पासवर्ड नीति बनी रहे।',
+  },
+
+  'tour.first.admin.more.title': { en: 'Deep dives anytime', hi: 'कभी भी गहराई से' },
+  'tour.first.admin.more.body': {
+    en: 'Open the Tour tab for chapter-by-chapter help that respects your exact permissions.',
+    hi: 'अध्याय-दर-अध्याय सहायता के लिए टूर टैब खोलें — आपकी अनुमतियों के अनुसार।',
+  },
+  'tour.first.guard.more.title': { en: 'Explore every tab', hi: 'हर टैब देखें' },
+  'tour.first.guard.more.body': {
+    en: 'Use the Tour tab whenever you want a refresher on visitor flows, vehicles, or blacklist checks.',
+    hi: 'विज़िटर, वाहन, ब्लैकलिस्ट पर रिफ्रेशर के लिए टूर टैब देखें।',
+  },
+  'tour.first.res.more.title': { en: 'Need a reminder?', hi: 'याद दिलाना है?' },
+  'tour.first.res.more.body': {
+    en: 'The Tour tab walks through approvals, passes, payments, and more at your own pace.',
+    hi: 'टूर टैब में अनुमोदन, पास, भुगतान आदि अपनी गति से।',
+  },
+  'tour.first.super.more.title': { en: 'Platform playbook', hi: 'प्लेटफ़ॉर्म गाइड' },
+  'tour.first.super.more.body': {
+    en: 'Tour tab breaks down societies, roles, admins, maintenance exports, and security controls.',
+    hi: 'टूर टैब में सोसाइटी, भूमिका, एडमिन, मेंटेनेंस, सुरक्षा नियंत्रण।',
+  },
 
   // Dashboard
   'dashboard.visitors': { en: 'Visitors', hi: 'आगंतुक' },
@@ -246,6 +558,10 @@ const translations: Record<string, Record<Lang, string>> = {
   'swal.confirmDeleteText': { en: 'This action cannot be undone.', hi: 'यह क्रिया पूर्ववत नहीं की जा सकती।' },
   'swal.confirmLogout': { en: 'End Shift?', hi: 'शिफ्ट समाप्त करें?' },
   'swal.confirmLogoutText': { en: 'You will be logged out of the system.', hi: 'आप सिस्टम से लॉग आउट हो जाएंगे।' },
+  'swal.confirmLogoutGuard': { en: 'End Shift', hi: 'शिफ्ट समाप्त करें' },
+  'swal.confirmLogoutGuardText': { en: 'You will be logged out of the system.', hi: 'आप सिस्टम से लॉग आउट हो जाएंगे।' },
+  'swal.confirmLogoutUser': { en: 'Log Out', hi: 'लॉग आउट' },
+  'swal.confirmLogoutUserText': { en: 'Are you sure you want to get logged out of the system?', hi: 'क्या आप सिस्टम से लॉग आउट होना चाहते हैं?' },
   'swal.yes': { en: 'Yes', hi: 'हां' },
   'swal.no': { en: 'No', hi: 'नहीं' },
   'swal.success': { en: 'Success!', hi: 'सफल!' },
@@ -417,7 +733,10 @@ const translations: Record<string, Record<Lang, string>> = {
   'biometric.registered': { en: 'Biometric registered successfully', hi: 'बायोमेट्रिक सफलतापूर्वक पंजीकृत' },
   'biometric.registerFailed': { en: 'Biometric registration failed', hi: 'बायोमेट्रिक पंजीकरण विफल' },
   'biometric.registering': { en: 'Registering...', hi: 'पंजीकरण हो रहा है...' },
-  'biometric.notRegistered': { en: 'No biometric registered. Login with password first, then enable biometric from settings.', hi: 'कोई बायोमेट्रिक पंजीकृत नहीं। पहले पासवर्ड से लॉगिन करें, फिर सेटिंग्स से बायोमेट्रिक सक्षम करें।' },
+  'biometric.notRegistered': {
+    en: 'No passkey saved for this app yet. Log in once with OTP or password, then enable biometric in Profile.',
+    hi: 'इस ऐप के लिए अभी तक कोई पासकी सहेजा नहीं है। एक बार OTP या पासवर्ड से लॉगिन करें, फिर प्रोफ़ाइल में बायोमेट्रिक सक्षम करें।',
+  },
 };
 
 export default translations;

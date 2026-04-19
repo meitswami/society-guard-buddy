@@ -247,6 +247,7 @@ const AdminResidentManager = ({
         flat_id: flatId,
         flat_number: flatNumber,
         password: flatPassword,
+        must_change_password: !!m.is_primary,
       }));
 
     if (newUsers.length > 0) {

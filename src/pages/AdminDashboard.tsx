@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
@@ -29,6 +29,8 @@ import ExpenseSplitter from '@/components/ExpenseSplitter';
 import NotificationCenter from '@/components/NotificationCenter';
 import { auditLogout } from '@/lib/auditLogger';
 import { isAdminTabAllowed, type AdminPanelPermissions, type AdminTab } from '@/lib/adminPermissions';
+import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
+import TourGuideHub from '@/components/TourGuideHub';
 
 interface Props {
   admin: {
@@ -85,7 +87,12 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   };
 
   const handleLogout = async () => {
-    const confirmed = await confirmAction(t('swal.confirmLogout'), t('swal.confirmLogoutText'), t('swal.yes'), t('swal.no'));
+    const confirmed = await confirmAction(
+      t('swal.confirmLogoutUser'),
+      t('swal.confirmLogoutUserText'),
+      t('swal.yes'),
+      t('swal.no'),
+    );
     if (confirmed) {
       auditLogout('admin', admin.id, admin.name);
       onLogout();
@@ -121,6 +128,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'password', label: 'Password', icon: Lock, group: 'system' },
     { id: 'biometric', label: 'Biometric', icon: Fingerprint, group: 'system' },
     { id: 'settings', label: 'Settings', icon: Settings, group: 'system' },
+    { id: 'tour', label: t('nav.tour'), icon: Sparkles, group: 'system' },
   ];
 
   const visibleTabs = tabs.filter((tab) => isAdminTabAllowed(tab.id, admin.permissions));
@@ -160,6 +168,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'directory': return <DirectoryPage />;
       case 'quick': return <QuickEntryPage />;
       case 'settings': return <SettingsPage />;
+      case 'tour':
+        return <TourGuideHub role="admin" adminPermissions={admin.permissions} t={t} />;
       default: return (
         <div className="page-container">
           <div className="flex items-center justify-between mb-6">
@@ -228,6 +238,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
 
   return (
     <div className="min-h-screen bg-background">
+      <TourGuideFirstLogin role="admin" userId={admin.id} adminPermissions={admin.permissions} t={t} />
       {renderContent()}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
         <div className="max-w-lg mx-auto flex items-center overflow-x-auto gap-0 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1 scrollbar-hide">

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { Guard, Visitor, ResidentVehicle, BlacklistEntry, Flat, Member } from '@/types';
+import { clearPersistedSession, writePersistedSession } from '@/lib/appSession';
 
 interface AppState {
   // Auth
@@ -11,6 +12,7 @@ interface AppState {
   setSocietyId: (id: string | null) => void;
   login: (id: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  hydrateGuardSession: (session: { societyId: string; shiftId: string; guardId: string }) => Promise<boolean>;
   loadGuards: () => Promise<void>;
 
   // Visitors
@@ -80,9 +82,39 @@ export const useStore = create<AppState>()((set, get) => ({
         guard_id: guard.id, guard_name: guard.name, login_time: new Date().toISOString(),
       }).select().single();
       set({ currentGuard: loggedIn, shiftId: data?.id || null });
+      const sid = get().societyId;
+      if (sid && data?.id) {
+        writePersistedSession({ v: 1, role: 'guard', societyId: sid, shiftId: data.id, guardId: guard.id });
+      }
       return true;
     }
     return false;
+  },
+
+  hydrateGuardSession: async (session) => {
+    set({ societyId: session.societyId });
+    await get().loadGuards();
+    const { data: shift } = await supabase
+      .from('guard_shifts')
+      .select('id, guard_id, login_time, logout_time')
+      .eq('id', session.shiftId)
+      .maybeSingle();
+    if (!shift || shift.logout_time) {
+      clearPersistedSession();
+      set({ currentGuard: null, shiftId: null, societyId: null });
+      return false;
+    }
+    const guard = get().guards.find((g) => g.id === shift.guard_id);
+    if (!guard) {
+      clearPersistedSession();
+      set({ currentGuard: null, shiftId: null, societyId: null });
+      return false;
+    }
+    set({
+      currentGuard: { ...guard, loginTime: shift.login_time ?? undefined },
+      shiftId: shift.id,
+    });
+    return true;
   },
 
   logout: async () => {
@@ -90,6 +122,7 @@ export const useStore = create<AppState>()((set, get) => ({
     if (shiftId) {
       await supabase.from('guard_shifts').update({ logout_time: new Date().toISOString() }).eq('id', shiftId);
     }
+    clearPersistedSession();
     set({ currentGuard: null, shiftId: null, societyId: null });
   },
 

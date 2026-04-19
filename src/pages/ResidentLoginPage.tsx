@@ -80,6 +80,14 @@ const ResidentLoginPage = ({ societyId, onLogin, onSwitchToGuard }: Props) => {
     const { data: flat } = await supabase.from('flats').select('society_id').eq('id', data.flat_id).single();
     if (flat?.society_id !== societyId) { setError(t('login.invalidCredentials')); return; }
     auditBiometricLogin('resident', data.id, data.name);
+    registerOneSignalUser({
+      userType: 'resident',
+      userId: data.id,
+      userName: data.name,
+      flatNumber: data.flat_number,
+      societyId,
+    });
+    promptPushPermission();
     setSocietyId(societyId);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
@@ -101,6 +109,18 @@ const ResidentLoginPage = ({ societyId, onLogin, onSwitchToGuard }: Props) => {
           <h2 className="page-title text-xl mt-4">{t('resident.loginTitle')}</h2>
           <p className="text-muted-foreground text-sm mt-1">{t('resident.loginSubtitle')}</p>
         </div>
+
+        {bioAvailable && (
+          <button
+            type="button"
+            onClick={handleBiometricLogin}
+            disabled={bioLoading}
+            className="w-full mb-4 py-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-2 hover:bg-primary/10 transition-colors"
+          >
+            <Fingerprint className="w-8 h-8 text-primary" />
+            <span className="text-sm font-medium text-primary">{t('biometric.loginButton')}</span>
+          </button>
+        )}
 
         {/* Mode Toggle */}
         <div className="flex gap-1 p-1 bg-muted rounded-xl mb-4">
@@ -127,14 +147,6 @@ const ResidentLoginPage = ({ societyId, onLogin, onSwitchToGuard }: Props) => {
           />
         ) : (
           <>
-            {bioAvailable && (
-              <button onClick={handleBiometricLogin} disabled={bioLoading}
-                className="w-full mb-4 py-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-2 hover:bg-primary/10 transition-colors">
-                <Fingerprint className="w-8 h-8 text-primary" />
-                <span className="text-sm font-medium text-primary">{t('biometric.loginButton')}</span>
-              </button>
-            )}
-
             <form onSubmit={handlePasswordLogin} className="flex flex-col gap-4">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('common.phone')}</label>

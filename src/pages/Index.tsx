@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
+import { supabase } from '@/integrations/supabase/client';
+import { readPersistedSession, writePersistedSession, clearPersistedSession } from '@/lib/appSession';
 import type { TabType } from '@/types';
 import LoginPage from '@/pages/LoginPage';
 import ResidentLoginPage from '@/pages/ResidentLoginPage';
@@ -22,6 +24,8 @@ import DirectoryPage from '@/pages/DirectoryPage';
 import BlacklistPage from '@/pages/BlacklistPage';
 import SettingsPage from '@/pages/SettingsPage';
 import BottomNav from '@/components/BottomNav';
+import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
+import TourGuideHub from '@/components/TourGuideHub';
 import { LoginFooter } from '@/components/LoginFooter';
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
 import { useGuardGeofenceMonitor } from '@/hooks/useGuardGeofenceMonitor';
@@ -29,12 +33,13 @@ import { useGuardGeofenceMonitor } from '@/hooks/useGuardGeofenceMonitor';
 type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 
 const AppContent = () => {
-  const { currentGuard, theme, setSocietyId, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers } = useStore();
+  const { currentGuard, theme, setSocietyId, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, hydrateGuardSession } = useStore();
   const { t } = useLanguage();
   useGuardGeofenceMonitor(currentGuard);
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loaded, setLoaded] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>('choosing');
   const [residentUser, setResidentUser] = useState<{ id: string; name: string; phone: string; flatId: string; flatNumber: string } | null>(null);
   const [adminUser, setAdminUser] = useState<{
@@ -56,6 +61,57 @@ const AppContent = () => {
     };
     init();
   }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+    (async () => {
+      const s = readPersistedSession();
+      if (!s) {
+        if (!cancelled) setSessionChecked(true);
+        return;
+      }
+      if (s.role === 'superadmin') {
+        const { data } = await supabase.from('super_admins').select('id').eq('id', s.superadmin.id).maybeSingle();
+        if (!cancelled && data) setSuperadminUser(s.superadmin);
+        else if (!cancelled) clearPersistedSession();
+        if (!cancelled) setSessionChecked(true);
+        return;
+      }
+      if (s.role === 'admin') {
+        const { data } = await supabase.from('admins').select('id').eq('id', s.admin.id).maybeSingle();
+        if (!cancelled && data) {
+          setSocietyId(s.admin.societyId ?? s.societyId);
+          setAdminUser(s.admin);
+        } else if (!cancelled) clearPersistedSession();
+        if (!cancelled) setSessionChecked(true);
+        return;
+      }
+      if (s.role === 'resident') {
+        const { data } = await supabase.from('resident_users').select('id').eq('id', s.resident.id).maybeSingle();
+        if (!cancelled && data) {
+          setSocietyId(s.societyId);
+          setResidentUser(s.resident);
+        } else if (!cancelled) clearPersistedSession();
+        if (!cancelled) setSessionChecked(true);
+        return;
+      }
+      if (s.role === 'guard') {
+        const ok = await hydrateGuardSession({
+          societyId: s.societyId,
+          shiftId: s.shiftId,
+          guardId: s.guardId,
+        });
+        if (!cancelled && !ok) clearPersistedSession();
+        if (!cancelled) setSessionChecked(true);
+        return;
+      }
+      if (!cancelled) setSessionChecked(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded, hydrateGuardSession, setSocietyId]);
 
   useEffect(() => {
     if (currentGuard) {
@@ -83,7 +139,7 @@ const AppContent = () => {
     }
   }, [theme]);
 
-  if (!loaded) {
+  if (!loaded || !sessionChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground text-sm animate-pulse">{t('app.loading')}</p>
@@ -97,6 +153,7 @@ const AppContent = () => {
       <SuperadminDashboard
         superadmin={superadminUser}
         onLogout={() => {
+          clearPersistedSession();
           setSuperadminUser(null);
           setUserMode('choosing');
           setLoginSociety(null);
@@ -107,12 +164,32 @@ const AppContent = () => {
 
   // Admin logged in
   if (adminUser) {
-    return <AdminDashboard admin={adminUser} onLogout={() => { setAdminUser(null); setSocietyId(null); setUserMode('choosing'); }} />;
+    return (
+      <AdminDashboard
+        admin={adminUser}
+        onLogout={() => {
+          clearPersistedSession();
+          setAdminUser(null);
+          setSocietyId(null);
+          setUserMode('choosing');
+        }}
+      />
+    );
   }
 
   // Resident logged in
   if (residentUser) {
-    return <ResidentDashboard resident={residentUser} onLogout={() => { setResidentUser(null); setSocietyId(null); setUserMode('choosing'); }} />;
+    return (
+      <ResidentDashboard
+        resident={residentUser}
+        onLogout={() => {
+          clearPersistedSession();
+          setResidentUser(null);
+          setSocietyId(null);
+          setUserMode('choosing');
+        }}
+      />
+    );
   }
 
   // Show login chooser or specific login
@@ -122,15 +199,35 @@ const AppContent = () => {
       return (
         <UnifiedLoginPage
           onGuardLogin={() => {}}
-          onResidentLogin={(resident) => setResidentUser(resident)}
-          onAdminLogin={(admin) => { setSocietyId(admin.societyId); setAdminUser(admin); }}
-          onSuperadminLogin={setSuperadminUser}
+          onResidentLogin={(resident) => {
+            const sid = useStore.getState().societyId;
+            if (sid) writePersistedSession({ v: 1, role: 'resident', societyId: sid, resident });
+            setResidentUser(resident);
+          }}
+          onAdminLogin={(admin) => {
+            const sid = admin.societyId ?? useStore.getState().societyId;
+            setSocietyId(sid ?? admin.societyId);
+            if (sid) writePersistedSession({ v: 1, role: 'admin', societyId: sid, admin });
+            setAdminUser(admin);
+          }}
+          onSuperadminLogin={(sa) => {
+            writePersistedSession({ v: 1, role: 'superadmin', superadmin: sa });
+            setSuperadminUser(sa);
+          }}
         />
       );
     }
 
     if (userMode === 'superadmin') {
-      return <SuperadminLoginPage onLogin={setSuperadminUser} onBack={() => setUserMode('choosing')} />;
+      return (
+        <SuperadminLoginPage
+          onLogin={(sa) => {
+            writePersistedSession({ v: 1, role: 'superadmin', superadmin: sa });
+            setSuperadminUser(sa);
+          }}
+          onBack={() => setUserMode('choosing')}
+        />
+      );
     }
 
     if (!loginSociety) {
@@ -186,7 +283,9 @@ const AppContent = () => {
         <AdminLoginPage
           societyId={loginSociety.id}
           onLogin={(admin) => {
-            setSocietyId(admin.societyId);
+            const sid = admin.societyId ?? loginSociety.id;
+            setSocietyId(sid);
+            writePersistedSession({ v: 1, role: 'admin', societyId: sid, admin });
             setAdminUser(admin);
           }}
           onBack={() => setUserMode('choosing')}
@@ -199,6 +298,7 @@ const AppContent = () => {
         <ResidentLoginPage
           societyId={loginSociety.id}
           onLogin={(resident) => {
+            writePersistedSession({ v: 1, role: 'resident', societyId: loginSociety.id, resident });
             setResidentUser(resident);
           }}
           onSwitchToGuard={() => setUserMode('guard')}
@@ -214,11 +314,12 @@ const AppContent = () => {
     );
   }
 
-  // Guard tabs
-  const guardTabs: TabType[] = ['dashboard', 'quick', 'visitor', 'delivery', 'vehicle', 'blacklist', 'directory', 'settings'];
+  // Guard tabs (tour last — full in-app guide)
+  const guardTabs: TabType[] = ['dashboard', 'quick', 'visitor', 'delivery', 'vehicle', 'blacklist', 'directory', 'settings', 'tour'];
 
   return (
     <div className="min-h-screen bg-background">
+      {currentGuard && <TourGuideFirstLogin role="guard" userId={currentGuard.id} t={t} />}
       {activeTab === 'dashboard' && <DashboardPage />}
       {activeTab === 'quick' && <QuickEntryPage />}
       {activeTab === 'visitor' && <VisitorEntryPage onDone={goHome} />}
@@ -227,6 +328,7 @@ const AppContent = () => {
       {activeTab === 'blacklist' && <BlacklistPage />}
       {activeTab === 'directory' && <DirectoryPage />}
       {activeTab === 'settings' && <SettingsPage />}
+      {activeTab === 'tour' && currentGuard && <TourGuideHub role="guard" t={t} />}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} guardTabs={guardTabs} />
     </div>
   );

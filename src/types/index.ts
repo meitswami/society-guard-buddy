@@ -83,4 +83,15 @@ export interface Member {
   dateLeave?: string;
 }
 
-export type TabType = 'dashboard' | 'visitor' | 'vehicle' | 'delivery' | 'logs' | 'quick' | 'directory' | 'blacklist' | 'report' | 'settings';
+export type TabType =
+  | 'dashboard'
+  | 'visitor'
+  | 'vehicle'
+  | 'delivery'
+  | 'logs'
+  | 'quick'
+  | 'directory'
+  | 'blacklist'
+  | 'report'
+  | 'settings'
+  | 'tour';

@@ -7,7 +7,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useBiometric } from '@/hooks/useBiometric';
-import { auditLoginSuccess, auditLoginFailed } from '@/lib/auditLogger';
+import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
 import OTPLoginFlow from '@/components/OTPLoginFlow';
@@ -273,6 +273,93 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     setLoading(false);
   };
 
+  const handleUnifiedBiometricLogin = async () => {
+    setError('');
+    if (!selectedSocietyId) {
+      setError(t('login.pickSocietyFirst'));
+      return;
+    }
+
+    const adminResult = await authenticate('admin');
+    if (adminResult) {
+      const { data: admin } = await supabase
+        .from('admins')
+        .select('*, society_roles(permissions, slug, role_name)')
+        .eq('id', adminResult.userId)
+        .maybeSingle();
+      if (admin && admin.society_id === selectedSocietyId) {
+        setSocietyId(selectedSocietyId);
+        registerOneSignalUser({
+          userType: 'admin',
+          userId: admin.id,
+          userName: admin.name,
+          societyId: selectedSocietyId,
+        });
+        promptPushPermission();
+        onAdminLogin({
+          id: admin.id,
+          name: admin.name,
+          adminId: admin.admin_id,
+          societyId: admin.society_id,
+          permissions: permissionsFromAdminJoin(admin),
+        });
+        return;
+      }
+    }
+
+    const guardResult = await authenticate('guard');
+    if (guardResult) {
+      const { data: guard } = await supabase.from('guards').select('*').eq('id', guardResult.userId).single();
+      if (!guard || guard.society_id !== selectedSocietyId) {
+        setError(t('login.invalidCredentials'));
+        return;
+      }
+      setSocietyId(selectedSocietyId);
+      await loadGuards();
+      const withinFence = await checkGeofence();
+      if (!withinFence) {
+        setError(t('admin.geofenceBlocked'));
+        return;
+      }
+      const success = await login(guard.guard_id, guard.password);
+      if (success) onGuardLogin();
+      return;
+    }
+
+    const residentResult = await authenticate('resident');
+    if (!residentResult) {
+      setError(t('biometric.notRegistered'));
+      return;
+    }
+    const { data: resident } = await supabase.from('resident_users').select('*').eq('id', residentResult.userId).single();
+    if (!resident) {
+      setError(t('login.invalidCredentials'));
+      return;
+    }
+    const { data: flat } = await supabase.from('flats').select('society_id').eq('id', resident.flat_id).single();
+    if (flat?.society_id !== selectedSocietyId) {
+      setError(t('login.invalidCredentials'));
+      return;
+    }
+    auditBiometricLogin('resident', resident.id, resident.name);
+    setSocietyId(selectedSocietyId);
+    registerOneSignalUser({
+      userType: 'resident',
+      userId: resident.id,
+      userName: resident.name,
+      flatNumber: resident.flat_number,
+      societyId: selectedSocietyId,
+    });
+    promptPushPermission();
+    onResidentLogin({
+      id: resident.id,
+      name: resident.name,
+      phone: resident.phone,
+      flatId: resident.flat_id,
+      flatNumber: resident.flat_number,
+    });
+  };
+
   const showBiometric = bioAvailable && !!selectedSocietyId && !superadminMode;
 
   return (
@@ -361,88 +448,31 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                 </div>
 
                 {loginMode === 'otp' ? (
-                  <OTPLoginFlow
-                    embedded
-                    onVerified={handleOtpVerified}
-                    title="Login with OTP"
-                    subtitle="Residents & OTP-enabled guards"
-                  />
+                  <>
+                    {showBiometric && (
+                      <button
+                        type="button"
+                        onClick={handleUnifiedBiometricLogin}
+                        disabled={bioLoading}
+                        className="w-full mb-4 py-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-1 hover:bg-primary/10 transition-colors"
+                      >
+                        <Fingerprint className="w-7 h-7 text-primary" />
+                        <span className="text-xs font-medium text-primary">{t('biometric.loginButton')}</span>
+                      </button>
+                    )}
+                    <OTPLoginFlow
+                      embedded
+                      onVerified={handleOtpVerified}
+                      title="Login with OTP"
+                      subtitle="Residents & OTP-enabled guards"
+                    />
+                  </>
                 ) : (
                   <>
                     {showBiometric && (
                       <button
-                        onClick={async () => {
-                          setError('');
-                          const adminResult = await authenticate('admin');
-                          if (adminResult) {
-                            const { data: admin } = await supabase
-                              .from('admins')
-                              .select('*, society_roles(permissions, slug, role_name)')
-                              .eq('id', adminResult.userId)
-                              .maybeSingle();
-                            if (admin && admin.society_id === selectedSocietyId) {
-                              setSocietyId(selectedSocietyId);
-                              registerOneSignalUser({
-                                userType: 'admin',
-                                userId: admin.id,
-                                userName: admin.name,
-                                societyId: selectedSocietyId,
-                              });
-                              promptPushPermission();
-                              onAdminLogin({
-                                id: admin.id,
-                                name: admin.name,
-                                adminId: admin.admin_id,
-                                societyId: admin.society_id,
-                                permissions: permissionsFromAdminJoin(admin),
-                              });
-                              return;
-                            }
-                          }
-
-                          const guardResult = await authenticate('guard');
-                          if (guardResult) {
-                            const { data: guard } = await supabase.from('guards').select('*').eq('id', guardResult.userId).single();
-                            if (!guard || guard.society_id !== selectedSocietyId) {
-                              setError(t('login.invalidCredentials'));
-                              return;
-                            }
-                            setSocietyId(selectedSocietyId);
-                            await loadGuards();
-                            const withinFence = await checkGeofence();
-                            if (!withinFence) {
-                              setError(t('admin.geofenceBlocked'));
-                              return;
-                            }
-                            const success = await login(guard.guard_id, guard.password);
-                            if (success) onGuardLogin();
-                            return;
-                          }
-
-                          const residentResult = await authenticate('resident');
-                          if (!residentResult) {
-                            setError(t('biometric.notRegistered'));
-                            return;
-                          }
-                          const { data: resident } = await supabase.from('resident_users').select('*').eq('id', residentResult.userId).single();
-                          if (!resident) {
-                            setError(t('login.invalidCredentials'));
-                            return;
-                          }
-                          const { data: flat } = await supabase.from('flats').select('society_id').eq('id', resident.flat_id).single();
-                          if (flat?.society_id !== selectedSocietyId) {
-                            setError(t('login.invalidCredentials'));
-                            return;
-                          }
-                          setSocietyId(selectedSocietyId);
-                          onResidentLogin({
-                            id: resident.id,
-                            name: resident.name,
-                            phone: resident.phone,
-                            flatId: resident.flat_id,
-                            flatNumber: resident.flat_number,
-                          });
-                        }}
+                        type="button"
+                        onClick={handleUnifiedBiometricLogin}
                         disabled={bioLoading}
                         className="w-full mb-4 py-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex flex-col items-center gap-1 hover:bg-primary/10 transition-colors"
                       >
