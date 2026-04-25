@@ -97,7 +97,16 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
 
   const checkGeofence = (): Promise<boolean> => {
     return new Promise(async (resolve) => {
-      const { data: geoData } = await supabase.from('geofence_settings').select('*').order('created_at', { ascending: false }).limit(1);
+      if (!selectedSocietyId) {
+        resolve(true);
+        return;
+      }
+      const { data: geoData } = await supabase
+        .from('geofence_settings')
+        .select('*')
+        .eq('society_id', selectedSocietyId)
+        .order('created_at', { ascending: false })
+        .limit(1);
       if (!geoData || geoData.length === 0) {
         resolve(true);
         return;

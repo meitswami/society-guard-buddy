@@ -15,39 +15,23 @@ interface Props {
 
 const ApprovalRequestModal = ({ visitorName, visitorPhone, flatNumber, purpose, onResult, onCancel }: Props) => {
   const { t } = useLanguage();
-  const { currentGuard } = useStore();
+  const { currentGuard, societyId } = useStore();
   const [status, setStatus] = useState<'sending' | 'waiting' | 'approved' | 'rejected' | 'timeout'>('sending');
   const [requestId, setRequestId] = useState<string | null>(null);
   const [timer, setTimer] = useState(120); // 2 min timeout
 
   useEffect(() => {
-    const sendRequest = async () => {
-      const { data, error } = await supabase.from('approval_requests').insert({
-        visitor_name: visitorName,
-        visitor_phone: visitorPhone || null,
-        flat_number: flatNumber,
-        flat_id: '00000000-0000-0000-0000-000000000000', // Will be resolved
-        guard_id: currentGuard?.id || '',
-        guard_name: currentGuard?.name || '',
-        purpose: purpose || null,
-        status: 'pending',
-      }).select().single();
-
-      if (data) {
-        setRequestId(data.id);
-        setStatus('waiting');
-      } else {
-        console.error('Failed to create approval request', error);
-        onCancel();
-      }
-    };
-
     // Find flat_id first
     const init = async () => {
+      if (!societyId) {
+        onCancel();
+        return;
+      }
       const { data: flat } = await supabase
         .from('flats')
         .select('id')
         .eq('flat_number', flatNumber)
+        .eq('society_id', societyId)
         .single();
 
       if (flat) {
@@ -67,27 +51,13 @@ const ApprovalRequestModal = ({ visitorName, visitorPhone, flatNumber, purpose, 
           setStatus('waiting');
         }
       } else {
-        // No flat found, just create with dummy
-        const { data } = await supabase.from('approval_requests').insert({
-          visitor_name: visitorName,
-          visitor_phone: visitorPhone || null,
-          flat_number: flatNumber,
-          flat_id: '4906a9a4-1b5b-404d-90bc-d5f9ab1c4637', // fallback
-          guard_id: currentGuard?.id || '',
-          guard_name: currentGuard?.name || '',
-          purpose: purpose || null,
-          status: 'pending',
-        }).select().single();
-
-        if (data) {
-          setRequestId(data.id);
-          setStatus('waiting');
-        }
+        console.error('No flat found in current society for approval request', { flatNumber, societyId });
+        onCancel();
       }
     };
 
     init();
-  }, []);
+  }, [currentGuard?.id, currentGuard?.name, flatNumber, onCancel, purpose, societyId, visitorName, visitorPhone]);
 
   // Listen for realtime updates on this request
   useEffect(() => {

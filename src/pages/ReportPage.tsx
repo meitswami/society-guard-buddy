@@ -8,20 +8,25 @@ import { useLanguage } from '@/i18n/LanguageContext';
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }
 
 const ReportPage = () => {
-  const { visitors } = useStore();
+  const { visitors, societyId } = useStore();
   const { t } = useLanguage();
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
 
   useEffect(() => {
     const loadShifts = async () => {
+      if (!societyId) {
+        setShifts([]);
+        return;
+      }
       const { data } = await supabase.from('guard_shifts').select('*')
+        .eq('society_id', societyId)
         .gte('login_time', `${date}T00:00:00`).lte('login_time', `${date}T23:59:59`)
         .order('login_time', { ascending: true });
       if (data) setShifts(data);
     };
     loadShifts();
-  }, [date]);
+  }, [date, societyId]);
 
   const dayVisitors = useMemo(() => visitors.filter(v => v.entryTime.startsWith(date)), [visitors, date]);
 

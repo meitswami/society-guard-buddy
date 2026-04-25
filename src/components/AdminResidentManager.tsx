@@ -115,7 +115,15 @@ const AdminResidentManager = ({
     if (fn) void fn();
   };
 
-  useEffect(() => { loadFlats(); loadMembers(); loadResidentVehicles(); loadResidentUsers(); }, []);
+  useEffect(() => {
+    loadFlats();
+    loadMembers();
+    loadResidentVehicles();
+  }, [societyId]);
+
+  useEffect(() => {
+    void loadResidentUsers();
+  }, [societyId, flats]);
 
   useEffect(() => {
     if (!societyId) {
@@ -131,7 +139,12 @@ const AdminResidentManager = ({
   }, [societyId]);
 
   const loadResidentUsers = async () => {
-    const { data } = await supabase.from('resident_users').select('*');
+    const flatIds = flats.map((f) => f.id);
+    if (!societyId || flatIds.length === 0) {
+      setResidentUsers([]);
+      return;
+    }
+    const { data } = await supabase.from('resident_users').select('*').in('flat_id', flatIds);
     if (data) setResidentUsers(data as ResidentUser[]);
   };
 
@@ -332,6 +345,7 @@ const AdminResidentManager = ({
       return;
     }
     const row = {
+      society_id: societyId,
       flat_id: flatId,
       flat_number: flatNumber,
       resident_name: residentName,

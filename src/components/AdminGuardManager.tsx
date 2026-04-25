@@ -39,11 +39,15 @@ const AdminGuardManager = () => {
   const [editingGuard, setEditingGuard] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<Partial<GuardRow>>({});
 
-  useEffect(() => { loadGuards(); }, []);
+  useEffect(() => { loadGuards(); }, [societyId]);
 
   const loadGuards = async () => {
-    let query = supabase.from('guards').select('*').order('guard_id');
-    if (societyId) query = query.eq('society_id', societyId);
+    if (!societyId) {
+      setGuards([]);
+      setGuardDocs({});
+      return;
+    }
+    const query = supabase.from('guards').select('*').eq('society_id', societyId).order('guard_id');
     const { data } = await query;
     if (data) {
       setGuards(data as any);

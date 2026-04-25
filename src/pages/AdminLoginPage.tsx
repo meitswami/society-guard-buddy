@@ -4,6 +4,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/store/useStore';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
@@ -25,6 +26,7 @@ interface Props {
 
 const AdminLoginPage = ({ societyId, onLogin, onBack }: Props) => {
   const { t } = useLanguage();
+  const setSocietyId = useStore((s) => s.setSocietyId);
   const [showResetFlow, setShowResetFlow] = useState(false);
   const [adminId, setAdminId] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +36,10 @@ const AdminLoginPage = ({ societyId, onLogin, onBack }: Props) => {
   const { isAvailable, authenticate, loading: bioLoading } = useBiometric();
   const [bioAvailable, setBioAvailable] = useState(false);
 
-  useEffect(() => { isAvailable().then(setBioAvailable); }, []);
+  useEffect(() => {
+    setSocietyId(societyId);
+    isAvailable().then(setBioAvailable);
+  }, [isAvailable, setSocietyId, societyId]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +55,7 @@ const AdminLoginPage = ({ societyId, onLogin, onBack }: Props) => {
       .maybeSingle();
     setLoading(false);
     if (data) {
+      setSocietyId(societyId);
       auditLoginSuccess('admin', data.id, data.name);
       registerOneSignalUser({ userType: 'admin', userId: data.id, userName: data.name, societyId });
       promptPushPermission();
@@ -80,6 +86,7 @@ const AdminLoginPage = ({ societyId, onLogin, onBack }: Props) => {
       setError(t('login.invalidCredentials'));
       return;
     }
+    setSocietyId(societyId);
     auditBiometricLogin('admin', data.id, data.name);
     onLogin({
       id: data.id,

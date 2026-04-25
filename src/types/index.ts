@@ -8,6 +8,7 @@ export interface Guard {
 
 export interface Visitor {
   id: string;
+  societyId?: string;
   name: string;
   phone: string;
   documentType: 'aadhaar' | 'driving_license' | 'passport' | 'other';
@@ -31,6 +32,7 @@ export interface Visitor {
 
 export interface ResidentVehicle {
   id: string;
+  societyId?: string;
   flatNumber: string;
   residentName: string;
   vehicleNumber: string;
@@ -44,6 +46,7 @@ export interface ResidentVehicle {
 
 export interface BlacklistEntry {
   id: string;
+  societyId?: string;
   type: 'visitor' | 'vehicle';
   name?: string;
   phone?: string;

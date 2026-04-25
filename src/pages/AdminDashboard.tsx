@@ -46,16 +46,17 @@ interface Props {
 
 const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { t } = useLanguage();
-  const { loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, loadGuards } = useStore();
+  const { setSocietyId, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, loadGuards } = useStore();
   const notificationFeedRevision = useNotificationsRealtimeRevision(true, `admin-${admin.id}`);
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [stats, setStats] = useState({ visitors: 0, guards: 0, flats: 0, vehicles: 0, blacklist: 0 });
   const [kycPending, setKycPending] = useState<{ id: string; name: string; guard_id: string; kyc_alert_days: number; created_at: string }[]>([]);
 
   useEffect(() => {
+    setSocietyId(admin.societyId);
     loadVisitors(); loadResidentVehicles(); loadBlacklist(); loadFlats(); loadMembers(); loadGuards();
     loadStats(); loadKycPending();
-  }, []);
+  }, [admin.societyId]);
 
   const loadKycPending = async () => {
     let q = supabase.from('guards').select('id, name, guard_id, kyc_alert_days, created_at').eq('police_verification', 'pending');
@@ -78,8 +79,14 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     let rvQ = supabase.from('resident_vehicles').select('id', { count: 'exact', head: true });
     let blQ = supabase.from('blacklist').select('id', { count: 'exact', head: true });
     if (sid) {
+      vQ = vQ.eq('society_id', sid);
       gQ = gQ.eq('society_id', sid);
       fQ = fQ.eq('society_id', sid);
+      rvQ = rvQ.eq('society_id', sid);
+      blQ = blQ.eq('society_id', sid);
+    } else {
+      setStats({ visitors: 0, guards: 0, flats: 0, vehicles: 0, blacklist: 0 });
+      return;
     }
     const [v, g, f, rv, bl] = await Promise.all([vQ, gQ, fQ, rvQ, blQ]);
     setStats({

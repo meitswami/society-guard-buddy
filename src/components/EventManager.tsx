@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/store/useStore';
 import { Calendar, Plus, Users, Upload } from 'lucide-react';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
@@ -9,6 +10,7 @@ import { format } from 'date-fns';
 interface Props { adminName?: string; }
 
 const EventManager = ({ adminName = 'Admin' }: Props) => {
+  const societyId = useStore((s) => s.societyId);
   const [events, setEvents] = useState<any[]>([]);
   const [rsvps, setRsvps] = useState<any[]>([]);
   const [contributions, setContributions] = useState<any[]>([]);
@@ -25,19 +27,33 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
     screenshot_url: '',
   });
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); }, [societyId]);
   const loadAll = async () => {
-    const [e, r, c, f, m] = await Promise.all([
-      supabase.from('events').select('*').order('event_date', { ascending: false }),
-      supabase.from('event_rsvps').select('*'),
-      supabase.from('event_contributions').select('*'),
-      supabase.from('flats').select('flat_number, id, owner_name, is_occupied').order('flat_number'),
-      supabase.from('members').select('flat_id, name').eq('is_primary', true),
+    if (!societyId) {
+      setEvents([]);
+      setRsvps([]);
+      setContributions([]);
+      setFlats([]);
+      setPrimaryByFlatId(new Map());
+      return;
+    }
+    const [e, f] = await Promise.all([
+      supabase.from('events').select('*').eq('society_id', societyId).order('event_date', { ascending: false }),
+      supabase.from('flats').select('flat_number, id, owner_name, is_occupied').eq('society_id', societyId).order('flat_number'),
     ]);
     if (e.data) setEvents(e.data);
-    if (r.data) setRsvps(r.data);
-    if (c.data) setContributions(c.data);
     if (f.data) setFlats(f.data);
+    const eventIds = (e.data ?? []).map((x) => x.id);
+    const flatIds = (f.data ?? []).map((x) => x.id);
+    const [r, c, m] = await Promise.all([
+      eventIds.length ? supabase.from('event_rsvps').select('*').in('event_id', eventIds) : Promise.resolve({ data: [] as any[] }),
+      eventIds.length ? supabase.from('event_contributions').select('*').in('event_id', eventIds) : Promise.resolve({ data: [] as any[] }),
+      flatIds.length
+        ? supabase.from('members').select('flat_id, name').eq('is_primary', true).in('flat_id', flatIds)
+        : Promise.resolve({ data: [] as { flat_id: string; name: string }[] }),
+    ]);
+    setRsvps(r.data ?? []);
+    setContributions(c.data ?? []);
     const map = new Map<string, string>();
     for (const row of m.data ?? []) {
       if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
@@ -46,11 +62,11 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
   };
 
   const addEvent = async () => {
-    if (!ef.title || !ef.event_date) return;
+    if (!societyId || !ef.title || !ef.event_date) return;
     await supabase.from('events').insert([{
       title: ef.title, description: ef.description || null, event_date: ef.event_date,
       event_time: ef.event_time || null, location: ef.location || null,
-      contribution_amount: Number(ef.contribution_amount) || 0, created_by: adminName,
+      contribution_amount: Number(ef.contribution_amount) || 0, created_by: adminName, society_id: societyId,
     }]);
     setEf({ title: '', description: '', event_date: '', event_time: '', location: '', contribution_amount: '' });
     setShowForm(false); toast.success('Event created'); loadAll();
@@ -59,7 +75,7 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
     await supabase.from('notifications').insert([{
       title: `New Event: ${ef.title}`,
       message: `${ef.title} on ${ef.event_date}${ef.location ? ' at ' + ef.location : ''}. ${ef.contribution_amount ? 'Contribution: ₹' + ef.contribution_amount : ''}`,
-      type: 'event', target_type: 'all', created_by: adminName,
+      type: 'event', target_type: 'all', created_by: adminName, society_id: societyId,
     }]);
   };
 
@@ -102,7 +118,7 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
       await supabase.from('notifications').insert([{
         title: `Payment Due: ${event.title}`,
         message: `Flat ${flat.flat_number}, your contribution of ₹${event.contribution_amount} for ${event.title} is pending.`,
-        type: 'event_reminder', target_type: 'flat', target_id: flat.flat_number, created_by: adminName,
+        type: 'event_reminder', target_type: 'flat', target_id: flat.flat_number, created_by: adminName, society_id: societyId,
       }]);
     }
     toast.success(`Reminders sent to ${unpaid.length} flats`);

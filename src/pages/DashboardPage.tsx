@@ -12,7 +12,7 @@ import BiometricSetup from '@/components/BiometricSetup';
 type StatFilter = 'all' | 'visitor' | 'vehicle' | 'delivery' | 'inside';
 
 const DashboardPage = () => {
-  const { visitors, currentGuard, logout, markExit } = useStore();
+  const { visitors, currentGuard, societyId, logout, markExit } = useStore();
   const { t } = useLanguage();
   const [dayOffset, setDayOffset] = useState(0); // 0 = today, 1 = yesterday
   const [activeFilter, setActiveFilter] = useState<StatFilter>('all');
@@ -31,18 +31,19 @@ const DashboardPage = () => {
     }
 
     (async () => {
-      const { data } = await supabase
+      let q = supabase
         .from('guards')
         .select('id')
-        .eq('guard_id', currentGuard.id)
-        .maybeSingle();
+        .eq('guard_id', currentGuard.id);
+      if (societyId) q = q.eq('society_id', societyId);
+      const { data } = await q.maybeSingle();
       if (!cancelled) setGuardDbId(data?.id ?? null);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [currentGuard?.id]);
+  }, [currentGuard?.id, societyId]);
 
   const stats = useMemo(() => ({
     totalVisitors: dayVisitors.filter(v => v.category === 'visitor').length,

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { FileText, Shield, AlertTriangle, Info, Search, Filter } from 'lucide-react';
 
@@ -15,6 +16,7 @@ interface AuditLog {
   device_info: Record<string, unknown>;
   details: Record<string, unknown>;
   severity: string;
+  society_id: string | null;
 }
 
 const severityColors: Record<string, string> = {
@@ -35,17 +37,23 @@ const eventLabels: Record<string, string> = {
 
 const AuditLogViewer = () => {
   const { t } = useLanguage();
+  const societyId = useStore((s) => s.societyId);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => { loadLogs(); }, [filter]);
+  useEffect(() => { loadLogs(); }, [filter, societyId]);
 
   const loadLogs = async () => {
+    if (!societyId) {
+      setLogs([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    let query = supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
+    let query = supabase.from('audit_logs').select('*').eq('society_id', societyId).order('created_at', { ascending: false }).limit(200);
     if (filter !== 'all') query = query.eq('event_type', filter);
     const { data } = await query;
     setLogs((data as AuditLog[]) || []);

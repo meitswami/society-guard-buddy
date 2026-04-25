@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useStore } from '@/store/useStore';
 import { MapPin, Navigation, Save, Trash2 } from 'lucide-react';
 import { showSuccess, confirmAction } from '@/lib/swal';
 
@@ -10,6 +11,7 @@ interface Props {
 
 const GeofenceSetup = ({ adminName }: Props) => {
   const { t } = useLanguage();
+  const societyId = useStore((s) => s.societyId);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [radius, setRadius] = useState(500);
@@ -19,10 +21,22 @@ const GeofenceSetup = ({ adminName }: Props) => {
 
   useEffect(() => {
     loadExisting();
-  }, []);
+  }, [societyId]);
 
   const loadExisting = async () => {
-    const { data } = await supabase.from('geofence_settings').select('*').order('created_at', { ascending: false }).limit(1);
+    if (!societyId) {
+      setExisting(null);
+      setLatitude(null);
+      setLongitude(null);
+      setRadius(500);
+      return;
+    }
+    const { data } = await supabase
+      .from('geofence_settings')
+      .select('*')
+      .eq('society_id', societyId)
+      .order('created_at', { ascending: false })
+      .limit(1);
     if (data && data.length > 0) {
       const g = data[0];
       setExisting(g);
@@ -53,15 +67,15 @@ const GeofenceSetup = ({ adminName }: Props) => {
   };
 
   const saveGeofence = async () => {
-    if (latitude === null || longitude === null) return;
+    if (!societyId || latitude === null || longitude === null) return;
     setLoading(true);
     if (existing) {
       await supabase.from('geofence_settings').update({
         latitude, longitude, radius_meters: radius, set_by: adminName, updated_at: new Date().toISOString(),
-      }).eq('id', existing.id);
+      }).eq('id', existing.id).eq('society_id', societyId);
     } else {
       await supabase.from('geofence_settings').insert({
-        latitude, longitude, radius_meters: radius, set_by: adminName,
+        society_id: societyId, latitude, longitude, radius_meters: radius, set_by: adminName,
       });
     }
     setLoading(false);
@@ -73,7 +87,7 @@ const GeofenceSetup = ({ adminName }: Props) => {
     if (existing) {
       const ok = await confirmAction('Clear Geofence?', 'This will remove the geofence boundary.', 'Yes, Clear', 'Cancel');
       if (!ok) return;
-      await supabase.from('geofence_settings').delete().eq('id', existing.id);
+      await supabase.from('geofence_settings').delete().eq('id', existing.id).eq('society_id', societyId);
       setExisting(null);
       setLatitude(null);
       setLongitude(null);

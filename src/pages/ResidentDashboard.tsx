@@ -177,26 +177,26 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
   const loadRequests = useCallback(async () => {
     const { data } = await supabase.from('approval_requests').select('*')
-      .eq('flat_number', resident.flatNumber).order('created_at', { ascending: false }).limit(50);
+      .eq('flat_id', resident.flatId).order('created_at', { ascending: false }).limit(50);
     if (data) {
       const newPending = (data as ApprovalRequest[]).filter(r => r.status === 'pending').length;
       if (newPending > prevPendingCount.current && prevPendingCount.current >= 0) notificationSound();
       prevPendingCount.current = newPending;
       setRequests(data as ApprovalRequest[]);
     }
-  }, [resident.flatNumber]);
+  }, [resident.flatId]);
 
   const loadPasses = useCallback(async () => {
     const { data } = await supabase.from('visitor_passes').select('*')
-      .eq('flat_number', resident.flatNumber).order('created_at', { ascending: false }).limit(50);
+      .eq('flat_id', resident.flatId).order('created_at', { ascending: false }).limit(50);
     if (data) setPasses(data as VisitorPass[]);
-  }, [resident.flatNumber]);
+  }, [resident.flatId]);
 
   const loadMyPayments = useCallback(async () => {
     const { data } = await supabase.from('maintenance_payments').select('*')
-      .eq('flat_number', resident.flatNumber).order('created_at', { ascending: false }).limit(50);
+      .eq('flat_id', resident.flatId).order('created_at', { ascending: false }).limit(50);
     if (data) setMyPayments(data);
-  }, [resident.flatNumber]);
+  }, [resident.flatId]);
 
   const loadFlatmates = async () => {
     const { data } = await supabase.from('resident_users').select('*').eq('flat_id', resident.flatId);
@@ -209,7 +209,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   };
 
   const loadMyVehicles = async () => {
-    const { data } = await supabase.from('resident_vehicles').select('*').eq('flat_number', resident.flatNumber).order('created_at');
+    const { data } = await supabase.from('resident_vehicles').select('*').eq('flat_id', resident.flatId).order('created_at');
     if (data) setMyVehicles(data);
   };
 
@@ -225,7 +225,9 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
           .select('id, flat_id, name, phone, relation, age, gender, photo, is_primary, created_at')
           .in('flat_id', flatIds)
       : { data: [] as any[] };
-    const { data: vehicles } = await supabase.from('resident_vehicles').select('*');
+    const { data: vehicles } = flatIds.length
+      ? await supabase.from('resident_vehicles').select('*').in('flat_id', flatIds)
+      : { data: [] as any[] };
     const vehFiltered = (vehicles || []).filter((v) => flatNumbers.has(v.flat_number));
     if (flats) setAllFlats(flats);
     setAllMembers(membersRes.data || []);
@@ -308,16 +310,16 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   useEffect(() => {
     const channel = supabase.channel('resident-approvals')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'approval_requests',
-        filter: `flat_number=eq.${resident.flatNumber}` }, () => loadRequests())
+        filter: `flat_id=eq.${resident.flatId}` }, () => loadRequests())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [resident.flatNumber, loadRequests]);
+  }, [resident.flatId, loadRequests]);
 
   const handleApproval = async (id: string, status: 'approved' | 'rejected') => {
     const label = status === 'approved' ? t('resident.approve') : t('resident.reject');
     const confirmed = await confirmAction(label + '?', t('resident.confirmApprovalText'), t('swal.yes'), t('swal.no'));
     if (!confirmed) return;
-    await supabase.from('approval_requests').update({ status, responded_at: new Date().toISOString() }).eq('id', id);
+    await supabase.from('approval_requests').update({ status, responded_at: new Date().toISOString() }).eq('id', id).eq('flat_id', resident.flatId);
     loadRequests();
     showSuccess(t('swal.success'), status === 'approved' ? t('resident.approved') : t('resident.rejected'));
   };
@@ -362,6 +364,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       return;
     }
     const row = {
+      society_id: societyId,
       flat_id: resident.flatId,
       flat_number: resident.flatNumber,
       resident_name: memberForm.name,
@@ -553,6 +556,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     if (!vehicleForm.vehicleNumber) { toast.error('Vehicle number required'); return; }
     if (!vehicleForm.vehicleType) { toast.error('Please select a vehicle type'); return; }
     await supabase.from('resident_vehicles').insert({
+      society_id: societyId,
       flat_number: resident.flatNumber, flat_id: resident.flatId,
       resident_name: resident.name, vehicle_number: vehicleForm.vehicleNumber.toUpperCase(),
       vehicle_type: vehicleForm.vehicleType,
@@ -567,7 +571,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const handleDeleteVehicle = async (v: any) => {
     const confirmed = await confirmAction('Delete vehicle?', `Remove ${v.vehicle_number}?`, 'Yes', 'No');
     if (!confirmed) return;
-    await supabase.from('resident_vehicles').delete().eq('id', v.id);
+    await supabase.from('resident_vehicles').delete().eq('id', v.id).eq('flat_id', resident.flatId);
     showSuccess('Removed!', 'Vehicle removed successfully');
     loadMyVehicles();
     loadDirectory();

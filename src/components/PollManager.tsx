@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/store/useStore';
 import { Vote, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
@@ -21,6 +22,7 @@ interface Props {
 type VoterProfile = { name: string; flatNumber: string };
 
 const PollManager = ({ adminName = 'Admin', isResident = false, voterId = '', flatNumber = '' }: Props) => {
+  const societyId = useStore((s) => s.societyId);
   const [polls, setPolls] = useState<any[]>([]);
   const [options, setOptions] = useState<any[]>([]);
   const [votes, setVotes] = useState<any[]>([]);
@@ -31,15 +33,27 @@ const PollManager = ({ adminName = 'Admin', isResident = false, voterId = '', fl
 
   useEffect(() => {
     void loadAll();
-  }, []);
+  }, [societyId]);
 
   const loadAll = async () => {
-    const [p, o, v] = await Promise.all([
-      supabase.from('polls').select('*').order('created_at', { ascending: false }),
-      supabase.from('poll_options').select('*'),
-      supabase.from('poll_votes').select('*'),
+    if (!societyId) {
+      setPolls([]);
+      setOptions([]);
+      setVotes([]);
+      setVoterProfiles({});
+      return;
+    }
+    const { data: p } = await supabase
+      .from('polls')
+      .select('*')
+      .eq('society_id', societyId)
+      .order('created_at', { ascending: false });
+    const pollIds = (p ?? []).map((row) => row.id);
+    const [o, v] = await Promise.all([
+      pollIds.length ? supabase.from('poll_options').select('*').in('poll_id', pollIds) : Promise.resolve({ data: [] as any[] }),
+      pollIds.length ? supabase.from('poll_votes').select('*').in('poll_id', pollIds) : Promise.resolve({ data: [] as any[] }),
     ]);
-    if (p.data) setPolls(p.data);
+    setPolls(p ?? []);
     if (o.data) setOptions(o.data);
     if (v.data) {
       setVotes(v.data);
@@ -81,9 +95,9 @@ const PollManager = ({ adminName = 'Admin', isResident = false, voterId = '', fl
   }, [voteDetailOption, votes, voterProfiles]);
 
   const addPoll = async () => {
-    if (!pf.question || pf.options.filter(o => o.trim()).length < 2) return;
+    if (!societyId || !pf.question || pf.options.filter(o => o.trim()).length < 2) return;
     const { data: poll } = await supabase.from('polls').insert([{
-      question: pf.question, description: pf.description || null, created_by: adminName,
+      question: pf.question, description: pf.description || null, created_by: adminName, society_id: societyId,
     }]).select().single();
     if (poll) {
       const opts = pf.options.filter(o => o.trim()).map(o => ({ poll_id: poll.id, option_text: o.trim() }));
@@ -93,7 +107,7 @@ const PollManager = ({ adminName = 'Admin', isResident = false, voterId = '', fl
     setShowForm(false); toast.success('Poll created'); loadAll();
     // Notify
     await supabase.from('notifications').insert([{
-      title: 'New Poll', message: `Vote now: ${pf.question}`, type: 'poll', target_type: 'all', created_by: adminName,
+      title: 'New Poll', message: `Vote now: ${pf.question}`, type: 'poll', target_type: 'all', created_by: adminName, society_id: societyId,
     }]);
   };
 

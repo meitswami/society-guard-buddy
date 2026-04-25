@@ -61,12 +61,24 @@ export const useStore = create<AppState>()((set, get) => ({
   members: [],
   theme: (localStorage.getItem('gate-theme') as 'dark' | 'light' | 'system') || 'system',
 
-  setSocietyId: (id) => set({ societyId: id }),
+  setSocietyId: (id) =>
+    set({
+      societyId: id,
+      guards: [],
+      visitors: [],
+      residentVehicles: [],
+      blacklist: [],
+      flats: [],
+      members: [],
+    }),
 
   loadGuards: async () => {
     const sid = get().societyId;
-    let query = supabase.from('guards').select('*');
-    if (sid) query = query.eq('society_id', sid);
+    if (!sid) {
+      set({ guards: [] });
+      return;
+    }
+    const query = supabase.from('guards').select('*').eq('society_id', sid);
     const { data } = await query;
     if (data) {
       set({ guards: data.map(g => ({ id: g.guard_id, name: g.name, password: g.password })) });
@@ -78,11 +90,11 @@ export const useStore = create<AppState>()((set, get) => ({
     const guard = guards.find(g => g.id === id && g.password === password);
     if (guard) {
       const loggedIn = { ...guard, loginTime: new Date().toISOString() };
+      const sid = get().societyId;
       const { data } = await supabase.from('guard_shifts').insert({
-        guard_id: guard.id, guard_name: guard.name, login_time: new Date().toISOString(),
+        guard_id: guard.id, guard_name: guard.name, login_time: new Date().toISOString(), society_id: sid,
       }).select().single();
       set({ currentGuard: loggedIn, shiftId: data?.id || null });
-      const sid = get().societyId;
       if (sid && data?.id) {
         writePersistedSession({ v: 1, role: 'guard', societyId: sid, shiftId: data.id, guardId: guard.id });
       }
@@ -127,11 +139,20 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   loadVisitors: async () => {
-    const { data } = await supabase.from('visitors').select('*').order('entry_time', { ascending: false });
+    const sid = get().societyId;
+    if (!sid) {
+      set({ visitors: [] });
+      return;
+    }
+    const { data } = await supabase
+      .from('visitors')
+      .select('*')
+      .eq('society_id', sid)
+      .order('entry_time', { ascending: false });
     if (data) {
       set({
         visitors: data.map(v => ({
-          id: v.id, name: v.name, phone: v.phone,
+          id: v.id, societyId: v.society_id || undefined, name: v.name, phone: v.phone,
           documentType: v.document_type as Visitor['documentType'],
           documentNumber: v.document_number || '', documentPhoto: v.document_photo || undefined,
           visitorPhotos: v.visitor_photos || [], flatNumber: v.flat_number,
@@ -147,7 +168,10 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   addVisitor: async (visitor) => {
+    const sid = get().societyId;
+    if (!sid) return;
     await supabase.from('visitors').insert({
+      society_id: sid,
       name: visitor.name, phone: visitor.phone, document_type: visitor.documentType,
       document_number: visitor.documentNumber || null, document_photo: visitor.documentPhoto || null,
       visitor_photos: visitor.visitorPhotos, flat_number: visitor.flatNumber, purpose: visitor.purpose,
@@ -164,10 +188,13 @@ export const useStore = create<AppState>()((set, get) => ({
 
   markExit: async (id) => {
     const now = new Date().toISOString();
+    const sid = get().societyId;
     const visitor = get().visitors.find(v => v.id === id);
-    await supabase.from('visitors').update({
+    let q = supabase.from('visitors').update({
       exit_time: now, vehicle_exit_time: visitor?.vehicleNumber ? now : null,
     }).eq('id', id);
+    if (sid) q = q.eq('society_id', sid);
+    await q;
     set(s => ({
       visitors: s.visitors.map(v =>
         v.id === id ? { ...v, exitTime: now, vehicleExitTime: v.vehicleNumber ? now : undefined } : v
@@ -177,25 +204,16 @@ export const useStore = create<AppState>()((set, get) => ({
 
   loadResidentVehicles: async () => {
     const sid = get().societyId;
-    let query = supabase.from('resident_vehicles').select('*');
-    if (sid) {
-      // Filter by flat_id in flats belonging to this society
-      const { data: flatData } = await supabase.from('flats').select('id').eq('society_id', sid);
-      if (flatData) {
-        const flatIds = flatData.map(f => f.id);
-        if (flatIds.length > 0) {
-          query = query.in('flat_id', flatIds);
-        } else {
-          set({ residentVehicles: [] });
-          return;
-        }
-      }
+    if (!sid) {
+      set({ residentVehicles: [] });
+      return;
     }
+    const query = supabase.from('resident_vehicles').select('*').eq('society_id', sid);
     const { data } = await query;
     if (data) {
       set({
         residentVehicles: data.map(v => ({
-          id: v.id, flatNumber: v.flat_number, residentName: v.resident_name,
+          id: v.id, societyId: v.society_id || undefined, flatNumber: v.flat_number, residentName: v.resident_name,
           vehicleNumber: v.vehicle_number, vehicleType: v.vehicle_type as ResidentVehicle['vehicleType'],
           vehiclePhoto: v.vehicle_photo || undefined, flatId: v.flat_id || undefined,
           memberId: v.member_id || undefined,
@@ -207,7 +225,10 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   addResidentVehicle: async (vehicle) => {
+    const sid = get().societyId;
+    if (!sid) return;
     await supabase.from('resident_vehicles').insert({
+      society_id: sid,
       flat_number: vehicle.flatNumber, resident_name: vehicle.residentName,
       vehicle_number: vehicle.vehicleNumber, vehicle_type: vehicle.vehicleType,
       flat_id: vehicle.flatId || null,
@@ -216,16 +237,24 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   removeResidentVehicle: async (id) => {
-    await supabase.from('resident_vehicles').delete().eq('id', id);
+    const sid = get().societyId;
+    let q = supabase.from('resident_vehicles').delete().eq('id', id);
+    if (sid) q = q.eq('society_id', sid);
+    await q;
     set(s => ({ residentVehicles: s.residentVehicles.filter(v => v.id !== id) }));
   },
 
   loadBlacklist: async () => {
-    const { data } = await supabase.from('blacklist').select('*').order('added_at', { ascending: false });
+    const sid = get().societyId;
+    if (!sid) {
+      set({ blacklist: [] });
+      return;
+    }
+    const { data } = await supabase.from('blacklist').select('*').eq('society_id', sid).order('added_at', { ascending: false });
     if (data) {
       set({
         blacklist: data.map(e => ({
-          id: e.id, type: e.type as BlacklistEntry['type'], name: e.name || undefined,
+          id: e.id, societyId: e.society_id || undefined, type: e.type as BlacklistEntry['type'], name: e.name || undefined,
           phone: e.phone || undefined, vehicleNumber: e.vehicle_number || undefined,
           reason: e.reason, addedAt: e.added_at, addedBy: e.added_by,
         })),
@@ -234,7 +263,10 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   addToBlacklist: async (entry) => {
+    const sid = get().societyId;
+    if (!sid) return;
     await supabase.from('blacklist').insert({
+      society_id: sid,
       type: entry.type, name: entry.name || null, phone: entry.phone || null,
       vehicle_number: entry.vehicleNumber || null, reason: entry.reason, added_by: entry.addedBy,
     });
@@ -242,7 +274,10 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   removeFromBlacklist: async (id) => {
-    await supabase.from('blacklist').delete().eq('id', id);
+    const sid = get().societyId;
+    let q = supabase.from('blacklist').delete().eq('id', id);
+    if (sid) q = q.eq('society_id', sid);
+    await q;
     set(s => ({ blacklist: s.blacklist.filter(e => e.id !== id) }));
   },
 
@@ -253,8 +288,11 @@ export const useStore = create<AppState>()((set, get) => ({
 
   loadFlats: async () => {
     const sid = get().societyId;
-    let query = supabase.from('flats').select('*').order('flat_number');
-    if (sid) query = query.eq('society_id', sid);
+    if (!sid) {
+      set({ flats: [] });
+      return;
+    }
+    const query = supabase.from('flats').select('*').eq('society_id', sid).order('flat_number');
     const { data } = await query;
     if (data) {
       set({
@@ -270,6 +308,10 @@ export const useStore = create<AppState>()((set, get) => ({
 
   loadMembers: async () => {
     const sid = get().societyId;
+    if (!sid) {
+      set({ members: [] });
+      return;
+    }
     let query = supabase.from('members').select('*').order('is_primary', { ascending: false });
     if (sid) {
       const { data: flatData } = await supabase.from('flats').select('id').eq('society_id', sid);

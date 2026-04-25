@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/store/useStore';
 
 interface AuditEvent {
   event_type: string;
@@ -55,6 +56,7 @@ export async function logAuditEvent(event: AuditEvent) {
     const deviceInfo = getDeviceInfo();
 
     await supabase.from('audit_logs').insert([{
+      society_id: useStore.getState().societyId,
       event_type: event.event_type,
       user_type: event.user_type,
       user_id: event.user_id || null,

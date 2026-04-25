@@ -146,15 +146,15 @@ const NotificationCenter = ({
         ? await supabase.from('flats').select('id, flat_number, owner_name').eq('society_id', societyId).order('flat_number')
         : await supabase.from('flats').select('id, flat_number, owner_name').order('flat_number');
       const flatIds = (fRes.data ?? []).map((f) => f.id);
-      const fullResidents = await supabase.from('resident_users').select('id, name, flat_number, flat_id').order('name');
-      const rData =
-        societyId && flatIds.length > 0
-          ? (fullResidents.data ?? []).filter((u) => flatIds.includes(u.flat_id))
-          : (fullResidents.data ?? []);
+      const fullResidents =
+        flatIds.length > 0
+          ? await supabase.from('resident_users').select('id, name, flat_number, flat_id').in('flat_id', flatIds).order('name')
+          : { data: [] as { id: string; name: string; flat_number: string; flat_id: string }[] };
+      const rData = fullResidents.data ?? [];
       const mRes =
         flatIds.length > 0
           ? await supabase.from('members').select('flat_id, name').eq('is_primary', true).in('flat_id', flatIds)
-          : await supabase.from('members').select('flat_id, name').eq('is_primary', true);
+          : { data: [] as { flat_id: string; name: string }[] };
       if (fRes.data) setFlats(fRes.data);
       setResidents(rData);
       const map = new Map<string, string>();

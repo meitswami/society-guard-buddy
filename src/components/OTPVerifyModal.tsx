@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useStore } from '@/store/useStore';
 import { KeyRound, Check, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -11,6 +12,7 @@ interface Props {
 
 const OTPVerifyModal = ({ onResult, onCancel }: Props) => {
   const { t } = useLanguage();
+  const societyId = useStore((s) => s.societyId);
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,12 +27,26 @@ const OTPVerifyModal = ({ onResult, onCancel }: Props) => {
     const today = format(new Date(), 'yyyy-MM-dd');
     const now = format(new Date(), 'HH:mm:ss');
 
+    if (!societyId) {
+      setLoading(false);
+      setError(t('otp.invalid'));
+      return;
+    }
+    const { data: flatRows } = await supabase.from('flats').select('id').eq('society_id', societyId);
+    const flatIds = (flatRows ?? []).map((f) => f.id);
+    if (flatIds.length === 0) {
+      setLoading(false);
+      setError(t('otp.invalid'));
+      return;
+    }
+
     const { data } = await supabase
       .from('visitor_passes')
       .select('*')
       .eq('otp_code', otp)
       .eq('status', 'active')
       .eq('valid_date', today)
+      .in('flat_id', flatIds)
       .single();
 
     setLoading(false);
@@ -51,7 +67,7 @@ const OTPVerifyModal = ({ onResult, onCancel }: Props) => {
     // Mark as used
     await supabase.from('visitor_passes').update({
       status: 'used', used_at: new Date().toISOString(),
-    }).eq('id', data.id);
+    }).eq('id', data.id).in('flat_id', flatIds);
 
     onResult(true, {
       guestName: data.guest_name || 'Guest',

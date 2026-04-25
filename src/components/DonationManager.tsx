@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/store/useStore';
 import { Heart, Plus, Upload } from 'lucide-react';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
@@ -8,6 +9,7 @@ import { toast } from 'sonner';
 interface Props { adminName?: string; }
 
 const DonationManager = ({ adminName = 'Admin' }: Props) => {
+  const societyId = useStore((s) => s.societyId);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [donations, setDonations] = useState<any[]>([]);
   const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null }[]>([]);
@@ -23,17 +25,32 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
     screenshot_url: '',
   });
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); }, [societyId]);
   const loadAll = async () => {
-    const [c, d, f, m] = await Promise.all([
-      supabase.from('donation_campaigns').select('*').order('created_at', { ascending: false }),
-      supabase.from('donation_payments').select('*').order('created_at', { ascending: false }),
-      supabase.from('flats').select('flat_number, id, owner_name').order('flat_number'),
-      supabase.from('members').select('flat_id, name').eq('is_primary', true),
+    if (!societyId) {
+      setCampaigns([]);
+      setDonations([]);
+      setFlats([]);
+      setPrimaryByFlatId(new Map());
+      return;
+    }
+    const [c, f] = await Promise.all([
+      supabase.from('donation_campaigns').select('*').eq('society_id', societyId).order('created_at', { ascending: false }),
+      supabase.from('flats').select('flat_number, id, owner_name').eq('society_id', societyId).order('flat_number'),
     ]);
     if (c.data) setCampaigns(c.data);
-    if (d.data) setDonations(d.data);
     if (f.data) setFlats(f.data);
+    const campaignIds = (c.data ?? []).map((x) => x.id);
+    const flatIds = (f.data ?? []).map((x) => x.id);
+    const [d, m] = await Promise.all([
+      campaignIds.length
+        ? supabase.from('donation_payments').select('*').in('campaign_id', campaignIds).order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] as any[] }),
+      flatIds.length
+        ? supabase.from('members').select('flat_id, name').eq('is_primary', true).in('flat_id', flatIds)
+        : Promise.resolve({ data: [] as { flat_id: string; name: string }[] }),
+    ]);
+    setDonations(d.data ?? []);
     const map = new Map<string, string>();
     for (const row of m.data ?? []) {
       if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
@@ -42,10 +59,10 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
   };
 
   const addCampaign = async () => {
-    if (!cf.title) return;
+    if (!societyId || !cf.title) return;
     await supabase.from('donation_campaigns').insert([{
       title: cf.title, description: cf.description || null, target_amount: Number(cf.target_amount) || 0,
-      created_by: adminName, end_date: cf.end_date || null,
+      created_by: adminName, end_date: cf.end_date || null, society_id: societyId,
     }]);
     setCf({ title: '', description: '', target_amount: '', end_date: '' });
     setShowForm(false); toast.success('Campaign created'); loadAll();

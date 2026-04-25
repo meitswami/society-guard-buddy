@@ -124,6 +124,7 @@ export type Database = {
           id: string
           ip_address: string | null
           severity: string
+          society_id: string | null
           user_agent: string | null
           user_id: string | null
           user_name: string | null
@@ -137,6 +138,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           severity?: string
+          society_id?: string | null
           user_agent?: string | null
           user_id?: string | null
           user_name?: string | null
@@ -150,12 +152,21 @@ export type Database = {
           id?: string
           ip_address?: string | null
           severity?: string
+          society_id?: string | null
           user_agent?: string | null
           user_id?: string | null
           user_name?: string | null
           user_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       biometric_credentials: {
         Row: {
@@ -193,6 +204,7 @@ export type Database = {
           name: string | null
           phone: string | null
           reason: string
+          society_id: string | null
           type: string
           vehicle_number: string | null
         }
@@ -204,6 +216,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           reason: string
+          society_id?: string | null
           type?: string
           vehicle_number?: string | null
         }
@@ -215,10 +228,19 @@ export type Database = {
           name?: string | null
           phone?: string | null
           reason?: string
+          society_id?: string | null
           type?: string
           vehicle_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "blacklist_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       donation_campaigns: {
         Row: {
@@ -722,6 +744,7 @@ export type Database = {
           longitude: number
           radius_meters: number
           set_by: string
+          society_id: string | null
           updated_at: string
         }
         Insert: {
@@ -731,6 +754,7 @@ export type Database = {
           longitude: number
           radius_meters?: number
           set_by: string
+          society_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -740,9 +764,18 @@ export type Database = {
           longitude?: number
           radius_meters?: number
           set_by?: string
+          society_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "geofence_settings_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guard_documents: {
         Row: {
@@ -787,6 +820,7 @@ export type Database = {
           id: string
           login_time: string
           logout_time: string | null
+          society_id: string | null
         }
         Insert: {
           created_at?: string
@@ -795,6 +829,7 @@ export type Database = {
           id?: string
           login_time?: string
           logout_time?: string | null
+          society_id?: string | null
         }
         Update: {
           created_at?: string
@@ -803,8 +838,17 @@ export type Database = {
           id?: string
           login_time?: string
           logout_time?: string | null
+          society_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "guard_shifts_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guards: {
         Row: {
@@ -1424,6 +1468,7 @@ export type Database = {
           id: string
           member_id: string | null
           resident_name: string
+          society_id: string | null
           vehicle_color: string | null
           vehicle_display_name: string | null
           vehicle_number: string
@@ -1437,6 +1482,7 @@ export type Database = {
           id?: string
           member_id?: string | null
           resident_name: string
+          society_id?: string | null
           vehicle_color?: string | null
           vehicle_display_name?: string | null
           vehicle_number: string
@@ -1450,6 +1496,7 @@ export type Database = {
           id?: string
           member_id?: string | null
           resident_name?: string
+          society_id?: string | null
           vehicle_color?: string | null
           vehicle_display_name?: string | null
           vehicle_number?: string
@@ -1469,6 +1516,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resident_vehicles_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
             referencedColumns: ["id"]
           },
         ]
@@ -1804,6 +1858,7 @@ export type Database = {
           name: string
           phone: string
           purpose: string
+          society_id: string | null
           updated_at: string
           vehicle_entry_time: string | null
           vehicle_exit_time: string | null
@@ -1828,6 +1883,7 @@ export type Database = {
           name: string
           phone: string
           purpose?: string
+          society_id?: string | null
           updated_at?: string
           vehicle_entry_time?: string | null
           vehicle_exit_time?: string | null
@@ -1852,6 +1908,7 @@ export type Database = {
           name?: string
           phone?: string
           purpose?: string
+          society_id?: string | null
           updated_at?: string
           vehicle_entry_time?: string | null
           vehicle_exit_time?: string | null
@@ -1859,7 +1916,15 @@ export type Database = {
           vehicle_photo?: string | null
           visitor_photos?: string[] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "visitors_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

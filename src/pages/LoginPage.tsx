@@ -36,11 +36,19 @@ const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
   const { isAvailable, authenticate, loading: bioLoading } = useBiometric();
   const [bioAvailable, setBioAvailable] = useState(false);
 
-  useEffect(() => { isAvailable().then(setBioAvailable); }, []);
+  useEffect(() => {
+    setSocietyId(societyId);
+    isAvailable().then(setBioAvailable);
+  }, [isAvailable, setSocietyId, societyId]);
 
   const checkGeofence = (): Promise<boolean> => {
     return new Promise(async (resolve) => {
-      const { data: geoData } = await supabase.from('geofence_settings').select('*').order('created_at', { ascending: false }).limit(1);
+      const { data: geoData } = await supabase
+        .from('geofence_settings')
+        .select('*')
+        .eq('society_id', societyId)
+        .order('created_at', { ascending: false })
+        .limit(1);
       if (!geoData || geoData.length === 0) { resolve(true); return; }
       const geo = geoData[0];
       if (!navigator.geolocation) { setError(t('admin.geofenceBlocked')); resolve(false); return; }

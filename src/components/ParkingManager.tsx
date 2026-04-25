@@ -1,29 +1,37 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/store/useStore';
 import { Car, Plus, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 
 const ParkingManager = () => {
+  const societyId = useStore((s) => s.societyId);
   const [spaces, setSpaces] = useState<any[]>([]);
   const [flats, setFlats] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [sf, setSf] = useState({ space_number: '', space_type: 'car', floor_level: '', allocated_flat_number: '', allocated_vehicle_number: '', notes: '' });
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); }, [societyId]);
   const loadAll = async () => {
+    if (!societyId) {
+      setSpaces([]);
+      setFlats([]);
+      return;
+    }
     const [s, f] = await Promise.all([
-      supabase.from('parking_spaces').select('*').order('space_number'),
-      supabase.from('flats').select('flat_number, id').order('flat_number'),
+      supabase.from('parking_spaces').select('*').eq('society_id', societyId).order('space_number'),
+      supabase.from('flats').select('flat_number, id').eq('society_id', societyId).order('flat_number'),
     ]);
     if (s.data) setSpaces(s.data);
     if (f.data) setFlats(f.data);
   };
 
   const addSpace = async () => {
-    if (!sf.space_number) return;
+    if (!societyId || !sf.space_number) return;
     const flat = flats.find(f => f.flat_number === sf.allocated_flat_number);
     await supabase.from('parking_spaces').insert([{
+      society_id: societyId,
       space_number: sf.space_number, space_type: sf.space_type, floor_level: sf.floor_level || null,
       is_allocated: !!sf.allocated_flat_number,
       allocated_flat_id: flat?.id || null, allocated_flat_number: sf.allocated_flat_number || null,
@@ -36,7 +44,7 @@ const ParkingManager = () => {
   const deleteSpace = async (id: string) => {
     const ok = await confirmAction('Delete Space?', 'Remove this parking space?', 'Yes, Delete', 'Cancel');
     if (!ok) return;
-    await supabase.from('parking_spaces').delete().eq('id', id);
+    await supabase.from('parking_spaces').delete().eq('id', id).eq('society_id', societyId);
     showSuccess('Deleted!', 'Parking space removed'); loadAll();
   };
 
@@ -45,7 +53,7 @@ const ParkingManager = () => {
     if (!ok) return;
     await supabase.from('parking_spaces').update({
       is_allocated: false, allocated_flat_id: null, allocated_flat_number: null, allocated_vehicle_number: null,
-    }).eq('id', id);
+    }).eq('id', id).eq('society_id', societyId);
     showSuccess('Done!', 'Space deallocated'); loadAll();
   };
 
