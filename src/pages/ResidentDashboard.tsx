@@ -40,6 +40,22 @@ interface Props { resident: Resident; onLogout: () => void; }
 const SERVICE_TYPES = ['Cook', 'Maid', 'Washerman', 'Newspaper', 'Driver', 'Others'] as const;
 const RELATION_TYPES = ['Owner', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Tenant', 'Others'] as const;
 
+const DOC_TYPES = {
+  photoId: [
+    { value: 'aadhaar', label: 'Aadhaar' },
+    { value: 'pan', label: 'PAN Card' },
+    { value: 'passport', label: 'Passport' },
+    { value: 'voter_id', label: 'Voter ID' },
+    { value: 'driving_license', label: 'Driving License' },
+    { value: 'other', label: 'Other' },
+  ],
+  tenant: [
+    { value: 'rental_agreement', label: 'Rental agreement' },
+    { value: 'police_verification', label: 'Police verification' },
+    { value: 'other', label: 'Other' },
+  ],
+} as const;
+
 const notificationSound = () => {
   try {
     const ctx = new AudioContext();
@@ -62,6 +78,9 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
   const { isAvailable, register: registerBiometric } = useBiometric();
   const societyId = useStore((s) => s.societyId);
+  const [loginBanners, setLoginBanners] = useState<{ id: string; image_url: string; title: string | null }[]>([]);
+  const [bannerOpen, setBannerOpen] = useState(false);
+  const [bannerIdx, setBannerIdx] = useState(0);
 
   const notificationRowForResident = (row: Record<string, unknown>) => {
     if (societyId && row.society_id && String(row.society_id) !== societyId) return false;
@@ -133,6 +152,9 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [myMembers, setMyMembers] = useState<any[]>([]);
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
+  type MemberDocumentKind = 'photo_id' | 'tenant_doc' | 'service_doc';
+  type MemberDocDraft = { kind: MemberDocumentKind; type: string; front: string; back: string };
+  const [memberDocs, setMemberDocs] = useState<MemberDocDraft[]>([]);
   const [memberForm, setMemberForm] = useState({
     name: '',
     phone: '',
@@ -167,8 +189,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [dirSearch, setDirSearch] = useState('');
   const [expandedFlat, setExpandedFlat] = useState<string | null>(null);
   const [residentSelfIdUploadEnabled, setResidentSelfIdUploadEnabled] = useState(false);
-  const [selfIdFront, setSelfIdFront] = useState('');
-  const [selfIdBack, setSelfIdBack] = useState('');
+  const [selfIdDocs, setSelfIdDocs] = useState<MemberDocDraft[]>([]);
   const [savingSelfId, setSavingSelfId] = useState(false);
   const [mandatoryPasswordOpen, setMandatoryPasswordOpen] = useState(false);
   const [mandatoryNew, setMandatoryNew] = useState('');
@@ -263,15 +284,63 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
   useEffect(() => {
     if (!residentSelfIdUploadEnabled || !myMemberRecord) {
-      setSelfIdFront('');
-      setSelfIdBack('');
+      setSelfIdDocs([]);
       return;
     }
-    setSelfIdFront(myMemberRecord.id_photo_front || '');
-    setSelfIdBack(myMemberRecord.id_photo_back || '');
-  }, [residentSelfIdUploadEnabled, myMemberRecord?.id, myMemberRecord?.id_photo_front, myMemberRecord?.id_photo_back]);
+    let cancelled = false;
+    (async () => {
+      const { data: docs } = await supabase
+        .from('member_documents')
+        .select('doc_kind, doc_type, front_url, back_url')
+        .eq('member_id', myMemberRecord.id)
+        .eq('doc_kind', 'photo_id')
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      if (docs && docs.length > 0) {
+        setSelfIdDocs(
+          docs.map((d: any) => ({
+            kind: 'photo_id',
+            type: String(d.doc_type || 'aadhaar'),
+            front: String(d.front_url || ''),
+            back: String(d.back_url || ''),
+          })),
+        );
+        return;
+      }
+      // Back-compat: show legacy front/back if present (single doc).
+      const front = String((myMemberRecord as any)?.id_photo_front || '');
+      const back = String((myMemberRecord as any)?.id_photo_back || '');
+      setSelfIdDocs(front || back ? [{ kind: 'photo_id', type: 'other', front, back }] : []);
+    })();
+    return () => { cancelled = true; };
+  }, [residentSelfIdUploadEnabled, myMemberRecord?.id]);
 
   useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); loadFlatmates(); loadMyMembers(); loadMyVehicles(); loadDirectory(); }, []);
+
+  useEffect(() => {
+    if (!societyId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('society_dashboard_banners')
+        .select('id, image_url, title, is_active')
+        .eq('society_id', societyId)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false });
+      if (cancelled) return;
+      const rows = (data || []) as any[];
+      setLoginBanners(rows);
+      const key = `sgb_seen_banner_${societyId}`;
+      const seen = sessionStorage.getItem(key) === '1';
+      if (!seen && rows.length > 0) {
+        setBannerIdx(0);
+        setBannerOpen(true);
+        sessionStorage.setItem(key, '1');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [societyId]);
 
   const handleSaveSelfIdPhotos = async () => {
     if (!myMemberRecord?.id) return;
@@ -280,10 +349,17 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       return;
     }
     setSavingSelfId(true);
-    const { error } = await supabase
-      .from('members')
-      .update({ id_photo_front: selfIdFront || null, id_photo_back: selfIdBack || null })
-      .eq('id', myMemberRecord.id);
+    await supabase.from('member_documents').delete().eq('member_id', myMemberRecord.id).eq('doc_kind', 'photo_id');
+    const rows = selfIdDocs
+      .filter((d) => d.kind === 'photo_id' && d.type && (d.front || d.back))
+      .map((d) => ({
+        member_id: myMemberRecord.id,
+        doc_kind: 'photo_id',
+        doc_type: d.type,
+        front_url: d.front || null,
+        back_url: d.back || null,
+      }));
+    const { error } = rows.length > 0 ? await supabase.from('member_documents').insert(rows) : { error: null as any };
     setSavingSelfId(false);
     if (error) {
       toast.error(error.message);
@@ -413,10 +489,24 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       : (memberForm.relation === 'Others' ? 'others' : memberForm.relation);
     const relNorm = relationRaw.toLowerCase();
     const restricted = isRestrictedMemberCategory(relNorm);
-    const idFront = memberForm.idPhotoFront || memberForm.photo || null;
-    if (restricted && !idFront && !(editingMember?.id_photo_front)) {
-      toast.error('Photo ID (front) is required for tenant, other, and staff');
-      return;
+    const isTenant = relNorm === 'tenant';
+    const photoIdDocs = memberDocs.filter((d) => d.kind === 'photo_id' && !!d.front);
+    const tenantDocs = memberDocs.filter((d) => d.kind === 'tenant_doc' && !!d.front);
+    const legacyFront = String(editingMember?.id_photo_front || '');
+    const hasAnyPhotoId = photoIdDocs.length > 0 || !!legacyFront || !!memberForm.idPhotoFront || !!memberForm.photo;
+    if (restricted || isTenant) {
+      if (isTenant && !hasAnyPhotoId) {
+        toast.error('Tenant: at least 1 Photo ID is required');
+        return;
+      }
+      if (isTenant && tenantDocs.length === 0) {
+        toast.error('Tenant: rental agreement is required');
+        return;
+      }
+      if (!isTenant && !hasAnyPhotoId) {
+        toast.error('Photo ID is required for restricted categories (tenant/other/service)');
+        return;
+      }
     }
 
     const payload: Record<string, unknown> = {
@@ -424,15 +514,19 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       name: memberForm.name,
       phone: memberForm.phone || null,
       relation: relNorm,
+      household_group:
+        relNorm === 'tenant' || String((myMemberRecord as any)?.household_group || '') === 'tenant' ? 'tenant' : 'owner',
       age: memberForm.age ? parseInt(memberForm.age, 10) : null,
       gender: memberForm.gender || null,
       photo: memberForm.photo || null,
       is_primary: false,
     };
 
-    if (restricted) {
+    if (restricted || isTenant) {
+      const bestPhotoId = memberDocs.find((d) => d.kind === 'photo_id' && !!d.front) ?? null;
+      const idFront = bestPhotoId?.front || memberForm.idPhotoFront || memberForm.photo || null;
       payload.id_photo_front = idFront;
-      payload.id_photo_back = memberForm.idPhotoBack || null;
+      payload.id_photo_back = bestPhotoId?.back || memberForm.idPhotoBack || null;
       payload.police_verification = memberForm.policeVerification.trim() || null;
       payload.spouse_name = memberForm.spouseName.trim() || null;
       payload.date_joining = memberForm.dateJoining || null;
@@ -482,6 +576,20 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       toast.success('Member added');
     }
 
+    if (memberId) {
+      await supabase.from('member_documents').delete().eq('member_id', memberId);
+      const rows = memberDocs
+        .filter((d) => d.type && (d.front || d.back))
+        .map((d) => ({
+          member_id: memberId,
+          doc_kind: d.kind,
+          doc_type: d.type,
+          front_url: d.front || null,
+          back_url: d.back || null,
+        }));
+      if (rows.length > 0) await supabase.from('member_documents').insert(rows);
+    }
+
     if (restricted && memberId) await syncResidentStaffVehicle(memberId);
     else if (memberId) {
       const { data: vdel } = await supabase.from('resident_vehicles').select('id').eq('member_id', memberId).maybeSingle();
@@ -489,6 +597,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     }
 
     setMemberForm(emptyMemberForm());
+    setMemberDocs([]);
     setShowAddMember(false);
     setEditingMember(null);
     loadMyMembers();
@@ -517,6 +626,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     const gNorm = (m.gender || '').trim().toLowerCase();
     const genderVal = gNorm === 'male' || gNorm === 'female' || gNorm === 'other' ? gNorm : '';
     setEditingMember(m);
+    setMemberDocs([]);
     setMemberForm({
       name: m.name,
       phone: m.phone || '',
@@ -538,6 +648,21 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       vehicleNumber: '',
       vehicleColor: '',
     });
+    const { data: docs } = await supabase
+      .from('member_documents')
+      .select('doc_kind, doc_type, front_url, back_url')
+      .eq('member_id', m.id)
+      .order('created_at', { ascending: true });
+    if (docs && docs.length > 0) {
+      setMemberDocs(
+        docs.map((d: any) => ({
+          kind: (d.doc_kind as MemberDocumentKind) || 'photo_id',
+          type: String(d.doc_type || 'other'),
+          front: String(d.front_url || ''),
+          back: String(d.back_url || ''),
+        })),
+      );
+    }
     const { data: vrow } = await supabase.from('resident_vehicles').select('*').eq('member_id', m.id).maybeSingle();
     if (vrow) {
       setMemberForm((f) => ({
@@ -662,6 +787,56 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      {bannerOpen && loginBanners.length > 0 && (
+        <div className="fixed inset-0 z-[90] bg-black/60 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-card border border-border overflow-hidden shadow-xl">
+            <div className="relative">
+              <img
+                src={loginBanners[bannerIdx]?.image_url}
+                alt={loginBanners[bannerIdx]?.title || 'Banner'}
+                className="w-full h-56 object-cover bg-muted"
+              />
+              <button
+                type="button"
+                onClick={() => setBannerOpen(false)}
+                className="absolute top-2 right-2 rounded-lg bg-black/40 text-white px-2 py-1 text-xs"
+              >
+                Close
+              </button>
+              {loginBanners.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setBannerIdx((i) => (i - 1 + loginBanners.length) % loginBanners.length)}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 text-white px-2 py-1 text-sm"
+                    aria-label="Previous banner"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBannerIdx((i) => (i + 1) % loginBanners.length)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 text-white px-2 py-1 text-sm"
+                    aria-label="Next banner"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+            </div>
+            {(loginBanners[bannerIdx]?.title || loginBanners.length > 1) && (
+              <div className="p-3 flex items-center justify-between gap-2">
+                <p className="text-sm font-medium truncate">{loginBanners[bannerIdx]?.title || ' '}</p>
+                {loginBanners.length > 1 && (
+                  <p className="text-[10px] text-muted-foreground">
+                    {bannerIdx + 1}/{loginBanners.length}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {!mandatoryPasswordOpen && <TourGuideFirstLogin role="resident" userId={resident.id} t={t} />}
       {mandatoryPasswordOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 p-4">
@@ -970,24 +1145,152 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                     <p className="text-[10px] text-muted-foreground">
                       Tenant, other, and staff are not given resident app login. Add ID and optional details below.
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Photo ID uploads</p>
                       <button
                         type="button"
-                        onClick={() => handlePhotoCapture((val) => setMemberForm((f) => ({ ...f, idPhotoFront: val, photo: f.photo || val })))}
-                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                        onClick={() => setMemberDocs((d) => [...d, { kind: 'photo_id', type: 'aadhaar', front: '', back: '' }])}
+                        className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-lg font-medium flex items-center gap-1"
                       >
-                        <Camera className="w-3.5 h-3.5" /> ID front *
+                        <Plus className="w-3 h-3" /> Add ID
                       </button>
-                      {(memberForm.idPhotoFront || memberForm.photo) && <span className="text-[10px] text-green-600 self-center">✓</span>}
-                      <button
-                        type="button"
-                        onClick={() => handlePhotoCapture((val) => setMemberForm((f) => ({ ...f, idPhotoBack: val })))}
-                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
-                      >
-                        <Camera className="w-3.5 h-3.5" /> ID back (optional)
-                      </button>
-                      {memberForm.idPhotoBack && <span className="text-[10px] text-green-600 self-center">✓</span>}
                     </div>
+                    <div className="space-y-2">
+                      {memberDocs.filter((d) => d.kind === 'photo_id').length === 0 && (
+                        <p className="text-[10px] text-muted-foreground">No Photo IDs added yet.</p>
+                      )}
+                      {memberDocs.map((d, idx) => d.kind !== 'photo_id' ? null : (
+                        <div key={`pid-${idx}`} className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <select
+                              className="input-field text-sm flex-1"
+                              value={d.type}
+                              onChange={(e) => setMemberDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, type: e.target.value }) : x))}
+                            >
+                              {DOC_TYPES.photoId.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => setMemberDocs((prev) => prev.filter((_, i) => i !== idx))}
+                              className="p-2 text-muted-foreground hover:text-destructive"
+                              title="Remove"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.capture = 'environment';
+                                input.onchange = (e: any) => {
+                                  const file = e.target.files[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const val = String(reader.result ?? '');
+                                    setMemberDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, front: val }) : x));
+                                  };
+                                  reader.readAsDataURL(file);
+                                };
+                                input.click();
+                              }}
+                              className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                            >
+                              <Camera className="w-3.5 h-3.5" /> Front
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.capture = 'environment';
+                                input.onchange = (e: any) => {
+                                  const file = e.target.files[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const val = String(reader.result ?? '');
+                                    setMemberDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, back: val }) : x));
+                                  };
+                                  reader.readAsDataURL(file);
+                                };
+                                input.click();
+                              }}
+                              className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                            >
+                              <Camera className="w-3.5 h-3.5" /> Back
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {String(memberForm.relation || '').toLowerCase() === 'tenant' && (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-medium text-muted-foreground uppercase">Tenant documents (mandatory)</p>
+                          <button
+                            type="button"
+                            onClick={() => setMemberDocs((d) => [...d, { kind: 'tenant_doc', type: 'rental_agreement', front: '', back: '' }])}
+                            className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-lg font-medium flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" /> Add doc
+                          </button>
+                        </div>
+                        {memberDocs.map((d, idx) => d.kind !== 'tenant_doc' ? null : (
+                          <div key={`td-${idx}`} className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <select
+                                className="input-field text-sm flex-1"
+                                value={d.type}
+                                onChange={(e) => setMemberDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, type: e.target.value }) : x))}
+                              >
+                                {DOC_TYPES.tenant.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => setMemberDocs((prev) => prev.filter((_, i) => i !== idx))}
+                                className="p-2 text-muted-foreground hover:text-destructive"
+                                title="Remove"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.capture = 'environment';
+                                input.onchange = (e: any) => {
+                                  const file = e.target.files[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const val = String(reader.result ?? '');
+                                    setMemberDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, front: val }) : x));
+                                  };
+                                  reader.readAsDataURL(file);
+                                };
+                                input.click();
+                              }}
+                              className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                            >
+                              <Camera className="w-3.5 h-3.5" /> Upload
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <select
                       className="input-field text-sm"
                       value={memberForm.policeVerification}
@@ -1059,38 +1362,55 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             {myMembers.length === 0 && !showAddMember && (
               <p className="text-sm text-muted-foreground text-center py-8">No members added yet</p>
             )}
-            {myMembers.map(m => {
-              const isService = SERVICE_TYPES.map(s => s.toLowerCase()).includes(m.relation?.toLowerCase());
-              return (
-                <div key={m.id} className="card-section p-3 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {m.photo ? <img src={m.photo} alt={m.name} className="w-full h-full object-cover" /> :
-                      <span className="text-sm font-bold text-primary">{m.name.charAt(0)}</span>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {m.name}
-                      {m.is_primary && <span className="ml-1 text-[9px] text-primary">★ Primary</span>}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground capitalize">
-                      {isService ? `🧹 ${m.relation}` : m.relation}
-                      {m.age ? ` · ${m.age}y` : ''}{m.gender ? ` · ${m.gender}` : ''}
-                      {m.phone ? ` · 📱${m.phone}` : ''}
-                    </p>
-                  </div>
-                  {!m.is_primary && (
-                    <div className="flex gap-1 flex-shrink-0">
-                      <button onClick={() => startEditMember(m)} className="p-1.5 text-muted-foreground hover:text-primary">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleDeleteMember(m)} className="p-1.5 text-muted-foreground hover:text-destructive">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+            {(() => {
+              const groupOf = (m: any) => {
+                const g = String(m.household_group || '').trim().toLowerCase();
+                if (g === 'owner' || g === 'tenant') return g;
+                return String(m.relation || '').trim().toLowerCase() === 'tenant' ? 'tenant' : 'owner';
+              };
+              const ownerGroup = myMembers.filter((m) => groupOf(m) === 'owner');
+              const tenantGroup = myMembers.filter((m) => groupOf(m) === 'tenant');
+              const renderMember = (m: any) => {
+                const isService = SERVICE_TYPES.map(s => s.toLowerCase()).includes(m.relation?.toLowerCase());
+                return (
+                  <div key={m.id} className="card-section p-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {m.photo ? <img src={m.photo} alt={m.name} className="w-full h-full object-cover" /> :
+                        <span className="text-sm font-bold text-primary">{m.name.charAt(0)}</span>}
                     </div>
-                  )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {m.name}
+                        {m.is_primary && <span className="ml-1 text-[9px] text-primary">★ Primary</span>}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground capitalize">
+                        {isService ? `🧹 ${m.relation}` : m.relation}
+                        {m.age ? ` · ${m.age}y` : ''}{m.gender ? ` · ${m.gender}` : ''}
+                        {m.phone ? ` · 📱${m.phone}` : ''}
+                      </p>
+                    </div>
+                    {!m.is_primary && (
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={() => startEditMember(m)} className="p-1.5 text-muted-foreground hover:text-primary">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDeleteMember(m)} className="p-1.5 text-muted-foreground hover:text-destructive">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+              return (
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Owner group ({ownerGroup.length})</p>
+                  {ownerGroup.map(renderMember)}
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-2">Tenant group ({tenantGroup.length})</p>
+                  {tenantGroup.map(renderMember)}
                 </div>
               );
-            })}
+            })()}
           </div>
         )}
 
@@ -1290,30 +1610,92 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 )}
                 {myMemberRecord && (
                   <div className="flex flex-col gap-3">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Photo ID uploads</p>
                       <button
                         type="button"
-                        onClick={() => handlePhotoCapture((val) => setSelfIdFront(val))}
-                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                        onClick={() => setSelfIdDocs((d) => [...d, { kind: 'photo_id', type: 'aadhaar', front: '', back: '' }])}
+                        className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-lg font-medium flex items-center gap-1"
                       >
-                        <Camera className="w-3.5 h-3.5" /> ID front
+                        <Plus className="w-3 h-3" /> Add ID
                       </button>
-                      {selfIdFront && <span className="text-[10px] text-green-600 self-center">✓</span>}
-                      <button
-                        type="button"
-                        onClick={() => handlePhotoCapture((val) => setSelfIdBack(val))}
-                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
-                      >
-                        <Camera className="w-3.5 h-3.5" /> ID back (optional)
-                      </button>
-                      {selfIdBack && <span className="text-[10px] text-green-600 self-center">✓</span>}
                     </div>
-                    {(selfIdFront || selfIdBack) && (
-                      <div className="flex gap-2 flex-wrap">
-                        {selfIdFront && <img src={selfIdFront} alt="" className="h-20 w-32 object-cover rounded-lg border border-border" />}
-                        {selfIdBack && <img src={selfIdBack} alt="" className="h-20 w-32 object-cover rounded-lg border border-border" />}
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      {selfIdDocs.length === 0 && (
+                        <p className="text-[10px] text-muted-foreground">No Photo IDs added yet.</p>
+                      )}
+                      {selfIdDocs.map((d, idx) => (
+                        <div key={`sid-${idx}`} className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <select
+                              className="input-field text-sm flex-1"
+                              value={d.type}
+                              onChange={(e) => setSelfIdDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, type: e.target.value }) : x))}
+                            >
+                              {DOC_TYPES.photoId.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => setSelfIdDocs((prev) => prev.filter((_, i) => i !== idx))}
+                              className="p-2 text-muted-foreground hover:text-destructive"
+                              title="Remove"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.capture = 'environment';
+                                input.onchange = (e: any) => {
+                                  const file = e.target.files[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const val = String(reader.result ?? '');
+                                    setSelfIdDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, front: val }) : x));
+                                  };
+                                  reader.readAsDataURL(file);
+                                };
+                                input.click();
+                              }}
+                              className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                            >
+                              <Camera className="w-3.5 h-3.5" /> Front
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.capture = 'environment';
+                                input.onchange = (e: any) => {
+                                  const file = e.target.files[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const val = String(reader.result ?? '');
+                                    setSelfIdDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, back: val }) : x));
+                                  };
+                                  reader.readAsDataURL(file);
+                                };
+                                input.click();
+                              }}
+                              className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                            >
+                              <Camera className="w-3.5 h-3.5" /> Back
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                     <button
                       type="button"
                       onClick={handleSaveSelfIdPhotos}

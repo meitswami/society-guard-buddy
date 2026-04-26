@@ -301,6 +301,8 @@ export const useStore = create<AppState>()((set, get) => ({
           flatType: f.flat_type || 'residential', ownerName: f.owner_name || undefined,
           ownerPhone: f.owner_phone || undefined, intercom: f.intercom || undefined,
           isOccupied: f.is_occupied ?? true,
+          ownerLivesHere: (f as any).owner_lives_here ?? true,
+          tenantHouseholdType: (f as any).tenant_household_type ?? undefined,
         })),
       });
     }
@@ -338,6 +340,7 @@ export const useStore = create<AppState>()((set, get) => ({
           spouseName: m.spouse_name || undefined,
           dateJoining: m.date_joining || undefined,
           dateLeave: m.date_leave || undefined,
+          householdGroup: (m as any).household_group ?? undefined,
         })),
       });
     }

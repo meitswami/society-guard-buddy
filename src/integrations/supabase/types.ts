@@ -658,8 +658,10 @@ export type Database = {
           intercom: string | null
           is_occupied: boolean | null
           owner_name: string | null
+          owner_lives_here: boolean
           owner_phone: string | null
           society_id: string | null
+          tenant_household_type: string | null
           wing: string | null
         }
         Insert: {
@@ -671,8 +673,10 @@ export type Database = {
           intercom?: string | null
           is_occupied?: boolean | null
           owner_name?: string | null
+          owner_lives_here?: boolean
           owner_phone?: string | null
           society_id?: string | null
+          tenant_household_type?: string | null
           wing?: string | null
         }
         Update: {
@@ -684,8 +688,10 @@ export type Database = {
           intercom?: string | null
           is_occupied?: boolean | null
           owner_name?: string | null
+          owner_lives_here?: boolean
           owner_phone?: string | null
           society_id?: string | null
+          tenant_household_type?: string | null
           wing?: string | null
         }
         Relationships: [
@@ -1024,6 +1030,7 @@ export type Database = {
           date_leave: string | null
           flat_id: string
           gender: string | null
+          household_group: string
           id: string
           id_photo_back: string | null
           id_photo_front: string | null
@@ -1042,6 +1049,7 @@ export type Database = {
           date_leave?: string | null
           flat_id: string
           gender?: string | null
+          household_group?: string
           id?: string
           id_photo_back?: string | null
           id_photo_front?: string | null
@@ -1060,6 +1068,7 @@ export type Database = {
           date_leave?: string | null
           flat_id?: string
           gender?: string | null
+          household_group?: string
           id?: string
           id_photo_back?: string | null
           id_photo_front?: string | null
@@ -1072,6 +1081,82 @@ export type Database = {
           spouse_name?: string | null
         }
         Relationships: [
+      member_documents: {
+        Row: {
+          back_url: string | null
+          created_at: string
+          doc_kind: string
+          doc_type: string
+          front_url: string | null
+          id: string
+          member_id: string
+        }
+        Insert: {
+          back_url?: string | null
+          created_at?: string
+          doc_kind: string
+          doc_type: string
+          front_url?: string | null
+          id?: string
+          member_id: string
+        }
+        Update: {
+          back_url?: string | null
+          created_at?: string
+          doc_kind?: string
+          doc_type?: string
+          front_url?: string | null
+          id?: string
+          member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_documents_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      society_dashboard_banners: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          is_active: boolean
+          society_id: string
+          sort_order: number
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          is_active?: boolean
+          society_id: string
+          sort_order?: number
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          society_id?: string
+          sort_order?: number
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "society_dashboard_banners_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
           {
             foreignKeyName: "members_flat_id_fkey"
             columns: ["flat_id"]

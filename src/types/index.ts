@@ -66,6 +66,8 @@ export interface Flat {
   ownerPhone?: string;
   intercom?: string;
   isOccupied: boolean;
+  ownerLivesHere?: boolean;
+  tenantHouseholdType?: string;
 }
 
 export interface Member {
@@ -84,6 +86,7 @@ export interface Member {
   spouseName?: string;
   dateJoining?: string;
   dateLeave?: string;
+  householdGroup?: string;
 }
 
 export type TabType =

@@ -10,3 +10,4 @@ ALTER TABLE public.expenses
 
 COMMENT ON COLUMN public.expenses.paid_by_flats IS 'JSON array of flat numbers that advanced payment; empty uses paid_by_flat only.';
 COMMENT ON COLUMN public.expenses.split_type IS 'equal_all | equal_selected | custom | society_fund';
+

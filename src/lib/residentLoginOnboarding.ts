@@ -1,7 +1,7 @@
 import Swal from 'sweetalert2';
 import { supabase } from '@/integrations/supabase/client';
 import { generateFlatPassword } from '@/lib/passwordGenerator';
-import { allowsResidentLoginAndPrimary, isRestrictedMemberCategory } from '@/lib/memberCategories';
+import { allowsPrimaryMember, allowsResidentLogin, isRestrictedMemberCategory } from '@/lib/memberCategories';
 import { getSwalThemeColors, confirmAction } from '@/lib/swal';
 
 export type ResidentLoginPayload = {
@@ -120,7 +120,7 @@ async function ensureResidentUserRow(
 function pickPrimaryMember(members: MemberRow[]): MemberRow | null {
   const prim = members.find((m) => m.is_primary);
   if (prim) return prim;
-  const household = members.filter((m) => allowsResidentLoginAndPrimary(m.relation));
+  const household = members.filter((m) => allowsPrimaryMember(m.relation));
   return household[0] ?? null;
 }
 
@@ -357,7 +357,7 @@ export async function completeResidentOtpOnboarding(
     return null;
   }
 
-  if (!allowsResidentLoginAndPrimary(nm.relation)) {
+  if (!allowsResidentLogin(nm.relation)) {
     await Swal.fire({
       ...swalBase(),
       icon: 'info',

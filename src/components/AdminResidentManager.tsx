@@ -2,16 +2,24 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { Plus, Trash2, Edit2, Search, Users, Home, ChevronDown, ChevronUp, Car, Phone, Star, UserPlus, Key, Eye, EyeOff, RefreshCw, Camera, FileDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Users, Home, ChevronDown, ChevronUp, Car, Phone, Star, UserPlus, Key, Eye, EyeOff, RefreshCw, Camera, FileDown, X } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import { generateFlatPassword } from '@/lib/passwordGenerator';
 import { floorLabelFromFlatNumber } from '@/lib/flatFloor';
-import { allowsResidentLoginAndPrimary, isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
+import { allowsPrimaryMember, allowsResidentLogin, isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
 import type { Flat, Member } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { exportResidentsDirectoryPdf, type PdfFlat, type PdfMember } from '@/lib/exportResidentsPdf';
 import SensitiveAdminVerifyModal from '@/components/SensitiveAdminVerifyModal';
+
+type MemberDocumentKind = 'photo_id' | 'tenant_doc' | 'service_doc';
+type MemberDocDraft = {
+  kind: MemberDocumentKind;
+  type: string;
+  front: string;
+  back: string;
+};
 
 type MemberFormState = {
   name: string;
@@ -85,6 +93,7 @@ const AdminResidentManager = ({
   // Add member form
   const [showMemberForm, setShowMemberForm] = useState<string | null>(null);
   const [memberForm, setMemberForm] = useState<MemberFormState>(initialMemberForm);
+  const [memberDocs, setMemberDocs] = useState<MemberDocDraft[]>([]);
   const [editingMember, setEditingMember] = useState<string | null>(null);
 
   const floorFieldTouched = useRef(false);
@@ -162,6 +171,11 @@ const AdminResidentManager = ({
   const getVehiclesForFlat = (flatNumber: string) => residentVehicles.filter(v => v.flatNumber === flatNumber);
   const getPrimaryMember = (flatId: string) => members.find(m => m.flatId === flatId && m.isPrimary);
   const getResidentUsersForFlat = (flatId: string) => residentUsers.filter(r => r.flat_id === flatId);
+  const memberGroup = (m: Member) => {
+    const g = String((m as any).householdGroup || '').trim().toLowerCase();
+    if (g === 'owner' || g === 'tenant') return g;
+    return String(m.relation || '').trim().toLowerCase() === 'tenant' ? 'tenant' : 'owner';
+  };
   const getFlatPassword = (flatId: string) => {
     const users = getResidentUsersForFlat(flatId);
     return users.length > 0 ? users[0].password : null;
@@ -240,7 +254,7 @@ const AdminResidentManager = ({
     const { data: latestMembers } = await supabase.from('members').select('*').eq('flat_id', flatId);
     const membersWithPhone = (latestMembers || []).filter(
       (m: { phone?: string | null; relation?: string | null }) =>
-        !!m.phone && allowsResidentLoginAndPrimary(m.relation),
+        !!m.phone && allowsResidentLogin(m.relation),
     );
     if (membersWithPhone.length === 0) return;
 
@@ -336,6 +350,46 @@ const AdminResidentManager = ({
     input.click();
   };
 
+  const pickDocImage = (idx: number, side: 'front' | 'back') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const val = String(reader.result ?? '');
+        setMemberDocs((prev) =>
+          prev.map((d, i) => (i === idx ? { ...d, [side]: val } : d)),
+        );
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const docTypes = {
+    photoId: [
+      { value: 'aadhaar', label: 'Aadhaar' },
+      { value: 'pan', label: 'PAN Card' },
+      { value: 'passport', label: 'Passport' },
+      { value: 'voter_id', label: 'Voter ID' },
+      { value: 'driving_license', label: 'Driving License' },
+      { value: 'other', label: 'Other' },
+    ],
+    tenant: [
+      { value: 'rental_agreement', label: 'Rental agreement' },
+      { value: 'police_verification', label: 'Police verification' },
+      { value: 'other', label: 'Other' },
+    ],
+    service: [
+      { value: 'id_proof', label: 'ID proof' },
+      { value: 'police_verification', label: 'Police verification' },
+      { value: 'other', label: 'Other' },
+    ],
+  } as const;
+
   const syncStaffVehicleRow = async (memberId: string, flatId: string, flatNumber: string, residentName: string) => {
     const { data: existing } = await supabase.from('resident_vehicles').select('id').eq('member_id', memberId).maybeSingle();
     const num = memberForm.vehicleNumber.trim();
@@ -365,9 +419,25 @@ const AdminResidentManager = ({
     if (!memberForm.relation) { toast.error('Please select a relation or role'); return; }
 
     const restricted = isRestrictedMemberCategory(memberForm.relation);
-    if (restricted && !memberForm.idPhotoFront && !(editingMember && members.find((x) => x.id === editingMember)?.idPhotoFront)) {
-      toast.error('Photo ID (front) is required for tenant, other, and staff/service');
-      return;
+    const isTenant = String(memberForm.relation || '').toLowerCase() === 'tenant';
+    const needsDocs = restricted || isTenant;
+    const photoIdDocs = memberDocs.filter((d) => d.kind === 'photo_id' && !!d.front);
+    const tenantDocs = memberDocs.filter((d) => d.kind === 'tenant_doc' && !!d.front);
+    if (needsDocs) {
+      const hasLegacyFront = !!(editingMember && members.find((x) => x.id === editingMember)?.idPhotoFront);
+      const hasAnyPhotoId = photoIdDocs.length > 0 || !!memberForm.idPhotoFront || hasLegacyFront;
+      if (isTenant && !hasAnyPhotoId) {
+        toast.error('Tenant: at least 1 Photo ID is required');
+        return;
+      }
+      if (isTenant && tenantDocs.length === 0) {
+        toast.error('Tenant: rental agreement document is required');
+        return;
+      }
+      if (!isTenant && !hasAnyPhotoId) {
+        toast.error('Photo ID is required for restricted categories (tenant/other/service)');
+        return;
+      }
     }
 
     runSensitive(
@@ -379,10 +449,10 @@ const AdminResidentManager = ({
     const prev = editingMember ? members.find((m) => m.id === editingMember) : null;
     const primaryExists = !!getPrimaryMember(flatId);
     const showPrimaryCheckbox =
-      allowsResidentLoginAndPrimary(memberForm.relation) && !primaryExists && existing.length > 0;
+      allowsPrimaryMember(memberForm.relation) && !primaryExists && existing.length > 0;
 
     let isPrimary = false;
-    if (allowsResidentLoginAndPrimary(memberForm.relation)) {
+    if (allowsPrimaryMember(memberForm.relation)) {
       if (prev?.isPrimary) isPrimary = true;
       else if (!editingMember && existing.length === 0) isPrimary = true;
       else if (memberForm.isPrimary && showPrimaryCheckbox) isPrimary = true;
@@ -400,15 +470,17 @@ const AdminResidentManager = ({
       name: memberForm.name,
       phone: memberForm.phone || null,
       relation: memberForm.relation,
+      household_group: String(memberForm.relation || '').trim().toLowerCase() === 'tenant' ? 'tenant' : 'owner',
       age: memberForm.age ? parseInt(memberForm.age, 10) : null,
       gender: memberForm.gender || null,
       is_primary: isPrimary,
       photo: memberForm.photo || null,
     };
 
-    if (restricted) {
-      payload.id_photo_front = memberForm.idPhotoFront || null;
-      payload.id_photo_back = memberForm.idPhotoBack || null;
+    if (needsDocs) {
+      const bestPhotoId = memberDocs.find((d) => d.kind === 'photo_id' && !!d.front) ?? null;
+      payload.id_photo_front = bestPhotoId?.front || memberForm.idPhotoFront || null;
+      payload.id_photo_back = bestPhotoId?.back || memberForm.idPhotoBack || null;
       payload.police_verification = memberForm.policeVerification.trim() || null;
       payload.spouse_name = memberForm.spouseName.trim() || null;
       payload.date_joining = memberForm.dateJoining || null;
@@ -433,7 +505,7 @@ const AdminResidentManager = ({
 
     if (editingMember) {
       await supabase.from('members').update(payload).eq('id', editingMember);
-      if (allowsResidentLoginAndPrimary(memberForm.relation) && memberForm.phone) {
+      if (allowsResidentLogin(memberForm.relation) && memberForm.phone) {
         await supabase
           .from('resident_users')
           .update({ name: memberForm.name })
@@ -449,6 +521,21 @@ const AdminResidentManager = ({
       }
       memberId = ins.id;
       toast.success('Member added');
+    }
+
+    if (memberId) {
+      // Replace member documents atomically-ish (best effort).
+      await supabase.from('member_documents').delete().eq('member_id', memberId);
+      const rows = memberDocs
+        .filter((d) => d.type && (d.front || d.back))
+        .map((d) => ({
+          member_id: memberId,
+          doc_kind: d.kind,
+          doc_type: d.type,
+          front_url: d.front || null,
+          back_url: d.back || null,
+        }));
+      if (rows.length > 0) await supabase.from('member_documents').insert(rows);
     }
 
     if (isPrimary && flat) {
@@ -467,7 +554,7 @@ const AdminResidentManager = ({
     loadResidentVehicles();
     loadFlats();
 
-    if (allowsResidentLoginAndPrimary(memberForm.relation) && memberForm.phone && flat) {
+    if (allowsResidentLogin(memberForm.relation) && memberForm.phone && flat) {
       await syncResidentUsersForFlat(flatId, flat.flatNumber);
     }
     loadResidentUsers();
@@ -503,6 +590,22 @@ const AdminResidentManager = ({
     });
     setEditingMember(m.id);
     setShowMemberForm(m.flatId);
+    setMemberDocs([]);
+    const { data: docs } = await supabase
+      .from('member_documents')
+      .select('doc_kind, doc_type, front_url, back_url')
+      .eq('member_id', m.id)
+      .order('created_at', { ascending: true });
+    if (docs && docs.length > 0) {
+      setMemberDocs(
+        docs.map((d: any) => ({
+          kind: (d.doc_kind as MemberDocumentKind) || 'photo_id',
+          type: String(d.doc_type || 'other'),
+          front: String(d.front_url || ''),
+          back: String(d.back_url || ''),
+        })),
+      );
+    }
     const { data: vrow } = await supabase.from('resident_vehicles').select('*').eq('member_id', m.id).maybeSingle();
     if (vrow) {
       setMemberForm((f) => ({
@@ -533,13 +636,14 @@ const AdminResidentManager = ({
 
   const resetMemberForm = () => {
     setMemberForm(initialMemberForm());
+    setMemberDocs([]);
     setShowMemberForm(null);
     setEditingMember(null);
   };
 
   const setPrimaryMember = async (memberId: string, flatId: string) => {
     const target = members.find((m) => m.id === memberId);
-    if (!target || !allowsResidentLoginAndPrimary(target.relation)) {
+    if (!target || !allowsPrimaryMember(target.relation)) {
       toast.error('Only household members can be primary (not tenant, staff, or other)');
       return;
     }
@@ -799,6 +903,14 @@ const AdminResidentManager = ({
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div><span className="text-muted-foreground">Floor:</span> <span className="font-medium">{flat.floor || '-'}</span></div>
                           <div><span className="text-muted-foreground">Type:</span> <span className="font-medium capitalize">{flat.flatType}</span></div>
+                          <div>
+                            <span className="text-muted-foreground">Owner lives here:</span>{' '}
+                            <span className="font-medium">{flat.ownerLivesHere === false ? 'No' : 'Yes'}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Tenant household:</span>{' '}
+                            <span className="font-medium capitalize">{flat.tenantHouseholdType || '-'}</span>
+                          </div>
                           {flat.wing && <div><span className="text-muted-foreground">Wing:</span> <span className="font-medium">{flat.wing}</span></div>}
                           {flat.intercom && <div className="col-span-2"><span className="text-muted-foreground">Intercom:</span> <span className="font-mono font-medium">{flat.intercom}</span></div>}
                           {flat.ownerPhone && (
@@ -860,9 +972,10 @@ const AdminResidentManager = ({
                         </button>
                       </div>
 
-                      {flatMembers.length > 0 && (
-                        <div className="space-y-1.5">
-                          {flatMembers.map(m => (
+                      {flatMembers.length > 0 && (() => {
+                        const ownerGroup = flatMembers.filter((m) => memberGroup(m) === 'owner');
+                        const tenantGroup = flatMembers.filter((m) => memberGroup(m) === 'tenant');
+                        const renderMember = (m: Member) => (
                             <div key={m.id} className="flex items-start gap-2 bg-secondary/50 rounded-lg px-2.5 py-1.5">
                               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0 overflow-hidden">
                                 {m.photo ? <img src={m.photo} alt="" className="w-full h-full object-cover" /> : m.name.charAt(0)}
@@ -888,7 +1001,7 @@ const AdminResidentManager = ({
                                 )}
                               </div>
                               <div className="flex items-center gap-0.5 flex-shrink-0">
-                                {!m.isPrimary && allowsResidentLoginAndPrimary(m.relation) && (
+                                {!m.isPrimary && allowsPrimaryMember(m.relation) && (
                                   <button onClick={() => setPrimaryMember(m.id, flat.id)} className="p-1 text-muted-foreground hover:text-primary" title="Set primary (household only)">
                                     <Star className="w-3 h-3" />
                                   </button>
@@ -901,15 +1014,39 @@ const AdminResidentManager = ({
                                 </button>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
+                        );
+                        return (
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Owner group ({ownerGroup.length})</p>
+                              <div className="space-y-1.5">
+                                {ownerGroup.length === 0 ? (
+                                  <p className="text-[10px] text-muted-foreground">No owner-group members yet.</p>
+                                ) : (
+                                  ownerGroup.map(renderMember)
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Tenant group ({tenantGroup.length})</p>
+                              <div className="space-y-1.5">
+                                {tenantGroup.length === 0 ? (
+                                  <p className="text-[10px] text-muted-foreground">No tenant-group members yet.</p>
+                                ) : (
+                                  tenantGroup.map(renderMember)
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Add/Edit Member Form */}
                       {showMemberForm === flat.id && (() => {
-                        const restrictedForm = isRestrictedMemberCategory(memberForm.relation);
+                        const restrictedForm = isRestrictedMemberCategory(memberForm.relation) || String(memberForm.relation || '').toLowerCase() === 'tenant';
+                        const isTenant = String(memberForm.relation || '').toLowerCase() === 'tenant';
                         const showPrimaryCheckbox =
-                          allowsResidentLoginAndPrimary(memberForm.relation) && !primary && flatMembers.length > 0;
+                          allowsPrimaryMember(memberForm.relation) && !primary && flatMembers.length > 0;
                         return (
                         <div className="mt-2 p-3 bg-secondary/30 rounded-lg space-y-2">
                           <p className="text-xs font-semibold">{editingMember ? 'Edit Member' : 'Add Member'}</p>
@@ -967,18 +1104,154 @@ const AdminResidentManager = ({
                             {restrictedForm && (
                               <>
                                 <div className="col-span-2 space-y-1">
-                                  <p className="text-[10px] font-medium text-muted-foreground uppercase">Photo ID (front required)</p>
-                                  <div className="flex flex-wrap gap-2">
-                                    <button type="button" onClick={() => pickIdImage('idPhotoFront')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
-                                      <Camera className="w-3 h-3" /> Front
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-medium text-muted-foreground uppercase">Photo ID uploads</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => setMemberDocs((d) => [...d, { kind: 'photo_id', type: 'aadhaar', front: '', back: '' }])}
+                                      className="text-[10px] font-medium text-primary flex items-center gap-1"
+                                    >
+                                      <Plus className="w-3 h-3" /> Add ID
                                     </button>
-                                    {memberForm.idPhotoFront && <span className="text-[10px] text-green-600">✓</span>}
-                                    <button type="button" onClick={() => pickIdImage('idPhotoBack')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
-                                      <Camera className="w-3 h-3" /> Back (optional)
-                                    </button>
-                                    {memberForm.idPhotoBack && <span className="text-[10px] text-green-600">✓</span>}
+                                  </div>
+                                  <div className="space-y-2">
+                                    {memberDocs.filter((d) => d.kind === 'photo_id').length === 0 && (
+                                      <p className="text-[10px] text-muted-foreground">No Photo IDs added yet.</p>
+                                    )}
+                                    {memberDocs.map((d, idx) => d.kind !== 'photo_id' ? null : (
+                                      <div key={`pid-${idx}`} className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <select
+                                            className="input-field text-xs flex-1"
+                                            value={d.type}
+                                            onChange={(e) => setMemberDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, type: e.target.value }) : x))}
+                                          >
+                                            {docTypes.photoId.map((opt) => (
+                                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            type="button"
+                                            onClick={() => setMemberDocs((prev) => prev.filter((_, i) => i !== idx))}
+                                            className="p-1 text-muted-foreground hover:text-destructive"
+                                            title="Remove"
+                                          >
+                                            <X className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 items-center">
+                                          <button type="button" onClick={() => pickDocImage(idx, 'front')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
+                                            <Camera className="w-3 h-3" /> Front
+                                          </button>
+                                          {d.front && <span className="text-[10px] text-green-600">✓</span>}
+                                          <button type="button" onClick={() => pickDocImage(idx, 'back')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
+                                            <Camera className="w-3 h-3" /> Back
+                                          </button>
+                                          {d.back && <span className="text-[10px] text-green-600">✓</span>}
+                                          {(d.front || d.back) && (
+                                            <div className="flex gap-1">
+                                              {d.front && <img src={d.front} alt="" className="h-8 w-12 object-cover rounded border border-border" />}
+                                              {d.back && <img src={d.back} alt="" className="h-8 w-12 object-cover rounded border border-border" />}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
+                                {isTenant && (
+                                  <div className="col-span-2 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Tenant documents (mandatory)</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => setMemberDocs((d) => [...d, { kind: 'tenant_doc', type: 'rental_agreement', front: '', back: '' }])}
+                                        className="text-[10px] font-medium text-primary flex items-center gap-1"
+                                      >
+                                        <Plus className="w-3 h-3" /> Add doc
+                                      </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                      {memberDocs.filter((d) => d.kind === 'tenant_doc').length === 0 && (
+                                        <p className="text-[10px] text-muted-foreground">Add at least the rental agreement.</p>
+                                      )}
+                                      {memberDocs.map((d, idx) => d.kind !== 'tenant_doc' ? null : (
+                                        <div key={`td-${idx}`} className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+                                          <div className="flex items-center gap-2">
+                                            <select
+                                              className="input-field text-xs flex-1"
+                                              value={d.type}
+                                              onChange={(e) => setMemberDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, type: e.target.value }) : x))}
+                                            >
+                                              {docTypes.tenant.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                              ))}
+                                            </select>
+                                            <button
+                                              type="button"
+                                              onClick={() => setMemberDocs((prev) => prev.filter((_, i) => i !== idx))}
+                                              className="p-1 text-muted-foreground hover:text-destructive"
+                                              title="Remove"
+                                            >
+                                              <X className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                          <div className="flex flex-wrap gap-2 items-center">
+                                            <button type="button" onClick={() => pickDocImage(idx, 'front')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
+                                              <Camera className="w-3 h-3" /> Upload
+                                            </button>
+                                            {d.front && <span className="text-[10px] text-green-600">✓</span>}
+                                            {d.front && <img src={d.front} alt="" className="h-8 w-12 object-cover rounded border border-border" />}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {!isTenant && (
+                                  <div className="col-span-2 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Service documents (optional)</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => setMemberDocs((d) => [...d, { kind: 'service_doc', type: 'id_proof', front: '', back: '' }])}
+                                        className="text-[10px] font-medium text-primary flex items-center gap-1"
+                                      >
+                                        <Plus className="w-3 h-3" /> Add doc
+                                      </button>
+                                    </div>
+                                    {memberDocs.map((d, idx) => d.kind !== 'service_doc' ? null : (
+                                      <div key={`sd-${idx}`} className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <select
+                                            className="input-field text-xs flex-1"
+                                            value={d.type}
+                                            onChange={(e) => setMemberDocs((prev) => prev.map((x, i) => i === idx ? ({ ...x, type: e.target.value }) : x))}
+                                          >
+                                            {docTypes.service.map((opt) => (
+                                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            type="button"
+                                            onClick={() => setMemberDocs((prev) => prev.filter((_, i) => i !== idx))}
+                                            className="p-1 text-muted-foreground hover:text-destructive"
+                                            title="Remove"
+                                          >
+                                            <X className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 items-center">
+                                          <button type="button" onClick={() => pickDocImage(idx, 'front')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
+                                            <Camera className="w-3 h-3" /> Upload
+                                          </button>
+                                          {d.front && <span className="text-[10px] text-green-600">✓</span>}
+                                          {d.front && <img src={d.front} alt="" className="h-8 w-12 object-cover rounded border border-border" />}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                                 <select
                                   className="input-field text-xs col-span-2"
                                   value={memberForm.policeVerification}
@@ -1060,7 +1333,7 @@ const AdminResidentManager = ({
                                 Set as primary member
                               </label>
                             )}
-                            {primary && !showPrimaryCheckbox && allowsResidentLoginAndPrimary(memberForm.relation) && (
+                            {primary && !showPrimaryCheckbox && allowsPrimaryMember(memberForm.relation) && (
                               <p className="text-[10px] text-muted-foreground col-span-2">
                                 Primary is already set. Use ★ on a household member in the list to change it.
                               </p>

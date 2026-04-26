@@ -1,6 +1,8 @@
 /**
- * Household relations that may use resident app login (phone + shared flat password) and may be primary.
- * Tenant, other(s), and staff/service roles are excluded.
+ * Household relations that may use resident app login (phone + shared flat password).
+ * Staff/service roles are excluded.
+ *
+ * Note: Tenants may login, but cannot be "primary" member (owner/household primary).
  */
 const HOUSEHOLD_LOGIN_RELATIONS = new Set([
   'owner',
@@ -12,20 +14,27 @@ const HOUSEHOLD_LOGIN_RELATIONS = new Set([
   'family',
   'brother',
   'sister',
+  'tenant',
 ]);
 
 export function normalizeMemberRelation(relation: string | null | undefined): string {
   return (relation ?? '').trim().toLowerCase();
 }
 
-/** True if this relation may have a resident_users login and can be primary member. */
-export function allowsResidentLoginAndPrimary(relation: string | null | undefined): boolean {
+/** True if this relation may have a resident_users login. */
+export function allowsResidentLogin(relation: string | null | undefined): boolean {
   return HOUSEHOLD_LOGIN_RELATIONS.has(normalizeMemberRelation(relation));
 }
 
-/** Inverse: tenant, other(s), staff (cook, maid, …), or any custom serviceman label. */
+/** True if this relation may be the flat's primary member (owner household). */
+export function allowsPrimaryMember(relation: string | null | undefined): boolean {
+  const r = normalizeMemberRelation(relation);
+  return r !== 'tenant' && allowsResidentLogin(r);
+}
+
+/** Inverse: other(s), staff (cook, maid, …), or any custom serviceman label. */
 export function isRestrictedMemberCategory(relation: string | null | undefined): boolean {
-  return !allowsResidentLoginAndPrimary(relation);
+  return !allowsResidentLogin(relation);
 }
 
 export const STAFF_VEHICLE_TYPES = ['car', 'cycle', 'bike', 'activa', 'auto', 'other'] as const;
