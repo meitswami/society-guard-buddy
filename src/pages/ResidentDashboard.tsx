@@ -81,6 +81,13 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [loginBanners, setLoginBanners] = useState<{ id: string; image_url: string; title: string | null }[]>([]);
   const [bannerOpen, setBannerOpen] = useState(false);
   const [bannerIdx, setBannerIdx] = useState(0);
+  const [bannerZoom, setBannerZoom] = useState(1);
+  const pinchRef = useRef<{
+    pointers: Map<number, { x: number; y: number }>;
+    startDist: number;
+    startZoom: number;
+    pinching: boolean;
+  }>({ pointers: new Map(), startDist: 0, startZoom: 1, pinching: false });
 
   const notificationRowForResident = (row: Record<string, unknown>) => {
     if (societyId && row.society_id && String(row.society_id) !== societyId) return false;
@@ -335,6 +342,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       const seen = sessionStorage.getItem(key) === '1';
       if (!seen && rows.length > 0) {
         setBannerIdx(0);
+        setBannerZoom(1);
         setBannerOpen(true);
         sessionStorage.setItem(key, '1');
       }
@@ -789,25 +797,107 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     <div className="min-h-screen bg-background pb-20">
       {bannerOpen && loginBanners.length > 0 && (
         <div className="fixed inset-0 z-[90] bg-black/60 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl bg-card border border-border overflow-hidden shadow-xl">
+          <div className="w-full max-w-3xl rounded-2xl bg-card border border-border overflow-hidden shadow-xl">
             <div className="relative">
-              <img
-                src={loginBanners[bannerIdx]?.image_url}
-                alt={loginBanners[bannerIdx]?.title || 'Banner'}
-                className="w-full h-56 object-cover bg-muted"
-              />
+              <div
+                className="w-full bg-muted overflow-auto"
+                style={{ maxHeight: '75vh', touchAction: 'none' }}
+                onPointerDown={(e) => {
+                  // Only handle touch/pen for pinch. Mouse wheel/drag should just scroll.
+                  if (e.pointerType === 'mouse') return;
+                  (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+                  pinchRef.current.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                  if (pinchRef.current.pointers.size === 2) {
+                    const pts = Array.from(pinchRef.current.pointers.values());
+                    const dx = pts[0].x - pts[1].x;
+                    const dy = pts[0].y - pts[1].y;
+                    pinchRef.current.startDist = Math.hypot(dx, dy) || 1;
+                    pinchRef.current.startZoom = bannerZoom;
+                    pinchRef.current.pinching = true;
+                  }
+                }}
+                onPointerMove={(e) => {
+                  if (e.pointerType === 'mouse') return;
+                  if (!pinchRef.current.pointers.has(e.pointerId)) return;
+                  pinchRef.current.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                  if (pinchRef.current.pointers.size !== 2) return;
+                  const pts = Array.from(pinchRef.current.pointers.values());
+                  const dx = pts[0].x - pts[1].x;
+                  const dy = pts[0].y - pts[1].y;
+                  const dist = Math.hypot(dx, dy) || 1;
+                  const ratio = dist / (pinchRef.current.startDist || 1);
+                  const next = Math.max(1, Math.min(3, pinchRef.current.startZoom * ratio));
+                  // Avoid spamming state updates with tiny changes.
+                  setBannerZoom((z) => (Math.abs(z - next) < 0.01 ? z : Math.round(next * 100) / 100));
+                  e.preventDefault();
+                }}
+                onPointerUp={(e) => {
+                  if (e.pointerType === 'mouse') return;
+                  pinchRef.current.pointers.delete(e.pointerId);
+                  if (pinchRef.current.pointers.size < 2) {
+                    pinchRef.current.pinching = false;
+                    pinchRef.current.startDist = 0;
+                    pinchRef.current.startZoom = bannerZoom;
+                  }
+                }}
+                onPointerCancel={(e) => {
+                  if (e.pointerType === 'mouse') return;
+                  pinchRef.current.pointers.delete(e.pointerId);
+                  if (pinchRef.current.pointers.size < 2) {
+                    pinchRef.current.pinching = false;
+                    pinchRef.current.startDist = 0;
+                    pinchRef.current.startZoom = bannerZoom;
+                  }
+                }}
+              >
+                <img
+                  src={loginBanners[bannerIdx]?.image_url}
+                  alt={loginBanners[bannerIdx]?.title || 'Banner'}
+                  className="w-full object-contain bg-muted origin-center"
+                  style={{
+                    maxHeight: '75vh',
+                    transform: `scale(${bannerZoom})`,
+                    touchAction: 'none',
+                  }}
+                />
+              </div>
               <button
                 type="button"
-                onClick={() => setBannerOpen(false)}
+                onClick={() => {
+                  setBannerOpen(false);
+                  setBannerZoom(1);
+                }}
                 className="absolute top-2 right-2 rounded-lg bg-black/40 text-white px-2 py-1 text-xs"
               >
                 Close
               </button>
+              <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-lg bg-black/40 text-white px-2 py-1">
+                <button
+                  type="button"
+                  onClick={() => setBannerZoom((z) => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
+                  className="px-2 py-1 text-xs"
+                  aria-label="Zoom out"
+                >
+                  −
+                </button>
+                <span className="text-[10px] tabular-nums">{Math.round(bannerZoom * 100)}%</span>
+                <button
+                  type="button"
+                  onClick={() => setBannerZoom((z) => Math.min(3, Math.round((z + 0.25) * 100) / 100))}
+                  className="px-2 py-1 text-xs"
+                  aria-label="Zoom in"
+                >
+                  +
+                </button>
+              </div>
               {loginBanners.length > 1 && (
                 <>
                   <button
                     type="button"
-                    onClick={() => setBannerIdx((i) => (i - 1 + loginBanners.length) % loginBanners.length)}
+                    onClick={() => {
+                      setBannerZoom(1);
+                      setBannerIdx((i) => (i - 1 + loginBanners.length) % loginBanners.length);
+                    }}
                     className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 text-white px-2 py-1 text-sm"
                     aria-label="Previous banner"
                   >
@@ -815,7 +905,10 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setBannerIdx((i) => (i + 1) % loginBanners.length)}
+                    onClick={() => {
+                      setBannerZoom(1);
+                      setBannerIdx((i) => (i + 1) % loginBanners.length);
+                    }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 text-white px-2 py-1 text-sm"
                     aria-label="Next banner"
                   >
