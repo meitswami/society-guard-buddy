@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
 import { readPersistedSession, writePersistedSession, clearPersistedSession } from '@/lib/appSession';
@@ -30,6 +30,7 @@ import TourGuideHub from '@/components/TourGuideHub';
 import { LoginFooter } from '@/components/LoginFooter';
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
 import { useGuardGeofenceMonitor } from '@/hooks/useGuardGeofenceMonitor';
+import { toast } from 'sonner';
 
 type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 
@@ -40,6 +41,8 @@ const AppContent = () => {
   const isMobile = useIsMobile();
   const showSuperadminEntry = useShowSuperadminLogin();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const guardTabRef = useRef<TabType>('dashboard');
+  const guardExitBackTsRef = useRef(0);
   const [loaded, setLoaded] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>('choosing');
@@ -55,6 +58,10 @@ const AppContent = () => {
   const [loginSociety, setLoginSociety] = useState<{ id: string; name: string } | null>(null);
 
   const goHome = useCallback(() => setActiveTab('dashboard'), []);
+
+  useEffect(() => {
+    guardTabRef.current = activeTab;
+  }, [activeTab]);
 
   useEffect(() => {
     const init = async () => {
@@ -123,6 +130,30 @@ const AppContent = () => {
       loadFlats();
       loadMembers();
     }
+  }, [currentGuard]);
+
+  useEffect(() => {
+    if (!currentGuard || typeof window === 'undefined') return;
+    window.history.pushState({ sgbGuardTabTrap: true }, '');
+    const onPopState = () => {
+      if (guardTabRef.current !== 'dashboard') {
+        setActiveTab('dashboard');
+        window.history.pushState({ sgbGuardTabTrap: true }, '');
+        toast.message('Press back again to exit');
+        return;
+      }
+      const now = Date.now();
+      if (now - guardExitBackTsRef.current < 2000) {
+        window.removeEventListener('popstate', onPopState);
+        window.history.back();
+        return;
+      }
+      guardExitBackTsRef.current = now;
+      toast.message('Press back again to exit');
+      window.history.pushState({ sgbGuardTabTrap: true }, '');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, [currentGuard]);
 
   useEffect(() => {

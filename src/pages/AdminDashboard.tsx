@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
+import { toast } from 'sonner';
 import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
@@ -49,6 +50,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { setSocietyId, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, loadGuards } = useStore();
   const notificationFeedRevision = useNotificationsRealtimeRevision(true, `admin-${admin.id}`);
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const activeTabRef = useRef<AdminTab>('overview');
+  const exitBackTsRef = useRef(0);
   const [stats, setStats] = useState({ visitors: 0, guards: 0, flats: 0, vehicles: 0, blacklist: 0 });
   const [kycPending, setKycPending] = useState<{ id: string; name: string; guard_id: string; kyc_alert_days: number; created_at: string }[]>([]);
 
@@ -145,6 +148,34 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   useEffect(() => {
     if (!isAdminTabAllowed(activeTab, admin.permissions)) setActiveTab('overview');
   }, [activeTab, admin.permissions]);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.history.pushState({ sgbAdminTabTrap: true }, '');
+    const onPopState = () => {
+      if (activeTabRef.current !== 'overview') {
+        setActiveTab('overview');
+        window.history.pushState({ sgbAdminTabTrap: true }, '');
+        toast.message('Press back again to exit');
+        return;
+      }
+      const now = Date.now();
+      if (now - exitBackTsRef.current < 2000) {
+        window.removeEventListener('popstate', onPopState);
+        window.history.back();
+        return;
+      }
+      exitBackTsRef.current = now;
+      toast.message('Press back again to exit');
+      window.history.pushState({ sgbAdminTabTrap: true }, '');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {

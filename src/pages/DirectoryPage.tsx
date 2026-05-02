@@ -13,20 +13,57 @@ const DirectoryPage = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('flats');
 
+  const membersByFlatId = useMemo(() => {
+    const map = new Map<string, typeof members>();
+    for (const m of members) {
+      const list = map.get(m.flatId) ?? [];
+      list.push(m);
+      map.set(m.flatId, list);
+    }
+    return map;
+  }, [members]);
+
+  const vehiclesByFlatNumber = useMemo(() => {
+    const map = new Map<string, typeof residentVehicles>();
+    for (const v of residentVehicles) {
+      const list = map.get(v.flatNumber) ?? [];
+      list.push(v);
+      map.set(v.flatNumber, list);
+    }
+    return map;
+  }, [residentVehicles]);
+
   // === FLATS VIEW ===
   const filteredFlats = useMemo(() => {
     if (!search.trim()) return flats;
     const q = search.toLowerCase();
-    return flats.filter(f =>
-      f.flatNumber.toLowerCase().includes(q) ||
-      (f.ownerName && f.ownerName.toLowerCase().includes(q)) ||
-      (f.wing && f.wing.toLowerCase().includes(q)) ||
-      (f.ownerPhone && f.ownerPhone.includes(q))
-    );
-  }, [flats, search]);
+    return flats.filter((f) => {
+      const flatMembers = membersByFlatId.get(f.id) ?? [];
+      const flatVehicles = vehiclesByFlatNumber.get(f.flatNumber) ?? [];
+      const memberText = flatMembers
+        .map((m) => [m.name, m.phone, m.relation, String(m.age ?? ''), m.gender].filter(Boolean).join(' '))
+        .join(' ');
+      const vehicleText = flatVehicles
+        .map((v) => [v.vehicleNumber, v.vehicleType, v.residentName].filter(Boolean).join(' '))
+        .join(' ');
+      const haystack = [
+        f.flatNumber,
+        f.ownerName ?? '',
+        f.ownerPhone ?? '',
+        f.wing ?? '',
+        f.floor ?? '',
+        f.flatType ?? '',
+        memberText,
+        vehicleText,
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [flats, search, membersByFlatId, vehiclesByFlatNumber]);
 
-  const getMembersForFlat = (flatId: string) => members.filter(m => m.flatId === flatId);
-  const getVehiclesForFlat = (flatNumber: string) => residentVehicles.filter(v => v.flatNumber === flatNumber);
+  const getMembersForFlat = (flatId: string) => membersByFlatId.get(flatId) ?? [];
+  const getVehiclesForFlat = (flatNumber: string) => vehiclesByFlatNumber.get(flatNumber) ?? [];
 
   // === VISITORS VIEW ===
   const visitorDirectory = useMemo(() => {

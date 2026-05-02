@@ -136,6 +136,48 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     | 'tour'
     | 'feedback'
   >('approvals');
+  const tabRef = useRef<
+    | 'approvals'
+    | 'passes'
+    | 'notifications'
+    | 'polls'
+    | 'payments'
+    | 'family'
+    | 'vehicles'
+    | 'directory'
+    | 'profile'
+    | 'tour'
+    | 'feedback'
+  >('approvals');
+  const exitBackTsRef = useRef(0);
+
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.history.pushState({ sgbResidentTabTrap: true }, '');
+    const onPopState = () => {
+      if (tabRef.current !== 'approvals') {
+        setTab('approvals');
+        window.history.pushState({ sgbResidentTabTrap: true }, '');
+        toast.message('Press back again to exit');
+        return;
+      }
+      const now = Date.now();
+      if (now - exitBackTsRef.current < 2000) {
+        window.removeEventListener('popstate', onPopState);
+        window.history.back();
+        return;
+      }
+      exitBackTsRef.current = now;
+      toast.message('Press back again to exit');
+      window.history.pushState({ sgbResidentTabTrap: true }, '');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   useEffect(() => {
     try {
@@ -933,7 +975,28 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const filteredDirFlats = allFlats.filter(f => {
     if (!dirSearch.trim()) return true;
     const q = dirSearch.toLowerCase();
-    return f.flat_number?.toLowerCase().includes(q) || f.owner_name?.toLowerCase().includes(q) || f.owner_phone?.includes(q);
+    const flatMembers = allMembers.filter((m: any) => m.flat_id === f.id);
+    const flatVehicles = allVehicles.filter((v: any) => v.flat_number === f.flat_number);
+    const memberText = flatMembers
+      .map((m: any) => [m.name, m.phone, m.relation, String(m.age ?? ''), m.gender].filter(Boolean).join(' '))
+      .join(' ')
+      .toLowerCase();
+    const vehicleText = flatVehicles
+      .map((v: any) => [v.vehicle_number, v.vehicle_type, v.resident_name].filter(Boolean).join(' '))
+      .join(' ')
+      .toLowerCase();
+    const haystack = [
+      f.flat_number,
+      f.owner_name ?? '',
+      f.owner_phone ?? '',
+      f.wing ?? '',
+      f.floor ?? '',
+      memberText,
+      vehicleText,
+    ]
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(q);
   });
 
   const tabItems = [
