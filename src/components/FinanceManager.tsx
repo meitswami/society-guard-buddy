@@ -91,6 +91,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   });
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const [paymentMonthFilter, setPaymentMonthFilter] = useState('all');
+  const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [autoReminderEnabled, setAutoReminderEnabled] = useState(true);
   const [autoReminderSchedule, setAutoReminderSchedule] = useState<'once_12pm' | 'twice_12pm_7pm'>('once_12pm');
@@ -589,6 +590,24 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     if (paymentTypeFilter === 'monthly_maintenance' && paymentMonthFilter !== 'all') {
       if (paymentMonthValue(p) !== paymentMonthFilter) return false;
     }
+    const q = paymentSearchQuery.trim().toLowerCase();
+    if (q) {
+      const chargeTitle = String(chargeById.get(p.charge_id)?.title || '').toLowerCase();
+      const flatMeta = flats.find((f) => f.flat_number === p.flat_number);
+      const flatOwner = String(flatMeta?.owner_name || '').toLowerCase();
+      const haystack = [
+        String(p.flat_number || ''),
+        String(p.resident_name || ''),
+        String(p.transaction_id || ''),
+        String(p.notes || ''),
+        String(p.payment_method || ''),
+        chargeTitle,
+        flatOwner,
+      ]
+        .join(' ')
+        .toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
     return true;
   });
 
@@ -640,8 +659,21 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     });
     setTestingAutoReminder(false);
     if (error) {
-      toast.error(error.message);
-      setLastReminderTestStatus(`Last test failed at ${new Date().toLocaleTimeString()}: ${error.message}`);
+      let detail = error.message;
+      const ctx = (error as any)?.context;
+      if (ctx && typeof ctx.json === 'function') {
+        try {
+          const body = await ctx.json();
+          if (body?.error) detail = String(body.error);
+        } catch {
+          // no-op
+        }
+      }
+      const hint = detail.includes('finance_reminder_settings') || detail.includes('finance_reminder_dispatch_log')
+        ? 'Run DB migration and deploy maintenance-reminder again.'
+        : detail;
+      toast.error(hint);
+      setLastReminderTestStatus(`Last test failed at ${new Date().toLocaleTimeString()}: ${hint}`);
       return;
     }
     const sent = Number((data as any)?.sent ?? 0);
@@ -982,6 +1014,14 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
               </button>
             </div>
           )}
+
+          <input
+            className="input-field mb-3"
+            type="search"
+            placeholder="Search by flat, member name, charge, txn, notes..."
+            value={paymentSearchQuery}
+            onChange={(e) => setPaymentSearchQuery(e.target.value)}
+          />
 
           <div className="flex gap-1 mb-3">
             {['all', 'pending', 'verified', 'rejected'].map(s => (
