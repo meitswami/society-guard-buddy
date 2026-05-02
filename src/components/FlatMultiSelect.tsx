@@ -11,6 +11,8 @@ type Props = {
   flats: FlatMultiSelectOption[];
   selected: string[];
   onChange: (flatNumbers: string[]) => void;
+  onToggleFlat?: (flatNumber: string, nextSelected: boolean) => void;
+  selectedBadgeByFlat?: Record<string, string>;
   label?: string;
   compact?: boolean;
   className?: string;
@@ -21,6 +23,8 @@ export function FlatMultiSelect({
   flats,
   selected,
   onChange,
+  onToggleFlat,
+  selectedBadgeByFlat = {},
   label = 'Flats',
   compact = false,
   className = '',
@@ -39,7 +43,9 @@ export function FlatMultiSelect({
   }, [flats, q]);
 
   const toggle = (num: string) => {
-    onChange(selected.includes(num) ? selected.filter(x => x !== num) : [...selected, num]);
+    const nextSelected = !selected.includes(num);
+    onChange(nextSelected ? [...selected, num] : selected.filter(x => x !== num));
+    onToggleFlat?.(num, nextSelected);
   };
 
   const selectAllFiltered = () => {
@@ -98,6 +104,7 @@ export function FlatMultiSelect({
         ) : (
           filtered.map(f => {
             const on = selected.includes(f.flat_number);
+            const badgeText = selectedBadgeByFlat[f.flat_number];
             return (
               <button
                 key={f.id}
@@ -111,6 +118,11 @@ export function FlatMultiSelect({
                 }`}
               >
                 <span className="font-mono font-semibold leading-none tabular-nums">{f.flat_number}</span>
+                {on && badgeText ? (
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-primary-foreground/15 text-primary-foreground">
+                    {badgeText}
+                  </span>
+                ) : null}
                 {f.subtitle ? (
                   <span
                     className={`w-full text-[9px] leading-[1.15] font-normal line-clamp-2 break-words hyphens-auto ${

@@ -74,6 +74,15 @@ const notificationSound = () => {
   } catch {}
 };
 
+async function uploadResidentPaymentReceipt(file: File): Promise<string | null> {
+  const safe = file.name.replace(/[^\w.-]/g, '_');
+  const path = `maintenance-receipts/${crypto.randomUUID()}_${safe}`;
+  const { error } = await supabase.storage.from('notification-media').upload(path, file, { cacheControl: '3600', upsert: false });
+  if (error) return null;
+  const { data } = supabase.storage.from('notification-media').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
   const { isAvailable, register: registerBiometric } = useBiometric();
@@ -148,6 +157,21 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [passes, setPasses] = useState<VisitorPass[]>([]);
   const [myPayments, setMyPayments] = useState<any[]>([]);
+  const [residentCharges, setResidentCharges] = useState<any[]>([]);
+  const [showPayMaintenanceForm, setShowPayMaintenanceForm] = useState(false);
+  const [residentPayForm, setResidentPayForm] = useState({
+    charge_id: '',
+    amount: '',
+    payment_method: 'upi',
+    transaction_id: '',
+    notes: '',
+    paid_on: format(new Date(), 'yyyy-MM-dd'),
+    due_date: format(new Date(), 'yyyy-MM-dd'),
+    screenshot_url: '',
+    upi_id: '',
+  });
+  const [residentPayUploading, setResidentPayUploading] = useState(false);
+  const [residentPaySaving, setResidentPaySaving] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [passForm, setPassForm] = useState({
     guestName: '', guestPhone: '', validDate: format(new Date(), 'yyyy-MM-dd'),
@@ -225,6 +249,19 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       .eq('flat_id', resident.flatId).order('created_at', { ascending: false }).limit(50);
     if (data) setMyPayments(data);
   }, [resident.flatId]);
+
+  const loadResidentCharges = useCallback(async () => {
+    if (!societyId) {
+      setResidentCharges([]);
+      return;
+    }
+    const { data } = await supabase
+      .from('maintenance_charges')
+      .select('id, title, amount, due_day, frequency, created_at')
+      .eq('society_id', societyId)
+      .order('created_at', { ascending: false });
+    if (data) setResidentCharges(data);
+  }, [societyId]);
 
   const loadFlatmates = async () => {
     const { data } = await supabase.from('resident_users').select('*').eq('flat_id', resident.flatId);
@@ -322,7 +359,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     return () => { cancelled = true; };
   }, [residentSelfIdUploadEnabled, myMemberRecord?.id]);
 
-  useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); loadFlatmates(); loadMyMembers(); loadMyVehicles(); loadDirectory(); }, []);
+  useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); loadResidentCharges(); loadFlatmates(); loadMyMembers(); loadMyVehicles(); loadDirectory(); }, []);
 
   useEffect(() => {
     if (!societyId) return;
@@ -349,6 +386,31 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     })();
     return () => { cancelled = true; };
   }, [societyId]);
+
+  useEffect(() => {
+    if (!showPayMaintenanceForm || residentPayForm.charge_id || residentCharges.length === 0) return;
+    const monthName = format(new Date(), 'MMMM').toLowerCase();
+    const preferred =
+      residentCharges.find((c: any) =>
+        String(c.frequency || '').toLowerCase() === 'monthly' &&
+        String(c.title || '').toLowerCase().includes('maint') &&
+        String(c.title || '').toLowerCase().includes(monthName),
+      ) ??
+      residentCharges.find((c: any) =>
+        String(c.frequency || '').toLowerCase() === 'monthly' &&
+        String(c.title || '').toLowerCase().includes('maint'),
+      ) ??
+      residentCharges[0];
+    if (!preferred) return;
+    const dueDay = Number(preferred?.due_day || 1);
+    const dueDate = format(new Date(new Date().getFullYear(), new Date().getMonth(), Math.min(Math.max(dueDay, 1), 28)), 'yyyy-MM-dd');
+    setResidentPayForm((prev) => ({
+      ...prev,
+      charge_id: preferred.id,
+      amount: String(preferred.amount ?? ''),
+      due_date: dueDate,
+    }));
+  }, [showPayMaintenanceForm, residentPayForm.charge_id, residentCharges]);
 
   const handleSaveSelfIdPhotos = async () => {
     if (!myMemberRecord?.id) return;
@@ -421,6 +483,101 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     setShowNewPass(false);
     setPassForm({ guestName: '', guestPhone: '', validDate: format(new Date(), 'yyyy-MM-dd'), timeStart: '09:00', timeEnd: '18:00' });
     loadPasses();
+  };
+
+  const openUpiApp = () => {
+    const payee = residentPayForm.upi_id.trim();
+    const amount = Number(residentPayForm.amount);
+    if (!payee) {
+      toast.error('Enter UPI ID first');
+      return;
+    }
+    if (!amount || amount <= 0) {
+      toast.error('Enter amount first');
+      return;
+    }
+    const note = `Maintenance for Flat ${resident.flatNumber}`;
+    const url = `upi://pay?pa=${encodeURIComponent(payee)}&pn=${encodeURIComponent('Society Maintenance')}&am=${encodeURIComponent(String(amount))}&cu=INR&tn=${encodeURIComponent(note)}`;
+    window.location.href = url;
+  };
+
+  const handleSubmitResidentPayment = async () => {
+    if (!residentPayForm.charge_id) {
+      toast.error('Select maintenance charge');
+      return;
+    }
+    if (!residentPayForm.amount || Number(residentPayForm.amount) <= 0) {
+      toast.error('Enter valid amount');
+      return;
+    }
+    if (!residentPayForm.paid_on || !residentPayForm.due_date) {
+      toast.error('Select paid date and due date');
+      return;
+    }
+
+    let screenshotUrl = residentPayForm.screenshot_url.trim() || null;
+    const fileInput = document.getElementById('resident-payment-receipt') as HTMLInputElement | null;
+    const file = fileInput?.files?.[0];
+    if (file) {
+      if (file.size > 8 * 1024 * 1024) {
+        toast.error('Receipt file must be 8MB or smaller');
+        return;
+      }
+      setResidentPayUploading(true);
+      const url = await uploadResidentPaymentReceipt(file);
+      setResidentPayUploading(false);
+      if (!url) {
+        toast.error('Could not upload receipt');
+        return;
+      }
+      screenshotUrl = url;
+    }
+
+    setResidentPaySaving(true);
+    const paidAtIso = new Date(`${residentPayForm.paid_on}T12:00:00`).toISOString();
+    const { error } = await (supabase as any).from('maintenance_payments').insert([
+      {
+        charge_id: residentPayForm.charge_id,
+        flat_id: resident.flatId,
+        flat_number: resident.flatNumber,
+        resident_name: resident.name,
+        amount: Number(residentPayForm.amount),
+        payment_method: residentPayForm.payment_method,
+        payment_status: 'pending',
+        payment_date: paidAtIso,
+        due_date: residentPayForm.due_date,
+        transaction_id: residentPayForm.transaction_id.trim() || null,
+        screenshot_url: screenshotUrl,
+        notes: residentPayForm.notes.trim() || null,
+        submitted_by: 'resident',
+        submitted_by_user_id: resident.id,
+        verified_by: null,
+        verified_at: null,
+        reviewed_at: null,
+        rejection_reason: null,
+      },
+    ]);
+    setResidentPaySaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setResidentPayForm({
+      charge_id: '',
+      amount: '',
+      payment_method: 'upi',
+      transaction_id: '',
+      notes: '',
+      paid_on: format(new Date(), 'yyyy-MM-dd'),
+      due_date: format(new Date(), 'yyyy-MM-dd'),
+      screenshot_url: '',
+      upi_id: '',
+    });
+    if (fileInput) fileInput.value = '';
+    setShowPayMaintenanceForm(false);
+    toast.success('Payment submitted for admin verification');
+    loadMyPayments();
   };
 
   // ========== FAMILY/SERVICEMEN HANDLERS ==========
@@ -1644,6 +1801,112 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
         {tab === 'payments' && (
           <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => setShowPayMaintenanceForm((v) => !v)}
+              className="btn-primary"
+            >
+              {showPayMaintenanceForm ? 'Close payment form' : 'Add maintenance payment'}
+            </button>
+
+            {showPayMaintenanceForm && (
+              <div className="card-section p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Submit payment for verification</p>
+                <select
+                  className="input-field"
+                  value={residentPayForm.charge_id}
+                  onChange={(e) => {
+                    const charge = residentCharges.find((c: any) => c.id === e.target.value);
+                    setResidentPayForm((prev) => ({
+                      ...prev,
+                      charge_id: e.target.value,
+                      amount: charge?.amount != null ? String(charge.amount) : prev.amount,
+                    }));
+                  }}
+                >
+                  <option value="">Select charge</option>
+                  {residentCharges.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title} - ₹{c.amount}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="input-field"
+                  placeholder="Amount (₹)"
+                  type="number"
+                  value={residentPayForm.amount}
+                  onChange={(e) => setResidentPayForm((prev) => ({ ...prev, amount: e.target.value }))}
+                />
+                <select
+                  className="input-field"
+                  value={residentPayForm.payment_method}
+                  onChange={(e) => setResidentPayForm((prev) => ({ ...prev, payment_method: e.target.value }))}
+                >
+                  <option value="upi">UPI</option>
+                  <option value="bank_transfer">Bank transfer</option>
+                  <option value="cash">Cash</option>
+                  <option value="razorpay">Online gateway</option>
+                </select>
+                {residentPayForm.payment_method === 'upi' && (
+                  <>
+                    <input
+                      className="input-field"
+                      placeholder="Society UPI ID (e.g. society@upi)"
+                      value={residentPayForm.upi_id}
+                      onChange={(e) => setResidentPayForm((prev) => ({ ...prev, upi_id: e.target.value }))}
+                    />
+                    <button type="button" className="btn-secondary" onClick={openUpiApp}>
+                      Open UPI app with amount
+                    </button>
+                    <p className="text-[10px] text-muted-foreground">
+                      Phone will show installed UPI apps via system chooser. After payment, upload screenshot below.
+                    </p>
+                  </>
+                )}
+                <input
+                  className="input-field"
+                  placeholder="Transaction / UPI reference ID"
+                  value={residentPayForm.transaction_id}
+                  onChange={(e) => setResidentPayForm((prev) => ({ ...prev, transaction_id: e.target.value }))}
+                />
+                <input
+                  className="input-field"
+                  type="date"
+                  value={residentPayForm.paid_on}
+                  onChange={(e) => setResidentPayForm((prev) => ({ ...prev, paid_on: e.target.value }))}
+                />
+                <input
+                  className="input-field"
+                  type="date"
+                  value={residentPayForm.due_date}
+                  onChange={(e) => setResidentPayForm((prev) => ({ ...prev, due_date: e.target.value }))}
+                />
+                <input
+                  className="input-field"
+                  placeholder="Screenshot URL (optional)"
+                  value={residentPayForm.screenshot_url}
+                  onChange={(e) => setResidentPayForm((prev) => ({ ...prev, screenshot_url: e.target.value }))}
+                />
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">Or upload payment screenshot</label>
+                <input id="resident-payment-receipt" type="file" accept="image/*,application/pdf" className="text-xs" />
+                <textarea
+                  className="input-field"
+                  placeholder="Notes"
+                  value={residentPayForm.notes}
+                  onChange={(e) => setResidentPayForm((prev) => ({ ...prev, notes: e.target.value }))}
+                />
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => void handleSubmitResidentPayment()}
+                  disabled={residentPayUploading || residentPaySaving}
+                >
+                  {residentPayUploading ? 'Uploading receipt…' : residentPaySaving ? 'Submitting…' : 'Submit for admin verification'}
+                </button>
+              </div>
+            )}
+
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">My Payment History</p>
             {myPayments.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No payment records</p>}
             {myPayments.map(p => (
@@ -1652,7 +1915,12 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   <div>
                     <p className="text-sm font-medium">₹{p.amount}</p>
                     <p className="text-xs text-muted-foreground">{p.payment_method} · {new Date(p.created_at).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-muted-foreground">Paid on: {p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '-'}</p>
+                    <p className="text-[10px] text-muted-foreground">Due date: {p.due_date || '-'}</p>
+                    {p.transaction_id && <p className="text-[10px] text-muted-foreground">Ref: {p.transaction_id}</p>}
                     {p.notes && <p className="text-[10px] text-muted-foreground">{p.notes}</p>}
+                    {p.rejection_reason && <p className="text-[10px] text-destructive">Reason: {p.rejection_reason}</p>}
+                    {p.screenshot_url ? <a href={p.screenshot_url} target="_blank" className="text-[10px] text-primary underline">View receipt</a> : null}
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                     p.payment_status === 'verified' ? 'bg-green-500/20 text-green-600' :
