@@ -659,19 +659,41 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     });
     setTestingAutoReminder(false);
     if (error) {
-      let detail = error.message;
+      let detail = String((error as any)?.message || 'Unknown function error');
       const ctx = (error as any)?.context;
-      if (ctx && typeof ctx.json === 'function') {
-        try {
-          const body = await ctx.json();
-          if (body?.error) detail = String(body.error);
-        } catch {
-          // no-op
+      if (ctx) {
+        if (typeof ctx.json === 'function') {
+          try {
+            const body = await ctx.json();
+            if (body?.error) detail = String(body.error);
+          } catch {
+            // no-op
+          }
+        }
+        if ((detail.includes('non-2xx') || detail.includes('FunctionsHttpError')) && typeof ctx.text === 'function') {
+          try {
+            const text = await ctx.text();
+            if (text?.trim()) {
+              try {
+                const parsed = JSON.parse(text);
+                if (parsed?.error) detail = String(parsed.error);
+                else detail = text.trim();
+              } catch {
+                detail = text.trim();
+              }
+            }
+          } catch {
+            // no-op
+          }
         }
       }
-      const hint = detail.includes('finance_reminder_settings') || detail.includes('finance_reminder_dispatch_log')
-        ? 'Run DB migration and deploy maintenance-reminder again.'
-        : detail;
+      const generic = detail.includes('non-2xx') || detail.includes('FunctionsHttpError') || detail === 'Unknown function error';
+      const hint =
+        detail.includes('finance_reminder_settings') || detail.includes('finance_reminder_dispatch_log')
+          ? 'DB migration missing. Run `npx supabase db push` and redeploy `maintenance-reminder`.'
+          : generic
+            ? 'Reminder test failed. Run DB push + deploy `maintenance-reminder` + deploy `send-push-notification`, then retry.'
+            : detail;
       toast.error(hint);
       setLastReminderTestStatus(`Last test failed at ${new Date().toLocaleTimeString()}: ${hint}`);
       return;
