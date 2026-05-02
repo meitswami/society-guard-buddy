@@ -10,3 +10,7 @@ verify_jwt = false
 # Superadmin uses app login, not Supabase Auth JWT — invoke() must not get 401.
 [functions.backup-export]
 verify_jwt = false
+
+# Finance reminder test is triggered from in-app admin session (not Supabase Auth JWT).
+[functions.maintenance-reminder]
+verify_jwt = false
