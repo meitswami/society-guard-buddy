@@ -138,6 +138,25 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [selectedLedger, setSelectedLedger] = useState<FinanceLedgerRow | null>(null);
+  const [selectedReceiptKeys, setSelectedReceiptKeys] = useState<Set<string>>(new Set());
+  const [paymentEdit, setPaymentEdit] = useState<{
+    id: string;
+    charge_id: string;
+    amount: string;
+    payment_method: string;
+    transaction_id: string;
+    notes: string;
+    due_date: string;
+    payment_status: string;
+    rejection_reason: string;
+  } | null>(null);
+  const [ledgerEdit, setLedgerEdit] = useState<{
+    id: string;
+    title: string;
+    notes: string;
+    payment_status: string;
+    transaction_id: string;
+  } | null>(null);
   const [autoReminderEnabled, setAutoReminderEnabled] = useState(true);
   const [autoReminderSchedule, setAutoReminderSchedule] = useState<'once_12pm' | 'twice_12pm_7pm'>('once_12pm');
   const [savingAutoReminder, setSavingAutoReminder] = useState(false);
@@ -328,9 +347,15 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   };
 
   const deleteCharge = async (id: string) => {
+    const hasDeps =
+      payments.some((p) => p.charge_id === id) || ledgerEntries.some((e) => e.charge_id === id);
+    if (hasDeps) {
+      toast.error('This charge has linked payments or ledger rows. Delete those entries first.');
+      return;
+    }
     const ok = await confirmAction(
       'Delete this charge?',
-      'All payment records linked to this charge will be deleted as well.',
+      'This will remove the charge definition only.',
       'Delete',
       'Cancel',
     );
@@ -765,6 +790,348 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     await loadAll();
   };
 
+  const deleteMaintenancePaymentRowInternal = async (p: any) => {
+    const feId = p.finance_entry_id as string | null | undefined;
+    if (feId) {
+      await supabase
+        .from('finance_entry_allocations')
+        .delete()
+        .eq('finance_entry_id', feId)
+        .eq('flat_number', String(p.flat_number));
+    }
+    await supabase.from('maintenance_payments').delete().eq('id', p.id);
+    if (feId) {
+      const { data: restAllocs } = await supabase
+        .from('finance_entry_allocations')
+        .select('amount')
+        .eq('finance_entry_id', feId);
+      const { data: restMps } = await supabase
+        .from('maintenance_payments')
+        .select('id')
+        .eq('finance_entry_id', feId);
+      const total = restAllocs?.reduce((s, a) => s + Number(a.amount), 0) ?? 0;
+      const acount = restAllocs?.length ?? 0;
+      const mpLeft = restMps?.length ?? 0;
+      if (acount === 0 && mpLeft === 0) {
+        await supabase.from('finance_entries').delete().eq('id', feId);
+      } else if (acount > 0) {
+        await supabase
+          .from('finance_entries')
+          .update({ total_amount: total, aggregate_flat_count: acount })
+          .eq('id', feId);
+      } else if (mpLeft > 0) {
+        await supabase.from('maintenance_payments').update({ finance_entry_id: null }).eq('finance_entry_id', feId);
+        await supabase.from('finance_entries').delete().eq('id', feId);
+      }
+    }
+  };
+
+  const deleteMaintenancePaymentRow = async (p: any) => {
+    const ok = await confirmAction(
+      'Delete this payment?',
+      'This removes the payment record and updates linked ledger rows when applicable.',
+      'Delete',
+      'Cancel',
+    );
+    if (!ok) return;
+    await deleteMaintenancePaymentRowInternal(p);
+    toast.success('Payment deleted');
+    setSelectedReceiptKeys((prev) => {
+      const next = new Set(prev);
+      next.delete(`mp-${p.id}`);
+      return next;
+    });
+    await loadAll();
+  };
+
+  const updateLedgerEntryStatus = async (entryId: string, payment_status: string) => {
+    const { error } = await supabase.from('finance_entries').update({ payment_status }).eq('id', entryId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Status updated');
+    await loadAll();
+  };
+
+  const deleteLedgerRow = async (e: FinanceLedgerRow) => {
+    const ok = await confirmAction(
+      'Delete this ledger entry?',
+      'Removes ledger allocations and counterparty data. Ledger-only rows have no maintenance payments.',
+      'Delete',
+      'Cancel',
+    );
+    if (!ok) return;
+    await supabase.from('finance_entries').delete().eq('id', e.id);
+    toast.success('Ledger entry deleted');
+    setSelectedReceiptKeys((prev) => {
+      const next = new Set(prev);
+      next.delete(`ledger-${e.id}`);
+      return next;
+    });
+    await loadAll();
+  };
+
+  const applyMaintenancePaymentStatus = async (
+    id: string,
+    nextStatus: 'pending' | 'verified' | 'rejected',
+    opts?: { reason?: string; notify?: boolean; skipReload?: boolean },
+  ) => {
+    const row = payments.find((x) => x.id === id);
+    if (!row) return;
+    const reviewedAt = new Date().toISOString();
+    const notify = opts?.notify !== false;
+
+    if (nextStatus === 'verified') {
+      await (supabase as any).from('maintenance_payments').update({
+        payment_status: 'verified',
+        verified_by: adminName,
+        verified_at: reviewedAt,
+        reviewed_at: reviewedAt,
+        rejection_reason: null,
+      }).eq('id', id);
+      if (notify && row.flat_number) {
+        const chargeTitle = charges.find((c) => c.id === row.charge_id)?.title || 'Maintenance charge';
+        const title = `Payment approved: ${chargeTitle}`;
+        const message = `Your payment of ₹${Number(row.amount || 0).toLocaleString('en-IN')} has been approved by ${adminName}.`;
+        await (supabase as any).from('notifications').insert([
+          {
+            society_id: societyId,
+            title,
+            message,
+            type: 'maintenance_payment_decision',
+            target_type: 'flat',
+            target_id: row.flat_number,
+            created_by: adminName,
+          },
+        ]);
+        await supabase.functions.invoke('send-push-notification', {
+          body: {
+            title,
+            message,
+            target_type: 'flat',
+            target_flat_numbers: [row.flat_number],
+            target_ids: [],
+            media_items: [],
+            society_id: societyId,
+            sound_key: 'digital',
+            sound_custom_url: '',
+          },
+        });
+      }
+    } else if (nextStatus === 'rejected') {
+      const reason = opts?.reason?.trim() || 'Rejected by admin';
+      await (supabase as any).from('maintenance_payments').update({
+        payment_status: 'rejected',
+        verified_by: adminName,
+        verified_at: reviewedAt,
+        reviewed_at: reviewedAt,
+        rejection_reason: reason,
+      }).eq('id', id);
+      if (notify && row.flat_number) {
+        const chargeTitle = charges.find((c) => c.id === row.charge_id)?.title || 'Maintenance charge';
+        const title = `Payment rejected: ${chargeTitle}`;
+        const message = `Your payment entry was rejected by ${adminName}. Reason: ${reason}`;
+        await (supabase as any).from('notifications').insert([
+          {
+            society_id: societyId,
+            title,
+            message,
+            type: 'maintenance_payment_decision',
+            target_type: 'flat',
+            target_id: row.flat_number,
+            created_by: adminName,
+          },
+        ]);
+        await supabase.functions.invoke('send-push-notification', {
+          body: {
+            title,
+            message,
+            target_type: 'flat',
+            target_flat_numbers: [row.flat_number],
+            target_ids: [],
+            media_items: [],
+            society_id: societyId,
+            sound_key: 'digital',
+            sound_custom_url: '',
+          },
+        });
+      }
+    } else {
+      await (supabase as any).from('maintenance_payments').update({
+        payment_status: 'pending',
+        verified_by: null,
+        verified_at: null,
+        reviewed_at: null,
+        rejection_reason: null,
+      }).eq('id', id);
+    }
+    if (!opts?.skipReload) await loadAll();
+  };
+
+  const savePaymentEdit = async () => {
+    if (!paymentEdit || !societyId) return;
+    const reviewedAt = new Date().toISOString();
+    const payload: Record<string, unknown> = {
+      charge_id: paymentEdit.charge_id || null,
+      amount: Number(paymentEdit.amount),
+      payment_method: paymentEdit.payment_method,
+      transaction_id: paymentEdit.transaction_id.trim() || null,
+      notes: paymentEdit.notes.trim() || null,
+      due_date: paymentEdit.due_date,
+      payment_status: paymentEdit.payment_status,
+    };
+    if (paymentEdit.payment_status === 'verified') {
+      payload.verified_by = adminName;
+      payload.verified_at = reviewedAt;
+      payload.reviewed_at = reviewedAt;
+      payload.rejection_reason = null;
+    } else if (paymentEdit.payment_status === 'rejected') {
+      payload.verified_by = adminName;
+      payload.verified_at = reviewedAt;
+      payload.reviewed_at = reviewedAt;
+      payload.rejection_reason = paymentEdit.rejection_reason.trim() || 'Rejected by admin';
+    } else {
+      payload.verified_by = null;
+      payload.verified_at = null;
+      payload.reviewed_at = null;
+      payload.rejection_reason = null;
+    }
+    const { error } = await (supabase as any).from('maintenance_payments').update(payload).eq('id', paymentEdit.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Payment updated');
+    setPaymentEdit(null);
+    await loadAll();
+  };
+
+  const saveLedgerEdit = async () => {
+    if (!ledgerEdit) return;
+    const { error } = await supabase
+      .from('finance_entries')
+      .update({
+        title: ledgerEdit.title.trim() || null,
+        notes: ledgerEdit.notes.trim() || null,
+        payment_status: ledgerEdit.payment_status,
+        transaction_id: ledgerEdit.transaction_id.trim() || null,
+      })
+      .eq('id', ledgerEdit.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Ledger entry updated');
+    setLedgerEdit(null);
+    await loadAll();
+  };
+
+  const bulkDeleteSelectedReceipts = async () => {
+    if (selectedReceiptKeys.size === 0) return;
+    const ok = await confirmAction(
+      `Delete ${selectedReceiptKeys.size} selected entries?`,
+      'This cannot be undone.',
+      'Delete all',
+      'Cancel',
+    );
+    if (!ok) return;
+    for (const key of selectedReceiptKeys) {
+      if (key.startsWith('mp-')) {
+        const id = key.slice(3);
+        const p = payments.find((x) => x.id === id);
+        if (p) await deleteMaintenancePaymentRowInternal(p);
+      } else if (key.startsWith('ledger-')) {
+        const id = key.slice(7);
+        await supabase.from('finance_entries').delete().eq('id', id);
+      }
+    }
+    setSelectedReceiptKeys(new Set());
+    toast.success('Selected entries deleted');
+    await loadAll();
+  };
+
+  const bulkSetPaymentStatus = async (nextStatus: 'pending' | 'verified' | 'rejected') => {
+    const mpIds = [...selectedReceiptKeys].filter((k) => k.startsWith('mp-')).map((k) => k.slice(3));
+    if (mpIds.length === 0) {
+      toast.error('Select maintenance payment rows (not ledger-only) for bulk status');
+      return;
+    }
+    let reason = '';
+    if (nextStatus === 'rejected') {
+      reason = window.prompt('Rejection reason for all selected (required):', '') ?? '';
+      if (!reason.trim()) {
+        toast.error('Reason required');
+        return;
+      }
+    }
+    const ok = await confirmAction(
+      `Set ${mpIds.length} payments to ${nextStatus}?`,
+      nextStatus === 'rejected' ? `Reason: ${reason}` : 'Residents will not be notified in bulk mode.',
+      'Apply',
+      'Cancel',
+    );
+    if (!ok) return;
+    for (const id of mpIds) {
+      await applyMaintenancePaymentStatus(id, nextStatus, {
+        reason: reason.trim(),
+        notify: false,
+        skipReload: true,
+      });
+    }
+    setSelectedReceiptKeys(new Set());
+    toast.success('Status updated for selected payments');
+    await loadAll();
+  };
+
+  const toggleReceiptKey = (key: string, checked: boolean) => {
+    setSelectedReceiptKeys((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  };
+
+  const changeReceiptPaymentStatus = async (p: any, v: string) => {
+    const next = v as 'pending' | 'verified' | 'rejected';
+    if (next === 'rejected') {
+      const reason = window.prompt('Rejection reason:', p.rejection_reason || '');
+      if (reason === null) return;
+      if (!reason.trim()) {
+        toast.error('Reason required');
+        return;
+      }
+      await applyMaintenancePaymentStatus(p.id, 'rejected', { reason: reason.trim() });
+      return;
+    }
+    await applyMaintenancePaymentStatus(p.id, next);
+  };
+
+  const openPaymentEdit = (p: any) => {
+    setPaymentEdit({
+      id: p.id,
+      charge_id: p.charge_id ?? '',
+      amount: String(p.amount ?? ''),
+      payment_method: p.payment_method ?? 'cash',
+      transaction_id: p.transaction_id ?? '',
+      notes: p.notes ?? '',
+      due_date: (p.due_date || '').toString().slice(0, 10),
+      payment_status: p.payment_status ?? 'pending',
+      rejection_reason: p.rejection_reason ?? '',
+    });
+  };
+
+  const openLedgerEdit = (e: FinanceLedgerRow) => {
+    setLedgerEdit({
+      id: e.id,
+      title: e.title ?? '',
+      notes: e.notes ?? '',
+      payment_status: e.payment_status ?? 'verified',
+      transaction_id: e.transaction_id ?? '',
+    });
+  };
+
   const targetFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
   const paymentScopeFlats = useMemo(
     () => (payForm.allocationIncludeVacant ? flats : flats.filter((f) => f.is_occupied)),
@@ -779,6 +1146,17 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     }
     return m;
   }, [charges]);
+
+  const chargeIdsWithDependents = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of payments) {
+      if (p.charge_id) s.add(p.charge_id as string);
+    }
+    for (const e of ledgerEntries) {
+      if (e.charge_id) s.add(e.charge_id);
+    }
+    return s;
+  }, [payments, ledgerEntries]);
 
   const financeEntryById = useMemo(() => {
     const m = new Map<string, FinanceLedgerRow>();
@@ -998,6 +1376,19 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     items.sort((a, b) => (a.t < b.t ? 1 : -1));
     return items;
   }, [filterStatus, filteredPayments, scopedLedgerOnly]);
+
+  const selectAllVisibleReceipts = () => {
+    const keys = receiptLineItems
+      .map((item) =>
+        item.kind === 'mp' && item.p
+          ? `mp-${item.p.id}`
+          : item.kind === 'ledger' && item.e
+            ? `ledger-${item.e.id}`
+            : '',
+      )
+      .filter(Boolean);
+    setSelectedReceiptKeys(new Set(keys));
+  };
 
   const selectedReceiptTypeLabel =
     paymentTypeOptions.find((o) => o.value === paymentTypeFilter)?.label ?? 'All payment records';
@@ -1300,9 +1691,20 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
                   <button type="button" className="p-1.5 text-muted-foreground hover:text-primary" title="Edit" onClick={() => startEditCharge(c)}>
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button type="button" className="p-1.5 text-muted-foreground hover:text-destructive" title="Delete" onClick={() => void deleteCharge(c.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {!chargeIdsWithDependents.has(c.id) ? (
+                    <button
+                      type="button"
+                      className="p-1.5 text-muted-foreground hover:text-destructive"
+                      title="Delete charge"
+                      onClick={() => void deleteCharge(c.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <span className="text-[9px] text-muted-foreground max-w-[72px] text-right leading-tight" title="Remove linked receipt or ledger rows first">
+                      In use
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1709,6 +2111,52 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
             )}
           </p>
 
+          {filterStatus !== 'unpaid' && (
+            <div className="flex flex-wrap gap-2 items-center mb-3 card-section p-2">
+              <button
+                type="button"
+                className="btn-secondary text-[10px] py-1.5 px-2"
+                onClick={selectAllVisibleReceipts}
+              >
+                Select visible
+              </button>
+              <button
+                type="button"
+                className="btn-secondary text-[10px] py-1.5 px-2"
+                onClick={() => setSelectedReceiptKeys(new Set())}
+              >
+                Clear
+              </button>
+              {selectedReceiptKeys.size > 0 && (
+                <>
+                  <span className="text-[10px] text-muted-foreground">{selectedReceiptKeys.size} selected</span>
+                  <button
+                    type="button"
+                    className="btn-secondary text-[10px] py-1.5 px-2 border border-destructive text-destructive"
+                    onClick={() => void bulkDeleteSelectedReceipts()}
+                  >
+                    Delete selected
+                  </button>
+                  <select
+                    className="input-field text-[10px] py-1.5 max-w-[200px]"
+                    defaultValue=""
+                    onChange={(e) => {
+                      const v = e.target.value as '' | 'pending' | 'verified' | 'rejected';
+                      if (!v) return;
+                      void bulkSetPaymentStatus(v);
+                      e.target.value = '';
+                    }}
+                  >
+                    <option value="">Bulk status (payment rows only)…</option>
+                    <option value="pending">Set pending</option>
+                    <option value="verified">Set verified</option>
+                    <option value="rejected">Set rejected</option>
+                  </select>
+                </>
+              )}
+            </div>
+          )}
+
           {filterStatus === 'unpaid' ? (
             <div className="space-y-2">
               {unpaidReceiptRows.length === 0 && (
@@ -1728,129 +2176,207 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
             <>
               {receiptLineItems.map((item) =>
                 item.kind === 'mp' && item.p ? (
-                  <div
-                    key={`mp-${item.p.id}`}
-                    className="card-section p-3 mb-2 w-full text-left cursor-pointer"
-                    onClick={() => {
-                      setSelectedLedger(null);
-                      setSelectedPayment(item.p);
-                    }}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-[11px] text-muted-foreground">
-                          {chargeById.get(item.p.charge_id)?.title || 'Unknown charge'} · {paymentMonthLabel(item.p)}
-                        </p>
-                        {item.p.finance_entry_id && financeEntryById.get(item.p.finance_entry_id as string) ? (
-                          <p className="text-[10px] text-muted-foreground font-mono">
-                            Mode:{' '}
-                            {financeEntryById
-                              .get(item.p.finance_entry_id as string)
-                              ?.record_mode?.replace(/_/g, ' ') ?? '—'}
-                          </p>
-                        ) : null}
-                        <p className="text-sm font-semibold">Flat {item.p.flat_number}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {[item.p.resident_name, item.p.payment_method?.toUpperCase?.()].filter(Boolean).join(' · ')}
-                        </p>
-                        {item.p.transaction_id && (
-                          <p className="text-[10px] text-muted-foreground font-mono">TXN: {item.p.transaction_id}</p>
+                  <div key={`mp-${item.p.id}`} className="card-section p-3 mb-2 w-full text-left">
+                    <div className="flex gap-2 items-start">
+                      <input
+                        type="checkbox"
+                        className="mt-1.5 shrink-0"
+                        checked={selectedReceiptKeys.has(`mp-${item.p.id}`)}
+                        onChange={(e) => toggleReceiptKey(`mp-${item.p.id}`, e.target.checked)}
+                        aria-label={`Select flat ${item.p.flat_number}`}
+                      />
+                      <div
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => {
+                          setSelectedLedger(null);
+                          setSelectedPayment(item.p);
+                        }}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <div>
+                            <p className="text-[11px] text-muted-foreground">
+                              {chargeById.get(item.p.charge_id)?.title || 'Unknown charge'} ·{' '}
+                              {paymentMonthLabel(item.p)}
+                            </p>
+                            {item.p.finance_entry_id && financeEntryById.get(item.p.finance_entry_id as string) ? (
+                              <p className="text-[10px] text-muted-foreground font-mono">
+                                Mode:{' '}
+                                {financeEntryById
+                                  .get(item.p.finance_entry_id as string)
+                                  ?.record_mode?.replace(/_/g, ' ') ?? '—'}
+                              </p>
+                            ) : null}
+                            <p className="text-sm font-semibold">Flat {item.p.flat_number}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {[item.p.resident_name, String(item.p.payment_method || '').toUpperCase()]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
+                            {item.p.transaction_id && (
+                              <p className="text-[10px] text-muted-foreground font-mono">TXN: {item.p.transaction_id}</p>
+                            )}
+                            {item.p.rejection_reason ? (
+                              <p className="text-[10px] text-destructive">Reason: {item.p.rejection_reason}</p>
+                            ) : null}
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(item.p.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-bold">₹{item.p.amount}</p>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                                item.p.payment_status === 'verified'
+                                  ? 'bg-green-500/20 text-green-600'
+                                  : item.p.payment_status === 'rejected'
+                                    ? 'bg-destructive/20 text-destructive'
+                                    : 'bg-amber-500/20 text-amber-600'
+                              }`}
+                            >
+                              {item.p.payment_status}
+                            </span>
+                          </div>
+                        </div>
+                        {item.p.payment_status === 'pending' && (
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void verifyPayment(item.p.id);
+                              }}
+                              className="flex-1 py-1.5 bg-green-600 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+                            >
+                              <Check className="w-3 h-3" /> Verify
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void rejectPayment(item.p.id);
+                              }}
+                              className="flex-1 py-1.5 bg-destructive text-destructive-foreground rounded-lg text-xs flex items-center justify-center gap-1"
+                            >
+                              <X className="w-3 h-3" /> Reject
+                            </button>
+                          </div>
                         )}
-                        {item.p.rejection_reason ? (
-                          <p className="text-[10px] text-destructive">Reason: {item.p.rejection_reason}</p>
-                        ) : null}
-                        <p className="text-[10px] text-muted-foreground">
-                          {new Date(item.p.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">₹{item.p.amount}</p>
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full ${
-                            item.p.payment_status === 'verified'
-                              ? 'bg-green-500/20 text-green-600'
-                              : item.p.payment_status === 'rejected'
-                                ? 'bg-destructive/20 text-destructive'
-                                : 'bg-amber-500/20 text-amber-600'
-                          }`}
-                        >
-                          {item.p.payment_status}
-                        </span>
+                        {item.p.screenshot_url && (
+                          <a
+                            href={item.p.screenshot_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-primary underline mt-1 block"
+                          >
+                            View Screenshot
+                          </a>
+                        )}
                       </div>
                     </div>
-                    {item.p.payment_status === 'pending' && (
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void verifyPayment(item.p.id);
-                          }}
-                          className="flex-1 py-1.5 bg-green-600 text-white rounded-lg text-xs flex items-center justify-center gap-1"
-                        >
-                          <Check className="w-3 h-3" /> Verify
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void rejectPayment(item.p.id);
-                          }}
-                          className="flex-1 py-1.5 bg-destructive text-destructive-foreground rounded-lg text-xs flex items-center justify-center gap-1"
-                        >
-                          <X className="w-3 h-3" /> Reject
-                        </button>
-                      </div>
-                    )}
-                    {item.p.screenshot_url && (
-                      <a
-                        href={item.p.screenshot_url}
-                        target="_blank"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-primary underline mt-1 block"
+                    <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-border items-center">
+                      <button
+                        type="button"
+                        className="btn-secondary text-[10px] py-1 px-2 flex items-center gap-1"
+                        onClick={() => openPaymentEdit(item.p)}
                       >
-                        View Screenshot
-                      </a>
-                    )}
+                        <Pencil className="w-3 h-3" /> Edit
+                      </button>
+                      <select
+                        className="input-field text-[10px] py-1 max-w-[140px]"
+                        value={item.p.payment_status}
+                        onChange={(e) => void changeReceiptPaymentStatus(item.p, e.target.value)}
+                      >
+                        <option value="pending">pending</option>
+                        <option value="verified">verified</option>
+                        <option value="rejected">rejected</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="text-[10px] py-1 px-2 rounded-lg border border-destructive text-destructive inline-flex items-center gap-1"
+                        onClick={() => void deleteMaintenancePaymentRow(item.p)}
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
+                    </div>
                   </div>
                 ) : item.kind === 'ledger' && item.e ? (
                   <div
                     key={`fe-${item.e.id}`}
-                    className="card-section p-3 mb-2 w-full text-left cursor-pointer border-l-4 border-l-primary/40"
-                    onClick={() => {
-                      setSelectedPayment(null);
-                      setSelectedLedger(item.e!);
-                    }}
+                    className="card-section p-3 mb-2 w-full text-left border-l-4 border-l-primary/40"
                   >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="min-w-0">
-                        <p className="text-[11px] text-muted-foreground">
-                          {ledgerMonthDisplay(item.e)} · Ledger-only (no maintenance payment rows)
-                        </p>
-                        <p className="text-sm font-semibold truncate">{item.e.title || 'Finance entry'}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {item.e.record_mode.replace(/_/g, ' ')} · {item.e.destination.replace(/_/g, ' ')}
-                        </p>
-                        {(() => {
-                          const rawCp = item.e.finance_entry_counterparties;
-                          const cp = Array.isArray(rawCp) ? rawCp[0] : rawCp;
-                          return cp ? (
-                            <p className="text-xs text-muted-foreground">
-                              From: {(cp as { name?: string }).name}
-                              {(cp as { relation_to_society?: string | null }).relation_to_society
-                                ? ` · ${(cp as { relation_to_society?: string | null }).relation_to_society}`
-                                : ''}
+                    <div className="flex gap-2 items-start">
+                      <input
+                        type="checkbox"
+                        className="mt-1.5 shrink-0"
+                        checked={selectedReceiptKeys.has(`ledger-${item.e.id}`)}
+                        onChange={(e) => toggleReceiptKey(`ledger-${item.e.id}`, e.target.checked)}
+                        aria-label="Select ledger entry"
+                      />
+                      <div
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => {
+                          setSelectedPayment(null);
+                          setSelectedLedger(item.e!);
+                        }}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[11px] text-muted-foreground">
+                              {ledgerMonthDisplay(item.e)} · Ledger-only (no maintenance payment rows)
                             </p>
-                          ) : null;
-                        })()}
-                        <p className="text-[10px] text-muted-foreground">
-                          {new Date(item.e.created_at).toLocaleString()}
-                        </p>
+                            <p className="text-sm font-semibold truncate">{item.e.title || 'Finance entry'}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {item.e.record_mode.replace(/_/g, ' ')} · {item.e.destination.replace(/_/g, ' ')}
+                            </p>
+                            {(() => {
+                              const rawCp = item.e.finance_entry_counterparties;
+                              const cp = Array.isArray(rawCp) ? rawCp[0] : rawCp;
+                              return cp ? (
+                                <p className="text-xs text-muted-foreground">
+                                  From: {(cp as { name?: string }).name}
+                                  {(cp as { relation_to_society?: string | null }).relation_to_society
+                                    ? ` · ${(cp as { relation_to_society?: string | null }).relation_to_society}`
+                                    : ''}
+                                </p>
+                              ) : null;
+                            })()}
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(item.e.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-bold">₹{item.e.total_amount}</p>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-600">
+                              {item.e.payment_status}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-bold">₹{item.e.total_amount}</p>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-600">
-                          {item.e.payment_status}
-                        </span>
-                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-border items-center">
+                      <button
+                        type="button"
+                        className="btn-secondary text-[10px] py-1 px-2 flex items-center gap-1"
+                        onClick={() => openLedgerEdit(item.e!)}
+                      >
+                        <Pencil className="w-3 h-3" /> Edit
+                      </button>
+                      <select
+                        className="input-field text-[10px] py-1 max-w-[120px]"
+                        value={item.e.payment_status}
+                        onChange={(e) => void updateLedgerEntryStatus(item.e!.id, e.target.value)}
+                      >
+                        <option value="verified">verified</option>
+                        <option value="pending">pending</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="text-[10px] py-1 px-2 rounded-lg border border-destructive text-destructive inline-flex items-center gap-1"
+                        onClick={() => void deleteLedgerRow(item.e!)}
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
                     </div>
                   </div>
                 ) : null,
@@ -1983,6 +2509,136 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
                         </a>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {paymentEdit && (
+                <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
+                  <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 max-h-[85vh] overflow-auto space-y-3">
+                    <div className="flex justify-between items-center gap-2">
+                      <p className="text-sm font-semibold">Edit payment</p>
+                      <button
+                        type="button"
+                        className="text-xs px-2 py-1 border rounded-md shrink-0"
+                        onClick={() => setPaymentEdit(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <select
+                      className="input-field"
+                      value={paymentEdit.charge_id}
+                      onChange={(e) => setPaymentEdit({ ...paymentEdit, charge_id: e.target.value })}
+                    >
+                      <option value="">Select charge</option>
+                      {charges.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.title}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="input-field"
+                      type="number"
+                      value={paymentEdit.amount}
+                      onChange={(e) => setPaymentEdit({ ...paymentEdit, amount: e.target.value })}
+                      placeholder="Amount (₹)"
+                    />
+                    <select
+                      className="input-field"
+                      value={paymentEdit.payment_method}
+                      onChange={(e) => setPaymentEdit({ ...paymentEdit, payment_method: e.target.value })}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="razorpay">Razorpay</option>
+                      <option value="bank_transfer">Bank transfer</option>
+                    </select>
+                    <input
+                      className="input-field"
+                      value={paymentEdit.transaction_id}
+                      onChange={(e) => setPaymentEdit({ ...paymentEdit, transaction_id: e.target.value })}
+                      placeholder="Transaction / reference ID"
+                    />
+                    <input
+                      className="input-field"
+                      type="date"
+                      value={paymentEdit.due_date}
+                      onChange={(e) => setPaymentEdit({ ...paymentEdit, due_date: e.target.value })}
+                    />
+                    <textarea
+                      className="input-field"
+                      value={paymentEdit.notes}
+                      onChange={(e) => setPaymentEdit({ ...paymentEdit, notes: e.target.value })}
+                      placeholder="Notes"
+                    />
+                    <select
+                      className="input-field"
+                      value={paymentEdit.payment_status}
+                      onChange={(e) => setPaymentEdit({ ...paymentEdit, payment_status: e.target.value })}
+                    >
+                      <option value="pending">pending</option>
+                      <option value="verified">verified</option>
+                      <option value="rejected">rejected</option>
+                    </select>
+                    {paymentEdit.payment_status === 'rejected' && (
+                      <input
+                        className="input-field"
+                        value={paymentEdit.rejection_reason}
+                        onChange={(e) => setPaymentEdit({ ...paymentEdit, rejection_reason: e.target.value })}
+                        placeholder="Rejection reason"
+                      />
+                    )}
+                    <button type="button" className="btn-primary w-full" onClick={() => void savePaymentEdit()}>
+                      Save changes
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {ledgerEdit && (
+                <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
+                  <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3">
+                    <div className="flex justify-between items-center gap-2">
+                      <p className="text-sm font-semibold">Edit ledger entry</p>
+                      <button
+                        type="button"
+                        className="text-xs px-2 py-1 border rounded-md shrink-0"
+                        onClick={() => setLedgerEdit(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <input
+                      className="input-field"
+                      value={ledgerEdit.title}
+                      onChange={(e) => setLedgerEdit({ ...ledgerEdit, title: e.target.value })}
+                      placeholder="Title"
+                    />
+                    <textarea
+                      className="input-field"
+                      value={ledgerEdit.notes}
+                      onChange={(e) => setLedgerEdit({ ...ledgerEdit, notes: e.target.value })}
+                      placeholder="Notes"
+                    />
+                    <input
+                      className="input-field"
+                      value={ledgerEdit.transaction_id}
+                      onChange={(e) => setLedgerEdit({ ...ledgerEdit, transaction_id: e.target.value })}
+                      placeholder="Transaction / reference ID"
+                    />
+                    <select
+                      className="input-field"
+                      value={ledgerEdit.payment_status}
+                      onChange={(e) => setLedgerEdit({ ...ledgerEdit, payment_status: e.target.value })}
+                    >
+                      <option value="verified">verified</option>
+                      <option value="pending">pending</option>
+                    </select>
+                    <button type="button" className="btn-primary w-full" onClick={() => void saveLedgerEdit()}>
+                      Save changes
+                    </button>
                   </div>
                 </div>
               )}

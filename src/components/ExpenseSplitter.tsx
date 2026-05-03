@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Split, Plus, Trash2 } from 'lucide-react';
+import { Split, Plus, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { useStore } from '@/store/useStore';
@@ -68,6 +68,19 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
   });
   const [billUploading, setBillUploading] = useState(false);
   const [expenseNotifyAudience, setExpenseNotifyAudience] = useState<AdminRecordNotifyAudience>('none');
+  const [editingGroup, setEditingGroup] = useState<{ id: string; name: string; description: string } | null>(null);
+  const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(new Set());
+  const [expenseEdit, setExpenseEdit] = useState<{
+    id: string;
+    title: string;
+    total_amount: string;
+    vendor_or_service: string;
+    service_kind: string;
+    expense_date: string;
+    payment_method: string;
+    notes: string;
+    record_status: string;
+  } | null>(null);
 
   const activeFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
 
@@ -151,7 +164,9 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       return;
     }
     if (!gf.name) return;
-    await supabase.from('expense_groups').insert([{ name: gf.name, description: gf.description || null, created_by: adminName, society_id: societyId }]);
+    await supabase.from('expense_groups').insert([
+      { name: gf.name.trim(), description: gf.description?.trim() || null, created_by: adminName, society_id: societyId },
+    ]);
     setGf({ name: '', description: '' });
     setShowGroupForm(false);
     toast.success('Group created');
@@ -214,6 +229,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
           vendor_or_service: ef.vendor_or_service?.trim() || null,
           expense_date: ef.expense_date,
           notes: ef.notes?.trim() || null,
+          record_status: 'active',
         },
       ]);
       if (error) {
@@ -345,6 +361,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
           vendor_or_service: ef.vendor_or_service?.trim() || null,
           expense_date: ef.expense_date,
           notes: ef.notes?.trim() || null,
+          record_status: 'active',
         },
       ])
       .select()
@@ -428,8 +445,170 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     const ok = await confirmAction('Delete expense?', 'This removes the expense and its flat splits.', 'Delete', 'Cancel');
     if (!ok) return;
     await supabase.from('expenses').delete().eq('id', expenseId);
+    setSelectedExpenseIds((prev) => {
+      const next = new Set(prev);
+      next.delete(expenseId);
+      return next;
+    });
     toast.success('Expense deleted');
     loadAll();
+  };
+
+  const deleteGroup = async (groupId: string) => {
+    const count = expenses.filter((e) => e.group_id === groupId).length;
+    if (count > 0) {
+      toast.error('Remove all expenses in this group before deleting it.');
+      return;
+    }
+    const ok = await confirmAction('Delete this group?', 'This cannot be undone.', 'Delete group', 'Cancel');
+    if (!ok) return;
+    await supabase.from('expense_groups').delete().eq('id', groupId).eq('society_id', societyId);
+    if (editingGroup?.id === groupId) setEditingGroup(null);
+    toast.success('Group deleted');
+    loadAll();
+  };
+
+  const saveGroupEdit = async () => {
+    if (!editingGroup || !societyId) return;
+    const name = editingGroup.name.trim();
+    if (!name) {
+      toast.error('Group name is required');
+      return;
+    }
+    const { error } = await supabase
+      .from('expense_groups')
+      .update({
+        name,
+        description: editingGroup.description.trim() || null,
+      })
+      .eq('id', editingGroup.id)
+      .eq('society_id', societyId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Group updated');
+    setEditingGroup(null);
+    loadAll();
+  };
+
+  const openExpenseEdit = (exp: any) => {
+    setExpenseEdit({
+      id: exp.id,
+      title: exp.title ?? '',
+      total_amount: String(exp.total_amount ?? ''),
+      vendor_or_service: exp.vendor_or_service ?? '',
+      service_kind: exp.service_kind ?? 'one_time',
+      expense_date: (exp.expense_date || '').toString().slice(0, 10),
+      payment_method: exp.payment_method ?? 'cash',
+      notes: exp.notes ?? '',
+      record_status: exp.record_status ?? 'active',
+    });
+  };
+
+  const saveExpenseEdit = async () => {
+    if (!expenseEdit) return;
+    const old = expenses.find((e) => e.id === expenseEdit.id);
+    if (!old) return;
+    const newTotal = Number(expenseEdit.total_amount);
+    if (!newTotal || newTotal <= 0) {
+      toast.error('Enter a valid total amount');
+      return;
+    }
+    const oldTotal = Number(old.total_amount);
+    const expSplits = splits.filter((s) => s.expense_id === old.id);
+
+    if (old.split_type !== 'society_fund' && expSplits.length > 0 && Math.abs(newTotal - oldTotal) > 0.01) {
+      const ratio = newTotal / oldTotal;
+      for (const s of expSplits) {
+        const { error: uErr } = await supabase
+          .from('expense_splits')
+          .update({ amount: Number((Number(s.amount) * ratio).toFixed(2)) })
+          .eq('id', s.id);
+        if (uErr) {
+          toast.error(uErr.message);
+          return;
+        }
+      }
+    }
+
+    const { error } = await supabase
+      .from('expenses')
+      .update({
+        title: expenseEdit.title.trim(),
+        total_amount: newTotal,
+        vendor_or_service: expenseEdit.vendor_or_service.trim() || null,
+        service_kind: expenseEdit.service_kind,
+        expense_date: expenseEdit.expense_date,
+        payment_method: expenseEdit.payment_method,
+        notes: expenseEdit.notes.trim() || null,
+        record_status: expenseEdit.record_status,
+      })
+      .eq('id', expenseEdit.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Expense updated');
+    setExpenseEdit(null);
+    loadAll();
+  };
+
+  const updateExpenseRecordStatus = async (expenseId: string, record_status: string) => {
+    const { error } = await supabase.from('expenses').update({ record_status }).eq('id', expenseId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Status updated');
+    loadAll();
+  };
+
+  const bulkDeleteSelectedExpenses = async () => {
+    if (selectedExpenseIds.size === 0) return;
+    const ok = await confirmAction(
+      `Delete ${selectedExpenseIds.size} expenses?`,
+      'This removes each expense and its flat splits.',
+      'Delete all',
+      'Cancel',
+    );
+    if (!ok) return;
+    for (const id of selectedExpenseIds) {
+      await supabase.from('expenses').delete().eq('id', id);
+    }
+    setSelectedExpenseIds(new Set());
+    toast.success('Selected expenses deleted');
+    loadAll();
+  };
+
+  const bulkSetExpenseRecordStatus = async (record_status: 'active' | 'archived') => {
+    if (selectedExpenseIds.size === 0) return;
+    const ok = await confirmAction(
+      `Set ${selectedExpenseIds.size} expenses to ${record_status}?`,
+      '',
+      'Apply',
+      'Cancel',
+    );
+    if (!ok) return;
+    for (const id of selectedExpenseIds) {
+      await supabase.from('expenses').update({ record_status }).eq('id', id);
+    }
+    setSelectedExpenseIds(new Set());
+    toast.success('Status updated');
+    loadAll();
+  };
+
+  const toggleExpenseSelect = (id: string, checked: boolean) => {
+    setSelectedExpenseIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const selectAllExpenses = () => {
+    setSelectedExpenseIds(new Set(expenses.map((e) => e.id)));
   };
 
   const balances: Record<string, number> = {};
@@ -437,6 +616,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     balances[f.flat_number] = 0;
   });
   expenses.forEach((exp) => {
+    if ((exp as { record_status?: string }).record_status === 'archived') return;
     if (exp.split_type === 'society_fund') return;
     const creditors = parsePaidByFlats(exp);
     if (creditors.length === 0) return;
@@ -537,12 +717,86 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         </div>
       )}
 
+      {expenses.length > 0 && (
+        <div className="card-section p-2 mb-3 flex flex-wrap gap-2 items-center">
+          <button type="button" className="btn-secondary text-[10px] py-1.5 px-2" onClick={selectAllExpenses}>
+            Select all expenses
+          </button>
+          <button
+            type="button"
+            className="btn-secondary text-[10px] py-1.5 px-2"
+            onClick={() => setSelectedExpenseIds(new Set())}
+          >
+            Clear selection
+          </button>
+          {selectedExpenseIds.size > 0 && (
+            <>
+              <span className="text-[10px] text-muted-foreground">{selectedExpenseIds.size} selected</span>
+              <button
+                type="button"
+                className="btn-secondary text-[10px] py-1.5 px-2 border border-destructive text-destructive"
+                onClick={() => void bulkDeleteSelectedExpenses()}
+              >
+                Delete selected
+              </button>
+              <select
+                className="input-field text-[10px] py-1.5 max-w-[210px]"
+                defaultValue=""
+                onChange={(e) => {
+                  const v = e.target.value as '' | 'active' | 'archived';
+                  if (!v) return;
+                  void bulkSetExpenseRecordStatus(v);
+                  e.target.value = '';
+                }}
+              >
+                <option value="">Bulk record status…</option>
+                <option value="active">Set active</option>
+                <option value="archived">Set archived</option>
+              </select>
+            </>
+          )}
+        </div>
+      )}
+
       {groups.map((g) => {
         const gExpenses = expenses.filter((e) => e.group_id === g.id);
         return (
           <div key={g.id} className="card-section p-4 mb-3">
-            <p className="font-semibold mb-1">{g.name}</p>
-            {g.description && <p className="text-xs text-muted-foreground mb-2">{g.description}</p>}
+            <div className="flex justify-between items-start gap-2 mb-1">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{g.name}</p>
+                {g.description && <p className="text-xs text-muted-foreground mt-0.5">{g.description}</p>}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  className="p-1.5 text-muted-foreground hover:text-primary"
+                  title="Edit group"
+                  onClick={() =>
+                    setEditingGroup({ id: g.id, name: g.name, description: g.description || '' })
+                  }
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                {gExpenses.length === 0 ? (
+                  <button
+                    type="button"
+                    className="p-1.5 text-muted-foreground hover:text-destructive"
+                    title="Delete group"
+                    onClick={() => void deleteGroup(g.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <span
+                    className="text-[9px] text-muted-foreground max-w-[52px] text-right leading-tight"
+                    title="Delete expenses in this group before removing it"
+                  >
+                    In use
+                  </span>
+                )}
+              </div>
+            </div>
 
             <button
               type="button"
@@ -770,28 +1024,40 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
             {gExpenses.map((exp) => {
               const expSplits = splits.filter((s) => s.expense_id === exp.id);
               const creditors = parsePaidByFlats(exp);
+              const recStatus = (exp as { record_status?: string }).record_status ?? 'active';
               return (
-                <div key={exp.id} className="bg-muted/30 rounded-lg p-3 mb-2 relative">
-                  <div className="flex justify-between gap-2 mb-1">
-                    <div className="min-w-0">
-                      <span className="text-sm font-medium block truncate">{exp.title}</span>
-                      {exp.vendor_or_service && (
-                        <span className="text-[10px] text-muted-foreground block truncate">{exp.vendor_or_service}</span>
+                <div
+                  key={exp.id}
+                  className={`bg-muted/30 rounded-lg p-3 mb-2 relative ${
+                    recStatus === 'archived' ? 'opacity-80 border border-dashed border-border' : ''
+                  }`}
+                >
+                  <div className="flex gap-2 items-start mb-1">
+                    <input
+                      type="checkbox"
+                      className="mt-1 shrink-0"
+                      checked={selectedExpenseIds.has(exp.id)}
+                      onChange={(e) => toggleExpenseSelect(exp.id, e.target.checked)}
+                      aria-label={`Select ${exp.title}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium block truncate">{exp.title}</span>
+                          {exp.vendor_or_service && (
+                            <span className="text-[10px] text-muted-foreground block truncate">{exp.vendor_or_service}</span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground capitalize">
+                            {exp.service_kind || 'one_time'} · {exp.payment_method || 'cash'} · {exp.expense_date || ''}
+                          </span>
+                        </div>
+                        <span className="font-bold text-sm shrink-0">₹{exp.total_amount}</span>
+                      </div>
+                      {recStatus === 'archived' && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground inline-block mt-1">
+                          Archived
+                        </span>
                       )}
-                      <span className="text-[10px] text-muted-foreground capitalize">
-                        {exp.service_kind || 'one_time'} · {exp.payment_method || 'cash'} · {exp.expense_date || ''}
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-1 shrink-0">
-                      <span className="font-bold text-sm">₹{exp.total_amount}</span>
-                      <button
-                        type="button"
-                        className="p-1 text-muted-foreground hover:text-destructive"
-                        title="Delete expense"
-                        onClick={() => void deleteExpense(exp.id)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </div>
                   </div>
                   {exp.split_type === 'society_fund' ? (
@@ -802,12 +1068,17 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                     </p>
                   )}
                   {exp.bill_screenshot_url && (
-                    <a href={exp.bill_screenshot_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline block mb-2">
+                    <a
+                      href={exp.bill_screenshot_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] text-primary underline block mb-2"
+                    >
                       View bill / receipt
                     </a>
                   )}
                   {exp.notes && <p className="text-[10px] text-muted-foreground mb-2 italic">{exp.notes}</p>}
-                  <div className="space-y-1">
+                  <div className="space-y-1 mb-2">
                     {expSplits.map((s) => (
                       <div key={s.id} className="flex justify-between items-center text-xs">
                         <span>
@@ -831,12 +1102,145 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                       </div>
                     ))}
                   </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-border/60 items-center">
+                    <button
+                      type="button"
+                      className="btn-secondary text-[10px] py-1 px-2 inline-flex items-center gap-1"
+                      onClick={() => openExpenseEdit(exp)}
+                    >
+                      <Pencil className="w-3 h-3" /> Edit
+                    </button>
+                    <select
+                      className="input-field text-[10px] py-1 max-w-[130px]"
+                      value={recStatus}
+                      onChange={(e) => void updateExpenseRecordStatus(exp.id, e.target.value)}
+                    >
+                      <option value="active">Active</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="text-[10px] py-1 px-2 rounded-lg border border-destructive text-destructive inline-flex items-center gap-1"
+                      onClick={() => void deleteExpense(exp.id)}
+                    >
+                      <Trash2 className="w-3 h-3" /> Delete
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         );
       })}
+
+      {editingGroup && (
+        <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
+          <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3 max-h-[90vh] overflow-auto">
+            <p className="text-sm font-semibold">Edit expense group</p>
+            <input
+              className="input-field"
+              value={editingGroup.name}
+              onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+              placeholder="Group name"
+            />
+            <textarea
+              className="input-field"
+              value={editingGroup.description}
+              onChange={(e) => setEditingGroup({ ...editingGroup, description: e.target.value })}
+              placeholder="Description (optional)"
+            />
+            <div className="flex gap-2">
+              <button type="button" className="btn-primary flex-1" onClick={() => void saveGroupEdit()}>
+                Save
+              </button>
+              <button type="button" className="btn-secondary flex-1" onClick={() => setEditingGroup(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {expenseEdit && (
+        <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
+          <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3 max-h-[90vh] overflow-auto">
+            <p className="text-sm font-semibold">Edit expense</p>
+            <p className="text-[10px] text-muted-foreground">
+              Changing the total on a split expense rescales each flat’s share proportionally. Edit split lines via Settle
+              on each flat when needed.
+            </p>
+            <input
+              className="input-field"
+              value={expenseEdit.title}
+              onChange={(e) => setExpenseEdit({ ...expenseEdit, title: e.target.value })}
+              placeholder="Title"
+            />
+            <input
+              className="input-field"
+              type="number"
+              value={expenseEdit.total_amount}
+              onChange={(e) => setExpenseEdit({ ...expenseEdit, total_amount: e.target.value })}
+              placeholder="Total (₹)"
+            />
+            <input
+              className="input-field"
+              value={expenseEdit.vendor_or_service}
+              onChange={(e) => setExpenseEdit({ ...expenseEdit, vendor_or_service: e.target.value })}
+              placeholder="Vendor / service"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                className="input-field"
+                value={expenseEdit.service_kind}
+                onChange={(e) => setExpenseEdit({ ...expenseEdit, service_kind: e.target.value })}
+              >
+                <option value="one_time">One-time</option>
+                <option value="recurring">Recurring</option>
+                <option value="temporary">Temporary</option>
+              </select>
+              <input
+                className="input-field"
+                type="date"
+                value={expenseEdit.expense_date}
+                onChange={(e) => setExpenseEdit({ ...expenseEdit, expense_date: e.target.value })}
+              />
+            </div>
+            <select
+              className="input-field"
+              value={expenseEdit.payment_method}
+              onChange={(e) => setExpenseEdit({ ...expenseEdit, payment_method: e.target.value })}
+            >
+              <option value="cash">Cash</option>
+              <option value="upi">UPI</option>
+              <option value="bank_transfer">Bank transfer</option>
+              <option value="cheque">Cheque</option>
+              <option value="other">Other</option>
+            </select>
+            <textarea
+              className="input-field min-h-[4rem]"
+              value={expenseEdit.notes}
+              onChange={(e) => setExpenseEdit({ ...expenseEdit, notes: e.target.value })}
+              placeholder="Notes"
+            />
+            <select
+              className="input-field"
+              value={expenseEdit.record_status}
+              onChange={(e) => setExpenseEdit({ ...expenseEdit, record_status: e.target.value })}
+            >
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+            </select>
+            <div className="flex gap-2">
+              <button type="button" className="btn-primary flex-1" onClick={() => void saveExpenseEdit()}>
+                Save changes
+              </button>
+              <button type="button" className="btn-secondary flex-1" onClick={() => setExpenseEdit(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

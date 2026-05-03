@@ -598,6 +598,7 @@ export type Database = {
           paid_by_flats: unknown
           paid_by_name: string | null
           payment_method: string
+          record_status: string
           service_kind: string
           split_type: string
           title: string
@@ -615,6 +616,7 @@ export type Database = {
           paid_by_flats?: unknown
           paid_by_name?: string | null
           payment_method?: string
+          record_status?: string
           service_kind?: string
           split_type?: string
           title: string
@@ -632,6 +634,7 @@ export type Database = {
           paid_by_flats?: unknown
           paid_by_name?: string | null
           payment_method?: string
+          record_status?: string
           service_kind?: string
           split_type?: string
           title?: string
