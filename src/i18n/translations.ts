@@ -793,10 +793,25 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Saving also creates missing flat directory rows from this range across all floors (Indian +100-per-floor pattern). Towers A, B repeat the same numbers per wing. Existing rows are not duplicated.',
     hi: 'सहेजने पर इस रेंज से सभी मंजिलों के लिए गुम फ्लैट रिकॉर्ड बनते हैं (+100 प्रति मंजिल पैटर्न)। टावर A/B में प्रत्येक विंग पर समान नंबर। मौजूदा रिकॉर्ड दोबारा नहीं बनते।',
   },
+  'superadmin.resetFlatsButton': { en: 'Reset flats from this layout', hi: 'इस लेआउट से फ्लैट रीसेट करें' },
+  'superadmin.resetFlatsHint': {
+    en: 'Deletes all residential flats for this society, then regenerates from current range/floors/blocks. Use when tower mode changed by mistake.',
+    hi: 'इस सोसाइटी के सभी residential फ्लैट हटाकर वर्तमान रेंज/मंजिल/ब्लॉक्स से दोबारा बनाता है। टावर मोड गलती से बदलने पर उपयोग करें।',
+  },
+  'superadmin.resetFlatsConfirmTitle': { en: 'Reset and regenerate flats?', hi: 'फ्लैट रीसेट और दोबारा बनाएं?' },
+  'superadmin.resetFlatsConfirmText': {
+    en: 'This will delete all residential flats for this society (and linked members via cascade) and regenerate using current layout settings.',
+    hi: 'यह इस सोसाइटी के सभी residential फ्लैट (और उनसे जुड़े members) हटाकर वर्तमान लेआउट से दोबारा बनाएगा।',
+  },
   'superadmin.flatsGenerated': {
     en: 'Added {created} flat records to the directory ({skipped} were already present).',
     hi: 'डायरेक्टरी में {created} नए फ्लैट रिकॉर्ड जोड़े गए ({skipped} पहले से मौजूद थे)।',
   },
+  'superadmin.flatsRegenerated': {
+    en: 'Rebuilt flats from layout: {created} created, {skipped} skipped.',
+    hi: 'लेआउट से फ्लैट दोबारा बने: {created} बने, {skipped} स्किप हुए।',
+  },
+  'superadmin.flatResetFailed': { en: 'Could not reset flats for this society', hi: 'इस सोसाइटी के फ्लैट रीसेट नहीं हो सके' },
   'superadmin.flatsTrimmed': {
     en: 'Removed {count} flat(s) that were outside the configured range (e.g. extra numbers per floor).',
     hi: '{count} फ्लैट हटाए गए जो कॉन्फ़िगर की गई रेंज के बाहर थे।',

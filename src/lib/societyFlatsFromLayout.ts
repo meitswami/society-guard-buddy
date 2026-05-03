@@ -9,7 +9,7 @@ export type GenerateFlatsResult = {
 };
 
 function wingKey(wing: string | null): string {
-  return (wing ?? '').trim();
+  return (wing ?? '').trim().toUpperCase();
 }
 
 /**
@@ -35,7 +35,7 @@ export async function upsertSocietyFlatsFromLayout(
 
   const wings =
     row.block_names?.length ?
-      row.block_names.map((w) => w.trim()).filter(Boolean)
+      row.block_names.map((w) => w.trim().toUpperCase()).filter(Boolean)
     : [null as string | null];
 
   const sortedNumbers = [...range.valid].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
@@ -48,6 +48,21 @@ export async function upsertSocietyFlatsFromLayout(
   if (exErr) {
     console.error('upsertSocietyFlatsFromLayout existing', exErr);
     return { created: 0, skipped: 0, error: exErr.message };
+  }
+
+  // Guard against accidental double-generation when switching between single-tower
+  // mode (no wing) and multi-wing mode (A/B/...) without cleaning old rows first.
+  const hasExistingWinged = (existing ?? []).some((r) => wingKey(r.wing).length > 0);
+  const hasExistingUnwinged = (existing ?? []).some((r) => wingKey(r.wing).length === 0);
+  const wantsWinged = wings.some((w) => wingKey(w).length > 0);
+  const wantsUnwinged = wings.some((w) => wingKey(w).length === 0);
+  if ((hasExistingWinged && wantsUnwinged) || (hasExistingUnwinged && wantsWinged)) {
+    return {
+      created: 0,
+      skipped: 0,
+      error:
+        'Flat generation halted to avoid duplicates: existing flats use a different wing mode (single tower vs A/B wings). Clean old rows for this society first, then save again.',
+    };
   }
 
   const taken = new Set<string>();

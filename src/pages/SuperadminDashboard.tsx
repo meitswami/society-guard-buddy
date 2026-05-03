@@ -172,6 +172,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const [sf, setSf] = useState<SocietyFormState>(() => emptySocietyForm());
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
   const [societySaving, setSocietySaving] = useState(false);
+  const [flatsResetting, setFlatsResetting] = useState(false);
 
   const [newRole, setNewRole] = useState('');
 
@@ -344,6 +345,61 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
       toast.error(t('superadmin.societySaveFailed'));
     }
     setSocietySaving(false);
+  };
+
+  const regenerateSocietyFlats = async () => {
+    if (!editingSocietyId) return;
+    const blockParts = sf.blocks_csv.split(/[,;]+/).map((x) => x.trim()).filter(Boolean);
+    const block_names = blockParts.length ? blockParts : null;
+    const parseIntOrNull = (v: string) => {
+      const trimmed = v.trim();
+      if (!trimmed) return null;
+      const n = parseInt(trimmed, 10);
+      return Number.isFinite(n) ? n : null;
+    };
+    const total_floors = parseIntOrNull(sf.total_floors);
+    const flat_series_start = sf.flat_series_from.trim() || null;
+    const flat_series_end = sf.flat_series_to.trim() || null;
+
+    const ok = await confirmAction(
+      t('superadmin.resetFlatsConfirmTitle'),
+      t('superadmin.resetFlatsConfirmText'),
+      t('swal.yes'),
+      t('swal.no'),
+    );
+    if (!ok) return;
+
+    setFlatsResetting(true);
+    try {
+      const { error: delErr } = await supabase
+        .from('flats')
+        .delete()
+        .eq('society_id', editingSocietyId)
+        .or('flat_type.eq.residential,flat_type.is.null');
+      if (delErr) throw delErr;
+
+      const generated = await upsertSocietyFlatsFromLayout(supabase, editingSocietyId, {
+        total_floors,
+        flat_series_start,
+        flat_series_end,
+        block_names,
+      });
+      if (generated.error) {
+        toast.error(generated.error);
+      } else {
+        toast.success(
+          t('superadmin.flatsRegenerated')
+            .replace('{created}', String(generated.created))
+            .replace('{skipped}', String(generated.skipped)),
+        );
+      }
+      loadAll();
+    } catch (e) {
+      console.error(e);
+      toast.error(t('superadmin.flatResetFailed'));
+    } finally {
+      setFlatsResetting(false);
+    }
   };
 
   const onPickSocietyPhotos = (files: FileList | null) => {
@@ -683,6 +739,19 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                   <p className="text-[10px] text-muted-foreground mt-1">{t('superadmin.flatSeriesHelp')}</p>
                   <p className="text-[10px] text-muted-foreground mt-1.5 border-l-2 border-primary/30 pl-2">{t('superadmin.flatTrimHint')}</p>
                   <p className="text-[10px] text-muted-foreground mt-1.5 border-l-2 border-emerald-500/40 pl-2">{t('superadmin.flatGenerateHint')}</p>
+                  {editingSocietyId && (
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      <button
+                        type="button"
+                        onClick={regenerateSocietyFlats}
+                        disabled={flatsResetting || societySaving}
+                        className="btn-secondary w-fit text-xs py-1.5 px-2.5 disabled:opacity-50"
+                      >
+                        {flatsResetting ? `${t('superadmin.resetFlatsButton')}...` : t('superadmin.resetFlatsButton')}
+                      </button>
+                      <p className="text-[10px] text-muted-foreground">{t('superadmin.resetFlatsHint')}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t border-border pt-3 mt-1">
