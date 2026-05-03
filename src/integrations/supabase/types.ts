@@ -648,6 +648,155 @@ export type Database = {
           },
         ]
       }
+      finance_entries: {
+        Row: {
+          aggregate_flat_count: number
+          allocation_style: string
+          charge_id: string | null
+          created_at: string
+          created_by: string | null
+          destination: string
+          entry_month: string | null
+          id: string
+          include_vacant: boolean
+          notes: string | null
+          payment_method: string
+          payment_status: string
+          record_mode: string
+          screenshot_url: string | null
+          society_id: string
+          title: string | null
+          total_amount: number
+          transaction_id: string | null
+        }
+        Insert: {
+          aggregate_flat_count?: number
+          allocation_style?: string
+          charge_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination?: string
+          entry_month?: string | null
+          id?: string
+          include_vacant?: boolean
+          notes?: string | null
+          payment_method?: string
+          payment_status?: string
+          record_mode?: string
+          screenshot_url?: string | null
+          society_id: string
+          title?: string | null
+          total_amount?: number
+          transaction_id?: string | null
+        }
+        Update: {
+          aggregate_flat_count?: number
+          allocation_style?: string
+          charge_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination?: string
+          entry_month?: string | null
+          id?: string
+          include_vacant?: boolean
+          notes?: string | null
+          payment_method?: string
+          payment_status?: string
+          record_mode?: string
+          screenshot_url?: string | null
+          society_id?: string
+          title?: string | null
+          total_amount?: number
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_entries_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entries_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_entry_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          finance_entry_id: string
+          flat_id: string | null
+          flat_number: string
+          id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          finance_entry_id: string
+          flat_id?: string | null
+          flat_number: string
+          id?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          finance_entry_id?: string
+          flat_id?: string | null
+          flat_number?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_entry_allocations_finance_entry_id_fkey"
+            columns: ["finance_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entry_allocations_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_entry_counterparties: {
+        Row: {
+          finance_entry_id: string
+          id: string
+          name: string
+          relation_to_society: string | null
+        }
+        Insert: {
+          finance_entry_id: string
+          id?: string
+          name: string
+          relation_to_society?: string | null
+        }
+        Update: {
+          finance_entry_id?: string
+          id?: string
+          name?: string
+          relation_to_society?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_entry_counterparties_finance_entry_id_fkey"
+            columns: ["finance_entry_id"]
+            isOneToOne: true
+            referencedRelation: "finance_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flats: {
         Row: {
           created_at: string
@@ -956,6 +1105,7 @@ export type Database = {
           charge_id: string | null
           created_at: string
           due_date: string
+          finance_entry_id: string | null
           flat_id: string | null
           flat_number: string
           id: string
@@ -963,8 +1113,12 @@ export type Database = {
           payment_date: string | null
           payment_method: string
           payment_status: string
+          rejection_reason: string | null
           resident_name: string | null
+          reviewed_at: string | null
           screenshot_url: string | null
+          submitted_by: string
+          submitted_by_user_id: string | null
           transaction_id: string | null
           verified_at: string | null
           verified_by: string | null
@@ -974,6 +1128,7 @@ export type Database = {
           charge_id?: string | null
           created_at?: string
           due_date: string
+          finance_entry_id?: string | null
           flat_id?: string | null
           flat_number: string
           id?: string
@@ -981,8 +1136,12 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string
           payment_status?: string
+          rejection_reason?: string | null
           resident_name?: string | null
+          reviewed_at?: string | null
           screenshot_url?: string | null
+          submitted_by?: string
+          submitted_by_user_id?: string | null
           transaction_id?: string | null
           verified_at?: string | null
           verified_by?: string | null
@@ -992,6 +1151,7 @@ export type Database = {
           charge_id?: string | null
           created_at?: string
           due_date?: string
+          finance_entry_id?: string | null
           flat_id?: string | null
           flat_number?: string
           id?: string
@@ -999,8 +1159,12 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string
           payment_status?: string
+          rejection_reason?: string | null
           resident_name?: string | null
+          reviewed_at?: string | null
           screenshot_url?: string | null
+          submitted_by?: string
+          submitted_by_user_id?: string | null
           transaction_id?: string | null
           verified_at?: string | null
           verified_by?: string | null
@@ -1011,6 +1175,13 @@ export type Database = {
             columns: ["charge_id"]
             isOneToOne: false
             referencedRelation: "maintenance_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_payments_finance_entry_id_fkey"
+            columns: ["finance_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_entries"
             referencedColumns: ["id"]
           },
           {

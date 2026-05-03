@@ -1,17 +1,29 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, Download, Printer, Calendar, Users, Car, Truck, Shield } from 'lucide-react';
+import { BarChart3, Download, Printer, Calendar, Users, Car, Truck, Shield, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }
+
+interface FinanceEntrySummaryRow {
+  id: string;
+  record_mode: string;
+  destination: string;
+  total_amount: number;
+  aggregate_flat_count: number;
+  entry_month: string | null;
+  created_at: string;
+}
 
 const ReportPage = () => {
   const { visitors, societyId } = useStore();
   const { t } = useLanguage();
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
+  const [financeMonth, setFinanceMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [financeEntries, setFinanceEntries] = useState<FinanceEntrySummaryRow[]>([]);
 
   useEffect(() => {
     const loadShifts = async () => {
@@ -28,7 +40,59 @@ const ReportPage = () => {
     loadShifts();
   }, [date, societyId]);
 
+  useEffect(() => {
+    const loadFinance = async () => {
+      if (!societyId) {
+        setFinanceEntries([]);
+        return;
+      }
+      const { data } = await supabase
+        .from('finance_entries')
+        .select('id, record_mode, destination, total_amount, aggregate_flat_count, entry_month, created_at')
+        .eq('society_id', societyId)
+        .eq('entry_month', financeMonth)
+        .order('created_at', { ascending: false })
+        .limit(800);
+      setFinanceEntries((data as FinanceEntrySummaryRow[]) ?? []);
+    };
+    void loadFinance();
+  }, [financeMonth, societyId]);
+
   const dayVisitors = useMemo(() => visitors.filter(v => v.entryTime.startsWith(date)), [visitors, date]);
+
+  const financeGroups = useMemo(() => {
+    const map = new Map<string, { total: number; flatUnits: number; count: number }>();
+    for (const e of financeEntries) {
+      const key = `${e.record_mode}||${e.destination}`;
+      const cur = map.get(key) ?? { total: 0, flatUnits: 0, count: 0 };
+      cur.total += Number(e.total_amount || 0);
+      cur.flatUnits += Number(e.aggregate_flat_count || 0);
+      cur.count += 1;
+      map.set(key, cur);
+    }
+    return [...map.entries()].map(([k, v]) => {
+      const [record_mode, destination] = k.split('||');
+      return { record_mode, destination, ...v };
+    });
+  }, [financeEntries]);
+
+  const financeMonthTotal = useMemo(
+    () => financeGroups.reduce((s, g) => s + g.total, 0),
+    [financeGroups],
+  );
+
+  const exportFinanceCSV = () => {
+    const headers = ['record_mode', 'destination', 'entries', 'total_amount', 'flat_units'];
+    const rows = financeGroups.map((g) => [g.record_mode, g.destination, g.count, g.total, g.flatUnits]);
+    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `finance-totals-${financeMonth}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const stats = useMemo(() => ({
     totalVisitors: dayVisitors.filter(v => v.category === 'visitor').length,
@@ -120,6 +184,65 @@ const ReportPage = () => {
       <div className="flex items-center gap-2 mb-5">
         <Calendar className="w-4 h-4 text-muted-foreground" />
         <input type="date" className="input-field text-sm flex-1" value={date} onChange={e => setDate(e.target.value)} />
+      </div>
+
+      <div className="mb-8 border border-border rounded-xl p-4 bg-muted/20">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <DollarSign className="w-4 h-4 text-green-600" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold">Finance summary (ledger)</h2>
+              <p className="text-[10px] text-muted-foreground">Totals by recording mode and destination for the selected month</p>
+            </div>
+          </div>
+          <button type="button" onClick={exportFinanceCSV} className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1">
+            <Download className="w-3.5 h-3.5" /> Finance CSV
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <label className="text-xs text-muted-foreground flex items-center gap-2">
+            Month
+            <input
+              type="month"
+              className="input-field text-sm"
+              value={financeMonth}
+              onChange={(e) => setFinanceMonth(e.target.value)}
+            />
+          </label>
+          <span className="text-xs font-mono">
+            Total ₹{financeMonthTotal.toLocaleString('en-IN')} · {financeEntries.length} entries
+          </span>
+        </div>
+        {financeGroups.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">No ledger rows for this month (entry_month match).</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-left text-muted-foreground border-b border-border">
+                  <th className="py-2 pr-2">Mode</th>
+                  <th className="py-2 pr-2">Destination</th>
+                  <th className="py-2 pr-2">Entries</th>
+                  <th className="py-2 pr-2">Amount</th>
+                  <th className="py-2">Flat units</th>
+                </tr>
+              </thead>
+              <tbody>
+                {financeGroups.map((g) => (
+                  <tr key={`${g.record_mode}-${g.destination}`} className="border-b border-border/60">
+                    <td className="py-2 pr-2 capitalize">{g.record_mode.replace(/_/g, ' ')}</td>
+                    <td className="py-2 pr-2 capitalize">{g.destination.replace(/_/g, ' ')}</td>
+                    <td className="py-2 pr-2 font-mono">{g.count}</td>
+                    <td className="py-2 pr-2 font-mono">₹{g.total.toLocaleString('en-IN')}</td>
+                    <td className="py-2 font-mono">{g.flatUnits}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-6">
