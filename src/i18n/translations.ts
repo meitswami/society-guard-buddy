@@ -55,6 +55,11 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.pickRoleFirst': { en: 'Select your role to continue.', hi: 'जारी रखने के लिए भूमिका चुनें।' },
   'login.flatLabel': { en: 'Your flat', hi: 'आपका फ्लैट' },
   'login.flatPlaceholder': { en: 'Select flat number…', hi: 'फ्लैट नंबर चुनें…' },
+  'login.flatsLoading': { en: 'Loading flats…', hi: 'फ्लैट लोड हो रहे हैं…' },
+  'login.noFlatsForSociety': {
+    en: 'No flats are registered for this society. Ask your admin to add flats in Directory. (Society “flat numbering” settings do not create flat rows by themselves.)',
+    hi: 'इस सोसाइटी के लिए अभी कोई फ्लैट दर्ज नहीं है। एडमिन से डायरेक्टरी में फ्लैट जोड़ने को कहें। (सोसाइटी के फ्लैट नंबरिंग फ़ील्ड अपने आप फ्लैट नहीं बनाते।)',
+  },
   'login.pickFlatFirst': { en: 'Select your flat to continue.', hi: 'जारी रखने के लिए अपना फ्लैट चुनें।' },
   'login.adminUsePassword': { en: 'Admins sign in with Admin ID and password below (not OTP).', hi: 'एडमिन आईडी और पासवर्ड से लॉगिन करें (OTP नहीं)।' },
   'login.onboard.phoneOtherFlat': {
@@ -783,6 +788,14 @@ const translations: Record<string, Record<Lang, string>> = {
   'superadmin.flatTrimHint': {
     en: 'When you save, flats that match this numbering pattern but sit outside the range (e.g. 106 if the range ends at 105) are removed automatically. Valid flats and their residents are unchanged.',
     hi: 'सहेजने पर, इस नंबरिंग पैटर्न से मेल खाने वाले लेकिन रेंज के बाहर के फ्लैट (जैसे 105 पर समाप्त होने पर 106) स्वतः हटा दिए जाते हैं। मान्य फ्लैट और निवासी अपरिवर्तित रहते हैं।',
+  },
+  'superadmin.flatGenerateHint': {
+    en: 'Saving also creates missing flat directory rows from this range across all floors (Indian +100-per-floor pattern). Towers A, B repeat the same numbers per wing. Existing rows are not duplicated.',
+    hi: 'सहेजने पर इस रेंज से सभी मंजिलों के लिए गुम फ्लैट रिकॉर्ड बनते हैं (+100 प्रति मंजिल पैटर्न)। टावर A/B में प्रत्येक विंग पर समान नंबर। मौजूदा रिकॉर्ड दोबारा नहीं बनते।',
+  },
+  'superadmin.flatsGenerated': {
+    en: 'Added {created} flat records to the directory ({skipped} were already present).',
+    hi: 'डायरेक्टरी में {created} नए फ्लैट रिकॉर्ड जोड़े गए ({skipped} पहले से मौजूद थे)।',
   },
   'superadmin.flatsTrimmed': {
     en: 'Removed {count} flat(s) that were outside the configured range (e.g. extra numbers per floor).',

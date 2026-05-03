@@ -8,6 +8,7 @@ import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import BiometricSetup from '@/components/BiometricSetup';
 import { trimSocietyFlatsToConfiguredRange } from '@/lib/societyFlatRangeTrim';
+import { upsertSocietyFlatsFromLayout } from '@/lib/societyFlatsFromLayout';
 import { NEW_CUSTOM_ROLE_PERMISSIONS } from '@/lib/adminPermissions';
 import { Switch } from '@/components/ui/switch';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
@@ -318,6 +319,22 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
       });
       if (trimmed > 0) {
         toast.info(t('superadmin.flatsTrimmed').replace('{count}', String(trimmed)));
+      }
+
+      const generated = await upsertSocietyFlatsFromLayout(supabase, societyIdForTrim, {
+        total_floors: baseRow.total_floors,
+        flat_series_start: baseRow.flat_series_start,
+        flat_series_end: baseRow.flat_series_end,
+        block_names,
+      });
+      if (generated.error) {
+        toast.error(generated.error);
+      } else if (generated.created > 0) {
+        toast.success(
+          t('superadmin.flatsGenerated')
+            .replace('{created}', String(generated.created))
+            .replace('{skipped}', String(generated.skipped)),
+        );
       }
 
       closeSocietyForm();
@@ -665,6 +682,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-1">{t('superadmin.flatSeriesHelp')}</p>
                   <p className="text-[10px] text-muted-foreground mt-1.5 border-l-2 border-primary/30 pl-2">{t('superadmin.flatTrimHint')}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1.5 border-l-2 border-emerald-500/40 pl-2">{t('superadmin.flatGenerateHint')}</p>
                 </div>
 
                 <div className="border-t border-border pt-3 mt-1">

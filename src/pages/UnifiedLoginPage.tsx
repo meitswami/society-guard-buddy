@@ -48,6 +48,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
   const [selectedSocietyId, setSelectedSocietyId] = useState('');
   const [loginRole, setLoginRole] = useState<LoginRole>('');
   const [societyFlats, setSocietyFlats] = useState<{ id: string; flat_number: string }[]>([]);
+  const [flatsLoading, setFlatsLoading] = useState(false);
   const [selectedFlatId, setSelectedFlatId] = useState('');
   const [superadminMode, setSuperadminMode] = useState(false);
   const [loginMode, setLoginMode] = useState<'credentials' | 'otp'>('otp');
@@ -78,17 +79,23 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
   useEffect(() => {
     if (!selectedSocietyId || loginRole !== 'resident') {
       setSocietyFlats([]);
+      setFlatsLoading(false);
       setSelectedFlatId('');
       return;
     }
     let cancelled = false;
+    setFlatsLoading(true);
+    setSelectedFlatId('');
     (async () => {
       const { data } = await supabase
         .from('flats')
         .select('id, flat_number')
         .eq('society_id', selectedSocietyId)
         .order('flat_number', { ascending: true });
-      if (!cancelled) setSocietyFlats(data ?? []);
+      if (!cancelled) {
+        setSocietyFlats(data ?? []);
+        setFlatsLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
@@ -655,20 +662,31 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('login.flatLabel')}</label>
                     <select
                       className="input-field w-full"
+                      disabled={flatsLoading || societyFlats.length === 0}
                       value={selectedFlatId}
                       onChange={(e) => {
                         setSelectedFlatId(e.target.value);
                         setError('');
                       }}
                     >
-                      <option value="">{t('login.flatPlaceholder')}</option>
+                      <option value="">
+                        {flatsLoading ? t('login.flatsLoading') : t('login.flatPlaceholder')}
+                      </option>
                       {societyFlats.map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.flat_number}
                         </option>
                       ))}
                     </select>
-                    {!selectedFlatId && <p className="text-muted-foreground text-[11px]">{t('login.pickFlatFirst')}</p>}
+                    {flatsLoading && (
+                      <p className="text-muted-foreground text-[11px]">{t('login.flatsLoading')}</p>
+                    )}
+                    {!flatsLoading && societyFlats.length === 0 && (
+                      <p className="text-amber-600 dark:text-amber-400 text-[11px] leading-relaxed">{t('login.noFlatsForSociety')}</p>
+                    )}
+                    {!flatsLoading && societyFlats.length > 0 && !selectedFlatId && (
+                      <p className="text-muted-foreground text-[11px]">{t('login.pickFlatFirst')}</p>
+                    )}
                   </div>
                 )}
 
