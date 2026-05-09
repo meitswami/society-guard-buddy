@@ -82,10 +82,11 @@ const SocietyLoginGate = ({ onContinue, onSuperadmin }: Props) => {
           </button>
           <Link
             to="/society-signup"
-            className="text-xs text-muted-foreground text-center mt-2 underline"
+            className="btn-secondary w-full text-center py-3 rounded-xl text-sm font-semibold mt-2 block"
           >
-            {t('login.createSocietyCta')}
+            {t('login.registerNewSociety')}
           </Link>
+          <p className="text-[10px] text-muted-foreground text-center leading-snug px-1">{t('login.createSocietyCta')}</p>
           {onSuperadmin && (
           <button
             type="button"

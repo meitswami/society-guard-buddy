@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Shield, Eye, EyeOff, Fingerprint, Phone } from 'lucide-react';
 import SuperadminLoginForm from '@/components/SuperadminLoginForm';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -626,6 +627,13 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                   </option>
                 ))}
               </select>
+              <Link
+                to="/society-signup"
+                className="btn-secondary w-full text-center py-3 rounded-xl text-sm font-semibold mt-1 block"
+              >
+                {t('login.registerNewSociety')}
+              </Link>
+              <p className="text-[10px] text-muted-foreground text-center leading-snug px-1">{t('login.createSocietyCta')}</p>
               {showSuperadminEntry && (
                 <button type="button" className="text-[11px] text-muted-foreground text-center underline" onClick={() => setSuperadminMode(true)}>
                   {t('login.superadminPlatform')}

@@ -45,6 +45,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.continueToLogin': { en: 'Continue to login', hi: 'लॉगिन पर जाएँ' },
   'login.superadminPlatform': { en: 'Platform superadmin login', hi: 'प्लेटफ़ॉर्म सुपरएडमिन लॉगिन' },
   'login.createSocietyCta': { en: 'New society? Create & pay ₹8,500', hi: 'नई सोसाइटी? बनाएँ और ₹8,500 भुगतान करें' },
+  'login.registerNewSociety': { en: 'Register a new society', hi: 'नई सोसाइटी पंजीकृत करें' },
   'signup.title': { en: 'Create your society', hi: 'अपनी सोसाइटी बनाएं' },
   'signup.subtitle': { en: 'Fill details, pay via PhonePe, and start using Kutumbika.', hi: 'विवरण भरें, PhonePe से भुगतान करें और Kutumbika उपयोग करें।' },
   'signup.societyDetails': { en: 'Society details', hi: 'सोसाइटी विवरण' },
