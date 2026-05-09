@@ -48,6 +48,11 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.registerNewSociety': { en: 'Register a new society', hi: 'नई सोसाइटी पंजीकृत करें' },
   'signup.title': { en: 'Create your society', hi: 'अपनी सोसाइटी बनाएं' },
   'signup.subtitle': { en: 'Fill details, pay via PhonePe, and start using Kutumbika.', hi: 'विवरण भरें, PhonePe से भुगतान करें और Kutumbika उपयोग करें।' },
+  'signup.step': { en: 'Step', hi: 'चरण' },
+  'signup.requiredNote': {
+    en: 'Society name, contact phone, admin ID and password are required to continue.',
+    hi: 'आगे बढ़ने के लिए सोसाइटी नाम, संपर्क फोन, एडमिन आईडी और पासवर्ड आवश्यक हैं।',
+  },
   'signup.societyDetails': { en: 'Society details', hi: 'सोसाइटी विवरण' },
   'signup.contactDetails': { en: 'Contact details', hi: 'संपर्क विवरण' },
   'signup.adminCreds': { en: 'Admin credentials', hi: 'एडमिन क्रेडेंशियल्स' },

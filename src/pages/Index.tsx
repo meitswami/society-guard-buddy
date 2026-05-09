@@ -28,7 +28,7 @@ import BottomNav from '@/components/BottomNav';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
 import { LoginFooter } from '@/components/LoginFooter';
-import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { useGuardGeofenceMonitor } from '@/hooks/useGuardGeofenceMonitor';
 import { toast } from 'sonner';
 
@@ -369,10 +369,6 @@ const AppContent = () => {
   );
 };
 
-const Index = () => (
-  <LanguageProvider>
-    <AppContent />
-  </LanguageProvider>
-);
+const Index = () => <AppContent />;
 
 export default Index;
