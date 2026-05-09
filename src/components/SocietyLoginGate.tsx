@@ -5,6 +5,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { LoginFooter } from '@/components/LoginFooter';
 import { fetchActiveSocietiesByName, type LoginSocietyRow } from '@/lib/societiesLogin';
+import { Link } from 'react-router-dom';
 
 interface Props {
   onContinue: (society: LoginSocietyRow) => void;
@@ -79,6 +80,12 @@ const SocietyLoginGate = ({ onContinue, onSuperadmin }: Props) => {
           >
             {t('login.continueToLogin')}
           </button>
+          <Link
+            to="/society-signup"
+            className="text-xs text-muted-foreground text-center mt-2 underline"
+          >
+            {t('login.createSocietyCta')}
+          </Link>
           {onSuperadmin && (
           <button
             type="button"

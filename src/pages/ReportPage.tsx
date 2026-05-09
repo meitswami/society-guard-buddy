@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, Download, Printer, Calendar, Users, Car, Truck, Shield, DollarSign } from 'lucide-react';
+import { BarChart3, Download, Printer, Calendar, Users, Car, Truck, Shield, DollarSign, Heart, Split } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLanguage } from '@/i18n/LanguageContext';
 
@@ -24,6 +24,10 @@ const ReportPage = () => {
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [financeMonth, setFinanceMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [financeEntries, setFinanceEntries] = useState<FinanceEntrySummaryRow[]>([]);
+  const [ledgerStatuses, setLedgerStatuses] = useState<{ payment_status: string; count: number; total: number }[]>([]);
+  const [maintenanceStatuses, setMaintenanceStatuses] = useState<{ payment_status: string; count: number; total: number }[]>([]);
+  const [donationStatuses, setDonationStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
+  const [splitStatuses, setSplitStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
 
   useEffect(() => {
     const loadShifts = async () => {
@@ -44,16 +48,93 @@ const ReportPage = () => {
     const loadFinance = async () => {
       if (!societyId) {
         setFinanceEntries([]);
+        setLedgerStatuses([]);
+        setMaintenanceStatuses([]);
+        setDonationStatuses([]);
+        setSplitStatuses([]);
         return;
       }
       const { data } = await supabase
         .from('finance_entries')
-        .select('id, record_mode, destination, total_amount, aggregate_flat_count, entry_month, created_at')
+        .select('id, record_mode, destination, total_amount, aggregate_flat_count, entry_month, created_at, payment_status')
         .eq('society_id', societyId)
         .eq('entry_month', financeMonth)
         .order('created_at', { ascending: false })
         .limit(800);
       setFinanceEntries((data as FinanceEntrySummaryRow[]) ?? []);
+
+      // Ledger status summary
+      const map = new Map<string, { count: number; total: number }>();
+      for (const e of (data as any[] | null) ?? []) {
+        const st = String(e.payment_status ?? 'verified');
+        const cur = map.get(st) ?? { count: 0, total: 0 };
+        cur.count += 1;
+        cur.total += Number(e.total_amount || 0);
+        map.set(st, cur);
+      }
+      setLedgerStatuses([...map.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
+
+      // Maintenance payments status summary (same month by due_date)
+      const { data: mp } = await supabase
+        .from('maintenance_payments')
+        .select('payment_status, amount, due_date, created_at')
+        .eq('society_id', societyId)
+        .gte('due_date', `${financeMonth}-01`)
+        .lt('due_date', `${financeMonth}-32`);
+      const mpMap = new Map<string, { count: number; total: number }>();
+      for (const p of (mp as any[] | null) ?? []) {
+        const st = String(p.payment_status ?? 'pending');
+        const cur = mpMap.get(st) ?? { count: 0, total: 0 };
+        cur.count += 1;
+        cur.total += Number(p.amount || 0);
+        mpMap.set(st, cur);
+      }
+      setMaintenanceStatuses([...mpMap.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
+
+      // Donation payments status summary (by created_at month)
+      const from = `${financeMonth}-01T00:00:00`;
+      const to = `${financeMonth}-31T23:59:59`;
+      const { data: dp } = await supabase
+        .from('donation_payments')
+        .select('amount, status, created_at')
+        .eq('society_id', societyId)
+        .gte('created_at', from)
+        .lte('created_at', to);
+      const dMap = new Map<string, { count: number; total: number }>();
+      for (const p of (dp as any[] | null) ?? []) {
+        const st = String(p.status ?? 'success');
+        const cur = dMap.get(st) ?? { count: 0, total: 0 };
+        cur.count += 1;
+        cur.total += Number(p.amount || 0);
+        dMap.set(st, cur);
+      }
+      setDonationStatuses([...dMap.entries()].map(([status, v]) => ({ status, ...v })));
+
+      // Splitwise status summary (by expense created_at month)
+      const { data: ex } = await supabase
+        .from('expenses')
+        .select('id, total_amount, created_at')
+        .eq('society_id', societyId)
+        .gte('created_at', from)
+        .lte('created_at', to);
+      const expIds = (ex as any[] | null)?.map((x) => x.id) ?? [];
+      if (!expIds.length) {
+        setSplitStatuses([]);
+      } else {
+        const { data: splits } = await supabase
+          .from('expense_splits')
+          .select('amount, payment_status, is_settled')
+          .in('expense_id', expIds);
+        const sMap = new Map<string, { count: number; total: number }>();
+        for (const s of (splits as any[] | null) ?? []) {
+          const st = s.is_settled ? 'settled' : String(s.payment_status ?? 'pending');
+          const cur = sMap.get(st) ?? { count: 0, total: 0 };
+          cur.count += 1;
+          cur.total += Number(s.amount || 0);
+          sMap.set(st, cur);
+        }
+        setSplitStatuses([...sMap.entries()].map(([status, v]) => ({ status, ...v })));
+      }
     };
     void loadFinance();
   }, [financeMonth, societyId]);
@@ -243,6 +324,84 @@ const ReportPage = () => {
             </table>
           </div>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+        <div className="border border-border rounded-xl p-4 bg-card/50">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign className="w-4 h-4 text-green-600" />
+            <h2 className="text-sm font-semibold">Finance statuses (ledger)</h2>
+          </div>
+          {ledgerStatuses.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No ledger entries for this month.</p>
+          ) : (
+            <div className="space-y-2">
+              {ledgerStatuses.map((s) => (
+                <div key={s.payment_status} className="flex items-center justify-between text-xs">
+                  <span className="capitalize">{s.payment_status}</span>
+                  <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="border border-border rounded-xl p-4 bg-card/50">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign className="w-4 h-4 text-purple-600" />
+            <h2 className="text-sm font-semibold">Maintenance payment statuses</h2>
+          </div>
+          {maintenanceStatuses.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No maintenance payments for this month.</p>
+          ) : (
+            <div className="space-y-2">
+              {maintenanceStatuses.map((s) => (
+                <div key={s.payment_status} className="flex items-center justify-between text-xs">
+                  <span className="capitalize">{s.payment_status}</span>
+                  <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="border border-border rounded-xl p-4 bg-card/50">
+          <div className="flex items-center gap-2 mb-3">
+            <Heart className="w-4 h-4 text-rose-500" />
+            <h2 className="text-sm font-semibold">Donations statuses</h2>
+          </div>
+          {donationStatuses.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No donations for this month.</p>
+          ) : (
+            <div className="space-y-2">
+              {donationStatuses.map((s) => (
+                <div key={s.status} className="flex items-center justify-between text-xs">
+                  <span className="capitalize">{s.status}</span>
+                  <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="border border-border rounded-xl p-4 bg-card/50">
+          <div className="flex items-center gap-2 mb-3">
+            <Split className="w-4 h-4 text-amber-600" />
+            <h2 className="text-sm font-semibold">Splitwise statuses</h2>
+          </div>
+          {splitStatuses.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No split entries for this month.</p>
+          ) : (
+            <div className="space-y-2">
+              {splitStatuses.map((s) => (
+                <div key={s.status} className="flex items-center justify-between text-xs">
+                  <span className="capitalize">{s.status}</span>
+                  <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-6">

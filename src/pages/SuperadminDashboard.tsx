@@ -3,7 +3,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield, Pencil, X, Sparkles, Headphones } from 'lucide-react';
+import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield, Pencil, X, Sparkles, Headphones, CreditCard } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import BiometricSetup from '@/components/BiometricSetup';
@@ -155,7 +155,7 @@ interface Admin {
   society_id: string | null; role_id: string | null; email: string | null;
 }
 
-type Tab = 'societies' | 'admins' | 'roles' | 'maintenance' | 'settings' | 'support' | 'tour';
+type Tab = 'societies' | 'admins' | 'roles' | 'maintenance' | 'onboarding' | 'settings' | 'support' | 'tour';
 
 const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const { t } = useLanguage();
@@ -184,6 +184,9 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const [totpConfigured, setTotpConfigured] = useState(false);
   const [totpSaving, setTotpSaving] = useState(false);
 
+  const [onboardingRows, setOnboardingRows] = useState<any[]>([]);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
+
   useEffect(() => { loadAll(); }, []);
 
   useEffect(() => {
@@ -211,6 +214,36 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     if (a.data) setAdmins(a.data as Admin[]);
     if (s.data && s.data.length > 0 && !selectedSociety) setSelectedSociety(s.data[0].id);
   };
+
+  const loadOnboarding = async () => {
+    setOnboardingLoading(true);
+    try {
+      const { data } = await supabase
+        .from('society_orders')
+        .select('id, signup_id, status, amount_inr, currency, provider, merchant_transaction_id, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      const orders = (data as any[]) ?? [];
+      const signupIds = [...new Set(orders.map((o) => o.signup_id).filter(Boolean))];
+      let signups: any[] = [];
+      if (signupIds.length) {
+        const { data: s } = await supabase
+          .from('society_signups')
+          .select('id, status, society_name, contact_phone, contact_person, referral_code_used, created_at')
+          .in('id', signupIds);
+        signups = (s as any[]) ?? [];
+      }
+      const signupById = new Map(signups.map((s) => [s.id, s]));
+      setOnboardingRows(orders.map((o) => ({ order: o, signup: signupById.get(o.signup_id) ?? null })));
+    } finally {
+      setOnboardingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab !== 'onboarding') return;
+    void loadOnboarding();
+  }, [tab]);
 
   const closeSocietyForm = () => {
     setShowSocietyForm(false);
@@ -588,6 +621,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     { id: 'roles', label: t('superadmin.roles'), icon: Tag },
     { id: 'admins', label: t('superadmin.admins'), icon: Users },
     { id: 'maintenance', label: 'Maintenance', icon: Database },
+    { id: 'onboarding', label: 'Payments', icon: CreditCard },
     { id: 'settings', label: t('nav.settings'), icon: Crown },
     { id: 'support', label: 'Support', icon: Headphones },
     { id: 'tour', label: t('nav.tour'), icon: Sparkles },
@@ -1043,6 +1077,50 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                 <Trash2 className="w-4 h-4" /> Clear All Data & Go Production
               </button>
             </div>
+          </div>
+        )}
+
+        {tab === 'onboarding' && (
+          <div className="card-section p-4">
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <h2 className="font-semibold">Payments (onboarding)</h2>
+              <button type="button" className="btn-secondary text-xs px-2.5 py-2" onClick={loadOnboarding} disabled={onboardingLoading}>
+                {onboardingLoading ? '…' : 'Refresh'}
+              </button>
+            </div>
+
+            {onboardingRows.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">
+                {onboardingLoading ? 'Loading…' : 'No payment orders found.'}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border">
+                      <th className="py-2 pr-2">Society</th>
+                      <th className="py-2 pr-2">Signup status</th>
+                      <th className="py-2 pr-2">Order status</th>
+                      <th className="py-2 pr-2">Amount</th>
+                      <th className="py-2 pr-2">Phone</th>
+                      <th className="py-2">Merchant order</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {onboardingRows.map((r) => (
+                      <tr key={r.order.id} className="border-b border-border/60">
+                        <td className="py-2 pr-2">{r.signup?.society_name ?? '—'}</td>
+                        <td className="py-2 pr-2 capitalize">{String(r.signup?.status ?? '—')}</td>
+                        <td className="py-2 pr-2 capitalize">{String(r.order.status ?? '—')}</td>
+                        <td className="py-2 pr-2 font-mono">₹{Number(r.order.amount_inr || 0).toLocaleString('en-IN')}</td>
+                        <td className="py-2 pr-2 font-mono">{r.signup?.contact_phone ?? '—'}</td>
+                        <td className="py-2 font-mono">{r.order.merchant_transaction_id}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

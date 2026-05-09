@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import { Search, FileText, LogOut, Download } from 'lucide-react';
 import { format } from 'date-fns';
+import { fmtTime } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { confirmAction, showToast } from '@/lib/swal';
 
@@ -109,8 +110,8 @@ const LogsPage = () => {
                   <p className="text-xs text-muted-foreground"><span className="font-mono">{v.phone}</span> · {t('common.flat')} {v.flatNumber}</p>
                   <p className="text-xs text-muted-foreground">{v.purpose}</p>
                   <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                    <span>In: {format(new Date(v.entryTime), 'hh:mm a')}</span>
-                    {v.exitTime && <span>Out: {format(new Date(v.exitTime), 'hh:mm a')}</span>}
+                    <span>In: {fmtTime(v.entryTime)}</span>
+                    {v.exitTime && <span>Out: {fmtTime(v.exitTime)}</span>}
                     {v.vehicleNumber && <span className="font-mono">{v.vehicleNumber}</span>}
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-1">{t('logs.guard')}: {v.guardName}</p>

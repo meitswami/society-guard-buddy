@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import { BookUser, Search, ChevronDown, ChevronUp, FileText, Home, Users, Car, Phone } from 'lucide-react';
-import { format } from 'date-fns';
+import { fmtDate } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 type ViewMode = 'flats' | 'visitors';
@@ -258,8 +258,8 @@ const DirectoryPage = () => {
                         <div><span className="text-muted-foreground">{t('directory.document')}:</span><span className="ml-1 font-medium">{v.documentType} {v.documentNumber && `— ${v.documentNumber}`}</span></div>
                         <div><span className="text-muted-foreground">{t('visitor.purpose')}:</span><span className="ml-1 font-medium">{v.purpose}</span></div>
                         {v.vehicleNumber && <div><span className="text-muted-foreground">{t('blacklist.vehicle')}:</span><span className="ml-1 font-mono font-medium">{v.vehicleNumber}</span></div>}
-                        <div><span className="text-muted-foreground">{t('directory.firstVisit')}:</span><span className="ml-1 font-medium">{format(new Date(firstVisit), 'dd MMM yyyy')}</span></div>
-                        <div><span className="text-muted-foreground">{t('directory.lastVisit')}:</span><span className="ml-1 font-medium">{format(new Date(v.entryTime), 'dd MMM yyyy')}</span></div>
+                        <div><span className="text-muted-foreground">{t('directory.firstVisit')}:</span><span className="ml-1 font-medium">{fmtDate(firstVisit)}</span></div>
+                        <div><span className="text-muted-foreground">{t('directory.lastVisit')}:</span><span className="ml-1 font-medium">{fmtDate(v.entryTime)}</span></div>
                       </div>
                     </div>
                   )}

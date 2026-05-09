@@ -4,7 +4,8 @@ import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useEffect, useMemo, useState } from 'react';
-import { format, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
+import { fmtDateTime } from '@/lib/dateFormat';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { supabase } from '@/integrations/supabase/client';
 import BiometricSetup from '@/components/BiometricSetup';
@@ -109,7 +110,7 @@ const DashboardPage = () => {
           <p className="text-[10px] text-muted-foreground/80 mt-0.5">{t('app.tagline')}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             <Clock className="w-3 h-3 inline mr-1" />
-            {format(new Date(), 'dd MMM yyyy, hh:mm a')}
+            {fmtDateTime(new Date())}
           </p>
         </div>
         <div className="flex items-center gap-2">

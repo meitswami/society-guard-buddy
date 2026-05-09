@@ -9,6 +9,8 @@ import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import ContactPage from "./pages/ContactPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
+import NewSocietySignupPage from "./pages/NewSocietySignupPage";
+import SocietySignupStatusPage from "./pages/SocietySignupStatusPage";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +22,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/society-signup" element={<NewSocietySignupPage />} />
+          <Route path="/society-signup/status" element={<SocietySignupStatusPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/contact" element={<ContactPage />} />
