@@ -1543,7 +1543,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
         <div>
           <h1 className="page-title">Finance Management</h1>
           <p className="text-xs text-muted-foreground">
-            {charges.length} charges · {payments.length} payments · {ledgerEntries.length} ledger entries
+            {charges.length} charges · {payments.length} Reciepts · {ledgerEntries.length} ledger entries
           </p>
         </div>
       </div>
@@ -1578,7 +1578,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
             {s === 'maintenance'
               ? '📋 Charges'
               : s === 'payments'
-                ? '💰 Record Payment'
+                ? '💰 Record Reciept'
                 : s === 'receipts'
                   ? '🧾 Receipts'
                   : s === 'totals'
@@ -1715,7 +1715,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
       {subTab === 'payments' && (
         <div>
           <button onClick={() => setShowPaymentForm(!showPaymentForm)} className="btn-primary w-full mb-3 flex items-center justify-center gap-2">
-            <Upload className="w-4 h-4" /> Record Payment / Upload Receipt
+            <Upload className="w-4 h-4" /> Record Reciept / Upload Reciept
           </button>
           {showPaymentForm && (
             <div className="card-section p-4 mb-4 flex flex-col gap-3">
@@ -1988,7 +1988,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
               </div>
 
               <button type="button" onClick={() => void recordPayment()} className="btn-primary" disabled={receiptUploading}>
-                {receiptUploading ? 'Uploading…' : 'Record payment'}
+                {receiptUploading ? 'Uploading…' : 'Record Reciept'}
               </button>
             </div>
           )}
@@ -2684,7 +2684,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
           <div className="space-y-2">
             {totalsBreakdown.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-10">
-                No ledger groups for {totalsMonth}. Record payments or outsider entries to populate totals.
+                No ledger groups for {totalsMonth}. Record Reciepts or outsider entries to populate totals.
               </p>
             ) : (
               totalsBreakdown.map((row) => (
