@@ -1255,6 +1255,15 @@ export type Database = {
           spouse_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "members_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_documents: {
         Row: {
           back_url: string | null
@@ -1331,11 +1340,224 @@ export type Database = {
           },
         ]
       }
+      meeting_attendees: {
+        Row: {
+          attendee_role: string
+          created_at: string
+          display_name: string
+          flat_number: string | null
+          guest_name: string | null
+          id: string
+          is_present: boolean
+          meeting_id: string
+          member_id: string | null
+        }
+        Insert: {
+          attendee_role?: string
+          created_at?: string
+          display_name: string
+          flat_number?: string | null
+          guest_name?: string | null
+          id?: string
+          is_present?: boolean
+          meeting_id: string
+          member_id?: string | null
+        }
+        Update: {
+          attendee_role?: string
+          created_at?: string
+          display_name?: string
+          flat_number?: string | null
+          guest_name?: string | null
+          id?: string
+          is_present?: boolean
+          meeting_id?: string
+          member_id?: string | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "members_flat_id_fkey"
-            columns: ["flat_id"]
+            foreignKeyName: "meeting_attendees_meeting_id_fkey"
+            columns: ["meeting_id"]
             isOneToOne: false
-            referencedRelation: "flats"
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_attendees_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_decisions: {
+        Row: {
+          created_at: string
+          decision_text: string
+          id: string
+          meeting_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          decision_text: string
+          id?: string
+          meeting_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          decision_text?: string
+          id?: string
+          meeting_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_decisions_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_document_signatures: {
+        Row: {
+          id: string
+          meeting_attendee_id: string
+          meeting_document_id: string
+          signature_image_url: string
+          signed_at: string
+          signer_label: string | null
+        }
+        Insert: {
+          id?: string
+          meeting_attendee_id: string
+          meeting_document_id: string
+          signature_image_url: string
+          signed_at?: string
+          signer_label?: string | null
+        }
+        Update: {
+          id?: string
+          meeting_attendee_id?: string
+          meeting_document_id?: string
+          signature_image_url?: string
+          signed_at?: string
+          signer_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_document_signatures_meeting_attendee_id_fkey"
+            columns: ["meeting_attendee_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_attendees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_document_signatures_meeting_document_id_fkey"
+            columns: ["meeting_document_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_documents: {
+        Row: {
+          created_at: string
+          file_name: string | null
+          file_url: string
+          id: string
+          meeting_id: string
+          mime_type: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          file_name?: string | null
+          file_url: string
+          id?: string
+          meeting_id: string
+          mime_type?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string | null
+          file_url?: string
+          id?: string
+          meeting_id?: string
+          mime_type?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_documents_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          audio_recording_url: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          discussion_notes: string | null
+          id: string
+          location: string | null
+          meeting_at: string
+          minutes_summary: string | null
+          published: boolean
+          society_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audio_recording_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discussion_notes?: string | null
+          id?: string
+          location?: string | null
+          meeting_at?: string
+          minutes_summary?: string | null
+          published?: boolean
+          society_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audio_recording_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discussion_notes?: string | null
+          id?: string
+          location?: string | null
+          meeting_at?: string
+          minutes_summary?: string | null
+          published?: boolean
+          society_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
             referencedColumns: ["id"]
           },
         ]

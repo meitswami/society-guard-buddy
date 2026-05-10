@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare } from 'lucide-react';
+import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare, ScrollText } from 'lucide-react';
 import { format } from 'date-fns';
 import { showSuccess, confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
@@ -10,6 +10,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import BiometricSetup from '@/components/BiometricSetup';
 import NotificationCenter from '@/components/NotificationCenter';
 import PollManager from '@/components/PollManager';
+import MeetingManager from '@/components/MeetingManager';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
 import { isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
@@ -128,6 +129,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     | 'passes'
     | 'notifications'
     | 'polls'
+    | 'meetings'
     | 'payments'
     | 'family'
     | 'vehicles'
@@ -141,6 +143,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     | 'passes'
     | 'notifications'
     | 'polls'
+    | 'meetings'
     | 'payments'
     | 'family'
     | 'vehicles'
@@ -1007,6 +1010,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     { id: 'directory' as const, label: 'Directory', icon: BookUser },
     { id: 'notifications' as const, label: 'Alerts', icon: Bell },
     { id: 'polls' as const, label: 'Polls', icon: Vote },
+    { id: 'meetings' as const, label: 'Meetings', icon: ScrollText },
     { id: 'payments' as const, label: 'Payments', icon: DollarSign },
     { id: 'profile' as const, label: 'Profile', icon: User },
     { id: 'tour' as const, label: t('nav.tour'), icon: Sparkles },
@@ -1861,6 +1865,8 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         {tab === 'polls' && (
           <PollManager isResident voterId={resident.id} flatNumber={resident.flatNumber} />
         )}
+
+        {tab === 'meetings' && <MeetingManager isResident />}
 
         {tab === 'payments' && (
           <div className="flex flex-col gap-3">

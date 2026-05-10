@@ -447,6 +447,11 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Publish society events, RSVPs, and optional contribution tracking.',
     hi: 'इवेंट, RSVP, योगदान ट्रैक।',
   },
+  'tour.admin.cm1m.title': { en: 'Meetings', hi: 'मीटिंग' },
+  'tour.admin.cm1m.body': {
+    en: 'Minutes, decisions, discussion notes, documents, and attendee signatures on the record.',
+    hi: 'मिनट्स, निर्णय, चर्चा नोट्स, दस्तावेज़ और हस्ताक्षर।',
+  },
   'tour.admin.cm2.title': { en: 'Polls', hi: 'पोल' },
   'tour.admin.cm2.body': {
     en: 'Run secure votes on society decisions with live totals.',

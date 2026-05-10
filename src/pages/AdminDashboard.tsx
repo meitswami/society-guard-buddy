@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
 import DashboardPage from '@/pages/DashboardPage';
@@ -25,6 +25,7 @@ import FinanceManager from '@/components/FinanceManager';
 import DonationManager from '@/components/DonationManager';
 import EventManager from '@/components/EventManager';
 import PollManager from '@/components/PollManager';
+import MeetingManager from '@/components/MeetingManager';
 import ParkingManager from '@/components/ParkingManager';
 import ExpenseSplitter from '@/components/ExpenseSplitter';
 import NotificationCenter from '@/components/NotificationCenter';
@@ -123,6 +124,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'splits', label: 'Splitwise', icon: Split, group: 'finance' },
     // Community
     { id: 'events', label: 'Events', icon: Calendar, group: 'community' },
+    { id: 'meetings', label: 'Meetings', icon: ScrollText, group: 'community' },
     { id: 'polls', label: 'Polls', icon: Vote, group: 'community' },
     { id: 'notifications', label: 'Notify', icon: Bell, group: 'community' },
     { id: 'parking', label: 'Parking', icon: ParkingSquare, group: 'community' },
@@ -195,6 +197,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'finance': return <FinanceManager adminName={admin.name} />;
       case 'donations': return <DonationManager adminName={admin.name} />;
       case 'events': return <EventManager adminName={admin.name} />;
+      case 'meetings': return <MeetingManager adminName={admin.name} />;
       case 'polls': return <PollManager adminName={admin.name} />;
       case 'parking': return <ParkingManager />;
       case 'splits': return <ExpenseSplitter adminName={admin.name} />;

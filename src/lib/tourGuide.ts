@@ -213,6 +213,7 @@ const ADMIN_BLOCKS: AdminTourBlock[] = [
     tab: 'events',
     steps: [
       { titleKey: 'tour.admin.cm1.title', bodyKey: 'tour.admin.cm1.body', icon: 'calendar' },
+      { titleKey: 'tour.admin.cm1m.title', bodyKey: 'tour.admin.cm1m.body', icon: 'fileText' },
       { titleKey: 'tour.admin.cm2.title', bodyKey: 'tour.admin.cm2.body', icon: 'vote' },
       { titleKey: 'tour.admin.cm3.title', bodyKey: 'tour.admin.cm3.body', icon: 'bell' },
       { titleKey: 'tour.admin.cm4.title', bodyKey: 'tour.admin.cm4.body', icon: 'parking' },
@@ -279,6 +280,7 @@ function stepToAdminTab(titleKey: string): AdminTab | null {
   if (titleKey === 'tour.admin.fn2.title') return 'donations';
   if (titleKey === 'tour.admin.fn3.title') return 'splits';
   if (titleKey === 'tour.admin.cm1.title') return 'events';
+  if (titleKey === 'tour.admin.cm1m.title') return 'meetings';
   if (titleKey === 'tour.admin.cm2.title') return 'polls';
   if (titleKey === 'tour.admin.cm3.title') return 'notifications';
   if (titleKey === 'tour.admin.cm4.title') return 'parking';

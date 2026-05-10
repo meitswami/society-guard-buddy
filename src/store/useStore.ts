@@ -347,6 +347,7 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   clearAllData: async () => {
+    await supabase.from('meetings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('visitors').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('blacklist').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('resident_vehicles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
