@@ -682,6 +682,7 @@ const translations: Record<string, Record<Lang, string>> = {
   },
   'report.financeMonth': { en: 'Month', hi: 'माह' },
   'report.financeGross': { en: 'Gross ledger', hi: 'कुल लेजर' },
+  'report.entryCountLabel': { en: 'entries', hi: 'प्रविष्टियाँ' },
   'report.noLedgerRows': { en: 'No ledger rows for this month (entry_month match).', hi: 'इस माह कोई लेजर पंक्ति नहीं।' },
   'report.noMaintenanceLedgerRows': {
     en: 'No maintenance ledger rows (current month maintenance) for this month.',
