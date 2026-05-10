@@ -82,14 +82,12 @@ A comprehensive, mobile-first multi-society gate management application built fo
 - Residents vote from their dashboard
 - Live percentage-based results
 
-### 🔔 Notifications & Push Alerts (OneSignal)
-- **In-app notifications** — stored in database with read/unread status
-- **Real-time push notifications** via OneSignal integration
-- **Targeted sending** — admin can send to:
-  - All residents
-  - Specific flats (multi-select)
-  - Specific persons (multi-select)
-- **Auto-reminders** — scheduled push for unpaid maintenance dues
+### 🔔 Notifications & Push
+- **In-app notifications** — stored in the database with read/unread status
+- **Web push** — **Firebase Cloud Messaging (FCM)** for web: device tokens in `fcm_web_tokens`; the `send-push-notification` Edge Function sends via FCM when `FIREBASE_SERVICE_ACCOUNT_JSON` is configured
+- **OneSignal** — web SDK registers users/tags; Edge Function **falls back** to the OneSignal REST API when FCM service-account JSON is not set (`ONESIGNAL_REST_API_KEY`)
+- **Targeted sending** — admin can send to all residents, specific flats (multi-select), or specific persons (multi-select)
+- **Auto-reminders** — scheduled push + in-app reminders for unpaid maintenance dues (cron + Edge Function)
 - Notification types: General, Alert, Event, Payment Reminder
 
 ### 🅿️ Parking Management
@@ -118,7 +116,7 @@ A comprehensive, mobile-first multi-society gate management application built fo
 - **FLAG_SECURE** — Screenshot prevention on native Android app
 - **Comprehensive audit logging** — all logins (success/fail), password changes, logouts
 - **Device & IP tracking** — browser, OS, screen resolution, IP address captured
-- **Security scan** — dependency vulnerability scanning with auto-patching
+- **reCAPTCHA Enterprise** — optional bot protection on selected Edge Function flows when Google / Firebase assessment is configured
 
 ### 🎨 UI/UX
 - **Dual theme**: Light / Dark / System auto-detect
@@ -130,16 +128,19 @@ A comprehensive, mobile-first multi-society gate management application built fo
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18, TypeScript, Vite |
+| Routing | React Router |
+| Data fetching | TanStack Query (React Query) |
 | Styling | Tailwind CSS, CSS variables (HSL tokens) |
 | State | Zustand |
-| Backend | Lovable Cloud (real-time subscriptions) |
-| Push Notifications | OneSignal Web SDK v16 |
-| UI Components | shadcn/ui, Lucide icons |
-| Alerts | SweetAlert2 |
-| i18n | Custom context-based translation system |
-| Native | Capacitor (Android/iOS) |
-| Biometric | WebAuthn / FIDO2 API |
-| Scheduling | pg_cron + pg_net for automated reminders |
+| Backend | **Supabase** — Postgres, Row Level Security, Realtime, Storage, Edge Functions |
+| Auth (app) | Society-scoped credentials in Supabase tables (guards, admins, residents, super admins); **Firebase Auth** optional for **SMS / phone OTP** resident flows when `VITE_FIREBASE_*` is set |
+| Push | **FCM** (web tokens + HTTP v1 from Edge Functions) with **OneSignal** as alternate web registration / REST fallback |
+| UI | shadcn/ui (Radix), Lucide icons |
+| Alerts | SweetAlert2, Sonner |
+| i18n | Custom context-based translation (English / Hindi) |
+| Native | Capacitor (Android / iOS) |
+| Biometric | WebAuthn / FIDO2 |
+| Scheduling | pg_cron + pg_net (e.g. maintenance reminders) |
 
 ## 📱 Capacitor Setup (Native Android/iOS App)
 
@@ -260,6 +261,7 @@ npx cap run android  # or ios
 
 ### Notifications & Security
 - **notifications** — In-app notifications with targeting
+- **fcm_web_tokens** — FCM web push tokens per user / society (when Firebase web push is enabled)
 - **parking_spaces** — Parking allocation management
 - **geofence_settings** — GPS-based login boundary
 - **biometric_credentials** — WebAuthn credential storage
@@ -270,6 +272,32 @@ npx cap run android  # or ios
 - **Daily 9 AM** — `maintenance-reminder` cron checks for unpaid dues and sends push + in-app reminders to affected flats
 
 ## 🚀 Getting Started
+
+### Local Development
+
+```bash
+npm install
+cp .env.example .env   # Windows: copy .env.example .env
+npm run dev            # Vite dev server
+npm run test           # Vitest (once)
+npm run lint
+npm run build          # production bundle
+```
+
+See **Configuration** below for required environment variables.
+
+### Configuration
+
+Copy [`.env.example`](.env.example) to `.env` and fill in values.
+
+| Area | What to set |
+|------|------------------|
+| Supabase | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` |
+| Firebase (optional) | `VITE_FIREBASE_*` — phone sign-in, Analytics, reCAPTCHA config; `VITE_FIREBASE_VAPID_KEY` for **FCM web push** |
+| reCAPTCHA Enterprise | `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY` (and matching Supabase Edge Function secrets per `.env.example`) |
+| Push (server) | Supabase secret `FIREBASE_SERVICE_ACCOUNT_JSON` for FCM sends, or `ONESIGNAL_REST_API_KEY` for OneSignal-only |
+
+Edge Function secrets (Resend, PhonePe, etc.) are documented in `.env.example` and the Supabase dashboard.
 
 ### Demo Logins
 
@@ -300,10 +328,10 @@ Password: resident123
 ```
 
 ### Push Notification Setup
-1. Login as any user type
-2. Browser will prompt for push notification permission
-3. Allow notifications to receive real-time alerts
-4. Admin can send targeted push from the Notifications tab
+1. Configure **FCM** (`VITE_FIREBASE_VAPID_KEY` + service account on the Edge Function) and/or **OneSignal** per `.env.example`.
+2. Sign in as any user type; the app registers for push where configured.
+3. Allow notification permission in the browser when prompted.
+4. Admins can send targeted notifications from the Notifications UI; use the in-app diagnostics if delivery fails.
 
 ### Biometric Setup
 1. Login with password first
@@ -317,6 +345,10 @@ Password: resident123
 2. Click **"Clear All Data & Go Production"**
 3. All dummy data will be permanently removed
 4. Start entering real visitor and resident data
+
+## 🗺 Roadmap
+
+Planned **V2** themes (RBAC editor, guard-friendly voice flows, optional AI) are described in [`docs/PRODUCT-V2.md`](docs/PRODUCT-V2.md).
 
 ## 📄 License
 
