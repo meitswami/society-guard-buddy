@@ -15,6 +15,7 @@ when version tags are published.
 - **Finance — period PDF** — Client-side PDF export via jsPDF (`src/lib/financePeriodReportPdf.ts`).
 - **Finance — send to members** — Upload period PDF to `notification-media`, insert per-resident `notifications` rows with shared `delivery_batch_id`, optional invoke of `send-push-notification` with `target_type: user`; audience modes: all residents, selected flats, or individually picked residents.
 - **Finance — read receipts** — Admin dialog listing recipients for the last batch, using `is_read` / `read_at` from `notifications`.
+- **Meetings — attachments** — Single **Browse files** control with `multiple` selection for many images and/or PDFs from the device file manager; **Take photo** for one camera capture; **`sort_order`** on `meeting_documents` with up/down controls to reorder the list.
 - **Notifications schema** — Columns `delivery_batch_id` (uuid) and `read_at` (timestamptz) on `public.notifications` for batched delivery and read tracking.
 - **Resident read tracking** — `NotificationCenter` updates `read_at` together with `is_read` when a user opens or marks notifications read (resident and generic bulk paths).
 - **RBAC — Finance** — `NEW_CUSTOM_ROLE_PERMISSIONS` includes `finance: true` for newly defined custom roles; migration `20260512100000_enable_finance_on_society_roles.sql` backfills `permissions.finance` to true on existing `society_roles` where it was not already true.

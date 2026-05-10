@@ -1473,6 +1473,7 @@ export type Database = {
           id: string
           meeting_id: string
           mime_type: string | null
+          sort_order: number
           title: string
         }
         Insert: {
@@ -1482,6 +1483,7 @@ export type Database = {
           id?: string
           meeting_id: string
           mime_type?: string | null
+          sort_order?: number
           title: string
         }
         Update: {
@@ -1491,6 +1493,7 @@ export type Database = {
           id?: string
           meeting_id?: string
           mime_type?: string | null
+          sort_order?: number
           title?: string
         }
         Relationships: [

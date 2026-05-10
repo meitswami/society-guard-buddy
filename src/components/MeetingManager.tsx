@@ -19,6 +19,8 @@ import {
   Square,
   Send,
   MicOff,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction } from '@/lib/swal';
@@ -76,6 +78,8 @@ type DocRow = {
   file_url: string;
   file_name: string | null;
   mime_type: string | null;
+  sort_order?: number;
+  created_at?: string;
 };
 type SigRow = {
   id: string;
@@ -146,6 +150,18 @@ async function uploadMeetingFile(
   return data.publicUrl;
 }
 
+/** File picker `accept` — images + PDFs (multiple selection in file manager). */
+const MEETING_DOC_ACCEPT =
+  'image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.heic,.heif,.tif,.tiff';
+
+function isAllowedMeetingAttachment(file: File): boolean {
+  const t = (file.type || '').toLowerCase();
+  if (t.startsWith('image/')) return true;
+  if (t === 'application/pdf' || t === 'application/x-pdf') return true;
+  const n = file.name.toLowerCase();
+  return n.endsWith('.pdf');
+}
+
 function SignaturePad({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement> }) {
   const drawing = useRef(false);
 
@@ -213,6 +229,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   const [guestName, setGuestName] = useState('');
   const [sigCtx, setSigCtx] = useState<{ doc: DocRow; attendee: AttendeeRow } | null>(null);
   const [signerLabel, setSignerLabel] = useState('');
+  const [attendeeSelection, setAttendeeSelection] = useState<Set<string>>(() => new Set());
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const selected = useMemo(() => meetings.find((m) => m.id === selectedId) ?? null, [meetings, selectedId]);
   const [notesDraft, setNotesDraft] = useState({ discussion: '', minutes: '' });
@@ -329,7 +346,12 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     const [a, d, doc] = await Promise.all([
       supabase.from('meeting_attendees').select('*').eq('meeting_id', meetingId).order('display_name'),
       supabase.from('meeting_decisions').select('*').eq('meeting_id', meetingId).order('sort_order'),
-      supabase.from('meeting_documents').select('*').eq('meeting_id', meetingId).order('created_at'),
+      supabase
+        .from('meeting_documents')
+        .select('*')
+        .eq('meeting_id', meetingId)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
     ]);
     setAttendees((a.data ?? []) as AttendeeRow[]);
     setDecisions((d.data ?? []) as DecisionRow[]);
@@ -361,7 +383,17 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       setDocuments([]);
       setSignatures([]);
     }
+    setAttendeeSelection(new Set());
   }, [selectedId, loadDetail]);
+
+  useEffect(() => {
+    setAttendeeSelection((prev) => {
+      const valid = new Set(attendees.map((a) => a.id));
+      const next = new Set<string>();
+      for (const id of prev) if (valid.has(id)) next.add(id);
+      return next;
+    });
+  }, [attendees]);
 
   const persistMeetingPatch = async (patch: Partial<MeetingRow>) => {
     if (!selectedId) return;
@@ -370,23 +402,48 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     else void loadMeetings();
   };
 
-  const saveNotesDraft = async () => {
+  const saveNotesDraft = async (opts?: { skipConfirm?: boolean; silent?: boolean }) => {
     if (!selectedId) return;
+    if (!opts?.skipConfirm) {
+      const ok = await confirmAction(
+        'Save discussion & minutes?',
+        'This updates the saved text on the server for this meeting.',
+        'Save',
+        'Cancel',
+      );
+      if (!ok) return;
+    }
     await persistMeetingPatch({
       discussion_notes: notesDraft.discussion.trim() || null,
       minutes_summary: notesDraft.minutes.trim() || null,
     } as Partial<MeetingRow>);
-    toast.success('Notes saved');
+    if (!opts?.silent) toast.success('Notes saved');
   };
 
-  const saveExecutives = async () => {
+  const saveExecutives = async (opts?: { skipConfirm?: boolean; silent?: boolean }) => {
     if (!selectedId) return;
+    if (!opts?.skipConfirm) {
+      const ok = await confirmAction(
+        'Save executive list?',
+        'Updates who was recorded as present from the managing committee.',
+        'Save',
+        'Cancel',
+      );
+      if (!ok) return;
+    }
     await persistMeetingPatch({ executives_present: executivesDraft.trim() || null } as Partial<MeetingRow>);
-    toast.success('Executive list saved');
+    if (!opts?.silent) toast.success('Executive list saved');
   };
 
   const saveMeetingMeta = async () => {
     if (!selectedId) return;
+    const ok = await confirmAction(
+      'Save meeting details?',
+      'Updates title, date, time, and venue for this meeting.',
+      'Save',
+      'Cancel',
+    );
+    if (!ok) return;
     const meeting_at = combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime);
     await persistMeetingPatch({
       title: metaDraft.title.trim() || 'Meeting',
@@ -453,6 +510,15 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       toast.message('No members on this flat yet — add residents first.');
       return;
     }
+    const ok = await confirmAction(
+      present ? 'Mark flat present?' : 'Remove flat from attendance?',
+      present
+        ? `Add everyone in flat ${flat.flat_number} to the attendance list as present.`
+        : `Remove all members of flat ${flat.flat_number} from this meeting’s attendance list.`,
+      present ? 'Mark present' : 'Remove',
+      'Cancel',
+    );
+    if (!ok) return;
     if (present) {
       for (const m of flat.members) {
         const existing = attendees.find((a) => a.member_id === m.id);
@@ -544,9 +610,101 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   };
 
   const removeAttendee = async (id: string) => {
+    const row = attendees.find((a) => a.id === id);
+    const ok = await confirmAction(
+      'Remove attendee?',
+      row
+        ? `Remove “${row.display_name}” from this meeting’s attendance list.`
+        : 'Remove this person from the attendance list.',
+      'Remove',
+      'Cancel',
+    );
+    if (!ok) return;
     const { error } = await supabase.from('meeting_attendees').delete().eq('id', id);
     if (error) toast.error(error.message);
-    else if (selectedId) void loadDetail(selectedId);
+    else {
+      setAttendeeSelection((prev) => {
+        const n = new Set(prev);
+        n.delete(id);
+        return n;
+      });
+      if (selectedId) void loadDetail(selectedId);
+    }
+  };
+
+  const toggleAttendeeSelected = (id: string) => {
+    setAttendeeSelection((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  };
+
+  const selectAllAttendeeIds = () => {
+    setAttendeeSelection(new Set(attendees.map((a) => a.id)));
+  };
+
+  const clearAttendeeSelection = () => setAttendeeSelection(new Set());
+
+  const bulkMarkAttendeesPresent = async () => {
+    if (!selectedId || attendeeSelection.size === 0) {
+      toast.message('Select at least one attendee');
+      return;
+    }
+    const ok = await confirmAction(
+      'Mark selected present?',
+      `Set ${attendeeSelection.size} attendee(s) as present.`,
+      'Update',
+      'Cancel',
+    );
+    if (!ok) return;
+    for (const id of attendeeSelection) {
+      await supabase.from('meeting_attendees').update({ is_present: true }).eq('id', id);
+    }
+    toast.success('Attendance updated');
+    clearAttendeeSelection();
+    void loadDetail(selectedId);
+  };
+
+  const bulkMarkAttendeesAbsent = async () => {
+    if (!selectedId || attendeeSelection.size === 0) {
+      toast.message('Select at least one attendee');
+      return;
+    }
+    const ok = await confirmAction(
+      'Mark selected absent?',
+      `Set ${attendeeSelection.size} attendee(s) as absent (they stay on the list).`,
+      'Update',
+      'Cancel',
+    );
+    if (!ok) return;
+    for (const id of attendeeSelection) {
+      await supabase.from('meeting_attendees').update({ is_present: false }).eq('id', id);
+    }
+    toast.success('Attendance updated');
+    clearAttendeeSelection();
+    void loadDetail(selectedId);
+  };
+
+  const bulkRemoveAttendees = async () => {
+    if (!selectedId || attendeeSelection.size === 0) {
+      toast.message('Select at least one attendee');
+      return;
+    }
+    const ok = await confirmAction(
+      'Remove selected attendees?',
+      `Permanently remove ${attendeeSelection.size} row(s) from this meeting. Signatures on documents may become orphaned.`,
+      'Remove',
+      'Cancel',
+    );
+    if (!ok) return;
+    for (const id of attendeeSelection) {
+      await supabase.from('meeting_attendees').delete().eq('id', id);
+    }
+    clearAttendeeSelection();
+    toast.success('Removed');
+    void loadDetail(selectedId);
   };
 
   const addDecision = async () => {
@@ -565,36 +723,87 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   };
 
   const removeDecision = async (id: string) => {
+    const ok = await confirmAction('Delete decision?', 'This removes one decision line from the meeting record.', 'Delete', 'Cancel');
+    if (!ok) return;
     const { error } = await supabase.from('meeting_decisions').delete().eq('id', id);
     if (error) toast.error(error.message);
     else if (selectedId) void loadDetail(selectedId);
   };
 
-  const uploadDocument = async (file: File) => {
-    if (!selectedId || !societyId) return;
-    const url = await uploadMeetingFile(societyId, selectedId, 'docs', file, file.name);
-    if (!url) {
-      toast.error('Upload failed');
+  const uploadDocuments = async (files: FileList | File[] | null) => {
+    if (!selectedId || !societyId || !files?.length) return;
+    const arr = Array.from(files as FileList | File[]);
+    const allowed = arr.filter(isAllowedMeetingAttachment);
+    if (allowed.length === 0) {
+      toast.error('Only images and PDF files are supported.');
       return;
     }
-    const { error } = await supabase.from('meeting_documents').insert([
-      {
-        meeting_id: selectedId,
-        title: file.name.replace(/\.[^.]+$/, '') || 'Attachment',
-        file_url: url,
-        file_name: file.name,
-        mime_type: file.type || null,
-      },
-    ]);
-    if (error) toast.error(error.message);
-    else {
-      toast.success('File attached');
+    if (allowed.length < arr.length) {
+      toast.message(`${arr.length - allowed.length} file(s) skipped (not image or PDF).`);
+    }
+    const maxSo = documents.reduce((m, d) => Math.max(m, typeof d.sort_order === 'number' ? d.sort_order : 0), -1);
+    let nextOrder = maxSo + 1;
+    let uploaded = 0;
+    for (const file of allowed) {
+      const url = await uploadMeetingFile(societyId, selectedId, 'docs', file, file.name);
+      if (!url) {
+        toast.error(`Upload failed: ${file.name}`);
+        continue;
+      }
+      const { error } = await supabase.from('meeting_documents').insert([
+        {
+          meeting_id: selectedId,
+          title: file.name.replace(/\.[^.]+$/, '') || 'Attachment',
+          file_url: url,
+          file_name: file.name,
+          mime_type: file.type || null,
+          sort_order: nextOrder++,
+        },
+      ]);
+      if (error) toast.error(`${file.name}: ${error.message}`);
+      else uploaded += 1;
+    }
+    if (uploaded > 0) {
+      toast.success(uploaded === 1 ? 'File attached' : `${uploaded} files attached`);
       void loadDetail(selectedId);
     }
   };
 
+  const moveMeetingDocument = async (docId: string, dir: 'up' | 'down') => {
+    if (!selectedId) return;
+    const sorted = [...documents].sort((a, b) => {
+      const sa = a.sort_order ?? 0;
+      const sb = b.sort_order ?? 0;
+      if (sa !== sb) return sa - sb;
+      const ta = a.created_at ?? '';
+      const tb = b.created_at ?? '';
+      return ta < tb ? -1 : ta > tb ? 1 : 0;
+    });
+    const i = sorted.findIndex((d) => d.id === docId);
+    if (i < 0) return;
+    const j = dir === 'up' ? i - 1 : i + 1;
+    if (j < 0 || j >= sorted.length) return;
+    const reordered = [...sorted];
+    [reordered[i], reordered[j]] = [reordered[j], reordered[i]];
+    const results = await Promise.all(
+      reordered.map((d, idx) => supabase.from('meeting_documents').update({ sort_order: idx }).eq('id', d.id)),
+    );
+    const firstErr = results.find((r) => r.error)?.error;
+    if (firstErr) toast.error(firstErr.message);
+    else void loadDetail(selectedId);
+  };
+
   const uploadAudio = async (file: File) => {
     if (!selectedId || !societyId) return;
+    if (selected?.audio_recording_url) {
+      const ok = await confirmAction(
+        'Replace session audio?',
+        'This meeting already has a recording. Uploading will replace it with the new file.',
+        'Replace',
+        'Cancel',
+      );
+      if (!ok) return;
+    }
     const url = await uploadMeetingFile(societyId, selectedId, 'audio', file, file.name);
     if (!url) {
       toast.error('Upload failed');
@@ -703,8 +912,15 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
 
   const publishAndNotifyAll = async () => {
     if (!selectedId || !societyId || isResident) return;
-    await saveNotesDraft();
-    await saveExecutives();
+    const ok = await confirmAction(
+      'Publish minutes to all residents?',
+      'Saves discussion & minutes, marks the meeting published, sends an in-app notification, and triggers push where configured.',
+      'Publish',
+      'Cancel',
+    );
+    if (!ok) return;
+    await saveNotesDraft({ skipConfirm: true, silent: true });
+    await saveExecutives({ skipConfirm: true, silent: true });
     await persistMeetingPatch({ published: true } as Partial<MeetingRow>);
     const title = `Minutes: ${metaDraft.title || selected?.title || 'Meeting'}`;
     const body =
@@ -760,6 +976,18 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
 
   const saveSignature = async () => {
     if (!sigCtx || !selectedId || !societyId) return;
+    const existingSig = signatures.find(
+      (s) => s.meeting_document_id === sigCtx.doc.id && s.meeting_attendee_id === sigCtx.attendee.id,
+    );
+    const ok = await confirmAction(
+      existingSig ? 'Overwrite signature?' : 'Save signature?',
+      existingSig
+        ? 'This attendee already signed this document. Saving replaces the previous image.'
+        : 'Store this signature on the document for the selected attendee.',
+      'Save',
+      'Cancel',
+    );
+    if (!ok) return;
     const c = canvasRef.current;
     if (!c) return;
     const blob = await new Promise<Blob | null>((res) => c.toBlob((b) => res(b), 'image/png'));
@@ -772,14 +1000,11 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       toast.error('Upload failed');
       return;
     }
-    const existing = signatures.find(
-      (s) => s.meeting_document_id === sigCtx.doc.id && s.meeting_attendee_id === sigCtx.attendee.id,
-    );
-    if (existing) {
+    if (existingSig) {
       const { error } = await supabase
         .from('meeting_document_signatures')
         .update({ signature_image_url: url, signer_label: signerLabel.trim() || null, signed_at: new Date().toISOString() })
-        .eq('id', existing.id);
+        .eq('id', existingSig.id);
       if (error) toast.error(error.message);
     } else {
       const { error } = await supabase.from('meeting_document_signatures').insert([
@@ -1129,19 +1354,39 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
 
             {!isResident && (
               <div className="border border-dashed border-border rounded-lg p-3 space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Photos & documents</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Photos & documents (images + PDF)
+                </p>
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  <strong>Browse files</strong> opens the system file picker — select <strong>multiple</strong> images and/or PDFs at once. Use the arrows on each attachment below to change display order.
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  <label className="btn-secondary text-xs px-3 py-2 cursor-pointer">
-                    Gallery
-                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value=''; if (f) void uploadDocument(f); }} />
+                  <label className="btn-primary text-xs px-3 py-2 cursor-pointer">
+                    Browse files
+                    <input
+                      type="file"
+                      multiple
+                      accept={MEETING_DOC_ACCEPT}
+                      className="hidden"
+                      onChange={(e) => {
+                        void uploadDocuments(e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
                   </label>
                   <label className="btn-secondary text-xs px-3 py-2 cursor-pointer">
-                    Camera
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value=''; if (f) void uploadDocument(f); }} />
-                  </label>
-                  <label className="btn-secondary text-xs px-3 py-2 cursor-pointer">
-                    Document
-                    <input type="file" accept=".pdf,.doc,.docx,image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value=''; if (f) void uploadDocument(f); }} />
+                    Take photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (f) void uploadDocuments([f]);
+                      }}
+                    />
                   </label>
                 </div>
               </div>
@@ -1258,11 +1503,47 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
               </div>
               {documents.length === 0 && <p className="text-xs text-muted-foreground mt-2">No attachments.</p>}
               <ul className="mt-2 space-y-3">
-                {documents.map((doc) => (
+                {documents.map((doc, docIndex) => (
                   <li key={doc.id} className="border border-border rounded-lg p-2 space-y-2">
-                    <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-sm font-medium text-primary underline">
-                      {doc.title}
-                    </a>
+                    <div className="flex items-start justify-between gap-2">
+                      <a
+                        href={doc.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-medium text-primary underline min-w-0 break-words"
+                      >
+                        {doc.title}
+                        {doc.file_name?.toLowerCase().endsWith('.pdf') ? (
+                          <span className="text-[10px] text-muted-foreground font-normal ml-1">(PDF)</span>
+                        ) : null}
+                      </a>
+                      {!isResident && (
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Move up"
+                            disabled={docIndex === 0}
+                            onClick={() => void moveMeetingDocument(doc.id, 'up')}
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Move down"
+                            disabled={docIndex === documents.length - 1}
+                            onClick={() => void moveMeetingDocument(doc.id, 'down')}
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                     <div className="grid gap-1 sm:grid-cols-2">
                       {presentAttendees.map((att) => {
                         const sig = signatures.find(

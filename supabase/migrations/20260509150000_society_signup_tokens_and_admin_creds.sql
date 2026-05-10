@@ -13,8 +13,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS society_signups_client_token_uidx
 DROP POLICY IF EXISTS "Society signups readable by all (limited use)" ON public.society_signups;
 DROP POLICY IF EXISTS "Society orders readable by all (limited use)" ON public.society_orders;
 
-CREATE POLICY IF NOT EXISTS "Society signups no client reads" ON public.society_signups
+DROP POLICY IF EXISTS "Society signups no client reads" ON public.society_signups;
+CREATE POLICY "Society signups no client reads" ON public.society_signups
   FOR SELECT USING (false);
-CREATE POLICY IF NOT EXISTS "Society orders no client reads" ON public.society_orders
+DROP POLICY IF EXISTS "Society orders no client reads" ON public.society_orders;
+CREATE POLICY "Society orders no client reads" ON public.society_orders
   FOR SELECT USING (false);
 

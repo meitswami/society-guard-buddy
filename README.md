@@ -88,8 +88,8 @@ A comprehensive, mobile-first multi-society gate management application built fo
 - Live percentage-based results
 
 ### 📋 Society Meetings
-- **Meetings** (admin) — schedule with date/time/place, attendees (flat-wise presence), discussion notes / minutes, decisions, document uploads, optional audio; publish and notify members when ready
-- Related tables: `meetings`, `meeting_attendees`, `meeting_decisions`, `meeting_documents`, signatures / executive presence per migrations
+- **Meetings** (admin) — schedule with date/time/place, attendees (flat-wise presence), discussion notes / minutes, decisions, **multiple photos and PDFs** (file-manager browse with multi-select), **reorder attachments**, optional audio; publish and notify members when ready
+- Related tables: `meetings`, `meeting_attendees`, `meeting_decisions`, `meeting_documents` (with `sort_order`), signatures / executive presence per migrations
 
 ### 🔔 Notifications & Push
 - **In-app notifications** — stored in the database with read/unread; **`read_at`** records when the recipient first opened the item (used for finance report read receipts and similar batched sends via **`delivery_batch_id`**)
@@ -272,7 +272,7 @@ npx cap run android  # or ios
 - **polls** — Community polls/voting
 - **poll_options** — Poll answer options
 - **poll_votes** — Individual votes cast
-- **meetings**, **meeting_attendees**, **meeting_decisions**, **meeting_documents** — Society meetings, attendance, decisions, attachments (see migrations)
+- **meetings**, **meeting_attendees**, **meeting_decisions**, **meeting_documents** (including **`sort_order`** for attachment display order) — Society meetings, attendance, decisions, attachments (see migrations)
 
 ### Notifications & Security
 - **notifications** — In-app notifications with targeting; optional **`delivery_batch_id`** (same UUID across a per-resident batch) and **`read_at`** (first open in app)
@@ -310,6 +310,7 @@ Apply all pending files under `supabase/migrations/` to your project (CLI **db p
 | `20260503100000` | Finance ledger (`finance_entries`, allocations, counterparties) |
 | `20260502154500` | Finance auto-reminder settings |
 | `20260510180000` + `20260510200000` | Meetings module + executives present |
+| `20260513120000` | `meeting_documents.sort_order` for attachment ordering |
 | `20260511120000` | Notifications `delivery_batch_id`, `read_at` |
 | `20260512100000` | RBAC: set `permissions.finance` true on existing `society_roles` |
 

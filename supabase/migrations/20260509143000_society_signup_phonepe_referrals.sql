@@ -104,19 +104,26 @@ ALTER TABLE public.society_wallet_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.society_referrals ENABLE ROW LEVEL SECURITY;
 
 -- IMPORTANT: For onboarding, we do NOT allow direct anon inserts; edge functions use service role.
-CREATE POLICY IF NOT EXISTS "Society signups readable by all (limited use)" ON public.society_signups
+-- (Postgres on Supabase does not support CREATE POLICY IF NOT EXISTS; use drop + create.)
+DROP POLICY IF EXISTS "Society signups readable by all (limited use)" ON public.society_signups;
+CREATE POLICY "Society signups readable by all (limited use)" ON public.society_signups
   FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Society orders readable by all (limited use)" ON public.society_orders
+DROP POLICY IF EXISTS "Society orders readable by all (limited use)" ON public.society_orders;
+CREATE POLICY "Society orders readable by all (limited use)" ON public.society_orders
   FOR SELECT USING (true);
 
 -- Lock down writes from client (service-role bypasses RLS anyway)
-CREATE POLICY IF NOT EXISTS "Society signups no client writes" ON public.society_signups
+DROP POLICY IF EXISTS "Society signups no client writes" ON public.society_signups;
+CREATE POLICY "Society signups no client writes" ON public.society_signups
   FOR ALL USING (false) WITH CHECK (false);
-CREATE POLICY IF NOT EXISTS "Society orders no client writes" ON public.society_orders
+DROP POLICY IF EXISTS "Society orders no client writes" ON public.society_orders;
+CREATE POLICY "Society orders no client writes" ON public.society_orders
   FOR ALL USING (false) WITH CHECK (false);
 
-CREATE POLICY IF NOT EXISTS "Society wallet ledger no client writes" ON public.society_wallet_ledger
+DROP POLICY IF EXISTS "Society wallet ledger no client writes" ON public.society_wallet_ledger;
+CREATE POLICY "Society wallet ledger no client writes" ON public.society_wallet_ledger
   FOR ALL USING (false) WITH CHECK (false);
-CREATE POLICY IF NOT EXISTS "Society referrals no client writes" ON public.society_referrals
+DROP POLICY IF EXISTS "Society referrals no client writes" ON public.society_referrals;
+CREATE POLICY "Society referrals no client writes" ON public.society_referrals
   FOR ALL USING (false) WITH CHECK (false);
 
