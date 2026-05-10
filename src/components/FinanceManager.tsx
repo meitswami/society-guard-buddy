@@ -2,16 +2,20 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { DollarSign, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet } from 'lucide-react';
+import { DollarSign, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
+import { FlatMultiSelect } from '@/components/FlatMultiSelect';
+import { flatOptionsWithPrimaryLabel } from '@/lib/flatMultiSelectOptions';
+import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
 
 interface Props {
   adminName?: string;
+  adminId?: string;
 }
 
 const normalizeTitle = (value: unknown) => String(value ?? '').trim().toLowerCase();
@@ -44,6 +48,37 @@ const paymentMonthLabel = (payment: any) => {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return 'Unknown month';
   return format(date, 'MMMM yyyy');
+};
+
+const defaultFinancePeriodFrom = () => {
+  const y = new Date().getFullYear();
+  return `${y}-04-01`;
+};
+
+const defaultFinancePeriodTo = () => format(new Date(), 'yyyy-MM-dd');
+
+const paymentVerifiedAtOrDate = (p: any) => String(p?.verified_at || p?.payment_date || p?.created_at || '');
+
+const normalizePaymentChannel = (method: unknown): 'cash' | 'bank' | 'other' => {
+  const x = String(method ?? 'cash')
+    .toLowerCase()
+    .replace(/\s/g, '');
+  if (x === 'cash') return 'cash';
+  if (
+    ['upi', 'bank_transfer', 'razorpay', 'online', 'card', 'neft', 'rtgs', 'imps', 'netbanking', 'cheque', 'dd'].some(
+      (k) => x === k || x.includes(k),
+    )
+  )
+    return 'bank';
+  return 'other';
+};
+
+const dateInInclusiveRange = (iso: string, fromYmd: string, toYmd: string) => {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return false;
+  const fromMs = new Date(`${fromYmd}T00:00:00`).getTime();
+  const toMs = new Date(`${toYmd}T23:59:59.999`).getTime();
+  return t >= fromMs && t <= toMs;
 };
 
 type FinanceLedgerRow = {
@@ -88,10 +123,10 @@ async function uploadPaymentReceipt(file: File): Promise<string | null> {
   return data.publicUrl;
 }
 
-const FinanceManager = ({ adminName = 'Admin' }: Props) => {
+const FinanceManager = ({ adminName = 'Admin', adminId }: Props) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
-  const [subTab, setSubTab] = useState<'maintenance' | 'payments' | 'receipts' | 'totals' | 'reminders'>('maintenance');
+  const [subTab, setSubTab] = useState<'maintenance' | 'payments' | 'receipts' | 'period' | 'totals' | 'reminders'>('maintenance');
   const [charges, setCharges] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<FinanceLedgerRow[]>([]);
@@ -135,6 +170,17 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
   const [paymentMonthFilter, setPaymentMonthFilter] = useState('all');
   const [receiptModeFilter, setReceiptModeFilter] = useState<'all' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only'>('all');
   const [totalsMonth, setTotalsMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [periodFrom, setPeriodFrom] = useState(defaultFinancePeriodFrom);
+  const [periodTo, setPeriodTo] = useState(defaultFinancePeriodTo);
+  const [societyName, setSocietyName] = useState('');
+  const [residentUsers, setResidentUsers] = useState<{ id: string; name: string; flat_number: string; flat_id: string }[]>([]);
+  const [reportAudience, setReportAudience] = useState<'all' | 'flats' | 'picked'>('all');
+  const [reportFlats, setReportFlats] = useState<string[]>([]);
+  const [reportResidentIds, setReportResidentIds] = useState<string[]>([]);
+  const [reportPushBusy, setReportPushBusy] = useState(false);
+  const [lastDeliveryBatchId, setLastDeliveryBatchId] = useState<string | null>(null);
+  const [readStatusOpen, setReadStatusOpen] = useState(false);
+  const [readStatusRows, setReadStatusRows] = useState<{ id: string; target_id: string | null; is_read: boolean; read_at: string | null }[]>([]);
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [selectedLedger, setSelectedLedger] = useState<FinanceLedgerRow | null>(null);
@@ -173,6 +219,8 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
       setPayments([]);
       setFlats([]);
       setPrimaryByFlatId(new Map());
+      setSocietyName('');
+      setResidentUsers([]);
       return;
     }
     const { data: f } = await supabase
@@ -191,6 +239,15 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
       if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
     }
     setPrimaryByFlatId(map);
+
+    const { data: soc } = await supabase.from('societies').select('name').eq('id', societyId).maybeSingle();
+    setSocietyName((soc as { name?: string } | null)?.name ?? '');
+
+    const ruRes =
+      flatIds.length > 0
+        ? await supabase.from('resident_users').select('id, name, flat_number, flat_id').in('flat_id', flatIds).order('flat_number')
+        : { data: [] as { id: string; name: string; flat_number: string; flat_id: string }[] };
+    setResidentUsers((ruRes.data ?? []) as { id: string; name: string; flat_number: string; flat_id: string }[]);
 
     const { data: reminderSetting } = await (supabase as any)
       .from('finance_reminder_settings')
@@ -255,7 +312,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
         .select('*')
         .in('charge_id', chargeIds)
         .order('created_at', { ascending: false })
-        .limit(300);
+        .limit(2500);
       payRows = p ?? [];
     }
     setPayments(payRows);
@@ -267,7 +324,7 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
       )
       .eq('society_id', societyId)
       .order('created_at', { ascending: false })
-      .limit(500);
+      .limit(2500);
     setLedgerEntries((led as FinanceLedgerRow[]) ?? []);
   };
 
@@ -1420,6 +1477,213 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
     [totalsBreakdown],
   );
 
+  const financePeriodReport = useMemo(() => {
+    const receiptByMethod = { cash: 0, bank: 0, other: 0 };
+    let verifiedPaymentCount = 0;
+    for (const p of payments) {
+      if (String(p.payment_status) !== 'verified') continue;
+      const d = paymentVerifiedAtOrDate(p);
+      if (!dateInInclusiveRange(d, periodFrom, periodTo)) continue;
+      const amt = Number(p.amount || 0);
+      const ch = normalizePaymentChannel(p.payment_method);
+      receiptByMethod[ch] += amt;
+      verifiedPaymentCount += 1;
+    }
+
+    const linkedFinanceEntryIds = new Set(
+      payments.map((p: any) => p.finance_entry_id).filter((id: unknown) => typeof id === 'string' && String(id).length > 0),
+    );
+
+    const expenseByMethod = { cash: 0, bank: 0, other: 0 };
+    const expenseByHead = new Map<string, { cash: number; bank: number; other: number; total: number }>();
+
+    let extraLedgerReceipt = 0;
+    for (const e of ledgerEntries) {
+      if (!dateInInclusiveRange(e.created_at, periodFrom, periodTo)) continue;
+      const amt = Number(e.total_amount || 0);
+      const ch = normalizePaymentChannel(e.payment_method);
+      if (e.destination === 'separate_entry') {
+        expenseByMethod[ch] += amt;
+        const head = (e.title || 'Society expense').trim() || 'Society expense';
+        const cur = expenseByHead.get(head) ?? { cash: 0, bank: 0, other: 0, total: 0 };
+        cur[ch] += amt;
+        cur.total += amt;
+        expenseByHead.set(head, cur);
+      } else if (e.destination === 'current_month_maintenance' || e.destination === 'corpus') {
+        if (!linkedFinanceEntryIds.has(e.id)) {
+          extraLedgerReceipt += amt;
+          receiptByMethod[ch] += amt;
+        }
+      }
+    }
+
+    const totalReceipts = receiptByMethod.cash + receiptByMethod.bank + receiptByMethod.other;
+    const totalExpenses = expenseByMethod.cash + expenseByMethod.bank + expenseByMethod.other;
+    const cashInHand = receiptByMethod.cash - expenseByMethod.cash;
+    const cashInBank = receiptByMethod.bank - expenseByMethod.bank;
+    const otherNet = receiptByMethod.other - expenseByMethod.other;
+    const totalBalance = cashInHand + cashInBank + otherNet;
+
+    return {
+      verifiedPaymentCount,
+      receiptByMethod,
+      totalReceipts,
+      expenseByMethod,
+      expenseByHead: [...expenseByHead.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+      totalExpenses,
+      cashInHand,
+      cashInBank,
+      otherNet,
+      totalBalance,
+      extraLedgerReceipt,
+    };
+  }, [periodFrom, periodTo, payments, ledgerEntries]);
+
+  const collectReportAudienceIds = (): string[] => {
+    if (reportAudience === 'all') return residentUsers.map((r) => r.id);
+    if (reportAudience === 'flats') {
+      const set = new Set<string>();
+      const nums = new Set(reportFlats.map((x) => String(x).trim()).filter(Boolean));
+      for (const r of residentUsers) {
+        if (nums.has(String(r.flat_number))) set.add(r.id);
+      }
+      return [...set];
+    }
+    return [...new Set(reportResidentIds.filter(Boolean))];
+  };
+
+  const downloadPeriodReportPdf = () => {
+    if (periodFrom > periodTo) {
+      toast.error('Fix the date range first');
+      return;
+    }
+    const blob = buildFinancePeriodReportPdfBlob({
+      societyName: societyName || 'Society',
+      periodFrom,
+      periodTo,
+      generatedAt: new Date().toLocaleString(),
+      receiptByMethod: financePeriodReport.receiptByMethod,
+      totalReceipts: financePeriodReport.totalReceipts,
+      expenseByHead: financePeriodReport.expenseByHead,
+      expenseByMethod: financePeriodReport.expenseByMethod,
+      totalExpenses: financePeriodReport.totalExpenses,
+      cashInHand: financePeriodReport.cashInHand,
+      cashInBank: financePeriodReport.cashInBank,
+      otherNet: financePeriodReport.otherNet,
+      totalBalance: financePeriodReport.totalBalance,
+      verifiedPaymentCount: financePeriodReport.verifiedPaymentCount,
+      extraLedgerReceipt: financePeriodReport.extraLedgerReceipt,
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `finance-report-${periodFrom}-to-${periodTo}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('PDF downloaded');
+  };
+
+  const sendPeriodReportToMembers = async () => {
+    if (!societyId || periodFrom > periodTo) {
+      toast.error('Check society and date range');
+      return;
+    }
+    const ids = collectReportAudienceIds();
+    if (ids.length === 0) {
+      toast.error('No residents match this audience');
+      return;
+    }
+    setReportPushBusy(true);
+    try {
+      const blob = buildFinancePeriodReportPdfBlob({
+        societyName: societyName || 'Society',
+        periodFrom,
+        periodTo,
+        generatedAt: new Date().toLocaleString(),
+        receiptByMethod: financePeriodReport.receiptByMethod,
+        totalReceipts: financePeriodReport.totalReceipts,
+        expenseByHead: financePeriodReport.expenseByHead,
+        expenseByMethod: financePeriodReport.expenseByMethod,
+        totalExpenses: financePeriodReport.totalExpenses,
+        cashInHand: financePeriodReport.cashInHand,
+        cashInBank: financePeriodReport.cashInBank,
+        otherNet: financePeriodReport.otherNet,
+        totalBalance: financePeriodReport.totalBalance,
+        verifiedPaymentCount: financePeriodReport.verifiedPaymentCount,
+        extraLedgerReceipt: financePeriodReport.extraLedgerReceipt,
+      });
+      const batchId = crypto.randomUUID();
+      const path = `finance-reports/${societyId}/${batchId}.pdf`;
+      const { error: upErr } = await supabase.storage.from('notification-media').upload(path, blob, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+      if (upErr) {
+        toast.error(upErr.message);
+        return;
+      }
+      const { data: pub } = supabase.storage.from('notification-media').getPublicUrl(path);
+      const pdfUrl = pub.publicUrl;
+      const title = `Finance report (${periodFrom} → ${periodTo})`;
+      const message = `Society finance period report is attached as PDF.\n\nTotal receipts: ₹${financePeriodReport.totalReceipts.toLocaleString('en-IN')}\nTotal expenses: ₹${financePeriodReport.totalExpenses.toLocaleString('en-IN')}\nBalance: ₹${financePeriodReport.totalBalance.toLocaleString('en-IN')}\n\nOpen PDF: ${pdfUrl}\n\nOpen the Alerts tab and tap this message — we record when you have seen it.`;
+      const chunk = 40;
+      for (let i = 0; i < ids.length; i += chunk) {
+        const slice = ids.slice(i, i + chunk);
+        const rows = slice.map((rid) => ({
+          title,
+          message,
+          type: 'finance_period_report',
+          target_type: 'user',
+          target_id: rid,
+          society_id: societyId,
+          created_by: adminName,
+          sound_key: 'digital',
+          sound_custom_url: null as string | null,
+          delivery_batch_id: batchId,
+          is_read: false,
+        }));
+        const { error: insErr } = await supabase.from('notifications').insert(rows);
+        if (insErr) {
+          toast.error(insErr.message);
+          return;
+        }
+      }
+      try {
+        await supabase.functions.invoke('send-push-notification', {
+          body: {
+            title,
+            message: `Finance report ${periodFrom}–${periodTo}. Open Alerts in the app.`,
+            target_type: 'user',
+            target_ids: ids,
+            society_id: societyId,
+            sound_key: 'digital',
+            sound_custom_url: '',
+          },
+        });
+      } catch (e) {
+        console.warn('Push invoke failed', e);
+      }
+      setLastDeliveryBatchId(batchId);
+      toast.success(`Sent to ${ids.length} resident(s). Open “Read receipts” to see who opened it.`);
+    } finally {
+      setReportPushBusy(false);
+    }
+  };
+
+  const loadReadStatusForBatch = async (batchId: string) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id, target_id, is_read, read_at')
+      .eq('delivery_batch_id', batchId)
+      .order('target_id');
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setReadStatusRows((data ?? []) as { id: string; target_id: string | null; is_read: boolean; read_at: string | null }[]);
+    setReadStatusOpen(true);
+  };
+
   const sendReminders = async () => {
     for (const flat of unpaidFlats) {
       await supabase.from('notifications').insert([
@@ -1569,21 +1833,22 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
       </div>
 
       <div className="flex gap-1 mb-4 overflow-x-auto">
-        {(['maintenance', 'payments', 'receipts', 'totals', 'reminders'] as const).map((s) => (
+        {(
+          [
+            { id: 'maintenance' as const, label: '📋 Charges' },
+            { id: 'payments' as const, label: '💰 Record Reciept' },
+            { id: 'receipts' as const, label: '🧾 Receipts' },
+            { id: 'period' as const, label: '📅 Period report' },
+            { id: 'totals' as const, label: '📊 Totals' },
+            { id: 'reminders' as const, label: '🔔 Reminders' },
+          ] as const
+        ).map(({ id: s, label }) => (
           <button
             key={s}
             onClick={() => setSubTab(s)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${subTab === s ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}
           >
-            {s === 'maintenance'
-              ? '📋 Charges'
-              : s === 'payments'
-                ? '💰 Record Reciept'
-                : s === 'receipts'
-                  ? '🧾 Receipts'
-                  : s === 'totals'
-                    ? '📊 Totals'
-                    : '🔔 Reminders'}
+            {label}
           </button>
         ))}
       </div>
@@ -2644,6 +2909,165 @@ const FinanceManager = ({ adminName = 'Admin' }: Props) => {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {subTab === 'period' && (
+        <div className="space-y-4">
+          <div className="card-section p-4 flex flex-wrap items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <CalendarRange className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-[220px] space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold">Finance period report</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Collections from flat owners and outsiders (verified maintenance receipts), plus ledger-only inflows.
+                  Expenses are ledger entries marked <span className="font-medium">separate entry</span>, split by payment channel and head.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="text-xs flex flex-col gap-1">
+                  <span className="text-muted-foreground">Opening (from)</span>
+                  <input type="date" className="input-field" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+                </label>
+                <label className="text-xs flex flex-col gap-1">
+                  <span className="text-muted-foreground">Closing (to)</span>
+                  <input type="date" className="input-field" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+                </label>
+              </div>
+              {periodFrom > periodTo && (
+                <p className="text-xs text-destructive">Closing date must be on or after the opening date.</p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary text-xs px-3 py-2"
+                  onClick={() => {
+                    setPeriodFrom(defaultFinancePeriodFrom());
+                    setPeriodTo(defaultFinancePeriodTo());
+                  }}
+                >
+                  Reset to FY (1 Apr → today)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-section p-4 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collection receipts (verified)</p>
+            <p className="text-[11px] text-muted-foreground">
+              {financePeriodReport.verifiedPaymentCount} maintenance receipt row(s) in range; ledger-only inflows added: ₹
+              {financePeriodReport.extraLedgerReceipt.toLocaleString('en-IN')}
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border border-border rounded-md overflow-hidden">
+                <thead>
+                  <tr className="bg-muted/50 text-left">
+                    <th className="p-2 border-b border-border">Head</th>
+                    <th className="p-2 border-b border-border text-right">Cash</th>
+                    <th className="p-2 border-b border-border text-right">Bank / UPI / online</th>
+                    <th className="p-2 border-b border-border text-right">Other</th>
+                    <th className="p-2 border-b border-border text-right font-semibold">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="p-2 border-b border-border/80">Verified collections</td>
+                    <td className="p-2 border-b border-border/80 text-right font-mono">
+                      ₹{financePeriodReport.receiptByMethod.cash.toLocaleString('en-IN')}
+                    </td>
+                    <td className="p-2 border-b border-border/80 text-right font-mono">
+                      ₹{financePeriodReport.receiptByMethod.bank.toLocaleString('en-IN')}
+                    </td>
+                    <td className="p-2 border-b border-border/80 text-right font-mono">
+                      ₹{financePeriodReport.receiptByMethod.other.toLocaleString('en-IN')}
+                    </td>
+                    <td className="p-2 border-b border-border/80 text-right font-mono font-semibold">
+                      ₹{financePeriodReport.totalReceipts.toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-section p-4 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Expenses (head-wise)</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border border-border rounded-md overflow-hidden">
+                <thead>
+                  <tr className="bg-muted/50 text-left">
+                    <th className="p-2 border-b border-border">Expense head</th>
+                    <th className="p-2 border-b border-border text-right">Cash</th>
+                    <th className="p-2 border-b border-border text-right">Bank / UPI / online</th>
+                    <th className="p-2 border-b border-border text-right">Other</th>
+                    <th className="p-2 border-b border-border text-right font-semibold">Row total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {financePeriodReport.expenseByHead.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center text-muted-foreground">
+                        No separate-entry expenses in this period.
+                      </td>
+                    </tr>
+                  ) : (
+                    financePeriodReport.expenseByHead.map(([head, v]) => (
+                      <tr key={head}>
+                        <td className="p-2 border-b border-border/80 max-w-[200px] truncate" title={head}>
+                          {head}
+                        </td>
+                        <td className="p-2 border-b border-border/80 text-right font-mono">₹{v.cash.toLocaleString('en-IN')}</td>
+                        <td className="p-2 border-b border-border/80 text-right font-mono">₹{v.bank.toLocaleString('en-IN')}</td>
+                        <td className="p-2 border-b border-border/80 text-right font-mono">₹{v.other.toLocaleString('en-IN')}</td>
+                        <td className="p-2 border-b border-border/80 text-right font-mono font-semibold">₹{v.total.toLocaleString('en-IN')}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/30 font-semibold">
+                    <td className="p-2">All expenses</td>
+                    <td className="p-2 text-right font-mono">₹{financePeriodReport.expenseByMethod.cash.toLocaleString('en-IN')}</td>
+                    <td className="p-2 text-right font-mono">₹{financePeriodReport.expenseByMethod.bank.toLocaleString('en-IN')}</td>
+                    <td className="p-2 text-right font-mono">₹{financePeriodReport.expenseByMethod.other.toLocaleString('en-IN')}</td>
+                    <td className="p-2 text-right font-mono">₹{financePeriodReport.totalExpenses.toLocaleString('en-IN')}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="stat-card flex flex-col gap-1">
+              <span className="text-[10px] text-muted-foreground uppercase">Cash in hand (net)</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.cashInHand >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                ₹{financePeriodReport.cashInHand.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-muted-foreground">Receipts cash − expense cash</span>
+            </div>
+            <div className="stat-card flex flex-col gap-1">
+              <span className="text-[10px] text-muted-foreground uppercase">Cash in bank (net)</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.cashInBank >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                ₹{financePeriodReport.cashInBank.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-muted-foreground">UPI / transfer / online − same</span>
+            </div>
+            <div className="stat-card flex flex-col gap-1">
+              <span className="text-[10px] text-muted-foreground uppercase">Other channels (net)</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.otherNet >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                ₹{financePeriodReport.otherNet.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="stat-card flex flex-col gap-1 border-primary/30 bg-primary/5">
+              <span className="text-[10px] text-muted-foreground uppercase">Total balance (all)</span>
+              <span className={`text-xl font-bold font-mono ${financePeriodReport.totalBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                ₹{financePeriodReport.totalBalance.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-muted-foreground">Cash in hand + bank + other</span>
+            </div>
+          </div>
         </div>
       )}
 

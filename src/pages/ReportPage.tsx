@@ -241,7 +241,7 @@ const ReportPage = () => {
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `daily-report-${date}.csv`; a.click();
+    a.href = url; a.download = `report-${date}.csv`; a.click();
   };
 
   return (

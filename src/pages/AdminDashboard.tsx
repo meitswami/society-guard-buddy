@@ -194,7 +194,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         </div>
       );
       case 'audit': return <AuditLogViewer />;
-      case 'finance': return <FinanceManager adminName={admin.name} />;
+      case 'finance': return <FinanceManager adminName={admin.name} adminId={admin.id} />;
       case 'donations': return <DonationManager adminName={admin.name} />;
       case 'events': return <EventManager adminName={admin.name} />;
       case 'meetings': return <MeetingManager adminName={admin.name} />;

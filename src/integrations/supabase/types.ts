@@ -1569,10 +1569,12 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          delivery_batch_id: string | null
           id: string
           is_read: boolean
           message: string
           media_items: unknown
+          read_at: string | null
           society_id: string | null
           sound_custom_url: string | null
           sound_key: string
@@ -1584,10 +1586,12 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          delivery_batch_id?: string | null
           id?: string
           is_read?: boolean
           message: string
           media_items?: unknown
+          read_at?: string | null
           society_id?: string | null
           sound_custom_url?: string | null
           sound_key?: string
@@ -1599,10 +1603,12 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          delivery_batch_id?: string | null
           id?: string
           is_read?: boolean
           message?: string
           media_items?: unknown
+          read_at?: string | null
           society_id?: string | null
           sound_custom_url?: string | null
           sound_key?: string

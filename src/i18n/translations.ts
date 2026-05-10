@@ -657,7 +657,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'logs.guard': { en: 'Guard', hi: 'गार्ड' },
 
   // Report
-  'report.title': { en: 'Daily Report', hi: 'दैनिक रिपोर्ट' },
+  'report.title': { en: 'Report', hi: 'रिपोर्ट' },
   'report.subtitle': { en: 'Summary & export', hi: 'सारांश और निर्यात' },
   'report.guardShifts': { en: 'Guard Shifts', hi: 'गार्ड शिफ्ट' },
   'report.noShifts': { en: 'No shifts recorded', hi: 'कोई शिफ्ट दर्ज नहीं' },
