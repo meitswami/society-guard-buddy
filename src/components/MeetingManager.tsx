@@ -402,6 +402,32 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     else void loadMeetings();
   };
 
+  const onMeetingStatusChange = async (v: string) => {
+    if (!selectedId || !selected || v === selected.status) return;
+    const ok = await confirmAction(
+      'Change meeting status?',
+      `Set status to “${v}”.`,
+      'Update',
+      'Cancel',
+    );
+    if (!ok) return;
+    await persistMeetingPatch({ status: v } as Partial<MeetingRow>);
+  };
+
+  const onPublishedToggle = async (nextPublished: boolean) => {
+    if (!selectedId) return;
+    const ok = await confirmAction(
+      nextPublished ? 'Mark as published?' : 'Unpublish meeting?',
+      nextPublished
+        ? 'Residents will be able to open this meeting from their dashboard.'
+        : 'Residents may no longer see this as published until you publish again.',
+      nextPublished ? 'Publish' : 'Unpublish',
+      'Cancel',
+    );
+    if (!ok) return;
+    await persistMeetingPatch({ published: nextPublished } as Partial<MeetingRow>);
+  };
+
   const saveNotesDraft = async (opts?: { skipConfirm?: boolean; silent?: boolean }) => {
     if (!selectedId) return;
     if (!opts?.skipConfirm) {
@@ -1245,7 +1271,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
                   <Label className="text-xs">Status</Label>
-                  <Select value={selected.status} onValueChange={(v) => void persistMeetingPatch({ status: v } as Partial<MeetingRow>)}>
+                  <Select value={selected.status} onValueChange={(v) => void onMeetingStatusChange(v)}>
                     <SelectTrigger className="h-9">
                       <SelectValue />
                     </SelectTrigger>
@@ -1261,7 +1287,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                   <input
                     type="checkbox"
                     checked={selected.published}
-                    onChange={(e) => void persistMeetingPatch({ published: e.target.checked })}
+                    onChange={(e) => void onPublishedToggle(e.target.checked)}
                   />
                   Published (residents can open)
                 </label>
@@ -1432,6 +1458,54 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                   <Users className="w-3 h-3" /> Attendance list (flat + guests)
                 </Label>
               </div>
+              {!isResident && attendees.length > 0 && (
+                <div className="flex flex-wrap gap-2 items-center py-2 px-2 rounded-lg bg-muted/30 border border-border text-[11px]">
+                  <span className="text-muted-foreground font-medium shrink-0">{attendeeSelection.size} selected</span>
+                  <Button type="button" size="sm" variant="outline" className="h-8 text-[11px]" onClick={selectAllAttendeeIds}>
+                    Select all
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-[11px]"
+                    disabled={attendeeSelection.size === 0}
+                    onClick={clearAttendeeSelection}
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 text-[11px]"
+                    disabled={attendeeSelection.size === 0}
+                    onClick={() => void bulkMarkAttendeesPresent()}
+                  >
+                    Mark present
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 text-[11px]"
+                    disabled={attendeeSelection.size === 0}
+                    onClick={() => void bulkMarkAttendeesAbsent()}
+                  >
+                    Mark absent
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 text-[11px]"
+                    disabled={attendeeSelection.size === 0}
+                    onClick={() => void bulkRemoveAttendees()}
+                  >
+                    Remove selected
+                  </Button>
+                </div>
+              )}
               {!isResident && (
                 <div className="flex flex-col gap-2 mt-2">
                   <div className="flex flex-wrap gap-2 items-end">
@@ -1464,21 +1538,39 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                   </div>
                 </div>
               )}
-              <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+              <ul className="mt-2 space-y-1 max-h-56 overflow-y-auto">
                 {attendees.map((a) => (
                   <li key={a.id} className="flex items-center justify-between text-sm gap-2">
-                    <span className="min-w-0 truncate">
-                      {a.display_name}
-                      {a.flat_number ? <span className="text-muted-foreground"> · {a.flat_number}</span> : null}
-                      <span className="text-[10px] text-muted-foreground ml-1">({a.attendee_role})</span>
-                    </span>
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      {!isResident && (
+                        <input
+                          type="checkbox"
+                          className="rounded border-border shrink-0"
+                          checked={attendeeSelection.has(a.id)}
+                          onChange={() => toggleAttendeeSelected(a.id)}
+                          aria-label={`Select ${a.display_name}`}
+                        />
+                      )}
+                      <span className="min-w-0 truncate">
+                        {a.display_name}
+                        {a.flat_number ? <span className="text-muted-foreground"> · {a.flat_number}</span> : null}
+                        <span className="text-[10px] text-muted-foreground ml-1">({a.attendee_role})</span>
+                      </span>
+                    </div>
                     {!isResident && (
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
                           className="p-1 rounded hover:bg-muted"
-                          title="Present"
+                          title="Toggle present"
                           onClick={async () => {
+                            const ok = await confirmAction(
+                              a.is_present ? 'Mark absent?' : 'Mark present?',
+                              `Update attendance for ${a.display_name}.`,
+                              'Update',
+                              'Cancel',
+                            );
+                            if (!ok) return;
                             await supabase.from('meeting_attendees').update({ is_present: !a.is_present }).eq('id', a.id);
                             void loadDetail(selected.id);
                           }}
