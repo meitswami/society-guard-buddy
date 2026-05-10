@@ -30,7 +30,7 @@ export const NEW_CUSTOM_ROLE_PERMISSIONS: AdminPanelPermissions = {
   residents_rw: false,
   guards_rw: false,
   geofence_rw: false,
-  finance: false,
+  finance: true,
   donations: false,
   splits: false,
   events: false,
