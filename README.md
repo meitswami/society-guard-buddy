@@ -60,7 +60,12 @@ A comprehensive, mobile-first multi-society gate management application built fo
 - **Payment tracking** — residents pay via Cash, UPI, or upload payment screenshots
 - **Admin verification** — treasurer/admin verifies & approves each payment with receipt
 - **Payment status** — pending, verified, rejected statuses with full audit trail
-- **Auto-reminders** — daily cron job at 9 AM sends push + in-app reminders for unpaid dues
+- **Ledger / receipts** — `finance_entries` (flat + outsider flows, separate-entry expenses) with per-flat allocations; linked to verified maintenance payments where applicable
+- **Auto-reminders** — configurable schedule (`finance_reminder_settings`); cron + Edge Function sends push + in-app reminders for unpaid dues
+- **Period report** (Finance → *Period report*) — default range financial year (1 Apr → today), adjustable: verified collections by cash / bank / other, expenses head-wise (separate-entry ledger), footer balances (cash in hand, bank, other, total)
+- **PDF export** — download the same period summary as a PDF (client-side jsPDF)
+- **Send report to members** — upload PDF to `notification-media`, create one in-app notification per resident (`target_type: user`) with a shared `delivery_batch_id`; optional **push** via `send-push-notification`; audience: **all residents**, **selected flats**, or **hand-picked residents**
+- **Read receipts** — when a resident opens an alert, the app sets `read_at` (and read); admins can open **Read receipts** on the period tab to see who has seen that send
 
 ### 🎁 Donation Management
 - Create donation campaigns with target amounts & deadlines
@@ -82,13 +87,17 @@ A comprehensive, mobile-first multi-society gate management application built fo
 - Residents vote from their dashboard
 - Live percentage-based results
 
+### 📋 Society Meetings
+- **Meetings** (admin) — schedule with date/time/place, attendees (flat-wise presence), discussion notes / minutes, decisions, document uploads, optional audio; publish and notify members when ready
+- Related tables: `meetings`, `meeting_attendees`, `meeting_decisions`, `meeting_documents`, signatures / executive presence per migrations
+
 ### 🔔 Notifications & Push
-- **In-app notifications** — stored in the database with read/unread status
+- **In-app notifications** — stored in the database with read/unread; **`read_at`** records when the recipient first opened the item (used for finance report read receipts and similar batched sends via **`delivery_batch_id`**)
 - **Web push** — **Firebase Cloud Messaging (FCM)** for web: device tokens in `fcm_web_tokens`; the `send-push-notification` Edge Function sends via FCM when `FIREBASE_SERVICE_ACCOUNT_JSON` is configured
 - **OneSignal** — web SDK registers users/tags; Edge Function **falls back** to the OneSignal REST API when FCM service-account JSON is not set (`ONESIGNAL_REST_API_KEY`)
-- **Targeted sending** — admin can send to all residents, specific flats (multi-select), or specific persons (multi-select)
+- **Targeted sending** — admin can send to all residents, specific flats (multi-select), or specific persons (multi-select); finance period report uses the same targeting model
 - **Auto-reminders** — scheduled push + in-app reminders for unpaid maintenance dues (cron + Edge Function)
-- Notification types: General, Alert, Event, Payment Reminder
+- Notification types include: General, Alert, Event, Payment Reminder, and **`finance_period_report`** (period PDF + link to each resident)
 
 ### 🅿️ Parking Management
 - Add parking spaces with floor levels & types (car/bike/visitor)
@@ -102,11 +111,11 @@ A comprehensive, mobile-first multi-society gate management application built fo
 - Admin password change
 - Biometric setup
 - Full audit log viewer with filters
-- Full access to all modules (reports, logs, finance, etc.)
+- **RBAC** — panel tabs (including **Finance**) follow `society_roles.permissions` JSON; admins with **no** `role_id` keep full access (legacy). New custom roles default **Finance on** in code; a migration can backfill `finance: true` for existing roles (see migrations list below)
 
 ### 👑 Super Admin Features
 - Create & manage multiple societies
-- Define custom RBAC roles (President, Secretary, Treasurer, etc.)
+- Define custom RBAC roles (President, Secretary, Treasurer, etc.) with per-tab booleans in `permissions`
 - Appoint society-specific admins with roles
 - Society branding (logo, contact person, email, phone)
 
@@ -136,6 +145,7 @@ A comprehensive, mobile-first multi-society gate management application built fo
 | Auth (app) | Society-scoped credentials in Supabase tables (guards, admins, residents, super admins); **Firebase Auth** optional for **SMS / phone OTP** resident flows when `VITE_FIREBASE_*` is set |
 | Push | **FCM** (web tokens + HTTP v1 from Edge Functions) with **OneSignal** as alternate web registration / REST fallback |
 | UI | shadcn/ui (Radix), Lucide icons |
+| PDF (finance period report) | jsPDF |
 | Alerts | SweetAlert2, Sonner |
 | i18n | Custom context-based translation (English / Hindi) |
 | Native | Capacitor (Android / iOS) |
@@ -244,7 +254,11 @@ npx cap run android  # or ios
 
 ### Finance
 - **maintenance_charges** — Recurring maintenance fee definitions
-- **maintenance_payments** — Payment records with verification workflow
+- **maintenance_payments** — Payment records with verification workflow (optional `finance_entry_id` link to ledger)
+- **finance_entries** — Ledger rows (record mode, destination, amounts, payment method/status, separate-entry expenses)
+- **finance_entry_allocations** — Per-flat amounts on a ledger entry
+- **finance_entry_counterparties** — Outsider / counterparty on an entry
+- **finance_reminder_settings** — Society-level auto-reminder on/off and schedule
 - **donation_campaigns** — Fundraising campaigns with targets
 - **donation_payments** — Individual donation contributions
 - **expense_groups** — Splitwise-style expense groups
@@ -258,9 +272,10 @@ npx cap run android  # or ios
 - **polls** — Community polls/voting
 - **poll_options** — Poll answer options
 - **poll_votes** — Individual votes cast
+- **meetings**, **meeting_attendees**, **meeting_decisions**, **meeting_documents** — Society meetings, attendance, decisions, attachments (see migrations)
 
 ### Notifications & Security
-- **notifications** — In-app notifications with targeting
+- **notifications** — In-app notifications with targeting; optional **`delivery_batch_id`** (same UUID across a per-resident batch) and **`read_at`** (first open in app)
 - **fcm_web_tokens** — FCM web push tokens per user / society (when Firebase web push is enabled)
 - **parking_spaces** — Parking allocation management
 - **geofence_settings** — GPS-based login boundary
@@ -285,6 +300,22 @@ npm run build          # production bundle
 ```
 
 See **Configuration** below for required environment variables.
+
+### Supabase migrations (recent capabilities)
+
+Apply all pending files under `supabase/migrations/` to your project (CLI **db push** / linked remote, or SQL editor). Notable additions:
+
+| Migration (prefix) | Purpose |
+|--------------------|--------|
+| `20260503100000` | Finance ledger (`finance_entries`, allocations, counterparties) |
+| `20260502154500` | Finance auto-reminder settings |
+| `20260510180000` + `20260510200000` | Meetings module + executives present |
+| `20260511120000` | Notifications `delivery_batch_id`, `read_at` |
+| `20260512100000` | RBAC: set `permissions.finance` true on existing `society_roles` |
+
+Storage bucket **`notification-media`** is used for alert attachments and finance report PDFs (`finance-reports/{societyId}/{batchId}.pdf`).
+
+**Main code touchpoints:** `src/components/FinanceManager.tsx` (period tab, PDF download, send, read-receipt dialog), `src/lib/financePeriodReportPdf.ts`, `src/components/NotificationCenter.tsx` (marks `read_at` when read), `src/lib/adminPermissions.ts` (default `finance` for new custom roles), `src/pages/AdminDashboard.tsx` (passes admin into Finance), Edge Function `supabase/functions/send-push-notification`.
 
 ### Configuration
 
@@ -331,7 +362,8 @@ Password: resident123
 1. Configure **FCM** (`VITE_FIREBASE_VAPID_KEY` + service account on the Edge Function) and/or **OneSignal** per `.env.example`.
 2. Sign in as any user type; the app registers for push where configured.
 3. Allow notification permission in the browser when prompted.
-4. Admins can send targeted notifications from the Notifications UI; use the in-app diagnostics if delivery fails.
+4. Admins can send targeted notifications from the **Notify** tab; finance period reports use the same Edge Function with `target_type: user` and resident ids. Residents receive items under **Alerts**; opening an alert records **`read_at`** for read-receipt flows.
+5. Use in-app diagnostics if delivery fails.
 
 ### Biometric Setup
 1. Login with password first
@@ -349,6 +381,10 @@ Password: resident123
 ## 🗺 Roadmap
 
 Planned **V2** themes (RBAC editor, guard-friendly voice flows, optional AI) are described in [`docs/PRODUCT-V2.md`](docs/PRODUCT-V2.md).
+
+## 📝 Changelog
+
+Release notes and migration-oriented summaries live in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## 📄 License
 
