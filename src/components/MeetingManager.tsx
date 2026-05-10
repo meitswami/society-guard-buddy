@@ -243,14 +243,19 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const speechRef = useRef<{ stop: () => void } | null>(null);
+  /** Only load drafts from the server when switching to another meeting — not after each auto-save refetch (avoids wiping in-progress typing). */
+  const lastHydratedMeetingIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!selected) {
+      lastHydratedMeetingIdRef.current = null;
       setNotesDraft({ discussion: '', minutes: '' });
       setExecutivesDraft('');
       setMetaDraft({ title: '', meetingDate: '', meetingTime: '', location: '' });
       return;
     }
+    if (lastHydratedMeetingIdRef.current === selected.id) return;
+    lastHydratedMeetingIdRef.current = selected.id;
     setNotesDraft({
       discussion: selected.discussion_notes ?? '',
       minutes: selected.minutes_summary ?? '',
@@ -262,7 +267,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       meetingTime: toTimeInput(selected.meeting_at),
       location: selected.location ?? '',
     });
-  }, [selected?.id, selected?.discussion_notes, selected?.minutes_summary, selected?.executives_present, selected?.title, selected?.meeting_at, selected?.location]);
+  }, [selected]);
 
   useEffect(() => {
     setDecisionDrafts((prev) => {
@@ -422,20 +427,22 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
 
   const flushMeetingDraftsToServer = useCallback(
     async (opts?: { manual?: boolean; quiet?: boolean }): Promise<boolean> => {
-      if (!selectedId || !selected || isResident) return false;
+      if (!selectedId || isResident) return false;
+      const server = meetings.find((m) => m.id === selectedId);
+      if (!server) return false;
       const patch: Partial<MeetingRow> = {};
       const mt = metaDraft.title.trim() || 'Meeting';
-      if (mt !== (selected.title ?? '').trim()) patch.title = mt;
+      if (mt !== (server.title ?? '').trim()) patch.title = mt;
       const meeting_at = combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime);
-      if (meeting_at !== selected.meeting_at) patch.meeting_at = meeting_at;
-      if (normText(metaDraft.location) !== normText(selected.location)) patch.location = normText(metaDraft.location);
-      if (normText(notesDraft.discussion) !== normText(selected.discussion_notes)) {
+      if (meeting_at !== server.meeting_at) patch.meeting_at = meeting_at;
+      if (normText(metaDraft.location) !== normText(server.location)) patch.location = normText(metaDraft.location);
+      if (normText(notesDraft.discussion) !== normText(server.discussion_notes)) {
         patch.discussion_notes = normText(notesDraft.discussion);
       }
-      if (normText(notesDraft.minutes) !== normText(selected.minutes_summary)) {
+      if (normText(notesDraft.minutes) !== normText(server.minutes_summary)) {
         patch.minutes_summary = normText(notesDraft.minutes);
       }
-      if (normText(executivesDraft) !== normText(selected.executives_present)) {
+      if (normText(executivesDraft) !== normText(server.executives_present)) {
         patch.executives_present = normText(executivesDraft);
       }
       if (Object.keys(patch).length === 0) {
@@ -455,39 +462,38 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       if (opts?.manual && !opts?.quiet) toast.success('Saved');
       return true;
     },
-    [selectedId, selected, isResident, metaDraft, notesDraft, executivesDraft],
+    [selectedId, meetings, isResident, metaDraft, notesDraft, executivesDraft],
   );
 
   const flushDecisionDraftsToServer = useCallback(async () => {
     if (!selectedId || isResident) return;
-    let changed = 0;
-    for (const d of decisions) {
+    const pending = decisions.filter((d) => {
       const draft = decisionDrafts[d.id];
-      if (draft === undefined) continue;
-      if (draft === d.decision_text) continue;
+      return draft !== undefined && draft !== d.decision_text;
+    });
+    if (pending.length === 0) return;
+    setAutosaveStatus('saving');
+    for (const d of pending) {
+      const draft = decisionDrafts[d.id]!;
       const { error } = await supabase.from('meeting_decisions').update({ decision_text: draft }).eq('id', d.id);
       if (error) {
         toast.error(error.message);
         setAutosaveStatus('error');
         return;
       }
-      changed += 1;
     }
-    if (changed > 0) {
-      setAutosaveStatus('saving');
-      setLastSavedAt(Date.now());
-      setAutosaveStatus('saved');
-      void loadDetail(selectedId);
-    }
+    setAutosaveStatus('saved');
+    setLastSavedAt(Date.now());
+    void loadDetail(selectedId);
   }, [selectedId, isResident, decisions, decisionDrafts]);
 
   useEffect(() => {
-    if (!selectedId || isResident || !selected) return;
+    if (!selectedId || isResident) return;
     const tid = setTimeout(() => {
       void flushMeetingDraftsToServer();
     }, 1000);
     return () => clearTimeout(tid);
-  }, [metaDraft, notesDraft, executivesDraft, selectedId, isResident, selected, flushMeetingDraftsToServer]);
+  }, [metaDraft, notesDraft, executivesDraft, selectedId, isResident, flushMeetingDraftsToServer]);
 
   useEffect(() => {
     if (!selectedId || isResident) return;
@@ -529,8 +535,13 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     await persistMeetingPatch({ published: nextPublished } as Partial<MeetingRow>);
   };
 
-  /** Immediate save of all meeting header / notes / executives fields (same payload as auto-save). */
-  const saveAllMeetingFieldsNow = () => void flushMeetingDraftsToServer({ manual: true });
+  /** Immediate save of decision lines plus meeting header / notes / executives (bypasses debounce). */
+  const saveAllMeetingFieldsNow = () => {
+    void (async () => {
+      await flushDecisionDraftsToServer();
+      await flushMeetingDraftsToServer({ manual: true });
+    })();
+  };
 
   const createMeeting = async () => {
     if (!societyId || !newForm.title.trim()) return;
@@ -790,7 +801,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     if (!selectedId) return;
     const next = decisions.length;
     const { error } = await supabase.from('meeting_decisions').insert([
-      { meeting_id: selectedId, decision_text: 'Decision (edit below, then tap away)', sort_order: next },
+      { meeting_id: selectedId, decision_text: 'New decision — edit below (auto-saves)', sort_order: next },
     ]);
     if (error) toast.error(error.message);
     else void loadDetail(selectedId);
@@ -993,8 +1004,8 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       'Cancel',
     );
     if (!ok) return;
-    await saveNotesDraft({ skipConfirm: true, silent: true });
-    await saveExecutives({ skipConfirm: true, silent: true });
+    await flushDecisionDraftsToServer();
+    await flushMeetingDraftsToServer({ manual: true, quiet: true });
     await persistMeetingPatch({ published: true } as Partial<MeetingRow>);
     const title = `Minutes: ${metaDraft.title || selected?.title || 'Meeting'}`;
     const body =
@@ -1234,6 +1245,31 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
             </div>
 
             {!isResident && (
+              <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5 space-y-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-[11px] text-muted-foreground leading-snug min-w-0 flex-1">
+                    <span className="font-semibold text-foreground">Auto-save</span> — title, schedule, venue, discussion, minutes, and executives save about{' '}
+                    <span className="font-medium text-foreground">1 second</span> after you stop typing. Decision lines save the same way.{' '}
+                    <span className="font-medium text-foreground">Everything stays editable</span> at any stage (draft, scheduled, published, completed).
+                  </p>
+                  <Button type="button" size="sm" variant="secondary" className="shrink-0 text-xs" onClick={saveAllMeetingFieldsNow}>
+                    Save all fields now
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {autosaveStatus === 'saving' && <span className="text-amber-600 font-medium">Saving…</span>}
+                  {autosaveStatus === 'error' && <span className="text-destructive font-medium">Save failed — check connection</span>}
+                  {autosaveStatus === 'saved' && lastSavedAt && (
+                    <span className="text-green-600 font-medium">Last saved {new Date(lastSavedAt).toLocaleTimeString()}</span>
+                  )}
+                  {autosaveStatus === 'idle' && lastSavedAt && (
+                    <span>Last saved {new Date(lastSavedAt).toLocaleTimeString()}</span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {!isResident && (
               <>
                 <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Date, time & place</p>
@@ -1247,9 +1283,6 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                     onChange={(e) => setMetaDraft((p) => ({ ...p, location: e.target.value }))}
                     placeholder="Place / venue"
                   />
-                  <Button type="button" size="sm" variant="secondary" onClick={() => void saveMeetingMeta()}>
-                    Save date, time & place
-                  </Button>
                 </div>
 
                 <div className="border border-border rounded-lg p-3 space-y-2">
@@ -1260,9 +1293,6 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                     onChange={(e) => setExecutivesDraft(e.target.value)}
                     placeholder={'One name & role per line, e.g.\nPresident — R. Mehta\nTreasurer — S. Khan'}
                   />
-                  <Button type="button" size="sm" variant="secondary" onClick={() => void saveExecutives()}>
-                    Save executive list
-                  </Button>
                 </div>
 
                 <div className="border border-border rounded-lg p-3 space-y-2">
@@ -1377,9 +1407,6 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                       {dictationOn ? <MicOff className="w-4 h-4 mr-1" /> : <Mic className="w-4 h-4 mr-1" />}
                       {dictationOn ? 'Stop dictation' : 'Dictate into minutes'}
                     </Button>
-                    <Button type="button" variant="secondary" size="sm" onClick={() => void saveNotesDraft()}>
-                      Save discussion & minutes
-                    </Button>
                   </div>
                 </>
               )}
@@ -1487,8 +1514,14 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                       <>
                         <textarea
                           className="input-field flex-1 min-h-[60px] text-sm"
-                          defaultValue={d.decision_text}
-                          onBlur={(e) => void updateDecisionText(d.id, e.target.value)}
+                          value={decisionDrafts[d.id] ?? d.decision_text}
+                          onChange={(e) =>
+                            setDecisionDrafts((prev) => ({
+                              ...prev,
+                              [d.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="Decision text — auto-saves after you pause typing"
                         />
                         <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => void removeDecision(d.id)}>
                           <Trash2 className="w-4 h-4 text-destructive" />

@@ -88,7 +88,7 @@ A comprehensive, mobile-first multi-society gate management application built fo
 - Live percentage-based results
 
 ### 📋 Society Meetings
-- **Meetings** (admin) — schedule with date/time/place, attendees (flat-wise presence, **multi-select / select all** + bulk present/absent/remove), discussion notes / minutes, decisions, **multiple photos and PDFs** (file-manager browse with multi-select), **reorder attachments**, optional audio; publish and notify members when ready (SweetAlert2 confirms on saves and deletes in this module)
+- **Meetings** (admin) — schedule with date/time/place, attendees (flat-wise presence, **multi-select / select all** + bulk present/absent/remove), discussion notes / minutes, decisions, **multiple photos and PDFs** (file-manager browse with multi-select), **reorder attachments**, optional audio; **auto-save** after typing pauses plus **Save all fields now**; all sections stay editable through draft / published; publish and notify when ready (SweetAlert2 on destructive or high-impact actions in this module)
 - Related tables: `meetings`, `meeting_attendees`, `meeting_decisions`, `meeting_documents` (with `sort_order`), signatures / executive presence per migrations
 
 ### 🔔 Notifications & Push
