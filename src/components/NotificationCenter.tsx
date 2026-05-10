@@ -221,7 +221,8 @@ const NotificationCenter = ({
   };
 
   const markRead = async (id: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    const readAt = new Date().toISOString();
+    await supabase.from('notifications').update({ is_read: true, read_at: readAt }).eq('id', id);
     loadNotifications();
   };
 
@@ -235,7 +236,11 @@ const NotificationCenter = ({
     if (isResident) {
       const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
       if (ids.length === 0) return;
-      const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', ids);
+      const readAt = new Date().toISOString();
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true, read_at: readAt })
+        .in('id', ids);
       if (error) {
         toast.error(error.message);
         return;
@@ -253,7 +258,11 @@ const NotificationCenter = ({
     } else {
       const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
       if (ids.length === 0) return;
-      const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', ids);
+      const readAt = new Date().toISOString();
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true, read_at: readAt })
+        .in('id', ids);
       if (error) {
         toast.error(error.message);
         return;

@@ -9,9 +9,8 @@ import { format } from 'date-fns';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
-import { FlatMultiSelect } from '@/components/FlatMultiSelect';
-import { flatOptionsWithPrimaryLabel } from '@/lib/flatMultiSelectOptions';
 import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
   adminName?: string;
@@ -123,7 +122,7 @@ async function uploadPaymentReceipt(file: File): Promise<string | null> {
   return data.publicUrl;
 }
 
-const FinanceManager = ({ adminName = 'Admin', adminId }: Props) => {
+const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [subTab, setSubTab] = useState<'maintenance' | 'payments' | 'receipts' | 'period' | 'totals' | 'reminders'>('maintenance');
@@ -1475,6 +1474,11 @@ const FinanceManager = ({ adminName = 'Admin', adminId }: Props) => {
   const totalsMonthNet = useMemo(
     () => totalsBreakdown.reduce((s, r) => s + r.total, 0),
     [totalsBreakdown],
+  );
+
+  const flatMultiOptions = useMemo(
+    () => flatOptionsWithPrimaryLabel(flats, primaryByFlatId),
+    [flats, primaryByFlatId],
   );
 
   const financePeriodReport = useMemo(() => {
@@ -2953,6 +2957,150 @@ const FinanceManager = ({ adminName = 'Admin', adminId }: Props) => {
               </div>
             </div>
           </div>
+
+          <div className="card-section p-4 space-y-4">
+            <div className="flex flex-wrap gap-3 items-start justify-between">
+              <div className="min-w-[200px]">
+                <h3 className="text-sm font-semibold">PDF & member delivery</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Download this period as PDF, or send one alert per resident with the PDF link. Opening the alert in the app records it as seen for this send.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <button
+                  type="button"
+                  className="btn-secondary text-xs px-3 py-2"
+                  onClick={downloadPeriodReportPdf}
+                  disabled={periodFrom > periodTo}
+                >
+                  Download PDF
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary text-xs px-3 py-2"
+                  onClick={() => void sendPeriodReportToMembers()}
+                  disabled={reportPushBusy || periodFrom > periodTo || !societyId}
+                >
+                  {reportPushBusy ? 'Sending…' : 'Send to members'}
+                </button>
+                {lastDeliveryBatchId && (
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs px-3 py-2"
+                    onClick={() => void loadReadStatusForBatch(lastDeliveryBatchId)}
+                  >
+                    Read receipts
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2 text-xs">
+              <p className="text-muted-foreground font-medium">Audience</p>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="finance-report-audience"
+                    checked={reportAudience === 'all'}
+                    onChange={() => setReportAudience('all')}
+                  />
+                  All residents
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="finance-report-audience"
+                    checked={reportAudience === 'flats'}
+                    onChange={() => setReportAudience('flats')}
+                  />
+                  Selected flats
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="finance-report-audience"
+                    checked={reportAudience === 'picked'}
+                    onChange={() => setReportAudience('picked')}
+                  />
+                  Pick residents
+                </label>
+              </div>
+              {reportAudience === 'flats' && (
+                <FlatMultiSelect
+                  flats={flatMultiOptions}
+                  selected={reportFlats}
+                  onChange={setReportFlats}
+                  label="Flats to include"
+                  emptyHint="No flats match your search."
+                />
+              )}
+              {reportAudience === 'picked' && (
+                <div className="max-h-52 overflow-y-auto border border-border rounded-md p-2 space-y-0.5">
+                  {residentUsers.length === 0 ? (
+                    <p className="text-muted-foreground p-1">No residents loaded.</p>
+                  ) : (
+                    residentUsers.map((r) => (
+                      <label
+                        key={r.id}
+                        className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-muted/50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={reportResidentIds.includes(r.id)}
+                          onChange={() =>
+                            setReportResidentIds((prev) =>
+                              prev.includes(r.id) ? prev.filter((x) => x !== r.id) : [...prev, r.id],
+                            )
+                          }
+                        />
+                        <span>
+                          Flat {r.flat_number} · {r.name?.trim() || 'Resident'}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Dialog open={readStatusOpen} onOpenChange={setReadStatusOpen}>
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Who opened this report</DialogTitle>
+              </DialogHeader>
+              {readStatusRows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No rows for this send.</p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left border-b border-border">
+                      <th className="p-2">Member</th>
+                      <th className="p-2">Flat</th>
+                      <th className="p-2">Seen</th>
+                      <th className="p-2">When</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {readStatusRows.map((row) => {
+                      const ru = residentUsers.find((u) => u.id === row.target_id);
+                      const seen = !!(row.is_read || row.read_at);
+                      return (
+                        <tr key={row.id} className="border-b border-border/60">
+                          <td className="p-2">{ru?.name?.trim() || '—'}</td>
+                          <td className="p-2 font-mono">{ru?.flat_number ?? '—'}</td>
+                          <td className="p-2">{seen ? 'Yes' : 'No'}</td>
+                          <td className="p-2 text-muted-foreground">
+                            {row.read_at ? new Date(row.read_at).toLocaleString() : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </DialogContent>
+          </Dialog>
 
           <div className="card-section p-4 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collection receipts (verified)</p>
