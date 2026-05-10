@@ -15,6 +15,22 @@ interface FinanceEntrySummaryRow {
   aggregate_flat_count: number;
   entry_month: string | null;
   created_at: string;
+  payment_status: string;
+  payment_method: string;
+}
+
+function normalizePaymentChannel(method: unknown): 'cash' | 'bank' | 'other' {
+  const x = String(method ?? 'cash')
+    .toLowerCase()
+    .replace(/\s/g, '');
+  if (x === 'cash') return 'cash';
+  if (
+    ['upi', 'bank_transfer', 'razorpay', 'online', 'card', 'neft', 'rtgs', 'imps', 'netbanking', 'cheque', 'dd'].some(
+      (k) => x === k || x.includes(k),
+    )
+  )
+    return 'bank';
+  return 'other';
 }
 
 const ReportPage = () => {
@@ -56,16 +72,19 @@ const ReportPage = () => {
       }
       const { data } = await supabase
         .from('finance_entries')
-        .select('id, record_mode, destination, total_amount, aggregate_flat_count, entry_month, created_at, payment_status')
+        .select(
+          'id, record_mode, destination, total_amount, aggregate_flat_count, entry_month, created_at, payment_status, payment_method',
+        )
         .eq('society_id', societyId)
         .eq('entry_month', financeMonth)
         .order('created_at', { ascending: false })
         .limit(800);
-      setFinanceEntries((data as FinanceEntrySummaryRow[]) ?? []);
+      const rows = (data as FinanceEntrySummaryRow[]) ?? [];
+      setFinanceEntries(rows);
 
-      // Ledger status summary
+      // Receipts — ledger verification (all ledger rows this month)
       const map = new Map<string, { count: number; total: number }>();
-      for (const e of (data as any[] | null) ?? []) {
+      for (const e of rows) {
         const st = String(e.payment_status ?? 'verified');
         const cur = map.get(st) ?? { count: 0, total: 0 };
         cur.count += 1;
@@ -74,22 +93,17 @@ const ReportPage = () => {
       }
       setLedgerStatuses([...map.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
 
-      // Maintenance payments status summary (same month by due_date)
-      const { data: mp } = await supabase
-        .from('maintenance_payments')
-        .select('payment_status, amount, due_date, created_at')
-        .eq('society_id', societyId)
-        .gte('due_date', `${financeMonth}-01`)
-        .lt('due_date', `${financeMonth}-32`);
-      const mpMap = new Map<string, { count: number; total: number }>();
-      for (const p of (mp as any[] | null) ?? []) {
-        const st = String(p.payment_status ?? 'pending');
-        const cur = mpMap.get(st) ?? { count: 0, total: 0 };
+      // Maintenance — from ledger (current month maintenance destination only)
+      const maintMap = new Map<string, { count: number; total: number }>();
+      for (const e of rows) {
+        if (e.destination !== 'current_month_maintenance') continue;
+        const st = String(e.payment_status ?? 'pending');
+        const cur = maintMap.get(st) ?? { count: 0, total: 0 };
         cur.count += 1;
-        cur.total += Number(p.amount || 0);
-        mpMap.set(st, cur);
+        cur.total += Number(e.total_amount || 0);
+        maintMap.set(st, cur);
       }
-      setMaintenanceStatuses([...mpMap.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
+      setMaintenanceStatuses([...maintMap.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
 
       // Donation payments status summary (by created_at month)
       const from = `${financeMonth}-01T00:00:00`;
@@ -110,36 +124,65 @@ const ReportPage = () => {
       }
       setDonationStatuses([...dMap.entries()].map(([status, v]) => ({ status, ...v })));
 
-      // Splitwise status summary (by expense created_at month)
-      const { data: ex } = await supabase
-        .from('expenses')
-        .select('id, total_amount, created_at')
-        .eq('society_id', societyId)
-        .gte('created_at', from)
-        .lte('created_at', to);
-      const expIds = (ex as any[] | null)?.map((x) => x.id) ?? [];
-      if (!expIds.length) {
+      // Splitwise — only expenses under society expense_groups, active in month
+      const { data: groups } = await supabase.from('expense_groups').select('id').eq('society_id', societyId);
+      const groupIds = (groups as { id: string }[] | null)?.map((g) => g.id) ?? [];
+      if (!groupIds.length) {
         setSplitStatuses([]);
       } else {
-        const { data: splits } = await supabase
-          .from('expense_splits')
-          .select('amount, payment_status, is_settled')
-          .in('expense_id', expIds);
-        const sMap = new Map<string, { count: number; total: number }>();
-        for (const s of (splits as any[] | null) ?? []) {
-          const st = s.is_settled ? 'settled' : String(s.payment_status ?? 'pending');
-          const cur = sMap.get(st) ?? { count: 0, total: 0 };
-          cur.count += 1;
-          cur.total += Number(s.amount || 0);
-          sMap.set(st, cur);
+        const { data: ex } = await supabase
+          .from('expenses')
+          .select('id, created_at, record_status, group_id')
+          .in('group_id', groupIds)
+          .eq('record_status', 'active')
+          .gte('created_at', from)
+          .lte('created_at', to);
+        const expIds = (ex as { id: string }[] | null)?.map((x) => x.id) ?? [];
+        if (!expIds.length) {
+          setSplitStatuses([]);
+        } else {
+          const { data: splits } = await supabase
+            .from('expense_splits')
+            .select('amount, is_settled')
+            .in('expense_id', expIds);
+          const sMap = new Map<string, { count: number; total: number }>();
+          for (const s of (splits as { amount: number; is_settled: boolean }[] | null) ?? []) {
+            const st = s.is_settled ? 'settled' : 'pending';
+            const cur = sMap.get(st) ?? { count: 0, total: 0 };
+            cur.count += 1;
+            cur.total += Number(s.amount || 0);
+            sMap.set(st, cur);
+          }
+          setSplitStatuses([...sMap.entries()].map(([status, v]) => ({ status, ...v })));
         }
-        setSplitStatuses([...sMap.entries()].map(([status, v]) => ({ status, ...v })));
       }
     };
     void loadFinance();
   }, [financeMonth, societyId]);
 
   const dayVisitors = useMemo(() => visitors.filter(v => v.entryTime.startsWith(date)), [visitors, date]);
+
+  /** Verified ledger: inflows (maintenance + corpus) minus separate-entry expenses, by payment channel. */
+  const reportMonthNet = useMemo(() => {
+    const receipt = { cash: 0, bank: 0, other: 0 };
+    const expense = { cash: 0, bank: 0, other: 0 };
+    for (const e of financeEntries) {
+      if (String(e.payment_status) !== 'verified') continue;
+      const amt = Number(e.total_amount || 0);
+      const ch = normalizePaymentChannel(e.payment_method);
+      if (e.destination === 'separate_entry') expense[ch] += amt;
+      else if (e.destination === 'current_month_maintenance' || e.destination === 'corpus') receipt[ch] += amt;
+    }
+    const cashInHand = receipt.cash - expense.cash;
+    const cashInBank = receipt.bank - expense.bank;
+    const otherNet = receipt.other - expense.other;
+    return {
+      cashInHand,
+      cashInBank,
+      otherNet,
+      totalBalance: cashInHand + cashInBank + otherNet,
+    };
+  }, [financeEntries]);
 
   const financeGroups = useMemo(() => {
     const map = new Map<string, { total: number; flatUnits: number; count: number }>();

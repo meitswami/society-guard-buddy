@@ -136,7 +136,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'directory', label: 'Directory', icon: BookUser, group: 'ops' },
     { id: 'quick', label: 'Quick', icon: Zap, group: 'ops' },
     // Reports & Settings
-    { id: 'report', label: 'Reports', icon: BarChart3, group: 'system' },
+    { id: 'report', label: 'REPORTS', icon: BarChart3, group: 'system' },
     { id: 'logs', label: 'Logs', icon: FileText, group: 'system' },
     { id: 'audit', label: 'Audit', icon: ClipboardList, group: 'system' },
     { id: 'password', label: 'Password', icon: Lock, group: 'system' },
