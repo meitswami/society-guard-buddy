@@ -237,6 +237,9 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   const [metaDraft, setMetaDraft] = useState({ title: '', meetingDate: '', meetingTime: '', location: '' });
   const [isRecording, setIsRecording] = useState(false);
   const [dictationOn, setDictationOn] = useState(false);
+  const [decisionDrafts, setDecisionDrafts] = useState<Record<string, string>>({});
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const speechRef = useRef<{ stop: () => void } | null>(null);
@@ -260,6 +263,16 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       location: selected.location ?? '',
     });
   }, [selected?.id, selected?.discussion_notes, selected?.minutes_summary, selected?.executives_present, selected?.title, selected?.meeting_at, selected?.location]);
+
+  useEffect(() => {
+    setDecisionDrafts((prev) => {
+      const next: Record<string, string> = {};
+      for (const d of decisions) {
+        next[d.id] = prev[d.id] !== undefined ? prev[d.id] : d.decision_text;
+      }
+      return next;
+    });
+  }, [decisions]);
 
   useEffect(() => {
     return () => {
@@ -402,6 +415,94 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     else void loadMeetings();
   };
 
+  const normText = (x: string | null | undefined) => {
+    const t = (x ?? '').trim();
+    return t.length ? t : null;
+  };
+
+  const flushMeetingDraftsToServer = useCallback(
+    async (opts?: { manual?: boolean; quiet?: boolean }): Promise<boolean> => {
+      if (!selectedId || !selected || isResident) return false;
+      const patch: Partial<MeetingRow> = {};
+      const mt = metaDraft.title.trim() || 'Meeting';
+      if (mt !== (selected.title ?? '').trim()) patch.title = mt;
+      const meeting_at = combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime);
+      if (meeting_at !== selected.meeting_at) patch.meeting_at = meeting_at;
+      if (normText(metaDraft.location) !== normText(selected.location)) patch.location = normText(metaDraft.location);
+      if (normText(notesDraft.discussion) !== normText(selected.discussion_notes)) {
+        patch.discussion_notes = normText(notesDraft.discussion);
+      }
+      if (normText(notesDraft.minutes) !== normText(selected.minutes_summary)) {
+        patch.minutes_summary = normText(notesDraft.minutes);
+      }
+      if (normText(executivesDraft) !== normText(selected.executives_present)) {
+        patch.executives_present = normText(executivesDraft);
+      }
+      if (Object.keys(patch).length === 0) {
+        if (opts?.manual) toast.message('Nothing new to save');
+        return false;
+      }
+      setAutosaveStatus('saving');
+      const { error } = await supabase.from('meetings').update(patch).eq('id', selectedId);
+      if (error) {
+        setAutosaveStatus('error');
+        toast.error(error.message);
+        return false;
+      }
+      setAutosaveStatus('saved');
+      setLastSavedAt(Date.now());
+      void loadMeetings();
+      if (opts?.manual && !opts?.quiet) toast.success('Saved');
+      return true;
+    },
+    [selectedId, selected, isResident, metaDraft, notesDraft, executivesDraft],
+  );
+
+  const flushDecisionDraftsToServer = useCallback(async () => {
+    if (!selectedId || isResident) return;
+    let changed = 0;
+    for (const d of decisions) {
+      const draft = decisionDrafts[d.id];
+      if (draft === undefined) continue;
+      if (draft === d.decision_text) continue;
+      const { error } = await supabase.from('meeting_decisions').update({ decision_text: draft }).eq('id', d.id);
+      if (error) {
+        toast.error(error.message);
+        setAutosaveStatus('error');
+        return;
+      }
+      changed += 1;
+    }
+    if (changed > 0) {
+      setAutosaveStatus('saving');
+      setLastSavedAt(Date.now());
+      setAutosaveStatus('saved');
+      void loadDetail(selectedId);
+    }
+  }, [selectedId, isResident, decisions, decisionDrafts]);
+
+  useEffect(() => {
+    if (!selectedId || isResident || !selected) return;
+    const tid = setTimeout(() => {
+      void flushMeetingDraftsToServer();
+    }, 1000);
+    return () => clearTimeout(tid);
+  }, [metaDraft, notesDraft, executivesDraft, selectedId, isResident, selected, flushMeetingDraftsToServer]);
+
+  useEffect(() => {
+    if (!selectedId || isResident) return;
+    const tid = setTimeout(() => {
+      void flushDecisionDraftsToServer();
+    }, 1000);
+    return () => clearTimeout(tid);
+  }, [decisionDrafts, decisions, selectedId, isResident, flushDecisionDraftsToServer]);
+
+  useEffect(() => {
+    if (autosaveStatus !== 'saved') return;
+    const t = setTimeout(() => setAutosaveStatus('idle'), 2500);
+    return () => clearTimeout(t);
+  }, [autosaveStatus, lastSavedAt]);
+
   const onMeetingStatusChange = async (v: string) => {
     if (!selectedId || !selected || v === selected.status) return;
     const ok = await confirmAction(
@@ -428,56 +529,8 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     await persistMeetingPatch({ published: nextPublished } as Partial<MeetingRow>);
   };
 
-  const saveNotesDraft = async (opts?: { skipConfirm?: boolean; silent?: boolean }) => {
-    if (!selectedId) return;
-    if (!opts?.skipConfirm) {
-      const ok = await confirmAction(
-        'Save discussion & minutes?',
-        'This updates the saved text on the server for this meeting.',
-        'Save',
-        'Cancel',
-      );
-      if (!ok) return;
-    }
-    await persistMeetingPatch({
-      discussion_notes: notesDraft.discussion.trim() || null,
-      minutes_summary: notesDraft.minutes.trim() || null,
-    } as Partial<MeetingRow>);
-    if (!opts?.silent) toast.success('Notes saved');
-  };
-
-  const saveExecutives = async (opts?: { skipConfirm?: boolean; silent?: boolean }) => {
-    if (!selectedId) return;
-    if (!opts?.skipConfirm) {
-      const ok = await confirmAction(
-        'Save executive list?',
-        'Updates who was recorded as present from the managing committee.',
-        'Save',
-        'Cancel',
-      );
-      if (!ok) return;
-    }
-    await persistMeetingPatch({ executives_present: executivesDraft.trim() || null } as Partial<MeetingRow>);
-    if (!opts?.silent) toast.success('Executive list saved');
-  };
-
-  const saveMeetingMeta = async () => {
-    if (!selectedId) return;
-    const ok = await confirmAction(
-      'Save meeting details?',
-      'Updates title, date, time, and venue for this meeting.',
-      'Save',
-      'Cancel',
-    );
-    if (!ok) return;
-    const meeting_at = combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime);
-    await persistMeetingPatch({
-      title: metaDraft.title.trim() || 'Meeting',
-      meeting_at,
-      location: metaDraft.location.trim() || null,
-    } as Partial<MeetingRow>);
-    toast.success('Meeting details saved');
-  };
+  /** Immediate save of all meeting header / notes / executives fields (same payload as auto-save). */
+  const saveAllMeetingFieldsNow = () => void flushMeetingDraftsToServer({ manual: true });
 
   const createMeeting = async () => {
     if (!societyId || !newForm.title.trim()) return;
@@ -741,11 +794,6 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     ]);
     if (error) toast.error(error.message);
     else void loadDetail(selectedId);
-  };
-
-  const updateDecisionText = async (id: string, text: string) => {
-    const { error } = await supabase.from('meeting_decisions').update({ decision_text: text }).eq('id', id);
-    if (error) toast.error(error.message);
   };
 
   const removeDecision = async (id: string) => {
