@@ -1510,6 +1510,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           discussion_notes: string | null
+          executives_present: string | null
           id: string
           location: string | null
           meeting_at: string
@@ -1526,6 +1527,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           discussion_notes?: string | null
+          executives_present?: string | null
           id?: string
           location?: string | null
           meeting_at?: string
@@ -1542,6 +1544,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           discussion_notes?: string | null
+          executives_present?: string | null
           id?: string
           location?: string | null
           meeting_at?: string

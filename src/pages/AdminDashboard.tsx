@@ -120,11 +120,11 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'geofence', label: 'Geofence', icon: MapPin, group: 'manage' },
     // Finance
     { id: 'finance', label: 'Finance', icon: DollarSign, group: 'finance' },
+    { id: 'meetings', label: 'Meetings', icon: ScrollText, group: 'meetings' },
     { id: 'donations', label: 'Donations', icon: Heart, group: 'finance' },
     { id: 'splits', label: 'Splitwise', icon: Split, group: 'finance' },
     // Community
     { id: 'events', label: 'Events', icon: Calendar, group: 'community' },
-    { id: 'meetings', label: 'Meetings', icon: ScrollText, group: 'community' },
     { id: 'polls', label: 'Polls', icon: Vote, group: 'community' },
     { id: 'notifications', label: 'Notify', icon: Bell, group: 'community' },
     { id: 'parking', label: 'Parking', icon: ParkingSquare, group: 'community' },

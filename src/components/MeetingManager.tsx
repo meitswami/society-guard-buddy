@@ -13,6 +13,12 @@ import {
   CheckCircle2,
   Circle,
   Megaphone,
+  MapPin,
+  Building2,
+  Radio,
+  Square,
+  Send,
+  MicOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction } from '@/lib/swal';
@@ -46,6 +52,7 @@ type MeetingRow = {
   published: boolean;
   discussion_notes: string | null;
   minutes_summary: string | null;
+  executives_present: string | null;
   audio_recording_url: string | null;
   created_by: string | null;
 };
@@ -81,10 +88,40 @@ type SigRow = {
 
 type MemberPick = { id: string; name: string; flat_id: string; flat_number: string };
 
+type FlatWithMembers = {
+  id: string;
+  flat_number: string;
+  owner_name: string | null;
+  members: { id: string; name: string }[];
+};
+
 interface Props {
   adminName?: string;
-  /** When true, only published meetings are listed (read-only). */
   isResident?: boolean;
+}
+
+function toDateInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function toTimeInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${min}`;
+}
+
+function combineDateAndTimeToIso(dateStr: string, timeStr: string): string {
+  const d = dateStr || toDateInput(new Date().toISOString());
+  const t = timeStr || '09:00';
+  const dt = new Date(`${d}T${t}:00`);
+  return dt.toISOString();
 }
 
 async function uploadMeetingFile(
@@ -164,13 +201,14 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [meetings, setMeetings] = useState<MeetingRow[]>([]);
   const [members, setMembers] = useState<MemberPick[]>([]);
+  const [flatsWithMembers, setFlatsWithMembers] = useState<FlatWithMembers[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [attendees, setAttendees] = useState<AttendeeRow[]>([]);
   const [decisions, setDecisions] = useState<DecisionRow[]>([]);
   const [documents, setDocuments] = useState<DocRow[]>([]);
   const [signatures, setSignatures] = useState<SigRow[]>([]);
   const [showNew, setShowNew] = useState(false);
-  const [newForm, setNewForm] = useState({ title: '', meeting_at: '', location: '' });
+  const [newForm, setNewForm] = useState({ title: '', meetingDate: '', meetingTime: '', location: '' });
   const [memberToAdd, setMemberToAdd] = useState('');
   const [guestName, setGuestName] = useState('');
   const [sigCtx, setSigCtx] = useState<{ doc: DocRow; attendee: AttendeeRow } | null>(null);
@@ -178,17 +216,44 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const selected = useMemo(() => meetings.find((m) => m.id === selectedId) ?? null, [meetings, selectedId]);
   const [notesDraft, setNotesDraft] = useState({ discussion: '', minutes: '' });
+  const [executivesDraft, setExecutivesDraft] = useState('');
+  const [metaDraft, setMetaDraft] = useState({ title: '', meetingDate: '', meetingTime: '', location: '' });
+  const [isRecording, setIsRecording] = useState(false);
+  const [dictationOn, setDictationOn] = useState(false);
+  const mediaRecRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const speechRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => {
     if (!selected) {
       setNotesDraft({ discussion: '', minutes: '' });
+      setExecutivesDraft('');
+      setMetaDraft({ title: '', meetingDate: '', meetingTime: '', location: '' });
       return;
     }
     setNotesDraft({
       discussion: selected.discussion_notes ?? '',
       minutes: selected.minutes_summary ?? '',
     });
-  }, [selected?.id, selected?.discussion_notes, selected?.minutes_summary]);
+    setExecutivesDraft(selected.executives_present ?? '');
+    setMetaDraft({
+      title: selected.title,
+      meetingDate: toDateInput(selected.meeting_at),
+      meetingTime: toTimeInput(selected.meeting_at),
+      location: selected.location ?? '',
+    });
+  }, [selected?.id, selected?.discussion_notes, selected?.minutes_summary, selected?.executives_present, selected?.title, selected?.meeting_at, selected?.location]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        mediaRecRef.current?.stop();
+      } catch {
+        /* ignore */
+      }
+      speechRef.current?.stop();
+    };
+  }, []);
 
   const loadMeetings = useCallback(async () => {
     if (!societyId) {
@@ -228,6 +293,38 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     );
   }, [societyId, isResident]);
 
+  const loadFlatsWithMembers = useCallback(async () => {
+    if (!societyId || isResident) {
+      setFlatsWithMembers([]);
+      return;
+    }
+    const { data: flats } = await supabase
+      .from('flats')
+      .select('id, flat_number, owner_name')
+      .eq('society_id', societyId)
+      .order('flat_number');
+    const flatIds = (flats ?? []).map((f) => f.id);
+    if (flatIds.length === 0) {
+      setFlatsWithMembers([]);
+      return;
+    }
+    const { data: mems } = await supabase.from('members').select('id, name, flat_id').in('flat_id', flatIds);
+    const byFlat = new Map<string, { id: string; name: string }[]>();
+    for (const m of mems ?? []) {
+      const list = byFlat.get(m.flat_id) ?? [];
+      list.push({ id: m.id, name: m.name });
+      byFlat.set(m.flat_id, list);
+    }
+    setFlatsWithMembers(
+      (flats ?? []).map((f) => ({
+        id: f.id,
+        flat_number: f.flat_number,
+        owner_name: f.owner_name,
+        members: byFlat.get(f.id) ?? [],
+      })),
+    );
+  }, [societyId, isResident]);
+
   const loadDetail = useCallback(async (meetingId: string) => {
     const [a, d, doc] = await Promise.all([
       supabase.from('meeting_attendees').select('*').eq('meeting_id', meetingId).order('display_name'),
@@ -253,7 +350,8 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
 
   useEffect(() => {
     void loadMembers();
-  }, [loadMembers]);
+    void loadFlatsWithMembers();
+  }, [loadMembers, loadFlatsWithMembers]);
 
   useEffect(() => {
     if (selectedId) void loadDetail(selectedId);
@@ -281,9 +379,29 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     toast.success('Notes saved');
   };
 
+  const saveExecutives = async () => {
+    if (!selectedId) return;
+    await persistMeetingPatch({ executives_present: executivesDraft.trim() || null } as Partial<MeetingRow>);
+    toast.success('Executive list saved');
+  };
+
+  const saveMeetingMeta = async () => {
+    if (!selectedId) return;
+    const meeting_at = combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime);
+    await persistMeetingPatch({
+      title: metaDraft.title.trim() || 'Meeting',
+      meeting_at,
+      location: metaDraft.location.trim() || null,
+    } as Partial<MeetingRow>);
+    toast.success('Meeting details saved');
+  };
+
   const createMeeting = async () => {
     if (!societyId || !newForm.title.trim()) return;
-    const at = newForm.meeting_at ? new Date(newForm.meeting_at).toISOString() : new Date().toISOString();
+    const meeting_at = combineDateAndTimeToIso(
+      newForm.meetingDate || toDateInput(new Date().toISOString()),
+      newForm.meetingTime || toTimeInput(new Date().toISOString()),
+    );
     const { data, error } = await supabase
       .from('meetings')
       .insert([
@@ -291,7 +409,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
           society_id: societyId,
           title: newForm.title.trim(),
           location: newForm.location.trim() || null,
-          meeting_at: at,
+          meeting_at,
           status: 'scheduled',
           created_by: adminName,
         },
@@ -304,7 +422,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     }
     toast.success('Meeting created');
     setShowNew(false);
-    setNewForm({ title: '', meeting_at: '', location: '' });
+    setNewForm({ title: '', meetingDate: '', meetingTime: '', location: '' });
     await loadMeetings();
     setSelectedId(data.id);
   };
@@ -319,6 +437,49 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       if (selectedId === id) setSelectedId(null);
       void loadMeetings();
     }
+  };
+
+  const isFlatMarkedPresent = (flat: FlatWithMembers) => {
+    if (flat.members.length === 0) return false;
+    return flat.members.every((m) => {
+      const row = attendees.find((a) => a.member_id === m.id);
+      return row?.is_present;
+    });
+  };
+
+  const setFlatPresence = async (flat: FlatWithMembers, present: boolean) => {
+    if (!selectedId) return;
+    if (flat.members.length === 0) {
+      toast.message('No members on this flat yet — add residents first.');
+      return;
+    }
+    if (present) {
+      for (const m of flat.members) {
+        const existing = attendees.find((a) => a.member_id === m.id);
+        if (existing) {
+          await supabase.from('meeting_attendees').update({ is_present: true, flat_number: flat.flat_number }).eq('id', existing.id);
+        } else {
+          await supabase.from('meeting_attendees').insert([
+            {
+              meeting_id: selectedId,
+              member_id: m.id,
+              display_name: m.name,
+              flat_number: flat.flat_number,
+              attendee_role: 'member',
+              is_present: true,
+            },
+          ]);
+        }
+      }
+      toast.success(`Marked ${flat.flat_number} present`);
+    } else {
+      for (const m of flat.members) {
+        const existing = attendees.find((a) => a.member_id === m.id);
+        if (existing) await supabase.from('meeting_attendees').delete().eq('id', existing.id);
+      }
+      toast.message(`Cleared ${flat.flat_number} from attendance`);
+    }
+    void loadDetail(selectedId);
   };
 
   const addMemberAttendee = async () => {
@@ -419,7 +580,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     const { error } = await supabase.from('meeting_documents').insert([
       {
         meeting_id: selectedId,
-        title: file.name.replace(/\.[^.]+$/, '') || 'Document',
+        title: file.name.replace(/\.[^.]+$/, '') || 'Attachment',
         file_url: url,
         file_name: file.name,
         mime_type: file.type || null,
@@ -427,7 +588,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     ]);
     if (error) toast.error(error.message);
     else {
-      toast.success('Document attached');
+      toast.success('File attached');
       void loadDetail(selectedId);
     }
   };
@@ -440,7 +601,145 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       return;
     }
     await persistMeetingPatch({ audio_recording_url: url } as Partial<MeetingRow>);
-    toast.success('Recording linked to this meeting');
+    toast.success('Recording saved to this meeting');
+  };
+
+  const startLiveRecording = async () => {
+    if (!selectedId || !societyId || isResident) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Microphone not supported in this browser');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunksRef.current = [];
+      const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : undefined });
+      mediaRecRef.current = mr;
+      mr.ondataavailable = (ev) => {
+        if (ev.data.size) chunksRef.current.push(ev.data);
+      };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || 'audio/webm' });
+        chunksRef.current = [];
+        mediaRecRef.current = null;
+        setIsRecording(false);
+        if (blob.size < 200) {
+          toast.message('Recording too short');
+          return;
+        }
+        const url = await uploadMeetingFile(societyId, selectedId, 'audio', blob, `session-${Date.now()}.webm`);
+        if (!url) {
+          toast.error('Upload failed');
+          return;
+        }
+        await persistMeetingPatch({ audio_recording_url: url } as Partial<MeetingRow>);
+        toast.success('Session recording saved');
+      };
+      mr.start(400);
+      setIsRecording(true);
+      toast.message('Recording… tap Stop when the meeting ends.');
+    } catch {
+      toast.error('Could not access microphone');
+    }
+  };
+
+  const stopLiveRecording = () => {
+    mediaRecRef.current?.stop();
+  };
+
+  const toggleDictation = () => {
+    if (isResident) return;
+    const W = window as unknown as {
+      SpeechRecognition?: new () => {
+        lang: string;
+        continuous: boolean;
+        interimResults: boolean;
+        start: () => void;
+        stop: () => void;
+        onresult: ((ev: { resultIndex: number; results: { length: number; [i: number]: { [0]: { transcript: string } } } }) => void) | null;
+        onerror: (() => void) | null;
+        onend: (() => void) | null;
+      };
+      webkitSpeechRecognition?: new () => {
+        lang: string;
+        continuous: boolean;
+        interimResults: boolean;
+        start: () => void;
+        stop: () => void;
+        onresult: ((ev: { resultIndex: number; results: { length: number; [i: number]: { [0]: { transcript: string } } } }) => void) | null;
+        onerror: (() => void) | null;
+        onend: (() => void) | null;
+      };
+    };
+    const SR = typeof window !== 'undefined' ? W.SpeechRecognition ?? W.webkitSpeechRecognition : undefined;
+    if (!SR) {
+      toast.error('Speech recognition not supported in this browser (try Chrome).');
+      return;
+    }
+    if (dictationOn) {
+      speechRef.current?.stop();
+      setDictationOn(false);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = document.documentElement.lang?.startsWith('hi') ? 'hi-IN' : 'en-IN';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = (ev) => {
+      let chunk = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        chunk += ev.results[i]?.[0]?.transcript ?? '';
+      }
+      if (chunk) setNotesDraft((p) => ({ ...p, minutes: `${p.minutes}${chunk} ` }));
+    };
+    rec.onerror = () => setDictationOn(false);
+    rec.onend = () => setDictationOn(false);
+    speechRef.current = rec;
+    rec.start();
+    setDictationOn(true);
+    toast.message('Dictating into minutes… tap again to stop.');
+  };
+
+  const publishAndNotifyAll = async () => {
+    if (!selectedId || !societyId || isResident) return;
+    await saveNotesDraft();
+    await saveExecutives();
+    await persistMeetingPatch({ published: true } as Partial<MeetingRow>);
+    const title = `Minutes: ${metaDraft.title || selected?.title || 'Meeting'}`;
+    const body =
+      (notesDraft.minutes || 'Published minutes are available.').slice(0, 900) +
+      (notesDraft.minutes.length > 900 ? '…' : '') +
+      ' Open the Meetings tab in the app.';
+    await supabase.from('notifications').insert([
+      {
+        title,
+        message: body,
+        type: 'general',
+        target_type: 'all',
+        target_id: 'all',
+        created_by: adminName,
+        society_id: societyId,
+        sound_key: 'digital',
+        sound_custom_url: null,
+      },
+    ]);
+    try {
+      await supabase.functions.invoke('send-push-notification', {
+        body: {
+          title,
+          message: body,
+          target_type: 'all',
+          society_id: societyId,
+          sound_key: 'digital',
+          sound_custom_url: '',
+        },
+      });
+    } catch (e) {
+      console.warn('Push failed', e);
+    }
+    toast.success('Published and sent to all residents (in-app + push where configured).');
+    void loadMeetings();
   };
 
   const clearCanvas = () => {
@@ -514,13 +813,26 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
             {isResident
-              ? 'Published minutes, decisions, and documents your committee chose to share.'
-              : 'Record attendees, discussion, decisions, documents, and capture signatures on the record.'}
+              ? 'Published minutes and materials from your managing committee.'
+              : 'Date, place, time, executive & flat attendance, photos, session audio, minutes (type or dictate), then publish and notify everyone.'}
           </p>
         </div>
         {!isResident && (
-          <Button type="button" size="sm" className="shrink-0" onClick={() => setShowNew(true)}>
-            <Plus className="w-4 h-4 mr-1" /> New
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0"
+            onClick={() => {
+              const now = new Date().toISOString();
+              setNewForm((p) => ({
+                ...p,
+                meetingDate: p.meetingDate || toDateInput(now),
+                meetingTime: p.meetingTime || toTimeInput(now),
+              }));
+              setShowNew(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-1" /> New meeting
           </Button>
         )}
       </div>
@@ -529,24 +841,42 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New meeting</DialogTitle>
-            <DialogDescription>Creates a scheduled entry you can fill in with notes and attendees.</DialogDescription>
+            <DialogDescription>Set title, date, time, and venue. You can add attendance and minutes after.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Title</Label>
-              <Input value={newForm.title} onChange={(e) => setNewForm((p) => ({ ...p, title: e.target.value }))} placeholder="AGM / water tank discussion" />
-            </div>
-            <div>
-              <Label>When</Label>
               <Input
-                type="datetime-local"
-                value={newForm.meeting_at}
-                onChange={(e) => setNewForm((p) => ({ ...p, meeting_at: e.target.value }))}
+                value={newForm.title}
+                onChange={(e) => setNewForm((p) => ({ ...p, title: e.target.value }))}
+                placeholder="AGM / maintenance review"
               />
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={newForm.meetingDate}
+                  onChange={(e) => setNewForm((p) => ({ ...p, meetingDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Time</Label>
+                <Input
+                  type="time"
+                  value={newForm.meetingTime}
+                  onChange={(e) => setNewForm((p) => ({ ...p, meetingTime: e.target.value }))}
+                />
+              </div>
+            </div>
             <div>
-              <Label>Location</Label>
-              <Input value={newForm.location} onChange={(e) => setNewForm((p) => ({ ...p, location: e.target.value }))} placeholder="Club house" />
+              <Label>Place / venue</Label>
+              <Input
+                value={newForm.location}
+                onChange={(e) => setNewForm((p) => ({ ...p, location: e.target.value }))}
+                placeholder="Club house hall"
+              />
             </div>
           </div>
           <DialogFooter>
@@ -560,7 +890,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <div className="space-y-2">
           {meetings.length === 0 && <p className="text-sm text-muted-foreground">No meetings yet.</p>}
           {meetings.map((m) => (
@@ -579,7 +909,11 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
               <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
                 {new Date(m.meeting_at).toLocaleString()}
-                {m.location ? ` · ${m.location}` : ''}
+                {m.location ? (
+                  <>
+                    <MapPin className="w-3 h-3 shrink-0" /> {m.location}
+                  </>
+                ) : null}
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5 capitalize">Status: {m.status}</p>
             </button>
@@ -587,11 +921,11 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
         </div>
 
         {selected && (
-          <div className="card-section p-4 space-y-4 border border-border">
+          <div className="card-section p-4 space-y-4 border border-border max-h-[calc(100vh-8rem)] overflow-y-auto">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <h3 className="font-semibold text-sm truncate">{selected.title}</h3>
-                <p className="text-[11px] text-muted-foreground">{new Date(selected.meeting_at).toLocaleString()}</p>
+                <h3 className="font-semibold text-sm">Meeting record</h3>
+                <p className="text-[11px] text-muted-foreground">ID {selected.id.slice(0, 8)}…</p>
               </div>
               {!isResident && (
                 <Button variant="destructive" size="sm" className="shrink-0" type="button" onClick={() => void deleteMeeting(selected.id)}>
@@ -599,6 +933,88 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                 </Button>
               )}
             </div>
+
+            {!isResident && (
+              <>
+                <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Date, time & place</p>
+                  <Input value={metaDraft.title} onChange={(e) => setMetaDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Title" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="date" value={metaDraft.meetingDate} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingDate: e.target.value }))} />
+                    <Input type="time" value={metaDraft.meetingTime} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingTime: e.target.value }))} />
+                  </div>
+                  <Input
+                    value={metaDraft.location}
+                    onChange={(e) => setMetaDraft((p) => ({ ...p, location: e.target.value }))}
+                    placeholder="Place / venue"
+                  />
+                  <Button type="button" size="sm" variant="secondary" onClick={() => void saveMeetingMeta()}>
+                    Save date, time & place
+                  </Button>
+                </div>
+
+                <div className="border border-border rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Executive members present</p>
+                  <textarea
+                    className="input-field min-h-[88px] text-sm"
+                    value={executivesDraft}
+                    onChange={(e) => setExecutivesDraft(e.target.value)}
+                    placeholder={'One name & role per line, e.g.\nPresident — R. Mehta\nTreasurer — S. Khan'}
+                  />
+                  <Button type="button" size="sm" variant="secondary" onClick={() => void saveExecutives()}>
+                    Save executive list
+                  </Button>
+                </div>
+
+                <div className="border border-border rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                    <Building2 className="w-3 h-3" /> Flats — tap Present to record everyone in that flat
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
+                    {flatsWithMembers.map((flat) => {
+                      const on = isFlatMarkedPresent(flat);
+                      const disabled = flat.members.length === 0;
+                      return (
+                        <div
+                          key={flat.id}
+                          className={`rounded-lg border p-2 text-[11px] ${on ? 'border-green-600/50 bg-green-500/5' : 'border-border bg-card'}`}
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="font-semibold">{flat.flat_number}</span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={on ? 'default' : 'outline'}
+                              className="h-7 text-[10px] px-2"
+                              disabled={disabled}
+                              onClick={() => void setFlatPresence(flat, !on)}
+                            >
+                              {on ? 'Present ✓' : 'Present'}
+                            </Button>
+                          </div>
+                          {flat.owner_name ? <p className="text-muted-foreground truncate">Owner: {flat.owner_name}</p> : null}
+                          <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                            {flat.members.map((m) => (
+                              <li key={m.id} className="truncate">
+                                · {m.name}
+                              </li>
+                            ))}
+                            {flat.members.length === 0 && <li className="italic">No members</li>}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {isResident && selected.executives_present && (
+              <div>
+                <Label className="text-xs">Executive members recorded</Label>
+                <p className="text-sm whitespace-pre-wrap mt-1 bg-muted/40 rounded-md p-2">{selected.executives_present}</p>
+              </div>
+            )}
 
             {!isResident && (
               <div className="grid gap-2 sm:grid-cols-2">
@@ -622,81 +1038,114 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                     checked={selected.published}
                     onChange={(e) => void persistMeetingPatch({ published: e.target.checked })}
                   />
-                  Published (visible to residents)
+                  Published (residents can open)
                 </label>
               </div>
             )}
 
             <div>
               <Label className="text-xs flex items-center gap-1">
-                <Megaphone className="w-3 h-3" /> Discussion & conversation notes
+                <Megaphone className="w-3 h-3" /> Discussion & conversation
               </Label>
               {isResident ? (
-                <p className="text-sm whitespace-pre-wrap mt-1 min-h-[4rem] bg-muted/40 rounded-md p-2">
-                  {selected.discussion_notes || '—'}
-                </p>
+                <p className="text-sm whitespace-pre-wrap mt-1 min-h-[4rem] bg-muted/40 rounded-md p-2">{selected.discussion_notes || '—'}</p>
+              ) : (
+                <textarea
+                  className="input-field min-h-[100px] mt-1 text-sm"
+                  value={notesDraft.discussion}
+                  onChange={(e) => setNotesDraft((p) => ({ ...p, discussion: e.target.value }))}
+                  placeholder="Notes from the floor, questions, debate…"
+                />
+              )}
+            </div>
+
+            <div>
+              <Label className="text-xs flex items-center gap-1">
+                <FileText className="w-3 h-3" /> Minutes & summary
+              </Label>
+              {isResident ? (
+                <p className="text-sm whitespace-pre-wrap mt-1 min-h-[4rem] bg-muted/40 rounded-md p-2">{selected.minutes_summary || '—'}</p>
               ) : (
                 <>
                   <textarea
                     className="input-field min-h-[120px] mt-1 text-sm"
-                    value={notesDraft.discussion}
-                    onChange={(e) => setNotesDraft((p) => ({ ...p, discussion: e.target.value }))}
-                    placeholder="Verbatim notes, who said what, resident concerns…"
-                  />
-                </>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-xs flex items-center gap-1">
-                <FileText className="w-3 h-3" /> Minutes & essence (conclusions)
-              </Label>
-              {isResident ? (
-                <p className="text-sm whitespace-pre-wrap mt-1 min-h-[4rem] bg-muted/40 rounded-md p-2">
-                  {selected.minutes_summary || '—'}
-                </p>
-              ) : (
-                <>
-                  <textarea
-                    className="input-field min-h-[100px] mt-1 text-sm"
                     value={notesDraft.minutes}
                     onChange={(e) => setNotesDraft((p) => ({ ...p, minutes: e.target.value }))}
-                    placeholder="Short summary of outcomes for residents who were not present."
+                    placeholder="Type conclusions here, or use Dictate (mic) below."
                   />
-                  <Button type="button" variant="secondary" size="sm" className="mt-2" onClick={() => void saveNotesDraft()}>
-                    Save discussion & minutes
-                  </Button>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <Button type="button" variant={dictationOn ? 'default' : 'outline'} size="sm" onClick={() => toggleDictation()}>
+                      {dictationOn ? <MicOff className="w-4 h-4 mr-1" /> : <Mic className="w-4 h-4 mr-1" />}
+                      {dictationOn ? 'Stop dictation' : 'Dictate into minutes'}
+                    </Button>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => void saveNotesDraft()}>
+                      Save discussion & minutes
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
 
             <div>
               <Label className="text-xs flex items-center gap-1">
-                <Mic className="w-3 h-3" /> Audio recording
+                <Mic className="w-3 h-3" /> Session audio
               </Label>
               {selected.audio_recording_url ? (
-                <audio controls className="w-full mt-1 h-9" src={selected.audio_recording_url}>
+                <audio controls className="w-full mt-1 h-10" src={selected.audio_recording_url}>
                   <track kind="captions" />
                 </audio>
               ) : (
-                <p className="text-xs text-muted-foreground mt-1">No audio attached.</p>
+                <p className="text-xs text-muted-foreground mt-1">No recording yet.</p>
               )}
               {!isResident && (
-                <label className="mt-2 block">
-                  <span className="text-[10px] text-muted-foreground">Upload recording (mp3, webm, m4a…)</span>
-                  <Input
-                    type="file"
-                    accept="audio/*,video/*"
-                    className="mt-1"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      e.target.value = '';
-                      if (f) void uploadAudio(f);
-                    }}
-                  />
-                </label>
+                <div className="mt-2 flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {!isRecording ? (
+                      <Button type="button" size="sm" variant="default" onClick={() => void startLiveRecording()}>
+                        <Radio className="w-4 h-4 mr-1" /> Record session (mic)
+                      </Button>
+                    ) : (
+                      <Button type="button" size="sm" variant="destructive" onClick={() => stopLiveRecording()}>
+                        <Square className="w-4 h-4 mr-1" /> Stop & upload
+                      </Button>
+                    )}
+                  </div>
+                  <label className="block">
+                    <span className="text-[10px] text-muted-foreground">Or upload audio file</span>
+                    <Input
+                      type="file"
+                      accept="audio/*,video/*"
+                      className="mt-1"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (f) void uploadAudio(f);
+                      }}
+                    />
+                  </label>
+                </div>
               )}
             </div>
+
+            {!isResident && (
+              <div className="border border-dashed border-border rounded-lg p-3 space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Photos & documents</p>
+                <div className="flex flex-wrap gap-2">
+                  <label className="btn-secondary text-xs px-3 py-2 cursor-pointer">
+                    Gallery
+                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value=''; if (f) void uploadDocument(f); }} />
+                  </label>
+                  <label className="btn-secondary text-xs px-3 py-2 cursor-pointer">
+                    Camera
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value=''; if (f) void uploadDocument(f); }} />
+                  </label>
+                  <label className="btn-secondary text-xs px-3 py-2 cursor-pointer">
+                    Document
+                    <input type="file" accept=".pdf,.doc,.docx,image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value=''; if (f) void uploadDocument(f); }} />
+                  </label>
+                </div>
+              </div>
+            )}
 
             <div>
               <div className="flex items-center justify-between">
@@ -735,7 +1184,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
             <div>
               <div className="flex items-center justify-between">
                 <Label className="text-xs flex items-center gap-1">
-                  <Users className="w-3 h-3" /> Attendees
+                  <Users className="w-3 h-3" /> Attendance list (flat + guests)
                 </Label>
               </div>
               {!isResident && (
@@ -744,7 +1193,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                     <div className="flex-1 min-w-[140px]">
                       <Select value={memberToAdd || undefined} onValueChange={setMemberToAdd}>
                         <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Add member…" />
+                          <SelectValue placeholder="Add one member…" />
                         </SelectTrigger>
                         <SelectContent className="max-h-60">
                           {members.map((m) => (
@@ -756,21 +1205,21 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                       </Select>
                     </div>
                     <Button type="button" size="sm" variant="secondary" onClick={() => void addMemberAttendee()}>
-                      Add member
+                      Add
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-2 items-end">
                     <Input placeholder="Guest name" value={guestName} onChange={(e) => setGuestName(e.target.value)} className="max-w-[200px]" />
                     <Button type="button" size="sm" variant="secondary" onClick={() => void addGuestAttendee()}>
-                      Add guest
+                      Guest
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={() => void addAdminAttendee()}>
-                      Add me ({adminName})
+                      Add {adminName}
                     </Button>
                   </div>
                 </div>
               )}
-              <ul className="mt-2 space-y-1">
+              <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto">
                 {attendees.map((a) => (
                   <li key={a.id} className="flex items-center justify-between text-sm gap-2">
                     <span className="min-w-0 truncate">
@@ -802,26 +1251,12 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
             </div>
 
             <div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <Label className="text-xs flex items-center gap-1">
                   <FileText className="w-3 h-3" /> Documents & signatures
                 </Label>
-                {!isResident && (
-                  <label>
-                    <span className="sr-only">Upload</span>
-                    <Input
-                      type="file"
-                      className="max-w-[180px] h-9 text-xs"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        e.target.value = '';
-                        if (f) void uploadDocument(f);
-                      }}
-                    />
-                  </label>
-                )}
               </div>
-              {documents.length === 0 && <p className="text-xs text-muted-foreground mt-2">No documents.</p>}
+              {documents.length === 0 && <p className="text-xs text-muted-foreground mt-2">No attachments.</p>}
               <ul className="mt-2 space-y-3">
                 {documents.map((doc) => (
                   <li key={doc.id} className="border border-border rounded-lg p-2 space-y-2">
@@ -855,6 +1290,18 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                 ))}
               </ul>
             </div>
+
+            {!isResident && (
+              <div className="border border-primary/30 rounded-lg p-3 bg-primary/5">
+                <p className="text-sm font-medium mb-1">Publish report to all members</p>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  Saves notes, marks published, sends in-app notification and push (FCM / OneSignal) to every resident device where configured.
+                </p>
+                <Button type="button" className="w-full sm:w-auto" onClick={() => void publishAndNotifyAll()}>
+                  <Send className="w-4 h-4 mr-2" /> Publish minutes & notify all
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -864,7 +1311,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
           <DialogHeader>
             <DialogTitle>Signature — {sigCtx?.doc.title}</DialogTitle>
             <DialogDescription>
-              Capturing for <strong>{sigCtx?.attendee.display_name}</strong>. Draw in the box; usually the secretary collects these on one device at the meeting.
+              For <strong>{sigCtx?.attendee.display_name}</strong>. Collect on one device at the table if needed.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
