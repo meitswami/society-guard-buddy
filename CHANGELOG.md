@@ -23,6 +23,7 @@ when version tags are published.
 
 - **README** — Documented finance period report, PDF/push/read receipts, meetings, notification columns, migration reference table, storage paths, and main code touchpoints.
 - **Admin dashboard** — Passes `adminId` into `FinanceManager` alongside `adminName` for consistency with other admin modules.
+- **Admin session restore** — On app load, re-fetch `admins` + `society_roles` and recompute `permissions` instead of trusting only `localStorage`, so RBAC updates (e.g. Finance) appear after refresh without a full logout.
 
 ### Migration notes
 

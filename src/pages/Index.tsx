@@ -10,7 +10,7 @@ import AdminLoginPage from '@/pages/AdminLoginPage';
 import AdminDashboard from '@/pages/AdminDashboard';
 import SuperadminLoginPage from '@/pages/SuperadminLoginPage';
 import SuperadminDashboard from '@/pages/SuperadminDashboard';
-import type { AdminPanelPermissions } from '@/lib/adminPermissions';
+import { permissionsFromAdminJoin, type AdminPanelPermissions } from '@/lib/adminPermissions';
 import DashboardPage from '@/pages/DashboardPage';
 import UnifiedLoginPage from '@/pages/UnifiedLoginPage';
 import SocietyLoginGate from '@/components/SocietyLoginGate';
@@ -88,10 +88,23 @@ const AppContent = () => {
         return;
       }
       if (s.role === 'admin') {
-        const { data } = await supabase.from('admins').select('id').eq('id', s.admin.id).maybeSingle();
+        const { data } = await supabase
+          .from('admins')
+          .select('*, society_roles(permissions, slug, role_name)')
+          .eq('id', s.admin.id)
+          .maybeSingle();
         if (!cancelled && data) {
-          setSocietyId(s.admin.societyId ?? s.societyId);
-          setAdminUser(s.admin);
+          const sid = (data.society_id ?? s.societyId) as string;
+          setSocietyId(sid);
+          const admin = {
+            id: data.id,
+            name: data.name,
+            adminId: data.admin_id,
+            societyId: data.society_id,
+            permissions: permissionsFromAdminJoin(data),
+          };
+          setAdminUser(admin);
+          writePersistedSession({ v: 1, role: 'admin', societyId: sid, admin });
         } else if (!cancelled) clearPersistedSession();
         if (!cancelled) setSessionChecked(true);
         return;
