@@ -50,10 +50,14 @@ A comprehensive, mobile-first multi-society gate management application built fo
 - Flag visitors by phone number or vehicles by registration
 - Real-time blacklist alerts during entry
 
-### 📊 Daily Reports
-- Date-wise visitor statistics
-- Guard shift logs
-- CSV export & print-ready HTML reports
+### 📊 REPORTS (Admin)
+- **REPORTS** tab — day picker for **visitor stats**, **guard shifts**, **CSV** export, and **print-ready** HTML
+- **Month finance** — pick a calendar month: **gross ledger** totals grouped by `record_mode` + `destination` on `finance_entries` (`entry_month`); **CSV** export of those groups
+- **Month net (verified ledger)** — same channel idea as Finance → period report: inflows from **`current_month_maintenance`** + **`corpus`**, outflows from **`separate_entry`**, only **`payment_status: verified`**; shows **cash in hand**, **bank / UPI**, **other (net)**, and **total balance** (from `payment_method` on each row)
+- **Receipts — ledger status** — counts and amounts by **`payment_status`** across all ledger rows for that month (not tied to maintenance payments table)
+- **Maintenance (ledger)** — status summary built only from ledger rows with **`destination = current_month_maintenance`**
+- **Splitwise (expense groups)** — expenses whose **`group_id`** belongs to a society **`expense_groups`** row, **`record_status: active`**, created in that month; **`expense_splits`** aggregated as **settled** vs **pending** (`is_settled`)
+- **Donations** — still summarized from **`donation_payments`** by month (`created_at`)
 
 ### 💰 Finance Management
 - **Maintenance charges** — create recurring charges with custom frequency & due dates
@@ -316,7 +320,7 @@ Apply all pending files under `supabase/migrations/` to your project (CLI **db p
 
 Storage bucket **`notification-media`** is used for alert attachments and finance report PDFs (`finance-reports/{societyId}/{batchId}.pdf`).
 
-**Main code touchpoints:** `src/components/FinanceManager.tsx` (period tab, PDF download, send, read-receipt dialog), `src/lib/financePeriodReportPdf.ts`, `src/components/NotificationCenter.tsx` (marks `read_at` when read), `src/lib/adminPermissions.ts` (default `finance` for new custom roles), `src/pages/AdminDashboard.tsx` (passes admin into Finance), Edge Function `supabase/functions/send-push-notification`.
+**Main code touchpoints:** `src/components/FinanceManager.tsx` (period tab, PDF download, send, read-receipt dialog), `src/lib/financePeriodReportPdf.ts`, `src/pages/ReportPage.tsx` (REPORTS tab: month finance, net, maintenance from ledger, Splitwise from groups), `src/components/NotificationCenter.tsx` (marks `read_at` when read), `src/lib/adminPermissions.ts` (default `finance` for new custom roles), `src/pages/AdminDashboard.tsx` (passes admin into Finance), Edge Function `supabase/functions/send-push-notification`.
 
 ### Configuration
 

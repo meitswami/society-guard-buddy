@@ -660,6 +660,7 @@ export type Database = {
           created_by: string | null
           destination: string
           entry_month: string | null
+          expense_id: string | null
           id: string
           include_vacant: boolean
           notes: string | null
@@ -680,6 +681,7 @@ export type Database = {
           created_by?: string | null
           destination?: string
           entry_month?: string | null
+          expense_id?: string | null
           id?: string
           include_vacant?: boolean
           notes?: string | null
@@ -700,6 +702,7 @@ export type Database = {
           created_by?: string | null
           destination?: string
           entry_month?: string | null
+          expense_id?: string | null
           id?: string
           include_vacant?: boolean
           notes?: string | null

@@ -42,6 +42,10 @@ const ReportPage = () => {
   const [financeEntries, setFinanceEntries] = useState<FinanceEntrySummaryRow[]>([]);
   const [ledgerStatuses, setLedgerStatuses] = useState<{ payment_status: string; count: number; total: number }[]>([]);
   const [maintenanceStatuses, setMaintenanceStatuses] = useState<{ payment_status: string; count: number; total: number }[]>([]);
+  const [maintenanceLinkSummary, setMaintenanceLinkSummary] = useState<{
+    linked: { count: number; total: number };
+    unlinked: { count: number; total: number };
+  } | null>(null);
   const [donationStatuses, setDonationStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
   const [splitStatuses, setSplitStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
 
@@ -66,6 +70,7 @@ const ReportPage = () => {
         setFinanceEntries([]);
         setLedgerStatuses([]);
         setMaintenanceStatuses([]);
+        setMaintenanceLinkSummary(null);
         setDonationStatuses([]);
         setSplitStatuses([]);
         return;
@@ -97,17 +102,52 @@ const ReportPage = () => {
       }
       setLedgerStatuses([...map.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
 
-      // Maintenance — from ledger (current month maintenance destination only)
-      const maintMap = new Map<string, { count: number; total: number }>();
-      for (const e of rows) {
-        if (e.destination !== 'current_month_maintenance') continue;
-        const st = String(e.payment_status ?? 'pending');
-        const cur = maintMap.get(st) ?? { count: 0, total: 0 };
-        cur.count += 1;
-        cur.total += Number(e.total_amount || 0);
-        maintMap.set(st, cur);
+      // Maintenance — all maintenance_payments for society charges (Finance → Payments scope), due date in selected month
+      const dueFrom = format(monthDate, 'yyyy-MM-dd');
+      const dueTo = format(endOfMonth(monthDate), 'yyyy-MM-dd');
+      const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', societyId);
+      const chargeIds = (chargeRows as { id: string }[] | null)?.map((c) => c.id) ?? [];
+      if (!chargeIds.length) {
+        setMaintenanceStatuses([]);
+        setMaintenanceLinkSummary(null);
+      } else {
+        const { data: mpRows } = await supabase
+          .from('maintenance_payments')
+          .select('payment_status, amount, finance_entry_id')
+          .in('charge_id', chargeIds)
+          .gte('due_date', dueFrom)
+          .lte('due_date', dueTo);
+        const maintMap = new Map<string, { count: number; total: number }>();
+        let linkedCount = 0;
+        let linkedTotal = 0;
+        let unlinkedCount = 0;
+        let unlinkedTotal = 0;
+        for (const p of (mpRows as { payment_status?: string; amount: number; finance_entry_id: string | null }[] | null) ?? []) {
+          const st = String(p.payment_status ?? 'pending');
+          const amt = Number(p.amount || 0);
+          const cur = maintMap.get(st) ?? { count: 0, total: 0 };
+          cur.count += 1;
+          cur.total += amt;
+          maintMap.set(st, cur);
+          if (p.finance_entry_id) {
+            linkedCount += 1;
+            linkedTotal += amt;
+          } else {
+            unlinkedCount += 1;
+            unlinkedTotal += amt;
+          }
+        }
+        setMaintenanceStatuses([...maintMap.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
+        const n = (mpRows ?? []).length;
+        setMaintenanceLinkSummary(
+          n > 0
+            ? {
+                linked: { count: linkedCount, total: linkedTotal },
+                unlinked: { count: unlinkedCount, total: unlinkedTotal },
+              }
+            : null,
+        );
       }
-      setMaintenanceStatuses([...maintMap.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
 
       // Donation payments status summary (by created_at month)
       const { data: dp } = await supabase
@@ -422,14 +462,32 @@ const ReportPage = () => {
           {maintenanceStatuses.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t('report.noMaintenanceLedgerRows')}</p>
           ) : (
-            <div className="space-y-2">
-              {maintenanceStatuses.map((s) => (
-                <div key={s.payment_status} className="flex items-center justify-between text-xs">
-                  <span className="capitalize">{s.payment_status}</span>
-                  <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
+            <>
+              <div className="space-y-2">
+                {maintenanceStatuses.map((s) => (
+                  <div key={s.payment_status} className="flex items-center justify-between text-xs">
+                    <span className="capitalize">{s.payment_status}</span>
+                    <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
+                  </div>
+                ))}
+              </div>
+              {maintenanceLinkSummary && (
+                <div className="mt-3 pt-2 border-t border-border/60 text-[10px] text-muted-foreground space-y-1 font-mono">
+                  <div className="flex justify-between gap-2">
+                    <span>{t('report.maintenanceLinkedToLedger')}</span>
+                    <span>
+                      {maintenanceLinkSummary.linked.count} · ₹{maintenanceLinkSummary.linked.total.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span>{t('report.maintenanceNotLinkedToLedger')}</span>
+                    <span>
+                      {maintenanceLinkSummary.unlinked.count} · ₹{maintenanceLinkSummary.unlinked.total.toLocaleString('en-IN')}
+                    </span>
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
 

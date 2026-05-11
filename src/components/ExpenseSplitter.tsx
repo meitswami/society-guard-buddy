@@ -8,6 +8,7 @@ import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { format } from 'date-fns';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
+import { insertFinanceLedgerForGroupExpense, syncFinanceLedgerFromGroupExpenseEdit } from '@/lib/groupExpenseFinanceLedger';
 
 interface Props {
   adminName?: string;
@@ -214,31 +215,58 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     }
 
     if (fundingSource === 'society_fund') {
-      const { error } = await supabase.from('expenses').insert([
-        {
-          group_id: groupId,
-          title: ef.title.trim(),
-          total_amount: total,
-          paid_by_flat: 'SOCIETY',
-          paid_by_flats: [],
-          paid_by_name: adminName,
-          split_type: 'society_fund',
-          payment_method: ef.payment_method,
-          bill_screenshot_url: billUrl,
-          service_kind: ef.service_kind,
-          vendor_or_service: ef.vendor_or_service?.trim() || null,
-          expense_date: ef.expense_date,
-          notes: ef.notes?.trim() || null,
-          record_status: 'active',
-        },
-      ]);
-      if (error) {
-        toast.error(error.message);
+      const groupName = groups.find((x) => x.id === groupId)?.name ?? 'Expense group';
+      const { data: socExpense, error } = await supabase
+        .from('expenses')
+        .insert([
+          {
+            group_id: groupId,
+            title: ef.title.trim(),
+            total_amount: total,
+            paid_by_flat: 'SOCIETY',
+            paid_by_flats: [],
+            paid_by_name: adminName,
+            split_type: 'society_fund',
+            payment_method: ef.payment_method,
+            bill_screenshot_url: billUrl,
+            service_kind: ef.service_kind,
+            vendor_or_service: ef.vendor_or_service?.trim() || null,
+            expense_date: ef.expense_date,
+            notes: ef.notes?.trim() || null,
+            record_status: 'active',
+          },
+        ])
+        .select('id')
+        .single();
+      if (error || !socExpense?.id) {
+        toast.error(error?.message || 'Could not save expense');
+        return;
+      }
+
+      const ledgerRes = await insertFinanceLedgerForGroupExpense(supabase, {
+        societyId: societyId!,
+        adminName,
+        groupName,
+        expenseId: socExpense.id,
+        title: ef.title.trim(),
+        total,
+        expenseDate: ef.expense_date,
+        payment_method: ef.payment_method,
+        screenshot_url: billUrl,
+        notes: ef.notes?.trim() || null,
+        vendor_or_service: ef.vendor_or_service?.trim() || null,
+        allocationSplits: [{ flat_number: 'SOCIETY', amount: total }],
+        flats,
+        counterpartyName: `Splitwise: ${groupName}`,
+        counterpartyRelation: 'Society fund (no per-flat split)',
+      });
+      if (ledgerRes.error) {
+        toast.error(ledgerRes.error);
+        await supabase.from('expenses').delete().eq('id', socExpense.id);
         return;
       }
 
       const notifyAudience = expenseNotifyAudience;
-      const groupName = groups.find((x) => x.id === groupId)?.name ?? 'Expense group';
       const allFlatNums = flats.map((f) => f.flat_number);
       const snapTitle = ef.title.trim();
       const snapVendor = ef.vendor_or_service?.trim() || '';
@@ -379,8 +407,32 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       return;
     }
 
-    const notifyAudience = expenseNotifyAudience;
     const groupName = groups.find((x) => x.id === groupId)?.name ?? 'Expense group';
+    const ledgerRes = await insertFinanceLedgerForGroupExpense(supabase, {
+      societyId: societyId!,
+      adminName,
+      groupName,
+      expenseId: expense.id,
+      title: ef.title.trim(),
+      total,
+      expenseDate: ef.expense_date,
+      payment_method: ef.payment_method,
+      screenshot_url: billUrl,
+      notes: ef.notes?.trim() || null,
+      vendor_or_service: ef.vendor_or_service?.trim() || null,
+      allocationSplits: splitRows.map((r) => ({ flat_number: r.flat_number, amount: r.amount })),
+      flats,
+      counterpartyName: `Splitwise: ${groupName}`,
+      counterpartyRelation: `Advanced by flat(s): ${paidBySorted.join(', ')}`,
+    });
+    if (ledgerRes.error) {
+      toast.error(ledgerRes.error);
+      await supabase.from('expense_splits').delete().eq('expense_id', expense.id);
+      await supabase.from('expenses').delete().eq('id', expense.id);
+      return;
+    }
+
+    const notifyAudience = expenseNotifyAudience;
     const allFlatNums = flats.map((f) => f.flat_number);
     const notifyFlats = [...new Set([...targets, ...paidBySorted])];
     const snapTitle = ef.title.trim();
@@ -549,6 +601,40 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       toast.error(error.message);
       return;
     }
+
+    const groupName = groups.find((g) => g.id === old.group_id)?.name ?? 'Expense group';
+    const { data: splitFresh } = await supabase.from('expense_splits').select('flat_number, amount').eq('expense_id', expenseEdit.id);
+    const allocationSplits =
+      old.split_type === 'society_fund'
+        ? [{ flat_number: 'SOCIETY', amount: newTotal }]
+        : (splitFresh ?? []).map((s) => ({ flat_number: s.flat_number, amount: Number(s.amount) }));
+    const paidBy = parsePaidByFlats(old);
+    const counterpartyRelation =
+      old.split_type === 'society_fund'
+        ? 'Society fund (no per-flat split)'
+        : paidBy.length
+          ? `Advanced by flat(s): ${paidBy.join(', ')}`
+          : 'Splitwise group expense';
+
+    const syncRes = await syncFinanceLedgerFromGroupExpenseEdit(supabase, {
+      adminName,
+      groupName,
+      expenseId: expenseEdit.id,
+      title: expenseEdit.title.trim(),
+      total: newTotal,
+      expenseDate: expenseEdit.expense_date,
+      payment_method: expenseEdit.payment_method,
+      notes: expenseEdit.notes.trim() || null,
+      vendor_or_service: expenseEdit.vendor_or_service.trim() || null,
+      flats,
+      allocationSplits,
+      counterpartyName: `Splitwise: ${groupName}`,
+      counterpartyRelation,
+    });
+    if (syncRes.error) {
+      toast.error(`Expense updated, but ledger sync failed: ${syncRes.error}`);
+    }
+
     toast.success('Expense updated');
     setExpenseEdit(null);
     loadAll();

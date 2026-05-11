@@ -665,11 +665,13 @@ const translations: Record<string, Record<Lang, string>> = {
   'report.balanceInBank': { en: 'Balance in bank / UPI', hi: 'बैंक / यूपीआई शेष' },
   'report.otherNet': { en: 'Other (net)', hi: 'अन्य (नेट)' },
   'report.totalBalance': { en: 'Total balance', hi: 'कुल शेष' },
-  'report.maintenanceFromLedger': { en: 'Maintenance (ledger)', hi: 'रखरखाव (लेजर)' },
+  'report.maintenanceFromLedger': { en: 'Maintenance payments', hi: 'रखरखाव भुगतान' },
   'report.maintenanceFromLedgerHint': {
-    en: 'Status counts from finance ledger rows (current month maintenance), not the raw receipt list.',
-    hi: 'वित्त लेजर पंक्तियों से स्थिति (चालू माह रखरखाव)।',
+    en: 'All maintenance_payment rows for this society’s charges (same list as Finance → Payments), grouped by status. Due date falls in the month you selected.',
+    hi: 'समाज के सभी रखरखाव भुगतान (वित्त → भुगतान जैसा), स्थिति अनुसार। चयनित माह में नियत तारीख।',
   },
+  'report.maintenanceLinkedToLedger': { en: 'Linked to finance ledger', hi: 'वित्त लेजर से जुड़ा' },
+  'report.maintenanceNotLinkedToLedger': { en: 'Not linked to ledger', hi: 'लेजर से अलग' },
   'report.splitwiseFromGroups': { en: 'Splitwise (expense groups)', hi: 'स्प्लिटवाइज़ (खर्च समूह)' },
   'report.splitwiseFromGroupsHint': {
     en: 'Only expenses under a society expense group, active records in the month.',
@@ -685,8 +687,8 @@ const translations: Record<string, Record<Lang, string>> = {
   'report.entryCountLabel': { en: 'entries', hi: 'प्रविष्टियाँ' },
   'report.noLedgerRows': { en: 'No ledger rows for this month (entry_month match).', hi: 'इस माह कोई लेजर पंक्ति नहीं।' },
   'report.noMaintenanceLedgerRows': {
-    en: 'No maintenance ledger rows (current month maintenance) for this month.',
-    hi: 'इस माह रखरखाव लेजर पंक्ति नहीं।',
+    en: 'No maintenance payments with due date in this month.',
+    hi: 'इस माह नियत तारीख वाला कोई रखरखाव भुगतान नहीं।',
   },
   'report.noSplitwiseSplits': {
     en: 'No split entries for grouped expenses in this month.',
