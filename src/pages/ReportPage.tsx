@@ -149,22 +149,28 @@ const ReportPage = () => {
         );
       }
 
-      // Donation payments status summary (by created_at month)
-      const { data: dp } = await supabase
-        .from('donation_payments')
-        .select('amount, status, created_at')
-        .eq('society_id', societyId)
-        .gte('created_at', from)
-        .lte('created_at', to);
-      const dMap = new Map<string, { count: number; total: number }>();
-      for (const p of (dp as any[] | null) ?? []) {
-        const st = String(p.status ?? 'success');
-        const cur = dMap.get(st) ?? { count: 0, total: 0 };
-        cur.count += 1;
-        cur.total += Number(p.amount || 0);
-        dMap.set(st, cur);
+      // Donation payments status summary (by created_at month; scoped via society campaigns)
+      const { data: campRows } = await supabase.from('donation_campaigns').select('id').eq('society_id', societyId);
+      const campIds = (campRows as { id: string }[] | null)?.map((c) => c.id) ?? [];
+      if (!campIds.length) {
+        setDonationStatuses([]);
+      } else {
+        const { data: dp } = await supabase
+          .from('donation_payments')
+          .select('amount, verified_at, created_at')
+          .in('campaign_id', campIds)
+          .gte('created_at', from)
+          .lte('created_at', to);
+        const dMap = new Map<string, { count: number; total: number }>();
+        for (const p of (dp as { amount: number; verified_at: string | null }[] | null) ?? []) {
+          const st = p.verified_at ? 'verified' : 'pending';
+          const cur = dMap.get(st) ?? { count: 0, total: 0 };
+          cur.count += 1;
+          cur.total += Number(p.amount || 0);
+          dMap.set(st, cur);
+        }
+        setDonationStatuses([...dMap.entries()].map(([status, v]) => ({ status, ...v })));
       }
-      setDonationStatuses([...dMap.entries()].map(([status, v]) => ({ status, ...v })));
 
       // Splitwise — only expenses under society expense_groups, active in month
       const { data: groups } = await supabase.from('expense_groups').select('id').eq('society_id', societyId);
