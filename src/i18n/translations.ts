@@ -31,7 +31,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.invalidCredentials': { en: 'Invalid credentials', hi: 'गलत प्रमाण-पत्र' },
   'login.connectionProblem': {
     en: 'Could not reach the database. Check network, or that this site was built with the correct Supabase URL and anon key.',
-    hi: 'डेटाबेस तक पहुँच नहीं हो सकी। नेटवर्क जाँचें, या सुनिश्चित करें कि साइट सही Supabase URL और कुंजी के साथ बनी हो।',
+    hi: 'डेटाबेस तक पहुँच नहीं हो सकी। नेटवर्क जाँचें, या सुनिश्चित करें कि साइट सही सुपाबेस पता (यूआरएल) और गुप्त कुंजी के साथ बनी हो।',
   },
   'login.enterBoth': { en: 'Enter Guard ID and Password', hi: 'गार्ड आईडी और पासवर्ड दर्ज करें' },
   'login.demo': { en: 'Demo: G001 / guard123', hi: 'डेमो: G001 / guard123' },
@@ -47,7 +47,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.createSocietyCta': { en: 'New society? Create & pay ₹8,500', hi: 'नई सोसाइटी? बनाएँ और ₹8,500 भुगतान करें' },
   'login.registerNewSociety': { en: 'Register a new society', hi: 'नई सोसाइटी पंजीकृत करें' },
   'signup.title': { en: 'Create your society', hi: 'अपनी सोसाइटी बनाएं' },
-  'signup.subtitle': { en: 'Fill details, pay via PhonePe, and start using Kutumbika.', hi: 'विवरण भरें, PhonePe से भुगतान करें और Kutumbika उपयोग करें।' },
+  'signup.subtitle': { en: 'Fill details, pay via PhonePe, and start using Kutumbika.', hi: 'विवरण भरें, फ़ोनपे से भुगतान करें और कुटुम्बिका उपयोग करें।' },
   'signup.step': { en: 'Step', hi: 'चरण' },
   'signup.requiredNote': {
     en: 'Society name, contact phone, admin ID and password are required to continue.',
@@ -55,10 +55,10 @@ const translations: Record<string, Record<Lang, string>> = {
   },
   'signup.societyDetails': { en: 'Society details', hi: 'सोसाइटी विवरण' },
   'signup.contactDetails': { en: 'Contact details', hi: 'संपर्क विवरण' },
-  'signup.adminCreds': { en: 'Admin credentials', hi: 'एडमिन क्रेडेंशियल्स' },
+  'signup.adminCreds': { en: 'Admin credentials', hi: 'एडमिन पहचान व पासवर्ड' },
   'signup.referralOptional': { en: 'Referral code (optional)', hi: 'रेफरल कोड (वैकल्पिक)' },
-  'signup.payNow': { en: 'Pay ₹8,500 with PhonePe', hi: 'PhonePe से ₹8,500 भुगतान करें' },
-  'signup.processing': { en: 'Processing…', hi: 'प्रोसेस हो रहा है…' },
+  'signup.payNow': { en: 'Pay ₹8,500 with PhonePe', hi: 'फ़ोनपे से ₹8,500 भुगतान करें' },
+  'signup.processing': { en: 'Processing…', hi: 'संसाधित हो रहा है…' },
   'signup.name': { en: 'Society name', hi: 'सोसाइटी नाम' },
   'signup.address': { en: 'Address', hi: 'पता' },
   'signup.city': { en: 'City', hi: 'शहर' },
@@ -81,8 +81,8 @@ const translations: Record<string, Record<Lang, string>> = {
   'signup.errorGeneric': { en: 'Something went wrong. Please try again.', hi: 'कुछ गलत हुआ। कृपया पुनः प्रयास करें।' },
   'login.changeSociety': { en: 'Change society', hi: 'सोसाइटी बदलें' },
   'login.backToSociety': { en: '← Back to society selection', hi: '← सोसाइटी चयन पर वापस' },
-  'login.pickSocietyFirst': { en: 'Select a society to sign in.', hi: 'साइन इन के लिए सोसाइटी चुनें।' },
-  'login.roleLabel': { en: 'I am signing in as', hi: 'मैं साइन इन कर रहा/रही हूँ' },
+  'login.pickSocietyFirst': { en: 'Select a society to sign in.', hi: 'प्रवेश के लिए सोसाइटी चुनें।' },
+  'login.roleLabel': { en: 'I am signing in as', hi: 'मैं इस रूप में प्रवेश कर रहा/रही हूँ' },
   'login.roleGuard': { en: 'Guard', hi: 'गार्ड' },
   'login.roleAdmin': { en: 'Admin', hi: 'एडमिन' },
   'login.roleResident': { en: 'Resident', hi: 'निवासी' },
@@ -93,10 +93,10 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.flatsLoading': { en: 'Loading flats…', hi: 'फ्लैट लोड हो रहे हैं…' },
   'login.noFlatsForSociety': {
     en: 'No flats are registered for this society. Ask your admin to add flats in Directory. (Society “flat numbering” settings do not create flat rows by themselves.)',
-    hi: 'इस सोसाइटी के लिए अभी कोई फ्लैट दर्ज नहीं है। एडमिन से डायरेक्टरी में फ्लैट जोड़ने को कहें। (सोसाइटी के फ्लैट नंबरिंग फ़ील्ड अपने आप फ्लैट नहीं बनाते।)',
+    hi: 'इस सोसाइटी के लिए अभी कोई फ्लैट दर्ज नहीं है। एडमिन से निर्देशिका में फ्लैट जोड़ने को कहें। (सोसाइटी के फ्लैट नंबरिंग फ़ील्ड अपने आप फ्लैट नहीं बनाते।)',
   },
   'login.pickFlatFirst': { en: 'Select your flat to continue.', hi: 'जारी रखने के लिए अपना फ्लैट चुनें।' },
-  'login.adminUsePassword': { en: 'Admins sign in with Admin ID and password below (not OTP).', hi: 'एडमिन आईडी और पासवर्ड से लॉगिन करें (OTP नहीं)।' },
+  'login.adminUsePassword': { en: 'Admins sign in with Admin ID and password below (not OTP).', hi: 'एडमिन आईडी और पासवर्ड से लॉगिन करें (ओटीपी नहीं)।' },
   'login.onboard.phoneOtherFlat': {
     en: 'This phone is already linked to another flat in this society. Pick that flat or contact the administrator.',
     hi: 'यह फोन इस सोसाइटी में किसी दूसरे फ्लैट से जुड़ा है। सही फ्लैट चुनें या एडमिन से संपर्क करें।',
@@ -143,17 +143,17 @@ const translations: Record<string, Record<Lang, string>> = {
   },
   'login.passwordSameHouseholdFlow': {
     en: 'If your phone is not listed yet but you have the flat password, you can still sign in — same steps as OTP after password check.',
-    hi: 'यदि आपका फोन अभी सूची में नहीं है लेकिन फ्लैट पासवर्ड है, तब भी साइन इन हो सकते हैं — पासवर्ड जाँच के बाद OTP जैसे ही चरण।',
+    hi: 'यदि आपका फोन अभी सूची में नहीं है लेकिन फ्लैट पासवर्ड है, तब भी प्रवेश कर सकते हैं — पासवर्ड जाँच के बाद ओटीपी जैसे ही चरण।',
   },
 
   // Guard (in-session)
   'guard.geofenceLeftZone': {
     en: 'You are taking the phone outside the geofencing zone. Please return to the allowed area.',
-    hi: 'आप फोन को जियोफ़ेंसिंग ज़ोन से बाहर ले जा रहे हैं। कृपया अनुमत क्षेत्र में लौटें।',
+    hi: 'आप फोन को भौगोलिक सीमा से बाहर ले जा रहे हैं। कृपया अनुमत क्षेत्र में लौटें।',
   },
   'guard.geofenceLocationOff': {
     en: 'Location is off or unavailable. Turn location on to stay within the guard geofencing zone.',
-    hi: 'लोकेशन बंद है या उपलब्ध नहीं। गार्ड जियोफ़ेंस ज़ोन में रहने के लिए लोकेशन चालू करें।',
+    hi: 'स्थान सेवा बंद है या उपलब्ध नहीं। गार्ड भौगोलिक सीमा में रहने के लिए स्थान सेवा चालू करें।',
   },
 
   // Resident
@@ -181,7 +181,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'resident.mandatoryBioTitle': { en: 'Enable fingerprint login?', hi: 'फ़िंगरप्रिंट लॉगिन चालू करें?' },
   'resident.mandatoryBioBody': {
     en: 'Use your device biometric or screen lock to sign in faster next time. You can also set this later under Profile.',
-    hi: 'अगली बार तेज़ साइन-इन के लिए डिवाइस बायोमेट्रिक या स्क्रीन लॉक उपयोग करें। प्रोफ़ाइल में बाद में भी सेट कर सकते हैं।',
+    hi: 'अगली बार तेज़ प्रवेश के लिए उपकरण की बायोमेट्रिक या स्क्रीन ताला उपयोग करें। प्रोफ़ाइल में बाद में भी सेट कर सकते हैं।',
   },
   'resident.demo': { en: 'Demo: 9876543210 / resident123', hi: 'डेमो: 9876543210 / resident123' },
   'resident.approvals': { en: 'Approvals', hi: 'अनुमोदन' },
@@ -200,7 +200,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'resident.validDate': { en: 'Valid Date', hi: 'मान्य तिथि' },
   'resident.from': { en: 'From', hi: 'से' },
   'resident.to': { en: 'To', hi: 'तक' },
-  'resident.generateOTP': { en: 'Generate OTP Pass', hi: 'OTP पास बनाएं' },
+  'resident.generateOTP': { en: 'Generate OTP Pass', hi: 'ओटीपी पास बनाएं' },
   'resident.passCreated': { en: 'Pass created successfully', hi: 'पास सफलतापूर्वक बनाया गया' },
   'resident.noPasses': { en: 'No visitor passes yet', hi: 'अभी तक कोई विज़िटर पास नहीं' },
 
@@ -214,14 +214,14 @@ const translations: Record<string, Record<Lang, string>> = {
   'approval.askPermission': { en: 'Ask Permission', hi: 'अनुमति मांगें' },
 
   // OTP
-  'otp.verifyTitle': { en: 'Verify OTP Pass', hi: 'OTP पास सत्यापित करें' },
+  'otp.verifyTitle': { en: 'Verify OTP Pass', hi: 'ओटीपी पास सत्यापित करें' },
   'otp.verifySubtitle': { en: 'Enter the 6-digit code from the visitor', hi: 'विज़िटर से 6 अंकों का कोड दर्ज करें' },
   'otp.verify': { en: 'Verify', hi: 'सत्यापित करें' },
-  'otp.enterSixDigit': { en: 'Enter 6-digit OTP', hi: '6 अंकों का OTP दर्ज करें' },
-  'otp.invalid': { en: 'Invalid or expired OTP', hi: 'अमान्य या समय-सीमा समाप्त OTP' },
-  'otp.outsideTimeSlot': { en: 'OTP not valid at this time', hi: 'OTP इस समय मान्य नहीं है' },
-  'otp.verifyPass': { en: 'Verify OTP', hi: 'OTP सत्यापित करें' },
-  'otp.validPass': { en: 'Valid pass! Auto-registering entry.', hi: 'मान्य पास! स्वचालित एंट्री दर्ज हो रही है।' },
+  'otp.enterSixDigit': { en: 'Enter 6-digit OTP', hi: '6 अंकों का ओटीपी दर्ज करें' },
+  'otp.invalid': { en: 'Invalid or expired OTP', hi: 'अमान्य या समय-सीमा समाप्त ओटीपी' },
+  'otp.outsideTimeSlot': { en: 'OTP not valid at this time', hi: 'ओटीपी इस समय मान्य नहीं है' },
+  'otp.verifyPass': { en: 'Verify OTP', hi: 'ओटीपी सत्यापित करें' },
+  'otp.validPass': { en: 'Valid pass! Auto-registering entry.', hi: 'मान्य पास! स्वचालित प्रवेश दर्ज हो रहा है।' },
 
   // Nav
   'nav.home': { en: 'Home', hi: 'होम' },
@@ -230,7 +230,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'nav.delivery': { en: 'Delivery', hi: 'डिलीवरी' },
   'nav.vehicles': { en: 'Vehicles', hi: 'वाहन' },
   'nav.blacklist': { en: 'Blacklist', hi: 'ब्लैकलिस्ट' },
-  'nav.directory': { en: 'Directory', hi: 'डायरेक्टरी' },
+  'nav.directory': { en: 'Directory', hi: 'निर्देशिका' },
   'nav.report': { en: 'REPORTS', hi: 'रिपोर्ट्स' },
   'nav.logs': { en: 'Logs', hi: 'लॉग्स' },
   'nav.settings': { en: 'Settings', hi: 'सेटिंग्स' },
@@ -257,7 +257,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.guard.w1.title': { en: 'Welcome, guard', hi: 'स्वागत है, गार्ड' },
   'tour.guard.w1.body': {
     en: 'You run the society gate from this phone. Everything is organized in bottom tabs — start with Home, then use the tools your society needs most.',
-    hi: 'आप इस फ़ोन से सोसाइटी गेट चलाते हैं। सब कुछ नीचे टैब में है — पहले होम, फिर ज़रूरी टूल।',
+    hi: 'आप इस फ़ोन से सोसाइटी गेट चलाते हैं। सब कुछ नीचे टैब में है — पहले होम, फिर ज़रूरी उपकरण।',
   },
   'tour.guard.w2.title': { en: 'Home dashboard', hi: 'होम डैशबोर्ड' },
   'tour.guard.w2.body': {
@@ -267,17 +267,17 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.guard.e1.title': { en: 'Quick entry', hi: 'क्विक एंट्री' },
   'tour.guard.e1.body': {
     en: 'Fast path for staff, frequent visitors, and anyone already on file. Search by flat, phone, or name to log in or out in seconds.',
-    hi: 'स्टाफ और बार-बार आने वालों के लिए तेज़ रास्ता। फ्लैट, फोन या नाम से खोजकर जल्दी एंट्री/एग्ज़िट।',
+    hi: 'स्टाफ और बार-बार आने वालों के लिए तेज़ रास्ता। फ्लैट, फोन या नाम से खोजकर जल्दी प्रवेश/निकास दर्ज करें।',
   },
   'tour.guard.e2.title': { en: 'Visitor entry', hi: 'विज़िटर एंट्री' },
   'tour.guard.e2.body': {
     en: 'Full visitor capture: ID, photos, flat, purpose. Use when someone is new or needs a complete record.',
-    hi: 'पूरा विज़िटर रिकॉर्ड: ID, फोटो, फ्लैट, उद्देश्य। नए या पूरे रिकॉर्ड के लिए।',
+    hi: 'पूरा आगंतुक रिकॉर्ड: पहचान पत्र, फोटो, फ्लैट, उद्देश्य। नए या पूरे रिकॉर्ड के लिए।',
   },
   'tour.guard.e3.title': { en: 'Delivery & service', hi: 'डिलीवरी और सेवा' },
   'tour.guard.e3.body': {
     en: 'Separate flow for couriers and on-site staff. Pick delivery vs service, capture company, and log the visit.',
-    hi: 'कूरियर और ऑन-साइट स्टाफ के लिए अलग फ्लो। डिलीवरी/सेवा चुनें, कंपनी दर्ज करें।',
+    hi: 'कूरियर और स्थल पर मौजूद स्टाफ के लिए अलग प्रवाह। डिलीवरी/सेवा चुनें, कंपनी दर्ज करें।',
   },
   'tour.guard.s1.title': { en: 'Vehicles', hi: 'वाहन' },
   'tour.guard.s1.body': {
@@ -289,15 +289,15 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Instant warning if a phone or vehicle is flagged. Add new flags with a clear reason when management asks.',
     hi: 'फ्लैग किए फोन/वाहन पर तुरंत चेतावनी। प्रबंधन कहे तो कारण के साथ नया जोड़ें।',
   },
-  'tour.guard.s3.title': { en: 'Directory', hi: 'डायरेक्टरी' },
+  'tour.guard.s3.title': { en: 'Directory', hi: 'निर्देशिका' },
   'tour.guard.s3.body': {
     en: 'Browse flats and members for intercom numbers and context — helpful when residents call the gate.',
-    hi: 'इंटरकॉम और जानकारी के लिए फ्लैट/सदस्य देखें — निवासी कॉल पर उपयोगी।',
+    hi: 'आंतरसंवाद और जानकारी के लिए फ्लैट/सदस्य देखें — निवासी कॉल पर उपयोगी।',
   },
   'tour.guard.s4.title': { en: 'Settings & shift', hi: 'सेटिंग्स और शिफ्ट' },
   'tour.guard.s4.body': {
     en: 'Theme, language, biometric shortcuts, and end-of-shift logout live here. Always end your shift when handing over the device.',
-    hi: 'थीम, भाषा, बायोमेट्रिक, लॉगआउट यहाँ। डिवाइस सौंपते समय शिफ्ट समाप्त करें।',
+    hi: 'थीम, भाषा, बायोमेट्रिक, लॉग आउट यहाँ। उपकरण सौंपते समय शिफ्ट समाप्त करें।',
   },
 
   'tour.ch.resident.welcome': { en: 'Resident home', hi: 'निवासी होम' },
@@ -307,7 +307,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.res.r1.title': { en: 'Welcome home', hi: 'घर में स्वागत' },
   'tour.res.r1.body': {
     en: 'Approve visitors, create OTP passes, pay maintenance, vote in polls, and manage your flat — all from one app.',
-    hi: 'विज़िटर स्वीकृति, OTP पास, मेंटेनेंस, मतदान, फ्लैट प्रबंधन — एक ऐप में।',
+    hi: 'आगंतुक स्वीकृति, ओटीपी पास, रखरखाव शुल्क, मतदान, फ्लैट प्रबंधन — एक ऐप में।',
   },
   'tour.res.r2.title': { en: 'Approvals', hi: 'अनुमोदन' },
   'tour.res.r2.body': {
@@ -317,22 +317,22 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.res.r3.title': { en: 'Visitor passes', hi: 'विज़िटर पास' },
   'tour.res.r3.body': {
     en: 'Pre-create OTP passes for guests with date and time window. Share the code; guards verify it at the gate.',
-    hi: 'मेहमानों के लिए तारीख/समय के साथ OTP पास बनाएं। कोड साझा करें; गार्ड गेट पर सत्यापित करेंगे।',
+    hi: 'मेहमानों के लिए तारीख/समय के साथ ओटीपी पास बनाएं। कोड साझा करें; गार्ड गेट पर सत्यापित करेंगे।',
   },
   'tour.res.r4.title': { en: 'Family & staff', hi: 'परिवार और स्टाफ' },
   'tour.res.r4.body': {
     en: 'Add members and household staff so guards see them in Quick Entry. Photo ID may be required for certain roles.',
-    hi: 'सदस्य और स्टाफ जोड़ें ताकि गार्ड क्विक एंट्री में देखें। कुछ भूमिकाओं के लिए फोटो ID ज़रूरी हो सकता है।',
+    hi: 'सदस्य और स्टाफ जोड़ें ताकि गार्ड त्वरित प्रवेश में देखें। कुछ भूमिकाओं के लिए फोटो पहचान पत्र ज़रूरी हो सकता है।',
   },
   'tour.res.r5.title': { en: 'Vehicles', hi: 'वाहन' },
   'tour.res.r5.body': {
     en: 'Register cars and bikes for your flat so gate staff can match plates quickly.',
     hi: 'अपने फ्लैट के वाहन पंजीकृत करें ताकि गेट पर नंबर जल्दी मिल सके।',
   },
-  'tour.res.r6.title': { en: 'Directory', hi: 'डायरेक्टरी' },
+  'tour.res.r6.title': { en: 'Directory', hi: 'निर्देशिका' },
   'tour.res.r6.body': {
     en: 'Society-wide directory: browse other flats respectfully for contact context your society allows.',
-    hi: 'सोसाइटी डायरेक्टरी: अनुमत सीमा में अन्य फ्लैट की जानकारी।',
+    hi: 'सोसाइटी निर्देशिका: अनुमत सीमा में अन्य फ्लैट की जानकारी।',
   },
   'tour.res.r7.title': { en: 'Alerts & notices', hi: 'अलर्ट और सूचनाएँ' },
   'tour.res.r7.body': {
@@ -347,12 +347,12 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.res.r9.title': { en: 'Payments', hi: 'भुगतान' },
   'tour.res.r9.body': {
     en: 'Track maintenance and society dues your admin publishes to your flat.',
-    hi: 'वह मेंटेनेंस/शुल्क देखें जो एडमिन आपके फ्लैट के लिए दिखाता है।',
+    hi: 'वह रखरखाव शुल्क देखें जो एडमिन आपके फ्लैट के लिए दिखाता है।',
   },
   'tour.res.r10.title': { en: 'Profile & security', hi: 'प्रोफ़ाइल और सुरक्षा' },
   'tour.res.r10.body': {
     en: 'Password, biometrics, and optional ID uploads live under Profile. Flatmates may share the same flat login.',
-    hi: 'पासवर्ड, बायोमेट्रिक, वैकल्पिक ID अपलोड प्रोफ़ाइल में। फ्लैटमेट्स एक लॉगिन साझा कर सकते हैं।',
+    hi: 'पासवर्ड, बायोमेट्रिक, वैकल्पिक पहचान पत्र अपलोड प्रोफ़ाइल में। सह-निवासी एक लॉगिन साझा कर सकते हैं।',
   },
 
   'tour.ch.super.welcome': { en: 'Platform', hi: 'प्लेटफ़ॉर्म' },
@@ -360,7 +360,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.super.s1.title': { en: 'Superadmin overview', hi: 'सुपरएडमिन अवलोकन' },
   'tour.super.s1.body': {
     en: 'You manage every society on the platform: branding, flat ranges, backups, and who can administer each site.',
-    hi: 'आप प्लेटफ़ॉर्म की हर सोसाइटी प्रबंधित करते हैं: ब्रांडिंग, फ्लैट रेंज, बैकअप, एडमिन पहुँच।',
+    hi: 'आप प्लेटफ़ॉर्म की हर सोसाइटी प्रबंधित करते हैं: ब्रांड-पहचान, फ्लैट रेंज, बैकअप, एडमिन पहुँच।',
   },
   'tour.super.s2.title': { en: 'Societies', hi: 'सोसाइटियाँ' },
   'tour.super.s2.body': {
@@ -375,17 +375,17 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.super.s4.title': { en: 'Admins', hi: 'एडमिन' },
   'tour.super.s4.body': {
     en: 'Provision society admins, assign roles, and keep recovery email ready for password resets.',
-    hi: 'सोसाइटी एडमिन बनाएँ, भूमिका दें, पासवर्ड रीसेट के लिए रिकवरी ईमेल रखें।',
+    hi: 'सोसाइटी एडमिन बनाएँ, भूमिका दें, पासवर्ड रीसेट के लिए पुनर्प्राप्ति ईमेल रखें।',
   },
   'tour.super.s5.title': { en: 'Maintenance', hi: 'रखरखाव' },
   'tour.super.s5.body': {
     en: 'Exports, backups, and bulk tools for serious housekeeping — use carefully in production.',
-    hi: 'निर्यात, बैकअप, बल्क टूल — प्रोडक्शन में सावधानी से।',
+    hi: 'निर्यात, बैकअप, सामूहिक उपकरण — चालू परिवेश में सावधानी से।',
   },
   'tour.super.s6.title': { en: 'Security settings', hi: 'सुरक्षा सेटिंग्स' },
   'tour.super.s6.body': {
     en: 'TOTP, recovery email, and biometric options protect this highest-privilege account.',
-    hi: 'TOTP, रिकवरी ईमेल, बायोमेट्रिक इस उच्चतम खाते की सुरक्षा करते हैं।',
+    hi: 'समय-आधारित ओटीपी, पुनर्प्राप्ति ईमेल, बायोमेट्रिक इस उच्चतम खाते की सुरक्षा करते हैं।',
   },
 
   'tour.ch.admin.welcome': { en: 'Admin basics', hi: 'एडमिन मूल बातें' },
@@ -400,14 +400,14 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.admin.a1.title': { en: 'Society admin', hi: 'सोसाइटी एडमिन' },
   'tour.admin.a1.body': {
     en: 'You operate the society back-office: people, money, events, and gate workflows — based on permissions your superadmin assigned.',
-    hi: 'आप बैक-ऑफिस चलाते हैं: लोग, धन, इवेंट, गेट वर्कफ़्लो — सुपरएडमिन की अनुमतियों के अनुसार।',
+    hi: 'आप समाज प्रशासन चलाते हैं: लोग, धन, आयोजन, गेट कार्यप्रवाह — सुपरएडमिन की अनुमतियों के अनुसार।',
   },
   'tour.admin.a2.title': { en: 'Home cards', hi: 'होम कार्ड' },
   'tour.admin.a2.body': {
     en: 'The overview shows counts and shortcuts. Tap any quick-access tile to jump straight to that module.',
-    hi: 'अवलोकन में गिनती और शॉर्टकट। किसी टाइल पर टैप करके मॉड्यूल खोलें।',
+    hi: 'अवलोकन में गिनती और शीघ्र पहुँच। किसी टाइल पर टैप करके खंड खोलें।',
   },
-  'tour.admin.a3.title': { en: 'Bottom navigation', hi: 'नीचे नेविगेशन' },
+  'tour.admin.a3.title': { en: 'Bottom navigation', hi: 'नीचे की टैब पट्टी' },
   'tour.admin.a3.body': {
     en: 'Tabs mirror your role: hidden items are not missing — your access profile simply does not include them.',
     hi: 'टैब आपकी भूमिका के अनुसार। छुपी चीज़ें गायब नहीं — आपकी पहुँच में नहीं हैं।',
@@ -415,17 +415,17 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.admin.g1.title': { en: 'Guard roster', hi: 'गार्ड सूची' },
   'tour.admin.g1.body': {
     en: 'Create guard IDs, set OTP/password modes, track KYC, and ensure shifts stay accountable.',
-    hi: 'गार्ड ID, OTP/पासवर्ड, KYC, शिफ्ट जवाबदेही प्रबंधित करें।',
+    hi: 'गार्ड आईडी, ओटीपी/पासवर्ड, पहचान सत्यापन, शिफ्ट जवाबदेही प्रबंधित करें।',
   },
   'tour.admin.rv1.title': { en: 'Residents & flats', hi: 'निवासी और फ्लैट' },
   'tour.admin.rv1.body': {
     en: 'Manage flats, members, resident logins, and visitor data tied to each household.',
-    hi: 'फ्लैट, सदस्य, निवासी लॉगिन, परिवार से जुड़ा डेटा।',
+    hi: 'फ्लैट, सदस्य, निवासी लॉगिन, परिवार से जुड़ा आँकड़ा।',
   },
   'tour.admin.gf1.title': { en: 'Geofence policy', hi: 'जियोफ़ेंस नीति' },
   'tour.admin.gf1.body': {
     en: 'Draw the guard login perimeter so OTP guards cannot authenticate far away from the society.',
-    hi: 'OTP गार्ड लॉगिन की सीमा तय करें ताकि दूर से लॉगिन न हो सके।',
+    hi: 'ओटीपी गार्ड लॉगिन की सीमा तय करें ताकि दूर से लॉगिन न हो सके।',
   },
   'tour.admin.fn1.title': { en: 'Maintenance billing', hi: 'मेंटेनेंस बिलिंग' },
   'tour.admin.fn1.body': {
@@ -435,7 +435,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.admin.fn2.title': { en: 'Donations', hi: 'दान' },
   'tour.admin.fn2.body': {
     en: 'Launch campaigns, track progress, and acknowledge resident contributions.',
-    hi: 'अभियान, प्रगति, योगदान ट्रैक करें।',
+    hi: 'अभियान, प्रगति, योगदान दर्ज करें।',
   },
   'tour.admin.fn3.title': { en: 'Expense splits', hi: 'खर्च बंटवारा' },
   'tour.admin.fn3.body': {
@@ -445,7 +445,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.admin.cm1.title': { en: 'Events', hi: 'इवेंट' },
   'tour.admin.cm1.body': {
     en: 'Publish society events, RSVPs, and optional contribution tracking.',
-    hi: 'इवेंट, RSVP, योगदान ट्रैक।',
+    hi: 'आयोजन, आमंत्रण स्वीकृति, योगदान दर्ज।',
   },
   'tour.admin.cm1m.title': { en: 'Meetings', hi: 'मीटिंग' },
   'tour.admin.cm1m.body': {
@@ -455,12 +455,12 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.admin.cm2.title': { en: 'Polls', hi: 'पोल' },
   'tour.admin.cm2.body': {
     en: 'Run secure votes on society decisions with live totals.',
-    hi: 'सुरक्षित मतदान, लाइव योग।',
+    hi: 'सुरक्षित मतदान, तत्काल कुल।',
   },
   'tour.admin.cm3.title': { en: 'Notifications', hi: 'सूचनाएँ' },
   'tour.admin.cm3.body': {
     en: 'Push targeted announcements to residents or guards with delivery diagnostics.',
-    hi: 'निवासी/गार्ड को लक्षित सूचनाएँ, डिलीवरी डायग्नोस्टिक्स।',
+    hi: 'निवासी/गार्ड को लक्षित सूचनाएँ, वितरण स्थिति विवरण।',
   },
   'tour.admin.cm4.title': { en: 'Parking', hi: 'पार्किंग' },
   'tour.admin.cm4.body': {
@@ -470,32 +470,32 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.admin.op1.title': { en: 'Visitor console', hi: 'विज़िटर कंसोल' },
   'tour.admin.op1.body': {
     en: 'Same visitor workflow guards use — helpful when you need to log someone from the office.',
-    hi: 'वही विज़िटर फ्लो जो गार्ड उपयोग करते हैं — ऑफिस से लॉग करने के लिए।',
+    hi: 'वही आगंतुक प्रवाह जो गार्ड उपयोग करते हैं — कार्यालय से दर्ज करने के लिए।',
   },
   'tour.admin.op2.title': { en: 'Delivery & service', hi: 'डिलीवरी और सेवा' },
   'tour.admin.op2.body': {
     en: 'Override or assist with courier/service entries when residents call the office.',
-    hi: 'कूरियर/सेवा एंट्री में मदद जब ऑफिस से कॉल आए।',
+    hi: 'कूरियर/सेवा प्रवेश में मदद जब कार्यालय से कॉल आए।',
   },
   'tour.admin.op3.title': { en: 'Vehicle registry', hi: 'वाहन रजिस्ट्री' },
   'tour.admin.op3.body': {
     en: 'Audit resident vehicles and fix mismatches reported by guards.',
-    hi: 'निवासी वाहन ऑडिट, गार्ड की रिपोर्ट ठीक करें।',
+    hi: 'निवासी वाहन लेखापरीक्षा, गार्ड की रिपोर्ट ठीक करें।',
   },
   'tour.admin.op4.title': { en: 'Blacklist control', hi: 'ब्लैकलिस्ट नियंत्रण' },
   'tour.admin.op4.body': {
     en: 'Add or remove flags after committee decisions; guards see updates instantly.',
     hi: 'समिति निर्णय के बाद फ्लैग जोड़ें/हटाएं; गार्ड को तुरंत दिखेगा।',
   },
-  'tour.admin.op5.title': { en: 'Directory oversight', hi: 'डायरेक्टरी निरीक्षण' },
+  'tour.admin.op5.title': { en: 'Directory oversight', hi: 'निर्देशिका निरीक्षण' },
   'tour.admin.op5.body': {
     en: 'Review historical visitor patterns for security investigations.',
-    hi: 'सुरक्षा जाँच के लिए पुराने विज़िटर पैटर्न।',
+    hi: 'सुरक्षा जाँच के लिए पुराने आगंतुक पैटर्न।',
   },
   'tour.admin.op6.title': { en: 'Quick entry assist', hi: 'क्विक एंट्री सहायता' },
   'tour.admin.op6.body': {
     en: 'Jump into the same quick search guards rely on for staff and frequent visitors.',
-    hi: 'गार्ड जैसी क्विक खोज स्टाफ और नियमित विज़िटर के लिए।',
+    hi: 'गार्ड जैसी त्वरित खोज स्टाफ और नियमित आगंतुक के लिए।',
   },
   'tour.admin.rp1.title': { en: 'Reports', hi: 'रिपोर्ट' },
   'tour.admin.rp1.body': {
@@ -505,9 +505,9 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.admin.rp2.title': { en: 'Logs', hi: 'लॉग' },
   'tour.admin.rp2.body': {
     en: 'Deep search across visitor rows with filters for category and guard.',
-    hi: 'विज़िटर लॉग में गहरी खोज, श्रेणी/गार्ड फ़िल्टर।',
+    hi: 'आगंतुक लॉग में गहरी खोज, श्रेणी/गार्ड फ़िल्टर।',
   },
-  'tour.admin.rp3.title': { en: 'Audit trail', hi: 'ऑडिट ट्रेल' },
+  'tour.admin.rp3.title': { en: 'Audit trail', hi: 'निरीक्षण अनुक्रम' },
   'tour.admin.rp3.body': {
     en: 'Immutable security events: who logged in, from where, and critical changes.',
     hi: 'सुरक्षा घटनाएँ: किसने लॉगिन किया, कहाँ से, महत्वपूर्ण बदलाव।',
@@ -515,12 +515,12 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.admin.sc1.title': { en: 'Password rotation', hi: 'पासवर्ड रोटेशन' },
   'tour.admin.sc1.body': {
     en: 'Change your admin password regularly and keep recovery email in sync with superadmin records.',
-    hi: 'पासवर्ड बदलते रहें; रिकवरी ईमेल अपडेट रखें।',
+    hi: 'पासवर्ड बदलते रहें; पुनर्प्राप्ति ईमेल अद्यतन रखें।',
   },
   'tour.admin.sc2.title': { en: 'Biometric hardening', hi: 'बायोमेट्रिक सुरक्षा' },
   'tour.admin.sc2.body': {
     en: 'Optional WebAuthn login speeds up repeat access without weakening the primary password policy.',
-    hi: 'वैकल्पिक WebAuthn से तेज़ दोहरा लॉगिन, मुख्य पासवर्ड नीति बनी रहे।',
+    hi: 'वैकल्पिक वेब प्रमाणीकरण से तेज़ दोहरा लॉगिन, मुख्य पासवर्ड नीति बनी रहे।',
   },
 
   'tour.first.admin.more.title': { en: 'Deep dives anytime', hi: 'कभी भी गहराई से' },
@@ -541,7 +541,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.first.super.more.title': { en: 'Platform playbook', hi: 'प्लेटफ़ॉर्म गाइड' },
   'tour.first.super.more.body': {
     en: 'Tour tab breaks down societies, roles, admins, maintenance exports, and security controls.',
-    hi: 'टूर टैब में सोसाइटी, भूमिका, एडमिन, मेंटेनेंस, सुरक्षा नियंत्रण।',
+    hi: 'टूर टैब में सोसाइटी, भूमिका, एडमिन, रखरखाव, सुरक्षा नियंत्रण।',
   },
 
   // Dashboard
@@ -639,7 +639,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'blacklist.vehicle': { en: 'Vehicle', hi: 'वाहन' },
 
   // Directory
-  'directory.title': { en: 'Directory', hi: 'डायरेक्टरी' },
+  'directory.title': { en: 'Directory', hi: 'निर्देशिका' },
   'directory.registeredVisitors': { en: 'registered visitors', hi: 'पंजीकृत आगंतुक' },
   'directory.searchPlaceholder': { en: 'Search name, phone, flat, vehicle...', hi: 'नाम, फोन, फ्लैट, वाहन खोजें...' },
   'directory.noVisitors': { en: 'No visitors found', hi: 'कोई आगंतुक नहीं मिला' },
@@ -680,7 +680,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'report.receiptsLedgerStatus': { en: 'Receipts — ledger status', hi: 'रसीद — लेजर स्थिति' },
   'report.financeLedgerSubtitle': {
     en: 'Totals by recording mode and destination (entry_month).',
-    hi: 'रिकॉर्ड मोड और गंतव्य के अनुसार कुल (entry_month)।',
+    hi: 'रिकॉर्ड मोड और गंतव्य के अनुसार कुल (प्रवेश माह)।',
   },
   'report.financeMonth': { en: 'Month', hi: 'माह' },
   'report.financeGross': { en: 'Gross ledger', hi: 'कुल लेजर' },
@@ -699,13 +699,13 @@ const translations: Record<string, Record<Lang, string>> = {
   'report.colEntries': { en: 'Entries', hi: 'प्रविष्टियाँ' },
   'report.colAmount': { en: 'Amount', hi: 'राशि' },
   'report.colFlatUnits': { en: 'Flat units', hi: 'फ्लैट यूनिट' },
-  'report.exportFinanceCsv': { en: 'Finance CSV', hi: 'वित्त CSV' },
+  'report.exportFinanceCsv': { en: 'Finance CSV', hi: 'वित्त सीएसवी' },
   'report.donationsStatuses': { en: 'Donation statuses', hi: 'दान स्थिति' },
   'report.guardShifts': { en: 'Guard Shifts', hi: 'गार्ड शिफ्ट' },
   'report.noShifts': { en: 'No shifts recorded', hi: 'कोई शिफ्ट दर्ज नहीं' },
   'report.entries': { en: 'Entries', hi: 'एंट्री' },
   'report.noEntries': { en: 'No entries for this date', hi: 'इस तारीख की कोई एंट्री नहीं' },
-  'report.more': { en: 'more — use Print/CSV for full list', hi: 'और — पूरी सूची के लिए प्रिंट/CSV उपयोग करें' },
+  'report.more': { en: 'more — use Print/CSV for full list', hi: 'और — पूरी सूची के लिए प्रिंट/सीएसवी उपयोग करें' },
   'report.flatsVisited': { en: 'Flats Visited', hi: 'फ्लैट विज़िट' },
   'report.print': { en: 'Print', hi: 'प्रिंट' },
 
@@ -755,7 +755,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'admin.geofenceActive': { en: 'Geofence Active', hi: 'जियोफ़ेंस सक्रिय' },
   'admin.noGeofence': { en: 'No geofence set. Guards can login from anywhere.', hi: 'कोई जियोफ़ेंस सेट नहीं। गार्ड कहीं से भी लॉगिन कर सकते हैं।' },
   'admin.captureLocation': { en: 'Set My Current Location', hi: 'मेरा वर्तमान स्थान सेट करें' },
-  'admin.capturing': { en: 'Capturing GPS...', hi: 'GPS कैप्चर हो रहा है...' },
+  'admin.capturing': { en: 'Capturing GPS...', hi: 'जीपीएस स्थान ग्रहण हो रहा है...' },
   'admin.locationError': { en: 'Location error', hi: 'स्थान त्रुटि' },
   'admin.geofenceSaved': { en: 'Geofence saved successfully', hi: 'जियोफ़ेंस सफलतापूर्वक सहेजा गया' },
   'admin.totalVisitors': { en: 'Total Visitors', hi: 'कुल आगंतुक' },
@@ -782,38 +782,38 @@ const translations: Record<string, Record<Lang, string>> = {
   // Superadmin
   'superadmin.login': { en: 'Super Admin', hi: 'सुपर एडमिन' },
   'superadmin.loginSubtitle': { en: 'Multi-society management', hi: 'बहु-सोसाइटी प्रबंधन' },
-  'superadmin.username': { en: 'Username', hi: 'यूज़रनेम' },
+  'superadmin.username': { en: 'Username', hi: 'उपयोगकर्ता नाम' },
   'superadmin.loginButton': { en: 'Login as Super Admin', hi: 'सुपर एडमिन के रूप में लॉगिन' },
-  'superadmin.demo': { en: 'Demo: SUPERADMIN / Hello#123 + authenticator', hi: 'डेमो: SUPERADMIN / Hello#123 + ऑथेंटिकेटर' },
-  'superadmin.enterAuthenticatorCode': { en: 'Enter the 6-digit code from Microsoft Authenticator', hi: 'Microsoft Authenticator से 6 अंकों का कोड दर्ज करें' },
+  'superadmin.demo': { en: 'Demo: SUPERADMIN / Hello#123 + authenticator', hi: 'डेमो: SUPERADMIN / Hello#123 + प्रमाणक' },
+  'superadmin.enterAuthenticatorCode': { en: 'Enter the 6-digit code from Microsoft Authenticator', hi: 'माइक्रोसॉफ़्ट प्रमाणक ऐप से 6 अंकों का कोड दर्ज करें' },
   'superadmin.verifyAndContinue': { en: 'Verify & continue', hi: 'सत्यापित करें और आगे बढ़ें' },
   'superadmin.backToLogin': { en: 'Back to login', hi: 'लॉगिन पर वापस' },
-  'superadmin.invalidAuthenticatorCode': { en: 'Invalid authenticator code', hi: 'अमान्य ऑथेंटिकेटर कोड' },
-  'superadmin.completeMfaWithPassword': { en: 'Sign in with username and password first to set up or use the authenticator.', hi: 'पहले यूज़रनेम और पासवर्ड से साइन इन करें।' },
-  'superadmin.mfaSetupTitle': { en: 'Set up Microsoft Authenticator', hi: 'Microsoft Authenticator सेट करें' },
-  'superadmin.mfaSetupSubtitle': { en: 'Scan the QR code, or enter the secret key manually in your app.', hi: 'QR कोड स्कैन करें, या ऐप में गुप्त कुंजी मैन्युअल दर्ज करें।' },
+  'superadmin.invalidAuthenticatorCode': { en: 'Invalid authenticator code', hi: 'अमान्य प्रमाणक कोड' },
+  'superadmin.completeMfaWithPassword': { en: 'Sign in with username and password first to set up or use the authenticator.', hi: 'पहले उपयोगकर्ता नाम और पासवर्ड से प्रवेश करें।' },
+  'superadmin.mfaSetupTitle': { en: 'Set up Microsoft Authenticator', hi: 'माइक्रोसॉफ़्ट प्रमाणक ऐप सेट करें' },
+  'superadmin.mfaSetupSubtitle': { en: 'Scan the QR code, or enter the secret key manually in your app.', hi: 'क्यूआर कोड स्कैन करें, या ऐप में गुप्त कुंजी स्वयं दर्ज करें।' },
   'superadmin.iHaveAddedApp': { en: 'I have added the account', hi: 'मैंने खाता जोड़ लिया है' },
   'superadmin.enterCodeFromApp': { en: 'Enter the 6-digit code from the app to confirm', hi: 'पुष्टि के लिए ऐप से 6 अंकों का कोड दर्ज करें' },
-  'superadmin.couldNotSaveMfa': { en: 'Could not save authenticator setup', hi: 'ऑथेंटिकेटर सेटअप सहेजा नहीं जा सका' },
-  'superadmin.recoveryEmailStepTitle': { en: 'Recovery email', hi: 'रिकवरी ईमेल' },
-  'superadmin.recoveryEmailStepHelp': { en: 'If you lose your phone or authenticator, we will email a one-time code to this address.', hi: 'फोन या ऑथेंटिकेटर खोने पर हम इस पते पर एक बार का कोड भेजेंगे।' },
+  'superadmin.couldNotSaveMfa': { en: 'Could not save authenticator setup', hi: 'प्रमाणक सेटअप सहेजा नहीं जा सका' },
+  'superadmin.recoveryEmailStepTitle': { en: 'Recovery email', hi: 'पुनर्प्राप्ति ईमेल' },
+  'superadmin.recoveryEmailStepHelp': { en: 'If you lose your phone or authenticator, we will email a one-time code to this address.', hi: 'फोन या प्रमाणक खोने पर हम इस पते पर एक बार का कोड भेजेंगे।' },
   'superadmin.invalidRecoveryEmail': { en: 'Enter a valid email address', hi: 'मान्य ईमेल दर्ज करें' },
-  'superadmin.couldNotSaveRecovery': { en: 'Could not save recovery email', hi: 'रिकवरी ईमेल सहेजा नहीं जा सका' },
+  'superadmin.couldNotSaveRecovery': { en: 'Could not save recovery email', hi: 'पुनर्प्राप्ति ईमेल सहेजा नहीं जा सका' },
   'superadmin.finishAndEnter': { en: 'Save & enter panel', hi: 'सहेजें और पैनल में जाएं' },
-  'superadmin.lockedOutRecovery': { en: 'Locked out? Use recovery email', hi: 'लॉक आउट? रिकवरी ईमेल उपयोग करें' },
-  'superadmin.recoveryEmailLabel': { en: 'Recovery email', hi: 'रिकवरी ईमेल' },
-  'superadmin.recoveryRequestHelp': { en: 'Enter your super admin username and the recovery email on file. We will send a 6-digit code.', hi: 'सुपर एडमिन यूज़रनेम और फाइल में दर्ज रिकवरी ईमेल दर्ज करें। हम 6 अंकों का कोड भेजेंगे।' },
-  'superadmin.sendRecoveryCode': { en: 'Send recovery code', hi: 'रिकवरी कोड भेजें' },
+  'superadmin.lockedOutRecovery': { en: 'Locked out? Use recovery email', hi: 'खाता बंद? पुनर्प्राप्ति ईमेल उपयोग करें' },
+  'superadmin.recoveryEmailLabel': { en: 'Recovery email', hi: 'पुनर्प्राप्ति ईमेल' },
+  'superadmin.recoveryRequestHelp': { en: 'Enter your super admin username and the recovery email on file. We will send a 6-digit code.', hi: 'सुपर एडमिन उपयोगकर्ता नाम और दर्ज पुनर्प्राप्ति ईमेल दर्ज करें। हम 6 अंकों का कोड भेजेंगे।' },
+  'superadmin.sendRecoveryCode': { en: 'Send recovery code', hi: 'पुनर्प्राप्ति कोड भेजें' },
   'superadmin.enterRecoveryCode': { en: 'Enter the code from your email', hi: 'ईमेल से कोड दर्ज करें' },
   'superadmin.enterSixDigitRecovery': { en: 'Enter the 6-digit code', hi: '6 अंकों का कोड दर्ज करें' },
   'superadmin.invalidRecoveryCode': { en: 'Invalid or expired code', hi: 'अमान्य या समाप्त कोड' },
-  'superadmin.recoverySendFailed': { en: 'Could not send recovery email', hi: 'रिकवरी ईमेल नहीं भेजा जा सका' },
+  'superadmin.recoverySendFailed': { en: 'Could not send recovery email', hi: 'पुनर्प्राप्ति ईमेल नहीं भेजा जा सका' },
   'superadmin.devRecoveryCode': { en: 'Dev only: your code is', hi: 'केवल डेव: आपका कोड' },
   'superadmin.resendRecovery': { en: 'Start over', hi: 'फिर से शुरू करें' },
-  'superadmin.backToQr': { en: 'Back to QR code', hi: 'QR कोड पर वापस' },
-  'superadmin.recoveryEmailSettings': { en: 'Recovery email (lockout)', hi: 'रिकवरी ईमेल (लॉकआउट)' },
-  'superadmin.recoveryEmailSaved': { en: 'Recovery email saved', hi: 'रिकवरी ईमेल सहेजा गया' },
-  'superadmin.saveRecoveryEmail': { en: 'Save recovery email', hi: 'रिकवरी ईमेल सहेजें' },
+  'superadmin.backToQr': { en: 'Back to QR code', hi: 'क्यूआर कोड पर वापस' },
+  'superadmin.recoveryEmailSettings': { en: 'Recovery email (lockout)', hi: 'पुनर्प्राप्ति ईमेल (खाता बंद)' },
+  'superadmin.recoveryEmailSaved': { en: 'Recovery email saved', hi: 'पुनर्प्राप्ति ईमेल सहेजा गया' },
+  'superadmin.saveRecoveryEmail': { en: 'Save recovery email', hi: 'पुनर्प्राप्ति ईमेल सहेजें' },
   'superadmin.panel': { en: 'Super Admin Panel', hi: 'सुपर एडमिन पैनल' },
   'superadmin.societies': { en: 'Societies', hi: 'सोसाइटी' },
   'superadmin.roles': { en: 'Roles', hi: 'भूमिकाएं' },
@@ -845,7 +845,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'superadmin.contactPerson': { en: 'Contact Person Name', hi: 'संपर्क व्यक्ति का नाम' },
   'superadmin.contactEmail': { en: 'Contact Email', hi: 'संपर्क ईमेल' },
   'superadmin.contactPhone': { en: 'Contact Phone', hi: 'संपर्क फोन' },
-  'superadmin.logoUrl': { en: 'Logo URL', hi: 'लोगो URL' },
+  'superadmin.logoUrl': { en: 'Logo URL', hi: 'लोगो का पता (यूआरएल)' },
   'superadmin.newSociety': { en: 'New society', hi: 'नई सोसाइटी' },
   'superadmin.editSociety': { en: 'Edit society', hi: 'सोसाइटी संपादित करें' },
   'superadmin.societyUpdated': { en: 'Society updated', hi: 'सोसाइटी अपडेट की गई' },
@@ -878,7 +878,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'superadmin.resetFlatsButton': { en: 'Reset flats from this layout', hi: 'इस लेआउट से फ्लैट रीसेट करें' },
   'superadmin.resetFlatsHint': {
     en: 'Deletes all residential flats for this society, then regenerates from current range/floors/blocks. Use when tower mode changed by mistake.',
-    hi: 'इस सोसाइटी के सभी residential फ्लैट हटाकर वर्तमान रेंज/मंजिल/ब्लॉक्स से दोबारा बनाता है। टावर मोड गलती से बदलने पर उपयोग करें।',
+    hi: 'इस सोसाइटी के सभी निवासी फ्लैट हटाकर वर्तमान रेंज/मंजिल/ब्लॉक्स से दोबारा बनाता है। टावर मोड गलती से बदलने पर उपयोग करें।',
   },
   'superadmin.resetFlatsConfirmTitle': { en: 'Reset and regenerate flats?', hi: 'फ्लैट रीसेट और दोबारा बनाएं?' },
   'superadmin.resetFlatsConfirmText': {

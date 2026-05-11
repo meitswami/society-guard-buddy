@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, IndianRupee, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
 import DashboardPage from '@/pages/DashboardPage';
@@ -248,7 +248,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'residents', label: 'Residents', icon: UserCheck, group: 'manage' },
     { id: 'geofence', label: 'Geofence', icon: MapPin, group: 'manage' },
     // Finance
-    { id: 'finance', label: 'Finance', icon: DollarSign, group: 'finance' },
+    { id: 'finance', label: 'Finance', icon: IndianRupee, group: 'finance' },
     { id: 'meetings', label: 'Meetings', icon: ScrollText, group: 'meetings' },
     { id: 'donations', label: 'Donations', icon: Heart, group: 'finance' },
     { id: 'splits', label: 'Splitwise', icon: Split, group: 'finance' },
@@ -388,7 +388,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               <p className="text-xs text-muted-foreground">Meetings held</p>
             </div>
             <div className="card-section p-4">
-              <DollarSign className="w-5 h-5 text-emerald-600 mb-2" />
+              <IndianRupee className="w-5 h-5 text-emerald-600 mb-2" />
               <p className="text-xl font-bold tabular-nums">
                 ₹{stats.maintenanceCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
               </p>

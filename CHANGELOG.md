@@ -22,12 +22,21 @@ when version tags are published.
 - **Notifications schema** — Columns `delivery_batch_id` (uuid) and `read_at` (timestamptz) on `public.notifications` for batched delivery and read tracking.
 - **Resident read tracking** — `NotificationCenter` updates `read_at` together with `is_read` when a user opens or marks notifications read (resident and generic bulk paths).
 - **RBAC — Finance** — `NEW_CUSTOM_ROLE_PERMISSIONS` includes `finance: true` for newly defined custom roles; migration `20260512100000_enable_finance_on_society_roles.sql` backfills `permissions.finance` to true on existing `society_roles` where it was not already true.
+- **Meetings — `meeting_kind`** — GBM / AGM / executive committee / other; list filters and print helpers; migration `20260515120000_meetings_meeting_kind.sql`.
+- **Meetings — attendee table picker** — Modal grid to bulk-add flat members to attendance.
+- **Meetings — documents** — Extra multi-file control under Documents & signatures.
+- **Polls — society elections** — Ranked-choice MC voting, `poll_election_ballots`, results JSON, banners on admin/resident home and Polls; migration `20260515140000_poll_elections.sql`.
+- **Donations — campaign title presets** — Occasion/receipt-type dropdown + custom title (`DonationManager`).
+- **Admin home** — Expanded stats (maintenance, Splitwise, visitor/vehicle splits, flats/members), usage-sorted quick access, A–Z bottom nav (`AdminDashboard`).
 
 ### Changed
 
-- **README** — Documented finance period report, PDF/push/read receipts, meetings, notification columns, migration reference table, storage paths, and main code touchpoints.
+- **README** — Restructured with **Version 2** summary; links to **`docs/VERSION-2-RELEASE.md`** for expanded V2 notes (avoids `readme.md` / `README.md` clash on case-insensitive filesystems).
+- **`docs/VERSION-2-RELEASE.md`** — **Version 2 release notes** (shipped features + migration table).
+- **Finance — Receipts tab** — UI label renamed to **Transactions** (internal key still `receipts`).
 - **Admin dashboard** — Passes `adminId` into `FinanceManager` alongside `adminName` for consistency with other admin modules.
 - **Admin session restore** — On app load, re-fetch `admins` + `society_roles` and recompute `permissions` instead of trusting only `localStorage`, so RBAC updates (e.g. Finance) appear after refresh without a full logout.
+- **Zustand `setSocietyId`** — Skip clearing society-scoped lists when the society id is unchanged (admin portal stability).
 
 ### Migration notes
 
@@ -40,5 +49,7 @@ Apply pending SQL under `supabase/migrations/` to your Supabase project. Relevan
 | `20260510180000`, `20260510200000` | Meetings + executives present |
 | `20260511120000` | `notifications.delivery_batch_id`, `notifications.read_at` |
 | `20260512100000` | Enable `finance` in `society_roles.permissions` |
+| `20260515120000` | `meetings.meeting_kind` |
+| `20260515140000` | Poll elections (`poll_kind`, `election_*`, `poll_election_ballots`) |
 
 Ensure Storage bucket **`notification-media`** exists and policies allow the app to upload finance report PDFs where used.

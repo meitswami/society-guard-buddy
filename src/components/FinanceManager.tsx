@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { DollarSign, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange } from 'lucide-react';
+import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
@@ -1806,7 +1806,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     <div className="page-container pb-24">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-          <DollarSign className="w-5 h-5 text-green-600" />
+          <IndianRupee className="w-5 h-5 text-green-600" />
         </div>
         <div>
           <h1 className="page-title">Finance Management</h1>

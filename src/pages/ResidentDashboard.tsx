@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare, ScrollText } from 'lucide-react';
+import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, IndianRupee, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare, ScrollText } from 'lucide-react';
 import { format } from 'date-fns';
 import { fmtDate, fmtDateTime, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { showSuccess, confirmAction } from '@/lib/swal';
@@ -1013,7 +1013,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     { id: 'notifications' as const, label: 'Alerts', icon: Bell },
     { id: 'polls' as const, label: 'Polls', icon: Vote },
     { id: 'meetings' as const, label: 'Meetings', icon: ScrollText },
-    { id: 'payments' as const, label: 'Payments', icon: DollarSign },
+    { id: 'payments' as const, label: 'Payments', icon: IndianRupee },
     { id: 'profile' as const, label: 'Profile', icon: User },
     { id: 'tour' as const, label: t('nav.tour'), icon: Sparkles },
     { id: 'feedback' as const, label: 'Feedback', icon: MessageSquare },

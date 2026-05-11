@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, Download, Printer, Calendar, Users, Car, Truck, Shield, DollarSign, Heart, Split } from 'lucide-react';
+import { BarChart3, Download, Printer, Calendar, Users, Car, Truck, Shield, IndianRupee, Heart, Split } from 'lucide-react';
 import { format, parse, endOfMonth } from 'date-fns';
 import { fmtDate, fmtDateTime } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -363,7 +363,7 @@ const ReportPage = () => {
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-green-600" />
+              <IndianRupee className="w-4 h-4 text-green-600" />
             </div>
             <div>
               <h2 className="text-sm font-semibold">{t('report.financeSummaryReceipts')}</h2>
@@ -443,7 +443,7 @@ const ReportPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
         <div className="border border-border rounded-xl p-4 bg-card/50">
           <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4 text-green-600" />
+            <IndianRupee className="w-4 h-4 text-green-600" />
             <h2 className="text-sm font-semibold">{t('report.receiptsLedgerStatus')}</h2>
           </div>
           {ledgerStatuses.length === 0 ? (
@@ -462,7 +462,7 @@ const ReportPage = () => {
 
         <div className="border border-border rounded-xl p-4 bg-card/50">
           <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4 text-purple-600" />
+            <IndianRupee className="w-4 h-4 text-purple-600" />
             <h2 className="text-sm font-semibold">{t('report.maintenanceFromLedger')}</h2>
           </div>
           <p className="text-[10px] text-muted-foreground mb-2">{t('report.maintenanceFromLedgerHint')}</p>
