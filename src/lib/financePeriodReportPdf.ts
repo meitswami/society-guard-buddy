@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 
 export type FinancePeriodReportPdfInput = {
   societyName: string;
@@ -45,9 +46,13 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
   y += 8;
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
-  doc.text(`Finance period report · ${input.periodFrom} to ${input.periodTo}`, margin, y);
+  doc.text(
+    `Finance period report · ${fmtIsoDateToDisplay(input.periodFrom)} to ${fmtIsoDateToDisplay(input.periodTo)}`,
+    margin,
+    y,
+  );
   y += 5;
-  doc.text(`Generated: ${input.generatedAt}`, margin, y);
+  doc.text(`Generated: ${fmtDateTimeFull(input.generatedAt)}`, margin, y);
   doc.setTextColor(0, 0, 0);
   y += 10;
 

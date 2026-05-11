@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { Headphones, ExternalLink } from 'lucide-react';
+import { fmtDateTimeFull } from '@/lib/dateFormat';
 
 interface Props {
   superadmin: { id: string; name: string };
@@ -153,7 +154,7 @@ const SuperadminSupportTickets = ({ superadmin }: Props) => {
                   <p className="text-xs text-muted-foreground">
                     {t.society_name ?? '—'} · Flat {t.flat_number} · {t.submitter_name}
                   </p>
-                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{new Date(t.created_at).toLocaleString()}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{fmtDateTimeFull(t.created_at)}</p>
                 </div>
                 <label className="text-xs flex flex-col gap-1">
                   <span className="text-muted-foreground">Status</span>
@@ -203,7 +204,7 @@ const SuperadminSupportTickets = ({ superadmin }: Props) => {
                   <p className="font-medium text-muted-foreground mb-1">Last reply</p>
                   <p className="whitespace-pre-wrap">{t.superadmin_reply}</p>
                   {t.replied_at && (
-                    <p className="text-[10px] text-muted-foreground mt-1">{new Date(t.replied_at).toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{fmtDateTimeFull(t.replied_at)}</p>
                   )}
                 </div>
               )}

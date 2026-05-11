@@ -1520,6 +1520,7 @@ export type Database = {
           id: string
           location: string | null
           meeting_at: string
+          meeting_kind: string
           minutes_summary: string | null
           published: boolean
           society_id: string
@@ -1537,6 +1538,7 @@ export type Database = {
           id?: string
           location?: string | null
           meeting_at?: string
+          meeting_kind?: string
           minutes_summary?: string | null
           published?: boolean
           society_id: string
@@ -1554,6 +1556,7 @@ export type Database = {
           id?: string
           location?: string | null
           meeting_at?: string
+          meeting_kind?: string
           minutes_summary?: string | null
           published?: boolean
           society_id?: string
@@ -1791,9 +1794,48 @@ export type Database = {
         }
         Relationships: []
       }
+      poll_election_ballots: {
+        Row: {
+          created_at: string
+          flat_id: string | null
+          flat_number: string | null
+          id: string
+          poll_id: string
+          rankings: unknown
+          voter_id: string
+        }
+        Insert: {
+          created_at?: string
+          flat_id?: string | null
+          flat_number?: string | null
+          id?: string
+          poll_id: string
+          rankings?: unknown
+          voter_id: string
+        }
+        Update: {
+          created_at?: string
+          flat_id?: string | null
+          flat_number?: string | null
+          id?: string
+          poll_id?: string
+          rankings?: unknown
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_election_ballots_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_options: {
         Row: {
           created_at: string
+          election_post: string | null
           id: string
           option_text: string
           poll_id: string | null
@@ -1801,6 +1843,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          election_post?: string | null
           id?: string
           option_text: string
           poll_id?: string | null
@@ -1808,6 +1851,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          election_post?: string | null
           id?: string
           option_text?: string
           poll_id?: string | null
@@ -1874,9 +1918,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          election_committee_seats: number
+          election_results: unknown
           end_date: string | null
           id: string
           is_active: boolean
+          poll_kind: string
           question: string
           society_id: string | null
         }
@@ -1885,9 +1932,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          election_committee_seats?: number
+          election_results?: unknown
           end_date?: string | null
           id?: string
           is_active?: boolean
+          poll_kind?: string
           question: string
           society_id?: string | null
         }
@@ -1896,9 +1946,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          election_committee_seats?: number
+          election_results?: unknown
           end_date?: string | null
           id?: string
           is_active?: boolean
+          poll_kind?: string
           question?: string
           society_id?: string | null
         }

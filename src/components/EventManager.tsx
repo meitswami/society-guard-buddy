@@ -5,7 +5,7 @@ import { Calendar, Plus, Users, Upload } from 'lucide-react';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 
 interface Props { adminName?: string; }
 
@@ -74,7 +74,7 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
     // Notify all residents
     await supabase.from('notifications').insert([{
       title: `New Event: ${ef.title}`,
-      message: `${ef.title} on ${ef.event_date}${ef.location ? ' at ' + ef.location : ''}. ${ef.contribution_amount ? 'Contribution: ₹' + ef.contribution_amount : ''}`,
+      message: `${ef.title} on ${fmtIsoDateToDisplay(ef.event_date)}${ef.location ? ' at ' + ef.location : ''}. ${ef.contribution_amount ? 'Contribution: ₹' + ef.contribution_amount : ''}`,
       type: 'event', target_type: 'all', created_by: adminName, society_id: societyId,
     }]);
   };
@@ -181,7 +181,9 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
               <div>
                 <p className="font-semibold">{ev.title}</p>
                 {ev.description && <p className="text-xs text-muted-foreground">{ev.description}</p>}
-                <p className="text-xs text-muted-foreground mt-1">📅 {ev.event_date} {ev.event_time && `· ⏰ ${ev.event_time}`}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  📅 {fmtIsoDateToDisplay(ev.event_date)} {ev.event_time && `· ⏰ ${ev.event_time}`}
+                </p>
                 {ev.location && <p className="text-xs text-muted-foreground">📍 {ev.location}</p>}
               </div>
               <span className={`text-[10px] px-2 py-0.5 rounded-full ${ev.status === 'upcoming' ? 'bg-blue-500/20 text-blue-600' : 'bg-muted text-muted-foreground'}`}>{ev.status}</span>

@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { fmtDateTimeFull } from '@/lib/dateFormat';
 
 export type PdfMember = {
   flat_id: string;
@@ -67,7 +68,7 @@ export function exportResidentsDirectoryPdf(societyName: string, flats: PdfFlat[
   y += 8;
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Resident directory & ID record — ${new Date().toLocaleString()}`, margin, y);
+  doc.text(`Resident directory & ID record — ${fmtDateTimeFull(new Date())}`, margin, y);
   doc.setTextColor(0, 0, 0);
   y += 10;
 

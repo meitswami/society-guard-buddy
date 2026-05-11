@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import { Search, FileText, LogOut, Download } from 'lucide-react';
 import { format } from 'date-fns';
-import { fmtTime } from '@/lib/dateFormat';
+import { fmtDateTime, fmtTime } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { confirmAction, showToast } from '@/lib/swal';
 
@@ -38,8 +38,8 @@ const LogsPage = () => {
     const headers = ['Name', 'Phone', 'Flat', 'Category', 'Purpose', 'Entry', 'Exit', 'Guard', 'Vehicle'];
     const rows = filtered.map(v => [
       v.name, v.phone, v.flatNumber, v.category, v.purpose,
-      format(new Date(v.entryTime), 'dd/MM/yyyy HH:mm'),
-      v.exitTime ? format(new Date(v.exitTime), 'dd/MM/yyyy HH:mm') : 'Inside',
+      fmtDateTime(v.entryTime),
+      v.exitTime ? fmtDateTime(v.exitTime) : 'Inside',
       v.guardName, v.vehicleNumber || '-',
     ]);
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');

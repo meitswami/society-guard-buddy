@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, DollarSign, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare, ScrollText } from 'lucide-react';
 import { format } from 'date-fns';
+import { fmtDate, fmtDateTime, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { showSuccess, confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -1254,7 +1255,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                         {req.visitor_phone && <p className="text-xs text-muted-foreground font-mono">{req.visitor_phone}</p>}
                         {req.purpose && <p className="text-xs text-muted-foreground">{req.purpose}</p>}
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{format(new Date(req.created_at), 'HH:mm')}</p>
+                      <p className="text-[10px] text-muted-foreground">{fmtDateTime(req.created_at)}</p>
                     </div>
                     <p className="text-xs text-muted-foreground mb-2">{t('logs.guard')}: {req.guard_name}</p>
                     <div className="flex gap-2">
@@ -1279,7 +1280,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
               <div key={req.id} className="card-section flex justify-between items-center">
                 <div>
                   <p className="text-sm font-medium text-foreground">{req.visitor_name}</p>
-                  <p className="text-xs text-muted-foreground">{format(new Date(req.created_at), 'dd MMM HH:mm')}</p>
+                  <p className="text-xs text-muted-foreground">{fmtDateTime(req.created_at)}</p>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${req.status === 'approved' ? 'bg-green-500/20 text-green-600' : 'bg-destructive/20 text-destructive'}`}>
                   {req.status === 'approved' ? t('resident.approved') : t('resident.rejected')}
@@ -1983,9 +1984,13 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-sm font-medium">₹{p.amount}</p>
-                    <p className="text-xs text-muted-foreground">{p.payment_method} · {new Date(p.created_at).toLocaleDateString()}</p>
-                    <p className="text-[10px] text-muted-foreground">Paid on: {p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '-'}</p>
-                    <p className="text-[10px] text-muted-foreground">Due date: {p.due_date || '-'}</p>
+                    <p className="text-xs text-muted-foreground">{p.payment_method} · {fmtDate(p.created_at)}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Paid on: {p.payment_date ? fmtDate(p.payment_date) : '-'}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Due date: {p.due_date ? fmtIsoDateToDisplay(p.due_date) : '-'}
+                    </p>
                     {p.transaction_id && <p className="text-[10px] text-muted-foreground">Ref: {p.transaction_id}</p>}
                     {p.notes && <p className="text-[10px] text-muted-foreground">{p.notes}</p>}
                     {p.rejection_reason && <p className="text-[10px] text-destructive">Reason: {p.rejection_reason}</p>}

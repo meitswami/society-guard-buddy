@@ -8,6 +8,21 @@ import { toast } from 'sonner';
 
 interface Props { adminName?: string; }
 
+/** Preset campaign titles for donation collection (society common occasions). */
+const DONATION_CAMPAIGN_TITLE_OPTIONS = [
+  'Marriage anniversary',
+  'On birthdays',
+  'New born child entry',
+  'Marriage functions',
+  'Festivals',
+  'Voluntary contribution',
+  'Visitors parking',
+  'Any other occasion',
+  'Miscellaneous receipts',
+] as const;
+
+const CUSTOM_TITLE_VALUE = '__custom__' as const;
+
 const DonationManager = ({ adminName = 'Admin' }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -16,6 +31,7 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
   const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [showForm, setShowForm] = useState(false);
   const [showDonateForm, setShowDonateForm] = useState<string | null>(null);
+  const [campaignTitleChoice, setCampaignTitleChoice] = useState<string>('');
   const [cf, setCf] = useState({ title: '', description: '', target_amount: '', end_date: '' });
   const [df, setDf] = useState({
     selected_flats: [] as string[],
@@ -59,12 +75,17 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
   };
 
   const addCampaign = async () => {
-    if (!societyId || !cf.title) return;
+    if (!societyId) return;
+    if (!cf.title.trim()) {
+      toast.message('Choose a campaign title or enter a custom one');
+      return;
+    }
     await supabase.from('donation_campaigns').insert([{
-      title: cf.title, description: cf.description || null, target_amount: Number(cf.target_amount) || 0,
+      title: cf.title.trim(), description: cf.description || null, target_amount: Number(cf.target_amount) || 0,
       created_by: adminName, end_date: cf.end_date || null, society_id: societyId,
     }]);
     setCf({ title: '', description: '', target_amount: '', end_date: '' });
+    setCampaignTitleChoice('');
     setShowForm(false); toast.success('Campaign created'); loadAll();
   };
 
@@ -116,13 +137,50 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
         <h1 className="page-title">Donation Collection</h1>
       </div>
 
-      <button onClick={() => setShowForm(!showForm)} className="btn-primary w-full mb-4 flex items-center justify-center gap-2">
+      <button
+        type="button"
+        onClick={() => {
+          setShowForm(!showForm);
+          if (showForm) {
+            setCampaignTitleChoice('');
+            setCf({ title: '', description: '', target_amount: '', end_date: '' });
+          }
+        }}
+        className="btn-primary w-full mb-4 flex items-center justify-center gap-2"
+      >
         <Plus className="w-4 h-4" /> New Campaign
       </button>
 
       {showForm && (
         <div className="card-section p-4 mb-4 flex flex-col gap-3">
-          <input className="input-field" placeholder="Campaign Title" value={cf.title} onChange={e => setCf({...cf, title: e.target.value})} />
+          <label className="text-xs font-medium text-muted-foreground">Campaign title</label>
+          <select
+            className="input-field"
+            value={campaignTitleChoice}
+            onChange={(e) => {
+              const v = e.target.value;
+              setCampaignTitleChoice(v);
+              if (v === CUSTOM_TITLE_VALUE) setCf((p) => ({ ...p, title: '' }));
+              else if (v) setCf((p) => ({ ...p, title: v }));
+              else setCf((p) => ({ ...p, title: '' }));
+            }}
+          >
+            <option value="">Select occasion / receipt type…</option>
+            {DONATION_CAMPAIGN_TITLE_OPTIONS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+            <option value={CUSTOM_TITLE_VALUE}>Other — type custom title below</option>
+          </select>
+          {campaignTitleChoice === CUSTOM_TITLE_VALUE && (
+            <input
+              className="input-field"
+              placeholder="Custom campaign title"
+              value={cf.title}
+              onChange={(e) => setCf({ ...cf, title: e.target.value })}
+            />
+          )}
           <textarea className="input-field" placeholder="Description" value={cf.description} onChange={e => setCf({...cf, description: e.target.value})} />
           <input className="input-field" placeholder="Target Amount (₹)" type="number" value={cf.target_amount} onChange={e => setCf({...cf, target_amount: e.target.value})} />
           <input className="input-field" type="date" value={cf.end_date} onChange={e => setCf({...cf, end_date: e.target.value})} />

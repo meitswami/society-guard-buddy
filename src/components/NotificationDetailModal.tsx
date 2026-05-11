@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Send, Film } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
+import { fmtDateTimeFull } from '@/lib/dateFormat';
 
 export type NotificationMediaItem = { url: string; kind: 'image' | 'video' };
 
@@ -160,7 +161,7 @@ const NotificationDetailModal = ({
       <DialogContent className="flex max-h-[92vh] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
         <DialogHeader className="border-b border-border px-4 py-3 text-left">
           <DialogTitle className="pr-8 text-base leading-snug">{notification.title}</DialogTitle>
-          <p className="text-xs text-muted-foreground">{new Date(notification.created_at).toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground">{fmtDateTimeFull(notification.created_at)}</p>
         </DialogHeader>
 
         <div className="flex min-h-0 flex-1 flex-col">
@@ -243,9 +244,7 @@ const NotificationDetailModal = ({
                       )}
                     </div>
                     <p className="whitespace-pre-wrap text-foreground/90">{c.body}</p>
-                    <span className="mt-1 text-[10px] text-muted-foreground">
-                      {new Date(c.created_at).toLocaleString()}
-                    </span>
+                    <span className="mt-1 text-[10px] text-muted-foreground">{fmtDateTimeFull(c.created_at)}</span>
                   </div>
                 ))}
               </div>

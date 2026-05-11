@@ -4,8 +4,8 @@ import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useEffect, useMemo, useState } from 'react';
-import { subDays } from 'date-fns';
-import { fmtDateTime } from '@/lib/dateFormat';
+import { format, subDays } from 'date-fns';
+import { fmtDate, fmtDateTime } from '@/lib/dateFormat';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { supabase } from '@/integrations/supabase/client';
 import BiometricSetup from '@/components/BiometricSetup';
@@ -146,7 +146,7 @@ const DashboardPage = () => {
         </button>
       </div>
       {dayOffset > 1 && (
-        <p className="text-center text-xs text-muted-foreground mb-3">{format(subDays(new Date(), dayOffset), 'dd MMM yyyy')}</p>
+        <p className="text-center text-xs text-muted-foreground mb-3">{fmtDate(subDays(new Date(), dayOffset))}</p>
       )}
 
       {/* Stats Grid — clickable */}

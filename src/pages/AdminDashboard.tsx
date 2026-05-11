@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, DollarSign, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
 import DashboardPage from '@/pages/DashboardPage';
@@ -53,14 +53,23 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const activeTabRef = useRef<AdminTab>('overview');
   const exitBackTsRef = useRef(0);
-  const [stats, setStats] = useState({ visitors: 0, guards: 0, flats: 0, vehicles: 0, blacklist: 0 });
+  const [stats, setStats] = useState({
+    visitors: 0,
+    visitorsGuest: 0,
+    visitorsService: 0,
+    guards: 0,
+    flats: 0,
+    members: 0,
+    vehicles: 0,
+    vehiclesCars: 0,
+    vehiclesTwoWheelers: 0,
+    blacklist: 0,
+    meetingsHeld: 0,
+    maintenanceCollected: 0,
+    splitwiseExpenseTotal: 0,
+  });
+  const [usageVersion, setUsageVersion] = useState(0);
   const [kycPending, setKycPending] = useState<{ id: string; name: string; guard_id: string; kyc_alert_days: number; created_at: string }[]>([]);
-
-  useEffect(() => {
-    setSocietyId(admin.societyId);
-    loadVisitors(); loadResidentVehicles(); loadBlacklist(); loadFlats(); loadMembers(); loadGuards();
-    loadStats(); loadKycPending();
-  }, [admin.societyId]);
 
   const loadKycPending = async () => {
     let q = supabase.from('guards').select('id, name, guard_id, kyc_alert_days, created_at').eq('police_verification', 'pending');
@@ -75,29 +84,148 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     }
   };
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     const sid = admin.societyId;
-    let vQ = supabase.from('visitors').select('id', { count: 'exact', head: true });
-    let gQ = supabase.from('guards').select('id', { count: 'exact', head: true });
-    let fQ = supabase.from('flats').select('id', { count: 'exact', head: true });
-    let rvQ = supabase.from('resident_vehicles').select('id', { count: 'exact', head: true });
-    let blQ = supabase.from('blacklist').select('id', { count: 'exact', head: true });
-    if (sid) {
-      vQ = vQ.eq('society_id', sid);
-      gQ = gQ.eq('society_id', sid);
-      fQ = fQ.eq('society_id', sid);
-      rvQ = rvQ.eq('society_id', sid);
-      blQ = blQ.eq('society_id', sid);
-    } else {
-      setStats({ visitors: 0, guards: 0, flats: 0, vehicles: 0, blacklist: 0 });
+    if (!sid) {
+      setStats({
+        visitors: 0,
+        visitorsGuest: 0,
+        visitorsService: 0,
+        guards: 0,
+        flats: 0,
+        members: 0,
+        vehicles: 0,
+        vehiclesCars: 0,
+        vehiclesTwoWheelers: 0,
+        blacklist: 0,
+        meetingsHeld: 0,
+        maintenanceCollected: 0,
+        splitwiseExpenseTotal: 0,
+      });
       return;
     }
-    const [v, g, f, rv, bl] = await Promise.all([vQ, gQ, fQ, rvQ, blQ]);
+
+    const vQ = supabase.from('visitors').select('id', { count: 'exact', head: true }).eq('society_id', sid);
+    const vGuestQ = supabase.from('visitors').select('id', { count: 'exact', head: true }).eq('society_id', sid).eq('category', 'visitor');
+    const vServiceQ = supabase.from('visitors').select('id', { count: 'exact', head: true }).eq('society_id', sid).eq('category', 'service');
+    const gQ = supabase.from('guards').select('id', { count: 'exact', head: true }).eq('society_id', sid);
+    const fQ = supabase.from('flats').select('id', { count: 'exact', head: true }).eq('society_id', sid);
+    const rvQ = supabase.from('resident_vehicles').select('id', { count: 'exact', head: true }).eq('society_id', sid);
+    const rvCarQ = supabase.from('resident_vehicles').select('id', { count: 'exact', head: true }).eq('society_id', sid).eq('vehicle_type', 'car');
+    const rv2wQ = supabase
+      .from('resident_vehicles')
+      .select('id', { count: 'exact', head: true })
+      .eq('society_id', sid)
+      .in('vehicle_type', ['bike', 'cycle', 'activa']);
+    const blQ = supabase.from('blacklist').select('id', { count: 'exact', head: true }).eq('society_id', sid);
+    const mtQ = supabase.from('meetings').select('id', { count: 'exact', head: true }).eq('society_id', sid);
+
+    const flatsForMembers = supabase.from('flats').select('id').eq('society_id', sid);
+
+    const [
+      v,
+      vGuest,
+      vService,
+      g,
+      f,
+      rv,
+      rvCar,
+      rv2w,
+      bl,
+      mt,
+      flatsData,
+    ] = await Promise.all([vQ, vGuestQ, vServiceQ, gQ, fQ, rvQ, rvCarQ, rv2wQ, blQ, mtQ, flatsForMembers]);
+
+    const flatIds = (flatsData.data ?? []).map((x: { id: string }) => x.id);
+    let membersCount = 0;
+    if (flatIds.length > 0) {
+      const { count: mc } = await supabase.from('members').select('id', { count: 'exact', head: true }).in('flat_id', flatIds);
+      membersCount = mc ?? 0;
+    }
+
+    let maintenanceCollected = 0;
+    const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', sid);
+    const chargeIds = (chargeRows ?? []).map((r: { id: string }) => r.id);
+    if (chargeIds.length > 0) {
+      const { data: pays } = await supabase
+        .from('maintenance_payments')
+        .select('amount')
+        .in('charge_id', chargeIds)
+        .eq('payment_status', 'verified');
+      for (const p of pays ?? []) maintenanceCollected += Number((p as { amount: number }).amount ?? 0);
+    }
+
+    let splitwiseExpenseTotal = 0;
+    const { data: groupRows } = await supabase.from('expense_groups').select('id').eq('society_id', sid);
+    const groupIds = (groupRows ?? []).map((r: { id: string }) => r.id);
+    if (groupIds.length > 0) {
+      const { data: expenses } = await supabase
+        .from('expenses')
+        .select('total_amount')
+        .in('group_id', groupIds)
+        .eq('record_status', 'active');
+      for (const e of expenses ?? []) splitwiseExpenseTotal += Number((e as { total_amount: number }).total_amount ?? 0);
+    }
+
     setStats({
-      visitors: v.count || 0, guards: g.count || 0, flats: f.count || 0,
-      vehicles: rv.count || 0, blacklist: bl.count || 0,
+      visitors: v.count ?? 0,
+      visitorsGuest: vGuest.count ?? 0,
+      visitorsService: vService.count ?? 0,
+      guards: g.count ?? 0,
+      flats: f.count ?? 0,
+      members: membersCount,
+      vehicles: rv.count ?? 0,
+      vehiclesCars: rvCar.count ?? 0,
+      vehiclesTwoWheelers: rv2w.count ?? 0,
+      blacklist: bl.count ?? 0,
+      meetingsHeld: mt.count ?? 0,
+      maintenanceCollected,
+      splitwiseExpenseTotal,
     });
-  };
+  }, [admin.societyId]);
+
+  useEffect(() => {
+    setSocietyId(admin.societyId);
+    loadVisitors(); loadResidentVehicles(); loadBlacklist(); loadFlats(); loadMembers(); loadGuards();
+    void loadStats();
+    loadKycPending();
+  }, [admin.societyId, loadStats]);
+
+  const tabUsageKey = admin.societyId ? `sgb_admin_tab_use_${admin.societyId}` : null;
+
+  const tabUsageMap = useMemo(() => {
+    if (typeof window === 'undefined' || !tabUsageKey) return {} as Record<string, number>;
+    try {
+      return JSON.parse(localStorage.getItem(tabUsageKey) || '{}') as Record<string, number>;
+    } catch {
+      return {};
+    }
+  }, [tabUsageKey, usageVersion]);
+
+  const recordTabUse = useCallback(
+    (tab: AdminTab) => {
+      if (!tabUsageKey || tab === 'overview') return;
+      try {
+        const raw = localStorage.getItem(tabUsageKey);
+        const u: Record<string, number> = raw ? JSON.parse(raw) : {};
+        u[tab] = (u[tab] ?? 0) + 1;
+        localStorage.setItem(tabUsageKey, JSON.stringify(u));
+        setUsageVersion((x) => x + 1);
+      } catch {
+        /* ignore */
+      }
+    },
+    [tabUsageKey],
+  );
+
+  const goToTab = useCallback(
+    (tab: AdminTab) => {
+      recordTabUse(tab);
+      setActiveTab(tab);
+      if (tab === 'overview' && admin.societyId) void loadStats();
+    },
+    [recordTabUse, admin.societyId, loadStats],
+  );
 
   const handleLogout = async () => {
     const confirmed = await confirmAction(
@@ -146,6 +274,21 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   ];
 
   const visibleTabs = tabs.filter((tab) => isAdminTabAllowed(tab.id, admin.permissions));
+
+  const quickAccessTabs = useMemo(() => {
+    const list = visibleTabs.filter((t) => t.id !== 'overview');
+    return [...list].sort((a, b) => {
+      const ua = tabUsageMap[a.id] ?? 0;
+      const ub = tabUsageMap[b.id] ?? 0;
+      if (ub !== ua) return ub - ua;
+      return a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
+    });
+  }, [visibleTabs, tabUsageMap]);
+
+  const bottomNavTabsAlphabetical = useMemo(
+    () => [...visibleTabs].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })),
+    [visibleTabs],
+  );
 
   useEffect(() => {
     if (!isAdminTabAllowed(activeTab, admin.permissions)) setActiveTab('overview');
@@ -211,8 +354,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       );
       case 'report': return <ReportPage />;
       case 'logs': return <LogsPage />;
-      case 'visitor': return <VisitorEntryPage onDone={() => setActiveTab('overview')} />;
-      case 'delivery': return <DeliveryEntryPage onDone={() => setActiveTab('overview')} />;
+      case 'visitor': return <VisitorEntryPage onDone={() => goToTab('overview')} />;
+      case 'delivery': return <DeliveryEntryPage onDone={() => goToTab('overview')} />;
       case 'vehicle': return <VehiclePage />;
       case 'blacklist': return <BlacklistPage />;
       case 'directory': return <DirectoryPage />;
@@ -236,19 +379,79 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               <LogOut className="w-5 h-5" />
             </button>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className="card-section p-4">
+              <ScrollText className="w-5 h-5 text-indigo-500 mb-2" />
+              <p className="text-2xl font-bold">{stats.meetingsHeld}</p>
+              <p className="text-xs text-muted-foreground">Meetings held</p>
+            </div>
+            <div className="card-section p-4">
+              <DollarSign className="w-5 h-5 text-emerald-600 mb-2" />
+              <p className="text-xl font-bold tabular-nums">
+                ₹{stats.maintenanceCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-xs text-muted-foreground">Maintenance collected (verified)</p>
+            </div>
+            <div className="card-section p-4">
+              <Split className="w-5 h-5 text-teal-600 mb-2" />
+              <p className="text-xl font-bold tabular-nums">
+                ₹{stats.splitwiseExpenseTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-xs text-muted-foreground">Splitwise expenses (active)</p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3 mb-6">
-            {[
-              { label: t('admin.totalVisitors'), value: stats.visitors, icon: Users, color: 'text-blue-500' },
-              { label: t('admin.totalGuards'), value: stats.guards, icon: Shield, color: 'text-green-500' },
-              { label: t('admin.totalFlats'), value: stats.flats, icon: Home, color: 'text-purple-500' },
-              { label: t('admin.totalVehicles'), value: stats.vehicles, icon: Car, color: 'text-orange-500' },
-            ].map(s => (
-              <div key={s.label} className="card-section p-4">
-                <s.icon className={`w-5 h-5 ${s.color} mb-2`} />
-                <p className="text-2xl font-bold">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
+            <div className="card-section p-4">
+              <Users className="w-5 h-5 text-blue-500 mb-2" />
+              <p className="text-2xl font-bold">{stats.visitors}</p>
+              <p className="text-xs text-muted-foreground">{t('admin.totalVisitors')}</p>
+              <div className="mt-2 pt-2 border-t border-border space-y-0.5 text-[10px] text-muted-foreground">
+                <p className="flex justify-between gap-2">
+                  <span>Guest visitors</span>
+                  <span className="font-medium text-foreground tabular-nums">{stats.visitorsGuest}</span>
+                </p>
+                <p className="flex justify-between gap-2">
+                  <span className="flex items-center gap-1">
+                    <Wrench className="w-3 h-3 shrink-0" /> Serviceman
+                  </span>
+                  <span className="font-medium text-foreground tabular-nums">{stats.visitorsService}</span>
+                </p>
               </div>
-            ))}
+            </div>
+            <div className="card-section p-4">
+              <Car className="w-5 h-5 text-orange-500 mb-2" />
+              <p className="text-2xl font-bold">{stats.vehicles}</p>
+              <p className="text-xs text-muted-foreground">{t('admin.totalVehicles')}</p>
+              <div className="mt-2 pt-2 border-t border-border space-y-0.5 text-[10px] text-muted-foreground">
+                <p className="flex justify-between gap-2">
+                  <span>Cars</span>
+                  <span className="font-medium text-foreground tabular-nums">{stats.vehiclesCars}</span>
+                </p>
+                <p className="flex justify-between gap-2">
+                  <span>Two-wheelers</span>
+                  <span className="font-medium text-foreground tabular-nums">{stats.vehiclesTwoWheelers}</span>
+                </p>
+              </div>
+            </div>
+            <div className="card-section p-4">
+              <Home className="w-5 h-5 text-purple-500 mb-2" />
+              <p className="text-2xl font-bold">{stats.flats}</p>
+              <p className="text-xs text-muted-foreground">{t('admin.totalFlats')}</p>
+              <p className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground">
+                Members registered:{' '}
+                <span className="font-medium text-foreground tabular-nums">{stats.members}</span>
+              </p>
+            </div>
+            <div className="card-section p-4">
+              <Shield className="w-5 h-5 text-green-500 mb-2" />
+              <p className="text-2xl font-bold">{stats.guards}</p>
+              <p className="text-xs text-muted-foreground">{t('admin.totalGuards')}</p>
+              <p className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground">
+                Blacklist:{' '}
+                <span className="font-medium text-foreground tabular-nums">{stats.blacklist}</span>
+              </p>
+            </div>
           </div>
 
           {/* KYC Pending Alerts */}
@@ -259,7 +462,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                 <span className="text-sm font-semibold text-amber-700">Guard KYC Pending ({kycPending.length})</span>
               </div>
               {kycPending.map(g => (
-                <button key={g.id} onClick={() => setActiveTab('guards')}
+                <button key={g.id} onClick={() => goToTab('guards')}
                   className="text-xs text-amber-600 ml-6 block hover:underline">
                   • {g.name} ({g.guard_id}) - Police verification overdue
                 </button>
@@ -267,16 +470,21 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
             </div>
           )}
 
-          {/* Quick access grid */}
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick Access</p>
+          {/* Quick access — all modules, most-used first */}
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Quick access</p>
+          <p className="text-[10px] text-muted-foreground mb-3">Tiles ordered by how often you open each screen (this device).</p>
           <div className="grid grid-cols-4 gap-2 mb-4">
-            {visibleTabs.filter(t => t.id !== 'overview').slice(0, 12).map(tab => {
+            {quickAccessTabs.map((tab) => {
               const Icon = tab.icon;
               return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className="card-section p-3 flex flex-col items-center gap-1 hover:bg-primary/5">
-                  <Icon className="w-5 h-5 text-primary" />
-                  <span className="text-[9px] text-muted-foreground">{tab.label}</span>
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => goToTab(tab.id)}
+                  className="card-section p-3 flex flex-col items-center gap-1 hover:bg-primary/5 text-center min-h-[72px]"
+                >
+                  <Icon className="w-5 h-5 text-primary shrink-0" />
+                  <span className="text-[9px] text-muted-foreground leading-tight line-clamp-2">{tab.label}</span>
                 </button>
               );
             })}
@@ -291,12 +499,15 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       <TourGuideFirstLogin role="admin" userId={admin.id} adminPermissions={admin.permissions} t={t} />
       {renderContent()}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
+        <p className="text-center text-[9px] text-muted-foreground pt-1 border-t border-border/60 bg-card">
+          A–Z navigation
+        </p>
         <div className="max-w-lg mx-auto flex items-center overflow-x-auto gap-0 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1 scrollbar-hide">
-          {visibleTabs.map(tab => {
+          {bottomNavTabsAlphabetical.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              <button key={tab.id} type="button" onClick={() => goToTab(tab.id)}
                 className={`${isActive ? 'nav-item-active' : 'nav-item'} min-w-[3rem] flex-1`}>
                 <Icon className="w-4 h-4" />
                 <span className="text-[9px] font-medium leading-tight">{tab.label}</span>

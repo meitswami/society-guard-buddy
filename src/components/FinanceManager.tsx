@@ -6,6 +6,7 @@ import { DollarSign, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wall
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
+import { fmtDate, fmtDateTimeFull, fmtIsoDateToDisplay, fmtIsoMonthToDisplay, fmtTime } from '@/lib/dateFormat';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
@@ -46,7 +47,7 @@ const paymentMonthLabel = (payment: any) => {
   if (!raw) return 'Unknown month';
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return 'Unknown month';
-  return format(date, 'MMMM yyyy');
+  return fmtIsoMonthToDisplay(format(date, 'yyyy-MM'));
 };
 
 const defaultFinancePeriodFrom = () => {
@@ -107,10 +108,9 @@ const ledgerMonthValue = (e: FinanceLedgerRow) =>
   e.entry_month || format(new Date(e.created_at), 'yyyy-MM');
 
 const ledgerMonthDisplay = (e: FinanceLedgerRow) => {
-  const raw = e.entry_month ? `${e.entry_month}-01` : e.created_at;
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return 'Unknown month';
-  return format(date, 'MMMM yyyy');
+  const ym = ledgerMonthValue(e);
+  if (!ym) return 'Unknown month';
+  return fmtIsoMonthToDisplay(ym);
 };
 
 async function uploadPaymentReceipt(file: File): Promise<string | null> {
@@ -1267,7 +1267,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     for (const e of ledgerEntries) {
       const value = ledgerMonthValue(e);
       const d = new Date(`${value}-15T12:00:00`);
-      const label = Number.isNaN(d.getTime()) ? value : format(d, 'MMMM yyyy');
+      const label = Number.isNaN(d.getTime()) ? value : fmtIsoMonthToDisplay(value);
       if (!uniq.has(value)) uniq.set(value, label);
     }
     return [{ value: 'all', label: 'All months' }, ...[...uniq.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([value, label]) => ({ value, label }))];
@@ -1279,7 +1279,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       const rawDate = useSameDateForSelectedFlats ? payForm.due_date : (flatDueDates[flatNum] || '');
       if (!rawDate) continue;
       const d = new Date(rawDate);
-      out[flatNum] = Number.isNaN(d.getTime()) ? rawDate : format(d, 'dd MMM yyyy');
+      out[flatNum] = Number.isNaN(d.getTime()) ? rawDate : fmtDate(d);
     }
     return out;
   }, [payForm.selected_flats, payForm.due_date, useSameDateForSelectedFlats, flatDueDates]);
@@ -1565,7 +1565,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       societyName: societyName || 'Society',
       periodFrom,
       periodTo,
-      generatedAt: new Date().toLocaleString(),
+      generatedAt: new Date().toISOString(),
       receiptByMethod: financePeriodReport.receiptByMethod,
       totalReceipts: financePeriodReport.totalReceipts,
       expenseByHead: financePeriodReport.expenseByHead,
@@ -1603,7 +1603,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         societyName: societyName || 'Society',
         periodFrom,
         periodTo,
-        generatedAt: new Date().toLocaleString(),
+        generatedAt: new Date().toISOString(),
         receiptByMethod: financePeriodReport.receiptByMethod,
         totalReceipts: financePeriodReport.totalReceipts,
         expenseByHead: financePeriodReport.expenseByHead,
@@ -1628,7 +1628,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       }
       const { data: pub } = supabase.storage.from('notification-media').getPublicUrl(path);
       const pdfUrl = pub.publicUrl;
-      const title = `Finance report (${periodFrom} → ${periodTo})`;
+      const title = `Finance report (${fmtIsoDateToDisplay(periodFrom)} → ${fmtIsoDateToDisplay(periodTo)})`;
       const message = `Society finance period report is attached as PDF.\n\nTotal receipts: ₹${financePeriodReport.totalReceipts.toLocaleString('en-IN')}\nTotal expenses: ₹${financePeriodReport.totalExpenses.toLocaleString('en-IN')}\nBalance: ₹${financePeriodReport.totalBalance.toLocaleString('en-IN')}\n\nOpen PDF: ${pdfUrl}\n\nOpen the Alerts tab and tap this message — we record when you have seen it.`;
       const chunk = 40;
       for (let i = 0; i < ids.length; i += chunk) {
@@ -1656,7 +1656,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         await supabase.functions.invoke('send-push-notification', {
           body: {
             title,
-            message: `Finance report ${periodFrom}–${periodTo}. Open Alerts in the app.`,
+            message: `Finance report ${fmtIsoDateToDisplay(periodFrom)}–${fmtIsoDateToDisplay(periodTo)}. Open Alerts in the app.`,
             target_type: 'user',
             target_ids: ids,
             society_id: societyId,
@@ -1772,12 +1772,12 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
             ? 'Reminder test failed. Run DB push + deploy `maintenance-reminder` + deploy `send-push-notification`, then retry.'
             : detail;
       toast.error(hint);
-      setLastReminderTestStatus(`Last test failed at ${new Date().toLocaleTimeString()}: ${hint}`);
+      setLastReminderTestStatus(`Last test failed at ${fmtTime(new Date())}: ${hint}`);
       return;
     }
     const sent = Number((data as any)?.sent ?? 0);
     toast.success(sent > 0 ? `Test reminder sent to ${sent} flat(s)` : 'No pending dues found for test run');
-    setLastReminderTestStatus(`Last test at ${new Date().toLocaleTimeString()}: sent to ${sent} flat(s)`);
+    setLastReminderTestStatus(`Last test at ${fmtTime(new Date())}: sent to ${sent} flat(s)`);
   };
 
   const openFlatDateModal = (flatNumber: string, fallbackDate: string) => {
@@ -2487,9 +2487,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                             {item.p.rejection_reason ? (
                               <p className="text-[10px] text-destructive">Reason: {item.p.rejection_reason}</p>
                             ) : null}
-                            <p className="text-[10px] text-muted-foreground">
-                              {new Date(item.p.created_at).toLocaleDateString()}
-                            </p>
+                            <p className="text-[10px] text-muted-foreground">{fmtDate(item.p.created_at)}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="font-bold">₹{item.p.amount}</p>
@@ -2610,9 +2608,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                                 </p>
                               ) : null;
                             })()}
-                            <p className="text-[10px] text-muted-foreground">
-                              {new Date(item.e.created_at).toLocaleString()}
-                            </p>
+                            <p className="text-[10px] text-muted-foreground">{fmtDateTimeFull(item.e.created_at)}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="font-bold">₹{item.e.total_amount}</p>
@@ -2674,13 +2670,28 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       <p><span className="text-muted-foreground">Payment method:</span> {selectedPayment.payment_method}</p>
                       <p><span className="text-muted-foreground">Status:</span> {selectedPayment.payment_status}</p>
                       <p><span className="text-muted-foreground">Payment month:</span> {paymentMonthLabel(selectedPayment)}</p>
-                      <p><span className="text-muted-foreground">Due date:</span> {selectedPayment.due_date || '-'}</p>
-                      <p><span className="text-muted-foreground">Paid at:</span> {selectedPayment.payment_date ? new Date(selectedPayment.payment_date).toLocaleString() : '-'}</p>
-                      <p><span className="text-muted-foreground">Created at:</span> {selectedPayment.created_at ? new Date(selectedPayment.created_at).toLocaleString() : '-'}</p>
+                      <p>
+                        <span className="text-muted-foreground">Due date:</span>{' '}
+                        {selectedPayment.due_date ? fmtIsoDateToDisplay(selectedPayment.due_date) : '-'}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Paid at:</span>{' '}
+                        {selectedPayment.payment_date ? fmtDateTimeFull(selectedPayment.payment_date) : '-'}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Created at:</span>{' '}
+                        {selectedPayment.created_at ? fmtDateTimeFull(selectedPayment.created_at) : '-'}
+                      </p>
                       <p><span className="text-muted-foreground">Transaction ID:</span> {selectedPayment.transaction_id || '-'}</p>
                       <p><span className="text-muted-foreground">Verified by:</span> {selectedPayment.verified_by || '-'}</p>
-                      <p><span className="text-muted-foreground">Verified at:</span> {selectedPayment.verified_at ? new Date(selectedPayment.verified_at).toLocaleString() : '-'}</p>
-                      <p><span className="text-muted-foreground">Reviewed at:</span> {selectedPayment.reviewed_at ? new Date(selectedPayment.reviewed_at).toLocaleString() : '-'}</p>
+                      <p>
+                        <span className="text-muted-foreground">Verified at:</span>{' '}
+                        {selectedPayment.verified_at ? fmtDateTimeFull(selectedPayment.verified_at) : '-'}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Reviewed at:</span>{' '}
+                        {selectedPayment.reviewed_at ? fmtDateTimeFull(selectedPayment.reviewed_at) : '-'}
+                      </p>
                       <p><span className="text-muted-foreground">Rejected reason:</span> {selectedPayment.rejection_reason || '-'}</p>
                       <p><span className="text-muted-foreground">Notes:</span> {selectedPayment.notes || '-'}</p>
                     </div>
@@ -3091,7 +3102,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                           <td className="p-2 font-mono">{ru?.flat_number ?? '—'}</td>
                           <td className="p-2">{seen ? 'Yes' : 'No'}</td>
                           <td className="p-2 text-muted-foreground">
-                            {row.read_at ? new Date(row.read_at).toLocaleString() : '—'}
+                            {row.read_at ? fmtDateTimeFull(row.read_at) : '—'}
                           </td>
                         </tr>
                       );

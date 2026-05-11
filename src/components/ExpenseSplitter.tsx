@@ -7,6 +7,7 @@ import { useStore } from '@/store/useStore';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { format } from 'date-fns';
+import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
 import { insertFinanceLedgerForGroupExpense, syncFinanceLedgerFromGroupExpenseEdit } from '@/lib/groupExpenseFinanceLedger';
 
@@ -1134,7 +1135,8 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                             <span className="text-[10px] text-muted-foreground block truncate">{exp.vendor_or_service}</span>
                           )}
                           <span className="text-[10px] text-muted-foreground capitalize">
-                            {exp.service_kind || 'one_time'} · {exp.payment_method || 'cash'} · {exp.expense_date || ''}
+                            {exp.service_kind || 'one_time'} · {exp.payment_method || 'cash'} ·{' '}
+                            {exp.expense_date ? fmtIsoDateToDisplay(String(exp.expense_date)) : ''}
                           </span>
                         </div>
                         <span className="font-bold text-sm shrink-0">₹{exp.total_amount}</span>

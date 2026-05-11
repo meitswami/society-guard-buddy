@@ -21,8 +21,11 @@ import {
   MicOff,
   ChevronUp,
   ChevronDown,
+  TableProperties,
+  Printer,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { fmtDateTimeFull } from '@/lib/dateFormat';
 import { confirmAction } from '@/lib/swal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +53,7 @@ type MeetingRow = {
   description: string | null;
   meeting_at: string;
   location: string | null;
+  meeting_kind: string;
   status: string;
   published: boolean;
   discussion_notes: string | null;
@@ -102,6 +106,33 @@ type FlatWithMembers = {
 interface Props {
   adminName?: string;
   isResident?: boolean;
+}
+
+const MEETING_KIND_OPTIONS = [
+  { value: 'general_body' as const, label: 'General body meeting', short: 'GBM' },
+  { value: 'annual' as const, label: 'Annual meeting', short: 'AGM' },
+  { value: 'executive_committee' as const, label: 'Executive committee', short: 'EC' },
+  { value: 'other' as const, label: 'Other', short: 'Other' },
+];
+type MeetingKind = (typeof MEETING_KIND_OPTIONS)[number]['value'];
+
+function normalizeMeetingKind(v: string | null | undefined): MeetingKind {
+  if (v === 'general_body' || v === 'annual' || v === 'executive_committee' || v === 'other') return v;
+  return 'other';
+}
+
+function meetingKindLabel(kind: string | null | undefined): string {
+  const k = normalizeMeetingKind(kind);
+  return MEETING_KIND_OPTIONS.find((o) => o.value === k)?.label ?? 'Other';
+}
+
+function meetingKindShort(kind: string | null | undefined): string {
+  const k = normalizeMeetingKind(kind);
+  return MEETING_KIND_OPTIONS.find((o) => o.value === k)?.short ?? 'Other';
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function toDateInput(iso: string): string {
@@ -224,17 +255,32 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   const [documents, setDocuments] = useState<DocRow[]>([]);
   const [signatures, setSignatures] = useState<SigRow[]>([]);
   const [showNew, setShowNew] = useState(false);
-  const [newForm, setNewForm] = useState({ title: '', meetingDate: '', meetingTime: '', location: '' });
+  const [newForm, setNewForm] = useState({
+    title: '',
+    meetingDate: '',
+    meetingTime: '',
+    location: '',
+    meetingKind: 'general_body' as MeetingKind,
+  });
+  const [meetingKindFilter, setMeetingKindFilter] = useState<'all' | MeetingKind>('all');
   const [memberToAdd, setMemberToAdd] = useState('');
   const [guestName, setGuestName] = useState('');
   const [sigCtx, setSigCtx] = useState<{ doc: DocRow; attendee: AttendeeRow } | null>(null);
   const [signerLabel, setSignerLabel] = useState('');
   const [attendeeSelection, setAttendeeSelection] = useState<Set<string>>(() => new Set());
+  const [memberPickerOpen, setMemberPickerOpen] = useState(false);
+  const [memberPickerSelection, setMemberPickerSelection] = useState<Set<string>>(() => new Set());
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const selected = useMemo(() => meetings.find((m) => m.id === selectedId) ?? null, [meetings, selectedId]);
   const [notesDraft, setNotesDraft] = useState({ discussion: '', minutes: '' });
   const [executivesDraft, setExecutivesDraft] = useState('');
-  const [metaDraft, setMetaDraft] = useState({ title: '', meetingDate: '', meetingTime: '', location: '' });
+  const [metaDraft, setMetaDraft] = useState({
+    title: '',
+    meetingDate: '',
+    meetingTime: '',
+    location: '',
+    meetingKind: 'other' as MeetingKind,
+  });
   const [isRecording, setIsRecording] = useState(false);
   const [dictationOn, setDictationOn] = useState(false);
   const [decisionDrafts, setDecisionDrafts] = useState<Record<string, string>>({});
@@ -251,7 +297,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       lastHydratedMeetingIdRef.current = null;
       setNotesDraft({ discussion: '', minutes: '' });
       setExecutivesDraft('');
-      setMetaDraft({ title: '', meetingDate: '', meetingTime: '', location: '' });
+      setMetaDraft({ title: '', meetingDate: '', meetingTime: '', location: '', meetingKind: 'other' });
       return;
     }
     if (lastHydratedMeetingIdRef.current === selected.id) return;
@@ -266,6 +312,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       meetingDate: toDateInput(selected.meeting_at),
       meetingTime: toTimeInput(selected.meeting_at),
       location: selected.location ?? '',
+      meetingKind: normalizeMeetingKind(selected.meeting_kind),
     });
   }, [selected]);
 
@@ -302,7 +349,12 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       toast.error(error.message);
       return;
     }
-    setMeetings((data ?? []) as MeetingRow[]);
+    setMeetings(
+      (data ?? []).map((r) => ({
+        ...(r as MeetingRow),
+        meeting_kind: normalizeMeetingKind((r as { meeting_kind?: string }).meeting_kind),
+      })),
+    );
   }, [societyId, isResident]);
 
   const loadMembers = useCallback(async () => {
@@ -436,6 +488,9 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       const meeting_at = combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime);
       if (meeting_at !== server.meeting_at) patch.meeting_at = meeting_at;
       if (normText(metaDraft.location) !== normText(server.location)) patch.location = normText(metaDraft.location);
+      if (normalizeMeetingKind(metaDraft.meetingKind) !== normalizeMeetingKind(server.meeting_kind)) {
+        patch.meeting_kind = normalizeMeetingKind(metaDraft.meetingKind);
+      }
       if (normText(notesDraft.discussion) !== normText(server.discussion_notes)) {
         patch.discussion_notes = normText(notesDraft.discussion);
       }
@@ -464,6 +519,11 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     },
     [selectedId, meetings, isResident, metaDraft, notesDraft, executivesDraft],
   );
+
+  const visibleMeetings = useMemo(() => {
+    if (meetingKindFilter === 'all') return meetings;
+    return meetings.filter((m) => normalizeMeetingKind(m.meeting_kind) === meetingKindFilter);
+  }, [meetings, meetingKindFilter]);
 
   const flushDecisionDraftsToServer = useCallback(async () => {
     if (!selectedId || isResident) return;
@@ -544,7 +604,10 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   };
 
   const createMeeting = async () => {
-    if (!societyId || !newForm.title.trim()) return;
+    if (!societyId) return;
+    const kind = newForm.meetingKind;
+    const titleFromKind = MEETING_KIND_OPTIONS.find((o) => o.value === kind)?.label ?? 'Meeting';
+    const titleText = newForm.title.trim() || titleFromKind;
     const meeting_at = combineDateAndTimeToIso(
       newForm.meetingDate || toDateInput(new Date().toISOString()),
       newForm.meetingTime || toTimeInput(new Date().toISOString()),
@@ -554,7 +617,8 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       .insert([
         {
           society_id: societyId,
-          title: newForm.title.trim(),
+          title: titleText,
+          meeting_kind: kind,
           location: newForm.location.trim() || null,
           meeting_at,
           status: 'scheduled',
@@ -569,7 +633,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     }
     toast.success('Meeting created');
     setShowNew(false);
-    setNewForm({ title: '', meetingDate: '', meetingTime: '', location: '' });
+    setNewForm({ title: '', meetingDate: '', meetingTime: '', location: '', meetingKind: 'general_body' });
     await loadMeetings();
     setSelectedId(data.id);
   };
@@ -1107,6 +1171,188 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     void loadDetail(selectedId);
   };
 
+  const membersSortedForPicker = useMemo(
+    () =>
+      [...members].sort((a, b) => {
+        const fa = a.flat_number.localeCompare(b.flat_number, undefined, { numeric: true });
+        if (fa !== 0) return fa;
+        return a.name.localeCompare(b.name);
+      }),
+    [members],
+  );
+
+  const memberPickerEligibleIds = useMemo(() => {
+    const onList = new Set(attendees.map((a) => a.member_id).filter((id): id is string => Boolean(id)));
+    return membersSortedForPicker.filter((m) => !onList.has(m.id)).map((m) => m.id);
+  }, [membersSortedForPicker, attendees]);
+
+  const toggleMemberPickerRow = (memberId: string) => {
+    if (attendees.some((a) => a.member_id === memberId)) return;
+    setMemberPickerSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  };
+
+  const toggleMemberPickerSelectAllEligible = () => {
+    setMemberPickerSelection((prev) => {
+      const allOn = memberPickerEligibleIds.length > 0 && memberPickerEligibleIds.every((id) => prev.has(id));
+      if (allOn) {
+        const next = new Set(prev);
+        for (const id of memberPickerEligibleIds) next.delete(id);
+        return next;
+      }
+      return new Set([...prev, ...memberPickerEligibleIds]);
+    });
+  };
+
+  const resetMemberPickerSelection = () => setMemberPickerSelection(new Set());
+
+  const applyMemberPicker = async () => {
+    if (!selectedId) return;
+    const toAdd = [...memberPickerSelection].filter((id) => !attendees.some((a) => a.member_id === id));
+    if (toAdd.length === 0) {
+      toast.message('Select members not already on the list');
+      return;
+    }
+    const rows = toAdd.map((id) => {
+      const m = members.find((x) => x.id === id)!;
+      return {
+        meeting_id: selectedId,
+        member_id: m.id,
+        display_name: m.name,
+        flat_number: m.flat_number,
+        attendee_role: 'member',
+        is_present: true,
+      };
+    });
+    const { error } = await supabase.from('meeting_attendees').insert(rows);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Added ${toAdd.length} attendee(s)`);
+      setMemberPickerOpen(false);
+      resetMemberPickerSelection();
+      void loadDetail(selectedId);
+    }
+  };
+
+  const openMeetingPrintWindow = (documentTitle: string, innerHtml: string) => {
+    const w = window.open('', '_blank', 'noopener,noreferrer');
+    if (!w) {
+      toast.error('Pop-up blocked — allow pop-ups to print.');
+      return;
+    }
+    const safeTitle = escapeHtml(documentTitle);
+    w.document.write(
+      `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${safeTitle}</title><style>
+        body{font-family:system-ui,sans-serif;padding:16px;font-size:12px}
+        table{border-collapse:collapse;width:100%;margin-top:10px}
+        th,td{border:1px solid #bbb;padding:6px 8px;text-align:left;vertical-align:top}
+        th{background:#eee}
+        h1{font-size:18px;margin:0 0 8px}
+        h2{font-size:14px;margin:18px 0 8px;page-break-after:avoid}
+        pre{white-space:pre-wrap;font-family:inherit;font-size:11px;margin:0}
+        .muted{color:#555;font-size:11px}
+        @page{margin:12mm}
+      </style></head><body>${innerHtml}</body></html>`,
+    );
+    w.document.close();
+    setTimeout(() => {
+      w.print();
+    }, 350);
+  };
+
+  const printMeetingsFlat = (rows: MeetingRow[], heading: string) => {
+    const tr = rows
+      .map(
+        (m) =>
+          `<tr><td>${escapeHtml(meetingKindLabel(m.meeting_kind))}</td><td>${escapeHtml(m.title)}</td><td>${escapeHtml(
+            fmtDateTimeFull(m.meeting_at),
+          )}</td><td>${escapeHtml(m.location ?? '—')}</td><td>${escapeHtml(m.status)}</td><td>${
+            m.published ? 'Yes' : 'No'
+          }</td></tr>`,
+      )
+      .join('');
+    openMeetingPrintWindow(
+      heading,
+      `<h1>${escapeHtml(heading)}</h1><p class="muted">${rows.length} record(s)</p><table><thead><tr><th>Type</th><th>Title</th><th>Date &amp; time</th><th>Venue</th><th>Status</th><th>Published</th></tr></thead><tbody>${
+        tr || '<tr><td colspan="6">No meetings in this list.</td></tr>'
+      }</tbody></table>`,
+    );
+  };
+
+  const printMeetingsGrouped = () => {
+    const parts: string[] = [];
+    parts.push('<h1>Meetings by type</h1>');
+    parts.push(`<p class="muted">All meetings — one section per class (${meetings.length} total)</p>`);
+    let any = false;
+    for (const opt of MEETING_KIND_OPTIONS) {
+      const rows = meetings
+        .filter((m) => normalizeMeetingKind(m.meeting_kind) === opt.value)
+        .sort((a, b) => (a.meeting_at < b.meeting_at ? 1 : -1));
+      if (rows.length === 0) continue;
+      any = true;
+      parts.push(`<h2>${escapeHtml(opt.label)}</h2>`);
+      parts.push(
+        '<table><thead><tr><th>Title</th><th>Date &amp; time</th><th>Venue</th><th>Status</th><th>Published</th></tr></thead><tbody>',
+      );
+      for (const m of rows) {
+        parts.push(
+          `<tr><td>${escapeHtml(m.title)}</td><td>${escapeHtml(fmtDateTimeFull(m.meeting_at))}</td><td>${escapeHtml(
+            m.location ?? '—',
+          )}</td><td>${escapeHtml(m.status)}</td><td>${m.published ? 'Yes' : 'No'}</td></tr>`,
+        );
+      }
+      parts.push('</tbody></table>');
+      parts.push('<div style="page-break-after:always"></div>');
+    }
+    if (!any) {
+      toast.message('No meetings to print.');
+      return;
+    }
+    openMeetingPrintWindow('Meetings by type', parts.join(''));
+  };
+
+  const printCurrentMeetingDetail = () => {
+    if (!selected) return;
+    const title = (!isResident ? metaDraft.title.trim() : selected.title) || selected.title;
+    const at = !isResident ? combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime) : selected.meeting_at;
+    const loc = !isResident ? metaDraft.location : (selected.location ?? '');
+    const kind = !isResident ? metaDraft.meetingKind : normalizeMeetingKind(selected.meeting_kind);
+    const exec = !isResident ? executivesDraft : (selected.executives_present ?? '');
+    const disc = !isResident ? notesDraft.discussion : (selected.discussion_notes ?? '');
+    const minutes = !isResident ? notesDraft.minutes : (selected.minutes_summary ?? '');
+    const decBody = [...decisions]
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((d) => (!isResident ? (decisionDrafts[d.id] ?? d.decision_text) : d.decision_text))
+      .filter((t) => String(t).trim().length > 0);
+    const attRows = attendees
+      .map(
+        (a) =>
+          `<tr><td>${escapeHtml(a.display_name)}</td><td>${escapeHtml(a.flat_number ?? '—')}</td><td>${escapeHtml(
+            a.attendee_role,
+          )}</td><td>${a.is_present ? 'Present' : 'Absent'}</td></tr>`,
+      )
+      .join('');
+    openMeetingPrintWindow(
+      `Meeting: ${title}`,
+      `<h1>${escapeHtml(title)}</h1>
+      <p><strong>Type:</strong> ${escapeHtml(meetingKindLabel(kind))}</p>
+      <p><strong>When:</strong> ${escapeHtml(fmtDateTimeFull(at))}</p>
+      <p><strong>Venue:</strong> ${escapeHtml(loc.trim() || '—')}</p>
+      <p><strong>Status:</strong> ${escapeHtml(selected.status)} · <strong>Published:</strong> ${selected.published ? 'Yes' : 'No'}</p>
+      <h2>Officers / executives present</h2><pre>${escapeHtml(exec.trim() || '—')}</pre>
+      <h2>Discussion</h2><pre>${escapeHtml(disc.trim() || '—')}</pre>
+      <h2>Minutes summary</h2><pre>${escapeHtml(minutes.trim() || '—')}</pre>
+      <h2>Decisions / resolutions</h2><ol>${decBody.map((t) => `<li>${escapeHtml(String(t))}</li>`).join('') || '<li>—</li>'}</ol>
+      <h2>Attendance</h2><table><thead><tr><th>Name</th><th>Flat</th><th>Role</th><th>Presence</th></tr></thead><tbody>${
+        attRows || '<tr><td colspan="4">—</td></tr>'
+      }</tbody></table>`,
+    );
+  };
+
   const presentAttendees = attendees.filter((a) => a.is_present);
 
   if (!societyId) {
@@ -1151,15 +1397,33 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New meeting</DialogTitle>
-            <DialogDescription>Set title, date, time, and venue. You can add attendance and minutes after.</DialogDescription>
+            <DialogDescription>Pick the meeting class, optional title, date, time, and venue. You can add attendance and minutes after.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Title</Label>
+              <Label>Meeting type</Label>
+              <Select
+                value={newForm.meetingKind}
+                onValueChange={(v) => setNewForm((p) => ({ ...p, meetingKind: normalizeMeetingKind(v) }))}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MEETING_KIND_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Title / subject</Label>
               <Input
                 value={newForm.title}
                 onChange={(e) => setNewForm((p) => ({ ...p, title: e.target.value }))}
-                placeholder="AGM / maintenance review"
+                placeholder="Optional — if blank, uses meeting type name"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -1202,23 +1466,91 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
 
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium w-full sm:w-auto sm:mr-1">
+              View by type
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant={meetingKindFilter === 'all' ? 'default' : 'outline'}
+              className="h-8 text-[11px]"
+              onClick={() => setMeetingKindFilter('all')}
+            >
+              All
+            </Button>
+            {MEETING_KIND_OPTIONS.map((o) => (
+              <Button
+                key={o.value}
+                type="button"
+                size="sm"
+                variant={meetingKindFilter === o.value ? 'default' : 'outline'}
+                className="h-8 text-[11px]"
+                onClick={() => setMeetingKindFilter(o.value)}
+              >
+                {o.short}
+              </Button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 text-[11px] gap-1"
+              onClick={() =>
+                printMeetingsFlat(
+                  visibleMeetings,
+                  meetingKindFilter === 'all'
+                    ? 'Meetings — current list'
+                    : `${meetingKindLabel(meetingKindFilter)} — current list`,
+                )
+              }
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Print list (current view)
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px] gap-1" onClick={() => printMeetingsGrouped()}>
+              <Printer className="w-3.5 h-3.5" />
+              Print all types (grouped)
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 text-[11px] gap-1"
+              disabled={!selected}
+              onClick={() => printCurrentMeetingDetail()}
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Print open meeting
+            </Button>
+          </div>
           {meetings.length === 0 && <p className="text-sm text-muted-foreground">No meetings yet.</p>}
-          {meetings.map((m) => (
+          {meetings.length > 0 && visibleMeetings.length === 0 && (
+            <p className="text-sm text-muted-foreground">No meetings in this category — pick another type or All.</p>
+          )}
+          {visibleMeetings.map((m) => (
             <button
               key={m.id}
               type="button"
               onClick={() => setSelectedId(m.id)}
               className={`w-full text-left card-section p-3 border transition ${selectedId === m.id ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-medium text-sm">{m.title}</p>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] font-semibold uppercase shrink-0 rounded border border-border bg-muted/50 px-1.5 py-0.5">
+                    {meetingKindShort(m.meeting_kind)}
+                  </span>
+                  <p className="font-medium text-sm truncate">{m.title}</p>
+                </div>
                 {m.published && (
                   <span className="text-[10px] uppercase bg-primary/15 text-primary px-1.5 py-0.5 rounded">Published</span>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                {new Date(m.meeting_at).toLocaleString()}
+                {fmtDateTimeFull(m.meeting_at)}
                 {m.location ? (
                   <>
                     <MapPin className="w-3 h-3 shrink-0" /> {m.location}
@@ -1235,6 +1567,11 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <h3 className="font-semibold text-sm">Meeting record</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  <span className="inline-flex items-center gap-1 rounded border border-border bg-muted/40 px-1.5 py-0.5 font-medium text-foreground">
+                    {meetingKindLabel(selected.meeting_kind)}
+                  </span>
+                </p>
                 <p className="text-[11px] text-muted-foreground">ID {selected.id.slice(0, 8)}…</p>
               </div>
               {!isResident && (
@@ -1260,10 +1597,10 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                   {autosaveStatus === 'saving' && <span className="text-amber-600 font-medium">Saving…</span>}
                   {autosaveStatus === 'error' && <span className="text-destructive font-medium">Save failed — check connection</span>}
                   {autosaveStatus === 'saved' && lastSavedAt && (
-                    <span className="text-green-600 font-medium">Last saved {new Date(lastSavedAt).toLocaleTimeString()}</span>
+                    <span className="text-green-600 font-medium">Last saved {fmtDateTimeFull(lastSavedAt)}</span>
                   )}
                   {autosaveStatus === 'idle' && lastSavedAt && (
-                    <span>Last saved {new Date(lastSavedAt).toLocaleTimeString()}</span>
+                    <span>Last saved {fmtDateTimeFull(lastSavedAt)}</span>
                   )}
                 </p>
               </div>
@@ -1273,6 +1610,24 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
               <>
                 <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Date, time & place</p>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Meeting type</Label>
+                    <Select
+                      value={metaDraft.meetingKind}
+                      onValueChange={(v) => setMetaDraft((p) => ({ ...p, meetingKind: normalizeMeetingKind(v) }))}
+                    >
+                      <SelectTrigger className="h-9 mt-0.5">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MEETING_KIND_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Input value={metaDraft.title} onChange={(e) => setMetaDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Title" />
                   <div className="grid grid-cols-2 gap-2">
                     <Input type="date" value={metaDraft.meetingDate} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingDate: e.target.value }))} />
@@ -1607,6 +1962,19 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                     <Button type="button" size="sm" variant="secondary" onClick={() => void addMemberAttendee()}>
                       Add
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-9 gap-1"
+                      onClick={() => {
+                        resetMemberPickerSelection();
+                        setMemberPickerOpen(true);
+                      }}
+                    >
+                      <TableProperties className="w-3.5 h-3.5" />
+                      Table pick
+                    </Button>
                   </div>
                   <div className="flex flex-wrap gap-2 items-end">
                     <Input placeholder="Guest name" value={guestName} onChange={(e) => setGuestName(e.target.value)} className="max-w-[200px]" />
@@ -1674,6 +2042,24 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                   <FileText className="w-3 h-3" /> Documents & signatures
                 </Label>
               </div>
+              {!isResident && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm cursor-pointer hover:bg-accent hover:text-accent-foreground">
+                    Choose files
+                    <input
+                      type="file"
+                      multiple
+                      accept={MEETING_DOC_ACCEPT}
+                      className="sr-only"
+                      onChange={(e) => {
+                        void uploadDocuments(e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  <span className="text-[10px] text-muted-foreground">Select several images or PDFs at once</span>
+                </div>
+              )}
               {documents.length === 0 && <p className="text-xs text-muted-foreground mt-2">No attachments.</p>}
               <ul className="mt-2 space-y-3">
                 {documents.map((doc, docIndex) => (
@@ -1759,6 +2145,89 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
           </div>
         )}
       </div>
+
+      <Dialog
+        open={memberPickerOpen}
+        onOpenChange={(o) => {
+          setMemberPickerOpen(o);
+          if (!o) resetMemberPickerSelection();
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col gap-0">
+          <DialogHeader>
+            <DialogTitle>Add flat members</DialogTitle>
+            <DialogDescription>
+              Select one or more residents in the table, then add them to this meeting’s attendance list as present.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap gap-2 py-2 border-b border-border">
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px]" onClick={toggleMemberPickerSelectAllEligible}>
+              {memberPickerEligibleIds.length > 0 && memberPickerEligibleIds.every((id) => memberPickerSelection.has(id))
+                ? 'Deselect all (new)'
+                : 'Select all not on list'}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px]" onClick={resetMemberPickerSelection}>
+              Clear selection
+            </Button>
+            <span className="text-[11px] text-muted-foreground self-center">{memberPickerSelection.size} selected</span>
+          </div>
+          <div className="overflow-auto flex-1 min-h-0 -mx-6 px-6">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-muted/50 sticky top-0">
+                  <th className="text-left p-2 w-10">
+                    <input
+                      type="checkbox"
+                      className="rounded border-border"
+                      aria-label="Toggle all members not yet on attendance list"
+                      checked={
+                        memberPickerEligibleIds.length > 0 && memberPickerEligibleIds.every((id) => memberPickerSelection.has(id))
+                      }
+                      onChange={toggleMemberPickerSelectAllEligible}
+                    />
+                  </th>
+                  <th className="text-left p-2 font-medium">Flat</th>
+                  <th className="text-left p-2 font-medium">Member</th>
+                  <th className="text-left p-2 font-medium">List</th>
+                </tr>
+              </thead>
+              <tbody>
+                {membersSortedForPicker.map((m) => {
+                  const onList = attendees.some((a) => a.member_id === m.id);
+                  return (
+                    <tr key={m.id} className="border-b border-border/80 hover:bg-muted/30">
+                      <td className="p-2 align-middle">
+                        <input
+                          type="checkbox"
+                          className="rounded border-border"
+                          disabled={onList}
+                          checked={onList || memberPickerSelection.has(m.id)}
+                          onChange={() => toggleMemberPickerRow(m.id)}
+                          aria-label={`Select ${m.name}`}
+                        />
+                      </td>
+                      <td className="p-2 align-middle font-medium">{m.flat_number}</td>
+                      <td className="p-2 align-middle">{m.name}</td>
+                      <td className="p-2 align-middle text-muted-foreground">{onList ? 'Already added' : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {membersSortedForPicker.length === 0 && (
+              <p className="text-sm text-muted-foreground py-6 text-center">No society members loaded.</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border">
+            <Button type="button" variant="secondary" onClick={() => setMemberPickerOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void applyMemberPicker()}>
+              Add selected to attendance
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!sigCtx} onOpenChange={(o) => !o && setSigCtx(null)}>
         <DialogContent>

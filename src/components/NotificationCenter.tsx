@@ -17,6 +17,7 @@ import {
   type NotificationSoundPresetId,
   playNotificationAlert,
 } from '@/lib/notificationSounds';
+import { fmtDateTimeFull } from '@/lib/dateFormat';
 import { isSupported as isFcmSupported } from 'firebase/messaging';
 import {
   Dialog,
@@ -802,7 +803,7 @@ const NotificationCenter = ({
                   <p className="text-sm font-semibold">{n.title}</p>
                   <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <p className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground">{fmtDateTimeFull(n.created_at)}</p>
                     {n.target_type !== 'all' && (
                       <span className="text-[10px] bg-primary/10 text-primary px-1.5 rounded">
                         → {n.target_type === 'flat' ? `Flat ${n.target_id}` : n.target_id}

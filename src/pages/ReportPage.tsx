@@ -3,6 +3,7 @@ import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart3, Download, Printer, Calendar, Users, Car, Truck, Shield, DollarSign, Heart, Split } from 'lucide-react';
 import { format, parse, endOfMonth } from 'date-fns';
+import { fmtDate, fmtDateTime } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }
@@ -300,7 +301,7 @@ const ReportPage = () => {
       .stat-val{font-size:24px;font-weight:bold}.stat-label{font-size:11px;color:#888}
     </style></head><body>
       <h1>🏢 ${t('app.name')} — ${t('report.title')}</h1>
-      <p style="color:#888">${format(new Date(date), 'EEEE, dd MMMM yyyy')}</p>
+      <p style="color:#888">${format(parse(date, 'yyyy-MM-dd', new Date()), 'EEEE')}, ${fmtDate(parse(date, 'yyyy-MM-dd', new Date()))}</p>
       <div class="stats">
         <div class="stat"><div class="stat-val">${stats.totalVisitors}</div><div class="stat-label">${t('dashboard.visitors')}</div></div>
         <div class="stat"><div class="stat-val">${stats.totalVehicles}</div><div class="stat-label">${t('dashboard.vehicles')}</div></div>
@@ -324,8 +325,8 @@ const ReportPage = () => {
     const headers = ['Name', 'Phone', 'Flat', 'Category', 'Purpose', 'Entry', 'Exit', 'Vehicle', 'Guard'];
     const rows = dayVisitors.map(v => [
       v.name, v.phone, v.flatNumber, v.category, v.purpose,
-      format(new Date(v.entryTime), 'dd/MM/yyyy HH:mm'),
-      v.exitTime ? format(new Date(v.exitTime), 'dd/MM/yyyy HH:mm') : 'Inside',
+      fmtDateTime(v.entryTime),
+      v.exitTime ? fmtDateTime(v.exitTime) : 'Inside',
       v.vehicleNumber || '-', v.guardName,
     ]);
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');

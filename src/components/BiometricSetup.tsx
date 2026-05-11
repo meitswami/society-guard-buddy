@@ -3,6 +3,7 @@ import { Fingerprint, Check } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useBiometric } from '@/hooks/useBiometric';
 import { toast } from 'sonner';
+import { fmtDateTimeFull } from '@/lib/dateFormat';
 
 interface Props {
   userType: string;
@@ -86,7 +87,7 @@ const BiometricSetup = ({ userType, userId, userName }: Props) => {
                   <div className="min-w-0">
                     <p className="text-xs font-medium truncate">Device {idx + 1} ({cred.shortId}...)</p>
                     <p className="text-[10px] text-muted-foreground">
-                      Added {new Date(cred.createdAt).toLocaleString()}
+                      Added {fmtDateTimeFull(cred.createdAt)}
                     </p>
                   </div>
                   <button

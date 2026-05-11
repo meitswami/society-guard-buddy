@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { FileText, Shield, AlertTriangle, Info, Search, Filter } from 'lucide-react';
+import { fmtDateTimeFull } from '@/lib/dateFormat';
 
 interface AuditLog {
   id: string;
@@ -145,9 +146,7 @@ const AuditLogViewer = () => {
                   <p className="text-xs text-muted-foreground">
                     {log.user_name || log.user_id || 'Unknown'} · {log.ip_address || 'no IP'}
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {new Date(log.created_at).toLocaleString()}
-                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{fmtDateTimeFull(log.created_at)}</p>
                 </div>
               </div>
               {expandedId === log.id && (
