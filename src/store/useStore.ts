@@ -61,7 +61,10 @@ export const useStore = create<AppState>()((set, get) => ({
   members: [],
   theme: (localStorage.getItem('gate-theme') as 'dark' | 'light' | 'system') || 'system',
 
-  setSocietyId: (id) =>
+  setSocietyId: (id) => {
+    // Avoid wiping cached society data when the id did not change (e.g. AdminDashboard
+    // effect re-runs on re-render / React Strict Mode double-mount in dev).
+    if (get().societyId === id) return;
     set({
       societyId: id,
       guards: [],
@@ -70,7 +73,8 @@ export const useStore = create<AppState>()((set, get) => ({
       blacklist: [],
       flats: [],
       members: [],
-    }),
+    });
+  },
 
   loadGuards: async () => {
     const sid = get().societyId;

@@ -1841,7 +1841,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           [
             { id: 'maintenance' as const, label: '📋 Charges' },
             { id: 'payments' as const, label: '💰 Record Reciept' },
-            { id: 'receipts' as const, label: '🧾 Receipts' },
+            { id: 'receipts' as const, label: '🧾 Transactions' },
             { id: 'period' as const, label: '📅 Period report' },
             { id: 'totals' as const, label: '📊 Totals' },
             { id: 'reminders' as const, label: '🔔 Reminders' },
@@ -2263,7 +2263,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           )}
 
           <p className="text-[11px] text-muted-foreground mt-1">
-            Payment records and receipts are available in the new <span className="font-medium">Receipts</span> tab.
+            Payment records appear in the <span className="font-medium">Transactions</span> tab.
           </p>
 
           {flatDateModal.open && (
@@ -2328,7 +2328,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           </div>
 
           <div className="card-section p-3 mb-3 space-y-2">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase">Receipt filters</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase">Transaction filters</p>
             <select
               className="input-field"
               value={paymentTypeFilter}
