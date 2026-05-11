@@ -1811,7 +1811,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         <div>
           <h1 className="page-title">Finance Management</h1>
           <p className="text-xs text-muted-foreground">
-            {charges.length} charges · {payments.length} Reciepts · {ledgerEntries.length} ledger entries
+            {charges.length} charges · {payments.length} receipts · {ledgerEntries.length} ledger entries
           </p>
         </div>
       </div>
@@ -1839,12 +1839,12 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       <div className="flex gap-1 mb-4 overflow-x-auto">
         {(
           [
-            { id: 'maintenance' as const, label: '📋 Charges' },
-            { id: 'payments' as const, label: '💰 Record Reciept' },
-            { id: 'receipts' as const, label: '🧾 Transactions' },
-            { id: 'period' as const, label: '📅 Period report' },
-            { id: 'totals' as const, label: '📊 Totals' },
-            { id: 'reminders' as const, label: '🔔 Reminders' },
+            { id: 'maintenance' as const, label: 'Charges' },
+            { id: 'payments' as const, label: 'Record receipt' },
+            { id: 'receipts' as const, label: 'Transactions' },
+            { id: 'period' as const, label: 'Period report' },
+            { id: 'totals' as const, label: 'Totals' },
+            { id: 'reminders' as const, label: 'Reminders' },
           ] as const
         ).map(({ id: s, label }) => (
           <button
@@ -2174,10 +2174,10 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                 />
               )}
               <select className="input-field" value={payForm.payment_method} onChange={e => setPayForm({...payForm, payment_method: e.target.value})}>
-                <option value="cash">💵 Cash</option>
-                <option value="upi">📱 UPI</option>
-                <option value="razorpay">💳 Razorpay (Online)</option>
-                <option value="bank_transfer">🏦 Bank Transfer</option>
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+                <option value="razorpay">Razorpay (Online)</option>
+                <option value="bank_transfer">Bank transfer</option>
               </select>
               <input className="input-field" placeholder="Transaction / reference ID (optional)" value={payForm.transaction_id} onChange={e => setPayForm({...payForm, transaction_id: e.target.value})} />
               <input className="input-field" placeholder="Screenshot URL (paste link, optional)" value={payForm.screenshot_url} onChange={e => setPayForm({...payForm, screenshot_url: e.target.value})} />
@@ -3303,7 +3303,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
             <p className="text-sm text-muted-foreground mb-3">{unpaidFlats.length} flats have not paid maintenance</p>
             {unpaidFlats.length > 0 && (
               <button onClick={sendReminders} className="btn-primary w-full flex items-center justify-center gap-2">
-                🔔 Send Reminders to All ({unpaidFlats.length})
+                Send reminders to all ({unpaidFlats.length})
               </button>
             )}
           </div>
