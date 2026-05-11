@@ -34,6 +34,7 @@ import { auditLogout } from '@/lib/auditLogger';
 import { isAdminTabAllowed, type AdminPanelPermissions, type AdminTab } from '@/lib/adminPermissions';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
+import { ElectionResultsBanner } from '@/components/ElectionResultsBanner';
 
 interface Props {
   admin: {
@@ -379,6 +380,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               <LogOut className="w-5 h-5" />
             </button>
           </div>
+          <ElectionResultsBanner societyId={admin.societyId} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <div className="card-section p-4">
               <ScrollText className="w-5 h-5 text-indigo-500 mb-2" />

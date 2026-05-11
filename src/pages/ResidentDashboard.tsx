@@ -11,6 +11,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import BiometricSetup from '@/components/BiometricSetup';
 import NotificationCenter from '@/components/NotificationCenter';
 import PollManager from '@/components/PollManager';
+import { ElectionResultsBanner } from '@/components/ElectionResultsBanner';
 import MeetingManager from '@/components/MeetingManager';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
@@ -1244,6 +1245,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         {/* ========== APPROVALS TAB ========== */}
         {tab === 'approvals' && (
           <div className="flex flex-col gap-3">
+            <ElectionResultsBanner societyId={societyId} />
             {pendingRequests.length > 0 && (
               <div className="card-section border-warning/30">
                 <p className="text-sm font-semibold text-warning mb-3">🔔 {t('resident.pendingApprovals')}</p>
@@ -1864,7 +1866,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         )}
 
         {tab === 'polls' && (
-          <PollManager isResident voterId={resident.id} flatNumber={resident.flatNumber} />
+          <PollManager isResident voterId={resident.id} flatNumber={resident.flatNumber} flatId={resident.flatId} />
         )}
 
         {tab === 'meetings' && <MeetingManager isResident />}
