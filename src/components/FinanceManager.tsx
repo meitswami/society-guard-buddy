@@ -126,7 +126,7 @@ async function uploadPaymentReceipt(file: File): Promise<string | null> {
 const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
-  const [subTab, setSubTab] = useState<'maintenance' | 'payments' | 'receipts' | 'period' | 'totals' | 'reminders'>('maintenance');
+  const [subTab, setSubTab] = useState<'maintenance' | 'payments' | 'receipts' | 'period' | 'totals' | 'reminders' | 'flat_report'>('maintenance');
   const [charges, setCharges] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<FinanceLedgerRow[]>([]);
@@ -213,7 +213,12 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const [savingAutoReminder, setSavingAutoReminder] = useState(false);
   const [testingAutoReminder, setTestingAutoReminder] = useState(false);
   const [lastReminderTestStatus, setLastReminderTestStatus] = useState<string>('');
-
+  const [flatReportFrom, setFlatReportFrom] = useState(defaultFinancePeriodFrom);
+  const [flatReportTo, setFlatReportTo] = useState(defaultFinancePeriodTo);
+  const [flatReportSelectedFlat, setFlatReportSelectedFlat] = useState<string>('all');
+  const [flatReportExpenses, setFlatReportExpenses] = useState<any[]>([]);
+  const [flatReportSplits, setFlatReportSplits] = useState<any[]>([]);
+  const [flatReportLoading, setFlatReportLoading] = useState(false);
   useEffect(() => {
     void loadAll();
   }, [societyId]);
@@ -332,6 +337,52 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       .limit(2500);
     setLedgerEntries((led as FinanceLedgerRow[]) ?? []);
   };
+
+  const loadFlatReportData = async () => {
+    if (!societyId) return;
+    setFlatReportLoading(true);
+    try {
+      // Load expense splits from Splitwise module
+      const { data: groupRows } = await supabase
+        .from('expense_groups')
+        .select('id, name')
+        .eq('society_id', societyId);
+      const groupIds = (groupRows ?? []).map((g) => g.id);
+      let expRows: any[] = [];
+      let splitRows: any[] = [];
+      if (groupIds.length > 0) {
+        const { data: exps } = await supabase
+          .from('expenses')
+          .select('id, title, total_amount, expense_date, payment_method, vendor_or_service, service_kind, group_id, split_type, paid_by_flat, paid_by_flats, record_status')
+          .in('group_id', groupIds)
+          .eq('record_status', 'active');
+        expRows = exps ?? [];
+        const expIds = expRows.map((e) => e.id);
+        if (expIds.length > 0) {
+          const { data: sp } = await supabase
+            .from('expense_splits')
+            .select('id, expense_id, flat_number, amount, is_settled, settled_at')
+            .in('expense_id', expIds);
+          splitRows = sp ?? [];
+        }
+      }
+      setFlatReportExpenses(expRows.map((e) => ({
+        ...e,
+        group_name: groupRows?.find((g) => g.id === e.group_id)?.name ?? 'Unknown group',
+      })));
+      setFlatReportSplits(splitRows);
+    } catch (err) {
+      console.error('Flat report data load error:', err);
+    } finally {
+      setFlatReportLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (subTab === 'flat_report') {
+      void loadFlatReportData();
+    }
+  }, [subTab, societyId]);
 
   useEffect(() => {
     if (!showPaymentForm || payForm.charge_id || charges.length === 0) return;
@@ -1559,6 +1610,147 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     [totalsOutflowBreakdown],
   );
 
+  type FlatReportRow = {
+    flat_number: string;
+    resident_name: string;
+    maintenance_paid: number;
+    maintenance_count: number;
+    expense_share: number;
+    expense_count: number;
+    settled_amount: number;
+    unsettled_amount: number;
+    net_position: number;
+    details: {
+      type: 'maintenance' | 'expense';
+      title: string;
+      amount: number;
+      date: string;
+      method: string;
+      status: string;
+      group_name?: string;
+    }[];
+  };
+
+  const flatReportData = useMemo((): FlatReportRow[] => {
+    if (subTab !== 'flat_report') return [];
+    const fromMs = new Date(`${flatReportFrom}T00:00:00`).getTime();
+    const toMs = new Date(`${flatReportTo}T23:59:59.999`).getTime();
+    const isInRange = (iso: string) => {
+      const t = new Date(iso).getTime();
+      return !Number.isNaN(t) && t >= fromMs && t <= toMs;
+    };
+
+    const flatMap = new Map<string, FlatReportRow>();
+    const getRow = (flatNum: string): FlatReportRow => {
+      if (!flatMap.has(flatNum)) {
+        const flat = flats.find((f) => f.flat_number === flatNum);
+        const resName = flat?.id
+          ? (primaryByFlatId.get(flat.id) || flat.owner_name || flatNum)
+          : flatNum;
+        flatMap.set(flatNum, {
+          flat_number: flatNum,
+          resident_name: resName ?? flatNum,
+          maintenance_paid: 0,
+          maintenance_count: 0,
+          expense_share: 0,
+          expense_count: 0,
+          settled_amount: 0,
+          unsettled_amount: 0,
+          net_position: 0,
+          details: [],
+        });
+      }
+      return flatMap.get(flatNum)!;
+    };
+
+    // Maintenance payments in range
+    for (const p of payments) {
+      if (String(p.payment_status) !== 'verified') continue;
+      const d = String(p.due_date || p.payment_date || p.verified_at || p.created_at || '');
+      if (!isInRange(d)) continue;
+      const flatNum = String(p.flat_number || '');
+      if (!flatNum) continue;
+      const amt = Number(p.amount || 0);
+      const row = getRow(flatNum);
+      row.maintenance_paid += amt;
+      row.maintenance_count += 1;
+      const chargeTitle = charges.find((c) => c.id === p.charge_id)?.title ?? 'Maintenance';
+      row.details.push({
+        type: 'maintenance',
+        title: chargeTitle,
+        amount: amt,
+        date: d.slice(0, 10),
+        method: String(p.payment_method || 'cash'),
+        status: 'paid',
+      });
+    }
+
+    // Ledger allocations (outsider/corpus entries allocated to flats) in range
+    for (const e of ledgerEntries) {
+      if (e.destination === 'separate_entry') continue;
+      const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
+      if (!isInRange(ledgerDate)) continue;
+      if (e.record_mode === 'flats_only') continue; // already counted via maintenance_payments
+      const allocations = e.finance_entry_allocations ?? [];
+      for (const alloc of allocations) {
+        const flatNum = alloc.flat_number;
+        if (!flatNum || flatNum === 'SOCIETY') continue;
+        const amt = Number(alloc.amount || 0);
+        const row = getRow(flatNum);
+        row.maintenance_paid += amt;
+        row.maintenance_count += 1;
+        row.details.push({
+          type: 'maintenance',
+          title: e.title || 'Ledger receipt',
+          amount: amt,
+          date: ledgerDate.slice(0, 10),
+          method: e.payment_method || 'other',
+          status: 'verified',
+        });
+      }
+    }
+
+    // Expense splits from Splitwise in range
+    for (const split of flatReportSplits) {
+      const exp = flatReportExpenses.find((e) => e.id === split.expense_id);
+      if (!exp) continue;
+      const expDate = String(exp.expense_date || '');
+      if (!isInRange(expDate)) continue;
+      const flatNum = String(split.flat_number || '');
+      if (!flatNum || flatNum === 'SOCIETY') continue;
+      const amt = Number(split.amount || 0);
+      const row = getRow(flatNum);
+      row.expense_share += amt;
+      row.expense_count += 1;
+      if (split.is_settled) {
+        row.settled_amount += amt;
+      } else {
+        row.unsettled_amount += amt;
+      }
+      row.details.push({
+        type: 'expense',
+        title: exp.title || 'Expense',
+        amount: amt,
+        date: expDate.slice(0, 10),
+        method: exp.payment_method || 'cash',
+        status: split.is_settled ? 'settled' : 'pending',
+        group_name: exp.group_name,
+      });
+    }
+
+    // Compute net position: maintenance paid minus expense share
+    for (const row of flatMap.values()) {
+      row.net_position = row.maintenance_paid - row.expense_share;
+      row.details.sort((a, b) => b.date.localeCompare(a.date));
+    }
+
+    let rows = [...flatMap.values()].sort((a, b) => a.flat_number.localeCompare(b.flat_number, undefined, { numeric: true }));
+    if (flatReportSelectedFlat !== 'all') {
+      rows = rows.filter((r) => r.flat_number === flatReportSelectedFlat);
+    }
+    return rows;
+  }, [subTab, flatReportFrom, flatReportTo, flatReportSelectedFlat, payments, ledgerEntries, flatReportExpenses, flatReportSplits, flats, primaryByFlatId, charges]);
+
   const flatMultiOptions = useMemo(
     () => flatOptionsWithPrimaryLabel(flats, primaryByFlatId),
     [flats, primaryByFlatId],
@@ -1983,6 +2175,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
             { id: 'receipts' as const, label: 'Transactions' },
             { id: 'period' as const, label: 'Period report' },
             { id: 'totals' as const, label: 'Totals' },
+            { id: 'flat_report' as const, label: 'Flat Report' },
             { id: 'reminders' as const, label: 'Reminders' },
           ] as const
         ).map(({ id: s, label }) => (
@@ -3544,6 +3737,175 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {subTab === 'flat_report' && (
+        <div className="space-y-4">
+          <div className="card-section p-4 flex flex-wrap items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+              <IndianRupee className="w-5 h-5 text-indigo-500" />
+            </div>
+            <div className="flex-1 min-w-[220px] space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold">Flat-wise Financial Report</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Per-flat breakdown of maintenance receipts and expense splits (Splitwise) for reporting &amp; visibility — not for accounting.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label className="text-xs flex flex-col gap-1">
+                  <span className="text-muted-foreground">From</span>
+                  <DateInput className="input-field" value={flatReportFrom} onChange={(e) => setFlatReportFrom(e.target.value)} />
+                </label>
+                <label className="text-xs flex flex-col gap-1">
+                  <span className="text-muted-foreground">To</span>
+                  <DateInput className="input-field" value={flatReportTo} onChange={(e) => setFlatReportTo(e.target.value)} />
+                </label>
+                <label className="text-xs flex flex-col gap-1">
+                  <span className="text-muted-foreground">Flat</span>
+                  <select
+                    className="input-field"
+                    value={flatReportSelectedFlat}
+                    onChange={(e) => setFlatReportSelectedFlat(e.target.value)}
+                  >
+                    <option value="all">All flats</option>
+                    {flats.map((f) => (
+                      <option key={f.id} value={f.flat_number}>
+                        {f.flat_number} — {primaryByFlatId.get(f.id) || f.owner_name || 'Vacant'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {flatReportFrom > flatReportTo && (
+                <p className="text-xs text-destructive">End date must be on or after the start date.</p>
+              )}
+            </div>
+          </div>
+
+          {flatReportLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-10">Loading flat report data…</p>
+          ) : flatReportData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-10">
+              No financial activity found for the selected period{flatReportSelectedFlat !== 'all' ? ` (Flat ${flatReportSelectedFlat})` : ''}.
+            </p>
+          ) : (
+            <>
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="stat-card flex flex-col gap-1">
+                  <span className="text-[10px] text-muted-foreground uppercase">Total receipts</span>
+                  <span className="text-lg font-bold text-green-600 font-mono">
+                    ₹{flatReportData.reduce((s, r) => s + r.maintenance_paid, 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div className="stat-card flex flex-col gap-1">
+                  <span className="text-[10px] text-muted-foreground uppercase">Total expense share</span>
+                  <span className="text-lg font-bold text-red-600 font-mono">
+                    ₹{flatReportData.reduce((s, r) => s + r.expense_share, 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div className="stat-card flex flex-col gap-1">
+                  <span className="text-[10px] text-muted-foreground uppercase">Settled</span>
+                  <span className="text-lg font-bold text-blue-600 font-mono">
+                    ₹{flatReportData.reduce((s, r) => s + r.settled_amount, 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div className="stat-card flex flex-col gap-1">
+                  <span className="text-[10px] text-muted-foreground uppercase">Unsettled</span>
+                  <span className="text-lg font-bold text-amber-600 font-mono">
+                    ₹{flatReportData.reduce((s, r) => s + r.unsettled_amount, 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Per-flat breakdown */}
+              <div className="space-y-3">
+                {flatReportData.map((row) => (
+                  <details key={row.flat_number} className="card-section overflow-hidden">
+                    <summary className="p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold">Flat {row.flat_number}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{row.resident_name}</p>
+                        </div>
+                        <div className="text-right shrink-0 space-y-0.5">
+                          <p className="text-xs">
+                            <span className="text-green-600 font-medium">Paid ₹{row.maintenance_paid.toLocaleString('en-IN')}</span>
+                            {' · '}
+                            <span className="text-red-600 font-medium">Share ₹{row.expense_share.toLocaleString('en-IN')}</span>
+                          </p>
+                          <p className={`text-xs font-bold ${row.net_position >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                            Net: {row.net_position >= 0 ? '+' : ''}₹{row.net_position.toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      </div>
+                    </summary>
+                    <div className="border-t border-border px-4 py-3 space-y-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-muted-foreground">Maintenance receipts:</span>{' '}
+                          <span className="font-medium">{row.maintenance_count}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Expense splits:</span>{' '}
+                          <span className="font-medium">{row.expense_count}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Settled:</span>{' '}
+                          <span className="font-medium text-blue-600">₹{row.settled_amount.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Unsettled:</span>{' '}
+                          <span className="font-medium text-amber-600">₹{row.unsettled_amount.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                      {row.details.length > 0 && (
+                        <div className="overflow-x-auto mt-2">
+                          <table className="w-full text-xs border border-border rounded-md overflow-hidden">
+                            <thead>
+                              <tr className="bg-muted/50 text-left">
+                                <th className="p-2 border-b border-border">Type</th>
+                                <th className="p-2 border-b border-border">Description</th>
+                                <th className="p-2 border-b border-border text-right">Amount</th>
+                                <th className="p-2 border-b border-border">Date</th>
+                                <th className="p-2 border-b border-border">Method</th>
+                                <th className="p-2 border-b border-border">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {row.details.map((d, idx) => (
+                                <tr key={idx} className="border-b border-border/60">
+                                  <td className="p-2">
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${d.type === 'maintenance' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}`}>
+                                      {d.type === 'maintenance' ? 'Receipt' : 'Expense'}
+                                    </span>
+                                  </td>
+                                  <td className="p-2 max-w-[180px] truncate" title={d.group_name ? `${d.group_name}: ${d.title}` : d.title}>
+                                    {d.group_name ? <span className="text-muted-foreground">[{d.group_name}] </span> : null}
+                                    {d.title}
+                                  </td>
+                                  <td className="p-2 text-right font-mono font-medium">₹{d.amount.toLocaleString('en-IN')}</td>
+                                  <td className="p-2 text-muted-foreground">{fmtIsoDateToDisplay(d.date)}</td>
+                                  <td className="p-2 capitalize">{d.method.replace(/_/g, ' ')}</td>
+                                  <td className="p-2">
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${d.status === 'paid' || d.status === 'verified' || d.status === 'settled' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                                      {d.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
