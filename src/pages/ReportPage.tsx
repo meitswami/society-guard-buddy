@@ -170,9 +170,9 @@ const ReportPage = () => {
       if (!groupIds.length) { setSplitStatuses([]); }
       else {
         const { data: ex } = await supabase
-          .from('expenses').select('id, created_at, record_status, group_id')
+          .from('expenses').select('id, expense_date, record_status, group_id')
           .in('group_id', groupIds).eq('record_status', 'active')
-          .gte('created_at', from).lte('created_at', to);
+          .gte('expense_date', dueFrom).lte('expense_date', dueTo);
         const expIds = (ex as { id: string }[] | null)?.map((x) => x.id) ?? [];
         if (!expIds.length) { setSplitStatuses([]); }
         else {
