@@ -57,7 +57,7 @@ const defaultFinancePeriodFrom = () => {
 
 const defaultFinancePeriodTo = () => format(new Date(), 'yyyy-MM-dd');
 
-const paymentVerifiedAtOrDate = (p: any) => String(p?.verified_at || p?.payment_date || p?.created_at || '');
+const paymentVerifiedAtOrDate = (p: any) => String(p?.payment_date || p?.verified_at || p?.created_at || '');
 
 const normalizePaymentChannel = (method: unknown): 'cash' | 'bank' | 'other' => {
   const x = String(method ?? 'cash')
@@ -367,7 +367,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         toast.error(error.message);
         return;
       }
-      toast.success('Charge updated');
+      toast.success('Receipt type updated');
       setEditingChargeId(null);
     } else {
       const { error } = await supabase.from('maintenance_charges').insert([
@@ -384,7 +384,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         toast.error(error.message);
         return;
       }
-      toast.success('Maintenance charge added');
+      toast.success('Receipt type added');
     }
     setForm({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
     setShowForm(false);
@@ -406,18 +406,18 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     const hasDeps =
       payments.some((p) => p.charge_id === id) || ledgerEntries.some((e) => e.charge_id === id);
     if (hasDeps) {
-      toast.error('This charge has linked payments or ledger rows. Delete those entries first.');
+      toast.error('This receipt type has linked payments or ledger rows. Delete those entries first.');
       return;
     }
     const ok = await confirmAction(
-      'Delete this charge?',
-      'This will remove the charge definition only.',
+      'Delete this receipt type?',
+      'This will remove the receipt type definition only.',
       'Delete',
       'Cancel',
     );
     if (!ok) return;
     await supabase.from('maintenance_charges').delete().eq('id', id).eq('society_id', societyId);
-    toast.success('Charge deleted');
+    toast.success('Receipt type deleted');
     if (editingChargeId === id) {
       setEditingChargeId(null);
       setForm({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
@@ -448,13 +448,13 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         return;
       }
       if (payForm.destination === 'current_month_maintenance' && !payForm.charge_id) {
-        toast.error('Select a charge when adjusting current month maintenance');
+        toast.error('Select a receipt type when adjusting current month maintenance');
         return;
       }
     }
     if (mode === 'flats_plus_outsider') {
       if (!payForm.charge_id || !payForm.amount) {
-        toast.error('Select charge and enter maintenance amount per flat');
+        toast.error('Select receipt type and enter maintenance amount per flat');
         return;
       }
       if (!payForm.outsiderName.trim() || !payForm.outsiderAmount) {
@@ -1241,7 +1241,11 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       }
     }
 
-    const options = [{ value: 'all', label: 'All payment records' }];
+    const options: { value: string; label: string }[] = [
+      { value: 'all', label: '--All--' },
+      { value: 'all_payments', label: 'All Payment Records' },
+      { value: 'all_receipts', label: 'All Receipts Records' },
+    ];
     if (keys.has('monthly_maintenance')) options.push({ value: 'monthly_maintenance', label: 'Monthly Maintenance Charges' });
     if (keys.has('monthly')) options.push({ value: 'monthly', label: 'Monthly (non-maintenance)' });
     if (keys.has('quarterly')) options.push({ value: 'quarterly', label: 'Quarterly charges' });
@@ -1285,7 +1289,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   }, [payForm.selected_flats, payForm.due_date, useSameDateForSelectedFlats, flatDueDates]);
 
   const scopedReceiptPayments = payments.filter((p) => {
-    if (paymentTypeFilter === 'corpus' || paymentTypeFilter === 'outsider_mixed') return false;
+    if (paymentTypeFilter === 'corpus' || paymentTypeFilter === 'outsider_mixed' || paymentTypeFilter === 'all_payments') return false;
     if (receiptModeFilter !== 'all') {
       const fe = p.finance_entry_id ? financeEntryById.get(p.finance_entry_id as string) : undefined;
       const mode = fe?.record_mode ?? 'flats_only';
@@ -1296,7 +1300,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       if (!ch || !isMonthlyMaintenanceCharge(ch)) return false;
     } else if (paymentTypeFilter === 'other') {
       if (ch) return false;
-    } else if (paymentTypeFilter !== 'all') {
+    } else if (paymentTypeFilter !== 'all' && paymentTypeFilter !== 'all_receipts') {
       if (!ch || String(ch.frequency).toLowerCase() !== paymentTypeFilter) return false;
     }
     if (paymentMonthFilter !== 'all') {
@@ -1332,10 +1336,16 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const scopedLedgerOnly = useMemo(() => {
     return ledgerEntries.filter((e) => {
       if (financeEntryIdsWithPayments.has(e.id)) return false;
+      if (paymentTypeFilter === 'all_receipts') return false;
       if (receiptModeFilter !== 'all' && e.record_mode !== receiptModeFilter) return false;
       if (paymentMonthFilter !== 'all' && ledgerMonthValue(e) !== paymentMonthFilter) return false;
 
-      if (paymentTypeFilter === 'all') {
+      // Apply payment status filter to ledger entries as well
+      if (filterStatus !== 'all' && filterStatus !== 'unpaid') {
+        if (e.payment_status !== filterStatus) return false;
+      }
+
+      if (paymentTypeFilter === 'all' || paymentTypeFilter === 'all_payments') {
         // include
       } else if (paymentTypeFilter === 'monthly_maintenance') {
         if (e.destination === 'corpus') return false;
@@ -1373,6 +1383,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     receiptModeFilter,
     paymentMonthFilter,
     paymentTypeFilter,
+    filterStatus,
     paymentSearchQuery,
     chargeById,
   ]);
@@ -1447,7 +1458,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   };
 
   const selectedReceiptTypeLabel =
-    paymentTypeOptions.find((o) => o.value === paymentTypeFilter)?.label ?? 'All payment records';
+    paymentTypeOptions.find((o) => o.value === paymentTypeFilter)?.label ?? '--All--';
   const selectedReceiptMonthLabel =
     monthOptionsForReceipts.find((o) => o.value === paymentMonthFilter)?.label ?? 'All months';
 
@@ -1503,7 +1514,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
     let extraLedgerReceipt = 0;
     for (const e of ledgerEntries) {
-      if (!dateInInclusiveRange(e.created_at, periodFrom, periodTo)) continue;
+      const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
+      if (!dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
       const amt = Number(e.total_amount || 0);
       const ch = normalizePaymentChannel(e.payment_method);
       if (e.destination === 'separate_entry') {
@@ -1811,7 +1823,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         <div>
           <h1 className="page-title">Finance Management</h1>
           <p className="text-xs text-muted-foreground">
-            {charges.length} charges · {payments.length} receipts · {ledgerEntries.length} ledger entries
+            {charges.length} receipt types · {payments.length} receipts · {ledgerEntries.length} ledger entries
           </p>
         </div>
       </div>
@@ -1839,7 +1851,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       <div className="flex gap-1 mb-4 overflow-x-auto">
         {(
           [
-            { id: 'maintenance' as const, label: 'Charges' },
+            { id: 'maintenance' as const, label: 'Create Receipts' },
             { id: 'payments' as const, label: 'Record receipt' },
             { id: 'receipts' as const, label: 'Transactions' },
             { id: 'period' as const, label: 'Period report' },
@@ -1915,11 +1927,11 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
             }}
             className="btn-primary w-full mb-4 flex items-center justify-center gap-2"
           >
-            <Plus className="w-4 h-4" /> {showForm && !editingChargeId ? 'Close form' : 'Add maintenance charge'}
+            <Plus className="w-4 h-4" /> {showForm && !editingChargeId ? 'Close form' : 'Add receipt type'}
           </button>
           {showForm && (
             <div className="card-section p-4 mb-4 flex flex-col gap-3">
-              <p className="text-xs font-medium text-muted-foreground">{editingChargeId ? 'Edit charge' : 'New charge'}</p>
+              <p className="text-xs font-medium text-muted-foreground">{editingChargeId ? 'Edit receipt type' : 'New receipt type'}</p>
               <input className="input-field" placeholder="Title (e.g. Monthly Maintenance)" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
               <input className="input-field" placeholder="Amount (₹)" type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} />
               <select className="input-field" value={form.frequency} onChange={e => setForm({...form, frequency: e.target.value})}>
@@ -1931,7 +1943,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               <input className="input-field" placeholder="Due Day (1-28)" type="number" min="1" max="28" value={form.due_day} onChange={e => setForm({...form, due_day: e.target.value})} />
               <div className="flex gap-2">
                 <button type="button" onClick={addCharge} className="btn-primary flex-1">
-                  {editingChargeId ? 'Update charge' : 'Save charge'}
+                  {editingChargeId ? 'Update receipt type' : 'Save receipt type'}
                 </button>
                 {editingChargeId && (
                   <button
@@ -1964,7 +1976,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                     <button
                       type="button"
                       className="p-1.5 text-muted-foreground hover:text-destructive"
-                      title="Delete charge"
+                      title="Delete receipt type"
                       onClick={() => void deleteCharge(c.id)}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -2106,7 +2118,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                     });
                   }}
                 >
-                  <option value="">Select Charge</option>
+                  <option value="">Select Receipt Type</option>
                   {charges.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.title} - ₹{c.amount}
@@ -2312,7 +2324,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           <div className="flex gap-1 mb-3 overflow-x-auto">
             {[
               { key: 'all', label: 'ALL' },
-              { key: 'pending', label: 'PENDING' },
+              { key: 'pending', label: 'VERIFICATION PENDING' },
               { key: 'verified', label: 'VERIFIED' },
               { key: 'rejected', label: 'REJECTED' },
               { key: 'unpaid', label: 'FLATS UNPAID' },
@@ -2811,7 +2823,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       value={paymentEdit.charge_id}
                       onChange={(e) => setPaymentEdit({ ...paymentEdit, charge_id: e.target.value })}
                     >
-                      <option value="">Select charge</option>
+                      <option value="">Select receipt type</option>
                       {charges.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.title}
@@ -2945,10 +2957,12 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                 <label className="text-xs flex flex-col gap-1">
                   <span className="text-muted-foreground">Opening (from)</span>
                   <input type="date" className="input-field" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+                  {periodFrom && <span className="text-[10px] text-muted-foreground">{fmtIsoDateToDisplay(periodFrom)}</span>}
                 </label>
                 <label className="text-xs flex flex-col gap-1">
                   <span className="text-muted-foreground">Closing (to)</span>
                   <input type="date" className="input-field" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+                  {periodTo && <span className="text-[10px] text-muted-foreground">{fmtIsoDateToDisplay(periodTo)}</span>}
                 </label>
               </div>
               {periodFrom > periodTo && (
@@ -3026,15 +3040,6 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                   />
                   Selected flats
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="finance-report-audience"
-                    checked={reportAudience === 'picked'}
-                    onChange={() => setReportAudience('picked')}
-                  />
-                  Pick residents
-                </label>
               </div>
               {reportAudience === 'flats' && (
                 <FlatMultiSelect
@@ -3044,33 +3049,6 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                   label="Flats to include"
                   emptyHint="No flats match your search."
                 />
-              )}
-              {reportAudience === 'picked' && (
-                <div className="max-h-52 overflow-y-auto border border-border rounded-md p-2 space-y-0.5">
-                  {residentUsers.length === 0 ? (
-                    <p className="text-muted-foreground p-1">No residents loaded.</p>
-                  ) : (
-                    residentUsers.map((r) => (
-                      <label
-                        key={r.id}
-                        className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-muted/50 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={reportResidentIds.includes(r.id)}
-                          onChange={() =>
-                            setReportResidentIds((prev) =>
-                              prev.includes(r.id) ? prev.filter((x) => x !== r.id) : [...prev, r.id],
-                            )
-                          }
-                        />
-                        <span>
-                          Flat {r.flat_number} · {r.name?.trim() || 'Resident'}
-                        </span>
-                      </label>
-                    ))
-                  )}
-                </div>
               )}
             </div>
           </div>

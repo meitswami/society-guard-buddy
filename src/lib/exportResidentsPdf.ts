@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { fmtDateTimeFull } from '@/lib/dateFormat';
+import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 
 export type PdfMember = {
   flat_id: string;
@@ -115,8 +115,8 @@ export function exportResidentsDirectoryPdf(societyName: string, flats: PdfFlat[
         m.gender ? `Gender: ${m.gender}` : null,
         m.spouse_name ? `Spouse: ${m.spouse_name}` : null,
         m.police_verification ? `Police verification: ${m.police_verification}` : null,
-        m.date_joining ? `Joined: ${m.date_joining}` : null,
-        m.date_leave ? `Left: ${m.date_leave}` : null,
+        m.date_joining ? `Joined: ${fmtIsoDateToDisplay(m.date_joining)}` : null,
+        m.date_leave ? `Left: ${fmtIsoDateToDisplay(m.date_leave)}` : null,
       ].filter(Boolean) as string[];
       lines.forEach((line) => {
         doc.text(line, margin + 2, y);

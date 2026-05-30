@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { fmtDate, fmtDateTime, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { showSuccess, confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
+import { DateInput } from '@/components/DateInput';
 import LanguageToggle from '@/components/LanguageToggle';
 import ThemeToggle from '@/components/ThemeToggle';
 import BiometricSetup from '@/components/BiometricSetup';
@@ -1324,7 +1325,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   value={passForm.guestPhone} onChange={e => setPassForm(f => ({ ...f, guestPhone: e.target.value.replace(/\D/g, '') }))} />
                 <div>
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">{t('resident.validDate')}</label>
-                  <input className="input-field" type="date" value={passForm.validDate}
+                  <DateInput className="input-field" value={passForm.validDate}
                     onChange={e => setPassForm(f => ({ ...f, validDate: e.target.value }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -1654,12 +1655,12 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-[10px] font-medium text-muted-foreground mb-0.5 block">Date of joining</label>
-                          <input className="input-field text-sm w-full" type="date" value={memberForm.dateJoining}
+                          <DateInput className="input-field text-sm w-full" value={memberForm.dateJoining}
                             onChange={(e) => setMemberForm((f) => ({ ...f, dateJoining: e.target.value }))} />
                         </div>
                         <div>
                           <label className="text-[10px] font-medium text-muted-foreground mb-0.5 block">Date of leave</label>
-                          <input className="input-field text-sm w-full" type="date" value={memberForm.dateLeave}
+                          <DateInput className="input-field text-sm w-full" value={memberForm.dateLeave}
                             onChange={(e) => setMemberForm((f) => ({ ...f, dateLeave: e.target.value }))} />
                         </div>
                       </div>
