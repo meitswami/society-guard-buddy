@@ -397,6 +397,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
           service_kind: ef.service_kind,
           vendor_or_service: ef.vendor_or_service?.trim() || null,
           expense_date: ef.expense_date,
+          recording_date: ef.recording_date,
           notes: ef.notes?.trim() || null,
           record_status: 'active',
         },
@@ -1186,7 +1187,10 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                           )}
                           <span className="text-[10px] text-muted-foreground capitalize">
                             {exp.service_kind || 'one_time'} · {exp.payment_method || 'cash'} ·{' '}
-                            {exp.expense_date ? fmtIsoDateToDisplay(String(exp.expense_date)) : ''}
+                            Bill: {exp.expense_date ? fmtIsoDateToDisplay(String(exp.expense_date)) : ''}
+                            {exp.recording_date && exp.recording_date !== exp.expense_date
+                              ? ` · Rec: ${fmtIsoDateToDisplay(String(exp.recording_date))}`
+                              : ''}
                           </span>
                         </div>
                         <span className="font-bold text-sm shrink-0">₹{exp.total_amount}</span>

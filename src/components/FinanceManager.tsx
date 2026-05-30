@@ -153,6 +153,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     screenshot_url: '',
     notes: '',
     due_date: format(new Date(), 'yyyy-MM-dd'),
+    recording_date: format(new Date(), 'yyyy-MM-dd'),
   });
   const [filterStatus, setFilterStatus] = useState('all');
   const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
@@ -193,6 +194,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     transaction_id: string;
     notes: string;
     due_date: string;
+    recording_date: string;
     payment_status: string;
     rejection_reason: string;
   } | null>(null);
@@ -202,6 +204,9 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     notes: string;
     payment_status: string;
     transaction_id: string;
+    payment_method: string;
+    total_amount: string;
+    entry_month: string;
   } | null>(null);
   const [autoReminderEnabled, setAutoReminderEnabled] = useState(true);
   const [autoReminderSchedule, setAutoReminderSchedule] = useState<'once_12pm' | 'twice_12pm_7pm'>('once_12pm');
@@ -524,6 +529,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         payForm.payment_method === 'cash' || payForm.payment_method === 'upi' ? 'verified' : 'pending',
       payment_date: now,
       due_date: useSameDateForSelectedFlats ? payForm.due_date : flatDueDates[flat_number] || payForm.due_date,
+      recording_date: payForm.recording_date,
       transaction_id: payForm.transaction_id || null,
       screenshot_url: screenshotUrl,
       notes: payForm.notes || null,
@@ -1036,6 +1042,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       transaction_id: paymentEdit.transaction_id.trim() || null,
       notes: paymentEdit.notes.trim() || null,
       due_date: paymentEdit.due_date,
+      recording_date: paymentEdit.recording_date,
       payment_status: paymentEdit.payment_status,
     };
     if (paymentEdit.payment_status === 'verified') {
@@ -1073,6 +1080,9 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         notes: ledgerEdit.notes.trim() || null,
         payment_status: ledgerEdit.payment_status,
         transaction_id: ledgerEdit.transaction_id.trim() || null,
+        payment_method: ledgerEdit.payment_method,
+        total_amount: Number(ledgerEdit.total_amount) || 0,
+        entry_month: ledgerEdit.entry_month || null,
       })
       .eq('id', ledgerEdit.id);
     if (error) {
@@ -1174,6 +1184,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       transaction_id: p.transaction_id ?? '',
       notes: p.notes ?? '',
       due_date: (p.due_date || '').toString().slice(0, 10),
+      recording_date: (p.recording_date || p.created_at || '').toString().slice(0, 10),
       payment_status: p.payment_status ?? 'pending',
       rejection_reason: p.rejection_reason ?? '',
     });
@@ -1186,6 +1197,9 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       notes: e.notes ?? '',
       payment_status: e.payment_status ?? 'verified',
       transaction_id: e.transaction_id ?? '',
+      payment_method: e.payment_method ?? 'cash',
+      total_amount: String(e.total_amount ?? ''),
+      entry_month: e.entry_month ?? '',
     });
   };
 
@@ -2221,21 +2235,34 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               <input className="input-field" placeholder="Screenshot URL (paste link, optional)" value={payForm.screenshot_url} onChange={e => setPayForm({...payForm, screenshot_url: e.target.value})} />
               <label className="text-[10px] font-medium text-muted-foreground uppercase">Or upload receipt / bill</label>
               <input id="finance-payment-receipt" type="file" accept="image/*,application/pdf" className="text-xs" />
-              <DateInput
-                className="input-field"
-                value={payForm.due_date}
-                onChange={e => {
-                  const nextDate = e.target.value;
-                  setPayForm({...payForm, due_date: nextDate});
-                  if (useSameDateForSelectedFlats) {
-                    setFlatDueDates((prev) => {
-                      const next = { ...prev };
-                      for (const flat of payForm.selected_flats) next[flat] = nextDate;
-                      return next;
-                    });
-                  }
-                }}
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Transaction / due date</label>
+                  <DateInput
+                    className="input-field"
+                    value={payForm.due_date}
+                    onChange={e => {
+                      const nextDate = e.target.value;
+                      setPayForm({...payForm, due_date: nextDate});
+                      if (useSameDateForSelectedFlats) {
+                        setFlatDueDates((prev) => {
+                          const next = { ...prev };
+                          for (const flat of payForm.selected_flats) next[flat] = nextDate;
+                          return next;
+                        });
+                      }
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Recording date</label>
+                  <DateInput
+                    className="input-field"
+                    value={payForm.recording_date}
+                    onChange={e => setPayForm({...payForm, recording_date: e.target.value})}
+                  />
+                </div>
+              </div>
               {!useSameDateForSelectedFlats && payForm.selected_flats.length > 0 && (
                 <div className="rounded-lg border border-border p-2 space-y-1.5">
                   <p className="text-[10px] uppercase font-medium text-muted-foreground">Per-flat due dates</p>
@@ -2882,6 +2909,13 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       value={paymentEdit.due_date}
                       onChange={(e) => setPaymentEdit({ ...paymentEdit, due_date: e.target.value })}
                     />
+                    <p className="text-[10px] text-muted-foreground -mt-2">Transaction / due date</p>
+                    <DateInput
+                      className="input-field"
+                      value={paymentEdit.recording_date}
+                      onChange={(e) => setPaymentEdit({ ...paymentEdit, recording_date: e.target.value })}
+                    />
+                    <p className="text-[10px] text-muted-foreground -mt-2">Recording date</p>
                     <textarea
                       className="input-field"
                       value={paymentEdit.notes}
@@ -2914,7 +2948,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
               {ledgerEdit && (
                 <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
-                  <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3">
+                  <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3 max-h-[85vh] overflow-auto">
                     <div className="flex justify-between items-center gap-2">
                       <p className="text-sm font-semibold">Edit ledger entry</p>
                       <button
@@ -2931,17 +2965,45 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       onChange={(e) => setLedgerEdit({ ...ledgerEdit, title: e.target.value })}
                       placeholder="Title"
                     />
-                    <textarea
+                    <input
                       className="input-field"
-                      value={ledgerEdit.notes}
-                      onChange={(e) => setLedgerEdit({ ...ledgerEdit, notes: e.target.value })}
-                      placeholder="Notes"
+                      type="number"
+                      value={ledgerEdit.total_amount}
+                      onChange={(e) => setLedgerEdit({ ...ledgerEdit, total_amount: e.target.value })}
+                      placeholder="Total amount (₹)"
                     />
+                    <select
+                      className="input-field"
+                      value={ledgerEdit.payment_method}
+                      onChange={(e) => setLedgerEdit({ ...ledgerEdit, payment_method: e.target.value })}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="razorpay">Razorpay</option>
+                      <option value="bank_transfer">Bank transfer</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="other">Other</option>
+                    </select>
                     <input
                       className="input-field"
                       value={ledgerEdit.transaction_id}
                       onChange={(e) => setLedgerEdit({ ...ledgerEdit, transaction_id: e.target.value })}
                       placeholder="Transaction / reference ID"
+                    />
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase">Entry month (yyyy-MM)</label>
+                      <input
+                        className="input-field"
+                        type="month"
+                        value={ledgerEdit.entry_month}
+                        onChange={(e) => setLedgerEdit({ ...ledgerEdit, entry_month: e.target.value })}
+                      />
+                    </div>
+                    <textarea
+                      className="input-field"
+                      value={ledgerEdit.notes}
+                      onChange={(e) => setLedgerEdit({ ...ledgerEdit, notes: e.target.value })}
+                      placeholder="Notes"
                     />
                     <select
                       className="input-field"
