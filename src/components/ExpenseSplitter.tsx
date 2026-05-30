@@ -66,6 +66,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     vendor_or_service: '',
     service_kind: 'one_time' as 'recurring' | 'one_time' | 'temporary',
     expense_date: format(new Date(), 'yyyy-MM-dd'),
+    recording_date: format(new Date(), 'yyyy-MM-dd'),
     payment_method: 'cash',
     notes: '',
   });
@@ -80,6 +81,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     vendor_or_service: string;
     service_kind: string;
     expense_date: string;
+    recording_date: string;
     payment_method: string;
     notes: string;
     record_status: string;
@@ -152,6 +154,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       vendor_or_service: '',
       service_kind: 'one_time',
       expense_date: format(new Date(), 'yyyy-MM-dd'),
+      recording_date: format(new Date(), 'yyyy-MM-dd'),
       payment_method: 'cash',
       notes: '',
     });
@@ -237,6 +240,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
             service_kind: ef.service_kind,
             vendor_or_service: ef.vendor_or_service?.trim() || null,
             expense_date: ef.expense_date,
+            recording_date: ef.recording_date,
             notes: ef.notes?.trim() || null,
             record_status: 'active',
           },
@@ -561,6 +565,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       vendor_or_service: exp.vendor_or_service ?? '',
       service_kind: exp.service_kind ?? 'one_time',
       expense_date: (exp.expense_date || '').toString().slice(0, 10),
+      recording_date: (exp.recording_date || exp.created_at || '').toString().slice(0, 10),
       payment_method: exp.payment_method ?? 'cash',
       notes: exp.notes ?? '',
       record_status: exp.record_status ?? 'active',
@@ -624,6 +629,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         vendor_or_service: expenseEdit.vendor_or_service.trim() || null,
         service_kind: expenseEdit.service_kind,
         expense_date: expenseEdit.expense_date,
+        recording_date: expenseEdit.recording_date,
         payment_method: expenseEdit.payment_method,
         notes: expenseEdit.notes.trim() || null,
         record_status: expenseEdit.record_status,
@@ -954,10 +960,21 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                     <option value="recurring">Recurring (monthly)</option>
                     <option value="temporary">Temporary / ad-hoc</option>
                   </select>
+                  <div>
+                    <label className="text-[10px] font-medium text-muted-foreground uppercase">Bill / transaction date</label>
+                    <DateInput
+                      className="input-field text-sm"
+                      value={ef.expense_date}
+                      onChange={(e) => setEf({ ...ef, expense_date: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Recording date</label>
                   <DateInput
                     className="input-field text-sm"
-                    value={ef.expense_date}
-                    onChange={(e) => setEf({ ...ef, expense_date: e.target.value })}
+                    value={ef.recording_date}
+                    onChange={(e) => setEf({ ...ef, recording_date: e.target.value })}
                   />
                 </div>
                 <input
@@ -1337,10 +1354,21 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                 <option value="recurring">Recurring</option>
                 <option value="temporary">Temporary</option>
               </select>
+              <div>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">Bill / transaction date</label>
+                <DateInput
+                  className="input-field"
+                  value={expenseEdit.expense_date}
+                  onChange={(e) => setExpenseEdit({ ...expenseEdit, expense_date: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Recording date</label>
               <DateInput
                 className="input-field"
-                value={expenseEdit.expense_date}
-                onChange={(e) => setExpenseEdit({ ...expenseEdit, expense_date: e.target.value })}
+                value={expenseEdit.recording_date}
+                onChange={(e) => setExpenseEdit({ ...expenseEdit, recording_date: e.target.value })}
               />
             </div>
             <select
