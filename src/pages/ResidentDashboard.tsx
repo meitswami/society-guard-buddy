@@ -1972,15 +1972,13 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   value={residentPayForm.transaction_id}
                   onChange={(e) => setResidentPayForm((prev) => ({ ...prev, transaction_id: e.target.value }))}
                 />
-                <input
+                <DateInput
                   className="input-field"
-                  type="date"
                   value={residentPayForm.paid_on}
                   onChange={(e) => setResidentPayForm((prev) => ({ ...prev, paid_on: e.target.value }))}
                 />
-                <input
+                <DateInput
                   className="input-field"
-                  type="date"
                   value={residentPayForm.due_date}
                   onChange={(e) => setResidentPayForm((prev) => ({ ...prev, due_date: e.target.value }))}
                 />
