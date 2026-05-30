@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, IndianRupee, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare, ScrollText } from 'lucide-react';
+import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, IndianRupee, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare, ScrollText, Landmark } from 'lucide-react';
 import { format } from 'date-fns';
 import { fmtDate, fmtDateTime, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { showSuccess, confirmAction } from '@/lib/swal';
@@ -10,9 +10,11 @@ import LanguageToggle from '@/components/LanguageToggle';
 import ThemeToggle from '@/components/ThemeToggle';
 import BiometricSetup from '@/components/BiometricSetup';
 import NotificationCenter from '@/components/NotificationCenter';
+import EmergencyAlertPanel from '@/components/EmergencyAlertPanel';
 import PollManager from '@/components/PollManager';
 import { ElectionResultsBanner } from '@/components/ElectionResultsBanner';
 import MeetingManager from '@/components/MeetingManager';
+import CommitteeManager from '@/components/CommitteeManager';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
 import { isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
@@ -132,6 +134,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     | 'notifications'
     | 'polls'
     | 'meetings'
+    | 'committee'
     | 'payments'
     | 'family'
     | 'vehicles'
@@ -146,6 +149,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     | 'notifications'
     | 'polls'
     | 'meetings'
+    | 'committee'
     | 'payments'
     | 'family'
     | 'vehicles'
@@ -198,6 +202,8 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
   const [flatmates, setFlatmates] = useState<any[]>([]);
@@ -345,6 +351,17 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     setAllMembers(membersRes.data || []);
     setAllVehicles(vehFiltered);
   };
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from('resident_users')
+        .select('whatsapp_phone')
+        .eq('id', resident.id)
+        .maybeSingle();
+      setWhatsappPhone(data?.whatsapp_phone ?? resident.phone ?? '');
+    })();
+  }, [resident.id, resident.phone]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1013,6 +1030,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     { id: 'notifications' as const, label: 'Alerts', icon: Bell },
     { id: 'polls' as const, label: 'Polls', icon: Vote },
     { id: 'meetings' as const, label: 'Meetings', icon: ScrollText },
+    { id: 'committee' as const, label: 'Committee', icon: Landmark },
     { id: 'payments' as const, label: 'Payments', icon: IndianRupee },
     { id: 'profile' as const, label: 'Profile', icon: User },
     { id: 'tour' as const, label: t('nav.tour'), icon: Sparkles },
@@ -1855,14 +1873,23 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
           </div>
         )}
 
-        {tab === 'notifications' && (
-          <NotificationCenter
-            isResident
-            flatNumber={resident.flatNumber}
-            resident={{ id: resident.id, name: resident.name, flatNumber: resident.flatNumber }}
-            societyId={societyId}
-            feedRevision={notificationFeedRevision}
-          />
+        {tab === 'notifications' && societyId && (
+          <>
+            <EmergencyAlertPanel
+              compact
+              societyId={societyId}
+              senderName={resident.name}
+              senderRole="resident"
+              senderFlatNumber={resident.flatNumber}
+            />
+            <NotificationCenter
+              isResident
+              flatNumber={resident.flatNumber}
+              resident={{ id: resident.id, name: resident.name, flatNumber: resident.flatNumber }}
+              societyId={societyId}
+              feedRevision={notificationFeedRevision}
+            />
+          </>
         )}
 
         {tab === 'polls' && (
@@ -1870,6 +1897,8 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         )}
 
         {tab === 'meetings' && <MeetingManager isResident />}
+
+        {tab === 'committee' && <CommitteeManager isResident />}
 
         {tab === 'payments' && (
           <div className="flex flex-col gap-3">
@@ -2032,6 +2061,38 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="card-section p-4">
+              <p className="text-sm font-semibold mb-1">WhatsApp for emergency alerts</p>
+              <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">
+                Society-wide emergency alerts are also sent to this number. Leave blank to use your login phone ({resident.phone}).
+              </p>
+              <input
+                className="input-field mb-2"
+                placeholder="10-digit WhatsApp number"
+                value={whatsappPhone}
+                onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric"
+              />
+              <button
+                type="button"
+                disabled={savingWhatsapp}
+                className="btn-primary text-sm py-2"
+                onClick={async () => {
+                  setSavingWhatsapp(true);
+                  const val = whatsappPhone.trim() || null;
+                  const { error } = await supabase
+                    .from('resident_users')
+                    .update({ whatsapp_phone: val })
+                    .eq('id', resident.id);
+                  setSavingWhatsapp(false);
+                  if (error) toast.error(error.message);
+                  else toast.success('WhatsApp number saved for emergency alerts');
+                }}
+              >
+                {savingWhatsapp ? 'Saving…' : 'Save WhatsApp number'}
+              </button>
             </div>
 
             {residentSelfIdUploadEnabled && (

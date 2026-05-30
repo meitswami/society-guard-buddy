@@ -6,7 +6,7 @@ import { auditPasswordReset } from '@/lib/auditLogger';
 import { getResidentByPhoneInSociety } from '@/lib/societiesLogin';
 
 interface Props {
-  userType: 'admin' | 'resident';
+  userType: 'admin' | 'resident' | 'guard';
   /** When set, account lookup is limited to this society (recommended for multi-society installs). */
   societyId?: string | null;
   onBack: () => void;
@@ -30,8 +30,6 @@ const PasswordResetFlow = ({ userType, societyId, onBack }: Props) => {
     if (!identifier) { toast.error('Enter your ' + (method === 'email' ? 'email' : 'phone number')); return; }
     setLoading(true);
 
-    const table = userType === 'admin' ? 'admins' : 'resident_users';
-
     let user: any = null;
     if (method === 'email') {
       if (userType === 'resident' && societyId) {
@@ -44,8 +42,14 @@ const PasswordResetFlow = ({ userType, societyId, onBack }: Props) => {
       } else if (userType === 'admin' && societyId) {
         const { data } = await supabase.from('admins').select('*').eq('email', identifier).eq('society_id', societyId).maybeSingle();
         user = data;
+      } else if (userType === 'guard' && societyId) {
+        const { data } = await supabase.from('guards').select('*').eq('email', identifier).eq('society_id', societyId).maybeSingle();
+        user = data;
+      } else if (userType === 'admin') {
+        const { data } = await supabase.from('admins').select('*').eq('email', identifier).single();
+        user = data;
       } else {
-        const { data } = await supabase.from(table).select('*').eq('email', identifier).single();
+        const { data } = await supabase.from('resident_users').select('*').eq('email', identifier).single();
         user = data;
       }
     } else if (userType === 'resident') {
@@ -53,6 +57,21 @@ const PasswordResetFlow = ({ userType, societyId, onBack }: Props) => {
         user = await getResidentByPhoneInSociety(identifier, societyId);
       } else {
         const { data } = await supabase.from('resident_users').select('*').eq('phone', identifier).single();
+        user = data;
+      }
+    } else if (userType === 'guard' && societyId) {
+      const digits = identifier.replace(/\D/g, '');
+      const last10 = digits.length <= 10 ? digits : digits.slice(-10);
+      if (last10.length >= 10) {
+        const { data: guards } = await supabase.from('guards').select('*').eq('society_id', societyId);
+        user = (guards ?? []).find((g) => g.phone && g.phone.replace(/\D/g, '').slice(-10) === last10) ?? null;
+      } else {
+        const { data } = await supabase
+          .from('guards')
+          .select('*')
+          .eq('guard_id', identifier.toUpperCase())
+          .eq('society_id', societyId)
+          .maybeSingle();
         user = data;
       }
     } else {
@@ -69,7 +88,7 @@ const PasswordResetFlow = ({ userType, societyId, onBack }: Props) => {
 
     setUserId(user.id);
     setUserName(user.name);
-    setFlatNumber(user.flat_number || '');
+    setFlatNumber(user.flat_number || user.guard_id || '');
 
     // Check if email exists
     if (!user.email) {
@@ -115,20 +134,20 @@ const PasswordResetFlow = ({ userType, societyId, onBack }: Props) => {
       setLoading(false); return;
     }
 
-    const table = userType === 'admin' ? 'admins' : 'resident_users';
-    
     if (userType === 'resident') {
       // Get flat_id to update all flatmates
       const { data: resUser } = await supabase.from('resident_users').select('flat_id').eq('id', userId).single();
       if (resUser) {
         await supabase.from('resident_users').update({ password: newPassword }).eq('flat_id', resUser.flat_id);
       }
+    } else if (userType === 'guard') {
+      await supabase.from('guards').update({ password: newPassword }).eq('id', userId);
     } else {
-      await supabase.from(table).update({ password: newPassword }).eq('id', userId);
+      await supabase.from('admins').update({ password: newPassword }).eq('id', userId);
     }
 
     await supabase.from('password_reset_tokens').update({ used: true }).eq('id', tokenData.id);
-    auditPasswordReset(userType, userId, identifier, 'email_reset');
+    auditPasswordReset(userType as 'admin' | 'resident' | 'guard', userId, identifier, 'email_reset');
     toast.success('Password reset successfully!');
     setStep('done');
     setLoading(false);
@@ -145,6 +164,10 @@ const PasswordResetFlow = ({ userType, societyId, onBack }: Props) => {
         const { data: flat } = await supabase.from('flats').select('society_id').eq('id', resUser.flat_id).single();
         if (flat) resolvedSocietyId = flat.society_id;
       }
+    }
+    if (userType === 'guard' && !resolvedSocietyId) {
+      const { data: g } = await supabase.from('guards').select('society_id').eq('id', userId).single();
+      if (g?.society_id) resolvedSocietyId = g.society_id;
     }
 
     // Create a notification for admin
@@ -189,7 +212,8 @@ const PasswordResetFlow = ({ userType, societyId, onBack }: Props) => {
             <div className="flex gap-2">
               <button onClick={() => { setMethod('phone'); setIdentifier(''); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 ${method === 'phone' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                <Phone className="w-3.5 h-3.5" /> {userType === 'admin' ? 'Admin ID' : 'Phone'}
+                <Phone className="w-3.5 h-3.5" />{' '}
+                {userType === 'admin' ? 'Admin ID' : userType === 'guard' ? 'Guard ID / Phone' : 'Phone'}
               </button>
               <button onClick={() => { setMethod('email'); setIdentifier(''); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 ${method === 'email' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
@@ -198,9 +222,27 @@ const PasswordResetFlow = ({ userType, societyId, onBack }: Props) => {
             </div>
 
             <input className="input-field" type={method === 'email' ? 'email' : 'text'}
-              placeholder={method === 'email' ? 'Email address' : (userType === 'admin' ? 'Admin ID' : '10-digit phone number')}
+              placeholder={
+                method === 'email'
+                  ? 'Email address'
+                  : userType === 'admin'
+                    ? 'Admin ID'
+                    : userType === 'guard'
+                      ? 'Guard ID or 10-digit phone'
+                      : '10-digit phone number'
+              }
               value={identifier}
-              onChange={e => setIdentifier(method === 'phone' && userType === 'resident' ? e.target.value.replace(/\D/g, '') : e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (method === 'phone' && userType === 'resident') {
+                  setIdentifier(v.replace(/\D/g, '').slice(0, 10));
+                } else if (method === 'phone' && userType === 'guard') {
+                  if (/^\d*$/.test(v)) setIdentifier(v.slice(0, 10));
+                  else setIdentifier(v.toUpperCase());
+                } else {
+                  setIdentifier(v);
+                }
+              }}
               maxLength={method === 'phone' && userType === 'resident' ? 10 : undefined}
             />
             <button onClick={requestReset} className="btn-primary" disabled={loading}>

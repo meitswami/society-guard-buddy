@@ -9,7 +9,10 @@ import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
 import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
 import OTPLoginFlow from '@/components/OTPLoginFlow';
+import PasswordResetFlow from '@/components/PasswordResetFlow';
 import { LoginFooter } from '@/components/LoginFooter';
+import { findGuardForOtpLogin } from '@/lib/guardOtpLogin';
+import GuardLoginPreview from '@/components/GuardLoginPreview';
 
 interface Props {
   societyId: string;
@@ -31,8 +34,9 @@ const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const { login, setSocietyId, loadGuards } = useStore();
+  const { login, establishGuardSession, setSocietyId, loadGuards } = useStore();
   const [loading, setLoading] = useState(false);
+  const [showResetFlow, setShowResetFlow] = useState(false);
   const { isAvailable, authenticate, loading: bioLoading } = useBiometric();
   const [bioAvailable, setBioAvailable] = useState(false);
 
@@ -65,27 +69,36 @@ const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
   };
 
   const handleOtpVerified = async (phone: string) => {
-    const { data: guard } = await supabase
-      .from('guards')
-      .select('*')
-      .eq('phone', phone)
-      .eq('auth_mode', 'otp')
-      .eq('society_id', societyId)
-      .maybeSingle();
-    if (!guard) { setError(t('login.invalidCredentials')); return; }
+    setError('');
+    const lookup = await findGuardForOtpLogin(phone, societyId);
+    if (!lookup.ok) {
+      if (lookup.reason === 'password_mode') {
+        setError(t('login.guardOtpPasswordMode'));
+      } else {
+        setError(t('login.guardOtpPhoneNotRegistered'));
+      }
+      return;
+    }
+    const guard = lookup.guard;
 
     setLoading(true);
     setError(t('admin.gettingLocation'));
     const withinFence = await checkGeofence();
-    if (!withinFence) { setLoading(false); return; }
+    if (!withinFence) {
+      setLoading(false);
+      return;
+    }
     setError('');
 
     setSocietyId(societyId);
-    await loadGuards();
-    const success = await login(guard.guard_id, guard.password);
+    const success = await establishGuardSession({
+      guard_id: guard.guard_id,
+      name: guard.name,
+      password: guard.password,
+    });
     setLoading(false);
     if (success) {
-      auditLoginSuccess('guard', guard.guard_id, guard.name);
+      auditLoginSuccess('guard', guard.guard_id, guard.name, 'otp');
       registerOneSignalUser({ userType: 'guard', userId: guard.guard_id, userName: guard.name, societyId });
       promptPushPermission();
     } else {
@@ -174,6 +187,8 @@ const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
           <h2 className="page-title text-lg mt-4">{t('login.guardLogin')}</h2>
         </div>
 
+        <GuardLoginPreview variant="inline" />
+
         {/* Mode Toggle */}
         <div className="flex gap-1 p-1 bg-muted rounded-xl mb-4">
           <button onClick={() => { setLoginMode('password'); setError(''); }}
@@ -231,6 +246,13 @@ const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
               <button type="submit" className="btn-primary mt-2" disabled={loading}>
                 {loading ? t('login.loggingIn') : t('login.startShift')}
               </button>
+              <button
+                type="button"
+                className="text-xs text-primary text-center mt-1 underline"
+                onClick={() => setShowResetFlow(true)}
+              >
+                {t('login.forgotPassword')}
+              </button>
             </form>
           </>
         )}
@@ -242,6 +264,11 @@ const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
         )}
       </div>
       <LoginFooter />
+      {showResetFlow && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <PasswordResetFlow userType="guard" societyId={societyId} onBack={() => setShowResetFlow(false)} />
+        </div>
+      )}
     </div>
   );
 };

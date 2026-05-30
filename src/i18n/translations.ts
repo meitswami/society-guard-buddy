@@ -29,6 +29,24 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.startShift': { en: 'Start Shift', hi: 'शिफ्ट शुरू करें' },
   'login.loggingIn': { en: 'Logging in...', hi: 'लॉगिन हो रहा है...' },
   'login.invalidCredentials': { en: 'Invalid credentials', hi: 'गलत प्रमाण-पत्र' },
+  'login.guardOtpPhoneNotRegistered': {
+    en: 'No OTP guard account found for this phone in the selected society. Ask admin to set your phone and OTP login mode.',
+    hi: 'चयनित सोसाइटी में इस फोन के लिए कोई OTP गार्ड खाता नहीं मिला। एडमिन से फोन और OTP लॉगिन मोड सेट करवाएँ।',
+  },
+  'login.guardOtpPasswordMode': {
+    en: 'This guard uses Guard ID and password. Switch to ID & Password login, or ask admin to enable OTP login for your phone.',
+    hi: 'यह गार्ड आईडी और पासवर्ड से लॉगिन करता है। आईडी और पासवर्ड मोड चुनें, या एडमिन से OTP लॉगिन चालू करवाएँ।',
+  },
+  'login.forgotPassword': { en: 'Forgot Password?', hi: 'पासवर्ड भूल गए?' },
+  'guard.preview.title': { en: 'Preview guard desk (no login)', hi: 'गार्ड डेस्क झलक (बिना लॉगिन)' },
+  'guard.preview.hint': {
+    en: 'See what you can do after sign-in. Tap Tour for a full walkthrough.',
+    hi: 'साइन इन के बाद क्या कर सकते हैं देखें। पूरा टूर के लिए टूर टैप करें।',
+  },
+  'guard.preview.tourTitle': { en: 'Guard app tour', hi: 'गार्ड ऐप टूर' },
+  'guard.preview.close': { en: 'Close preview', hi: 'झलक बंद करें' },
+  'guard.preview.signInToUse': { en: 'Sign in to use this screen', hi: 'इस स्क्रीन के लिए साइन इन करें' },
+  'guard.preview.open': { en: 'Preview app without signing in', hi: 'बिना साइन इन ऐप झलक देखें' },
   'login.connectionProblem': {
     en: 'Could not reach the database. Check network, or that this site was built with the correct Supabase URL and anon key.',
     hi: 'डेटाबेस तक पहुँच नहीं हो सकी। नेटवर्क जाँचें, या सुनिश्चित करें कि साइट सही सुपाबेस पता (यूआरएल) और गुप्त कुंजी के साथ बनी हो।',
@@ -230,6 +248,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'nav.delivery': { en: 'Delivery', hi: 'डिलीवरी' },
   'nav.vehicles': { en: 'Vehicles', hi: 'वाहन' },
   'nav.blacklist': { en: 'Blacklist', hi: 'ब्लैकलिस्ट' },
+  'nav.emergency': { en: 'Alert', hi: 'अलर्ट' },
   'nav.directory': { en: 'Directory', hi: 'निर्देशिका' },
   'nav.report': { en: 'REPORTS', hi: 'रिपोर्ट्स' },
   'nav.logs': { en: 'Logs', hi: 'लॉग्स' },

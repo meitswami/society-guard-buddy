@@ -242,6 +242,68 @@ export type Database = {
           },
         ]
       }
+      committee_members: {
+        Row: {
+          created_at: string
+          gender: string | null
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          photo: string | null
+          position: string
+          rep_name: string | null
+          rep_phone: string | null
+          rep_photo: string | null
+          show_representative: boolean
+          society_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gender?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          photo?: string | null
+          position: string
+          rep_name?: string | null
+          rep_phone?: string | null
+          rep_photo?: string | null
+          show_representative?: boolean
+          society_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gender?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          photo?: string | null
+          position?: string
+          rep_name?: string | null
+          rep_phone?: string | null
+          rep_photo?: string | null
+          show_representative?: boolean
+          society_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "committee_members_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       donation_campaigns: {
         Row: {
           collected_amount: number | null
@@ -503,6 +565,69 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "events_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emergency_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          media_items: Json
+          message: string
+          notification_id: string | null
+          push_sent: number
+          sender_flat_number: string | null
+          sender_name: string
+          sender_role: string
+          society_id: string
+          title: string
+          whatsapp_failed: number
+          whatsapp_sent: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_items?: Json
+          message: string
+          notification_id?: string | null
+          push_sent?: number
+          sender_flat_number?: string | null
+          sender_name: string
+          sender_role: string
+          society_id: string
+          title: string
+          whatsapp_failed?: number
+          whatsapp_sent?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_items?: Json
+          message?: string
+          notification_id?: string | null
+          push_sent?: number
+          sender_flat_number?: string | null
+          sender_name?: string
+          sender_role?: string
+          society_id?: string
+          title?: string
+          whatsapp_failed?: number
+          whatsapp_sent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_alerts_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_alerts_society_id_fkey"
             columns: ["society_id"]
             isOneToOne: false
             referencedRelation: "societies"
@@ -938,6 +1063,44 @@ export type Database = {
           },
         ]
       }
+      guard_attachments: {
+        Row: {
+          created_at: string
+          doc_label: string
+          file_name: string | null
+          file_url: string
+          guard_id: string
+          id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          doc_label?: string
+          file_name?: string | null
+          file_url: string
+          guard_id: string
+          id?: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          doc_label?: string
+          file_name?: string | null
+          file_url?: string
+          guard_id?: string
+          id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_attachments_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "guards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guard_documents: {
         Row: {
           back_url: string | null
@@ -1021,6 +1184,7 @@ export type Database = {
           name: string
           password: string
           phone: string | null
+          photo_url: string | null
           police_verification: string
           police_verification_date: string | null
           society_id: string | null
@@ -1034,6 +1198,7 @@ export type Database = {
           name: string
           password: string
           phone?: string | null
+          photo_url?: string | null
           police_verification?: string
           police_verification_date?: string | null
           society_id?: string | null
@@ -1047,6 +1212,7 @@ export type Database = {
           name?: string
           password?: string
           phone?: string | null
+          photo_url?: string | null
           police_verification?: string
           police_verification_date?: string | null
           society_id?: string | null
@@ -1214,6 +1380,7 @@ export type Database = {
           is_primary: boolean | null
           name: string
           phone: string | null
+          whatsapp_phone: string | null
           photo: string | null
           police_verification: string | null
           relation: string | null
@@ -1233,6 +1400,7 @@ export type Database = {
           is_primary?: boolean | null
           name: string
           phone?: string | null
+          whatsapp_phone?: string | null
           photo?: string | null
           police_verification?: string | null
           relation?: string | null
@@ -1252,6 +1420,7 @@ export type Database = {
           is_primary?: boolean | null
           name?: string
           phone?: string | null
+          whatsapp_phone?: string | null
           photo?: string | null
           police_verification?: string | null
           relation?: string | null
@@ -1976,6 +2145,7 @@ export type Database = {
           name: string
           password: string
           phone: string
+          whatsapp_phone: string | null
         }
         Insert: {
           created_at?: string
@@ -1987,6 +2157,7 @@ export type Database = {
           name: string
           password: string
           phone: string
+          whatsapp_phone?: string | null
         }
         Update: {
           created_at?: string
@@ -1998,6 +2169,7 @@ export type Database = {
           name?: string
           password?: string
           phone?: string
+          whatsapp_phone?: string | null
         }
         Relationships: [
           {

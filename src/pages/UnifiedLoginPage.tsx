@@ -17,6 +17,8 @@ import { fetchActiveSocietiesByName, getResidentByPhoneInSociety, type LoginSoci
 import { permissionsFromAdminJoin, type AdminPanelPermissions } from '@/lib/adminPermissions';
 import { useShowSuperadminLogin } from '@/hooks/use-show-superadmin-login';
 import { completeResidentOtpOnboarding, normalizeLoginPhone } from '@/lib/residentLoginOnboarding';
+import { findGuardForOtpLogin } from '@/lib/guardOtpLogin';
+import GuardLoginPreview from '@/components/GuardLoginPreview';
 
 interface Props {
   onGuardLogin: () => void;
@@ -43,7 +45,7 @@ type LoginRole = '' | 'guard' | 'admin' | 'resident';
 
 const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuperadminLogin }: Props) => {
   const { t } = useLanguage();
-  const { login, setSocietyId, loadGuards } = useStore();
+  const { login, establishGuardSession, setSocietyId, loadGuards } = useStore();
   const showSuperadminEntry = useShowSuperadminLogin();
   const [societies, setSocieties] = useState<LoginSocietyRow[]>([]);
   const [selectedSocietyId, setSelectedSocietyId] = useState('');
@@ -152,36 +154,40 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     const normalized = normalizeLoginPhone(phone);
 
     if (loginRole === 'guard') {
-      const { data: guard } = await supabase
-        .from('guards')
-        .select('*')
-        .eq('phone', normalized)
-        .eq('auth_mode', 'otp')
-        .eq('society_id', selectedSocietyId)
-        .maybeSingle();
-      if (guard) {
-        const withinFence = await checkGeofence();
-        if (!withinFence) {
-          setError(t('admin.geofenceBlocked'));
-          return;
-        }
-        setSocietyId(selectedSocietyId);
-        await loadGuards();
-        const success = await login(guard.guard_id, guard.password);
-        if (success) {
-          auditLoginSuccess('guard', guard.guard_id, guard.name);
-          registerOneSignalUser({
-            userType: 'guard',
-            userId: guard.guard_id,
-            userName: guard.name,
-            societyId: selectedSocietyId,
-          });
-          promptPushPermission();
-          onGuardLogin();
+      const lookup = await findGuardForOtpLogin(normalized, selectedSocietyId);
+      if (!lookup.ok) {
+        if (lookup.reason === 'password_mode') {
+          setError(t('login.guardOtpPasswordMode'));
+        } else {
+          setError(t('login.guardOtpPhoneNotRegistered'));
         }
         return;
       }
-      setError(t('login.invalidCredentials'));
+      const guard = lookup.guard;
+      const withinFence = await checkGeofence();
+      if (!withinFence) {
+        setError(t('admin.geofenceBlocked'));
+        return;
+      }
+      setSocietyId(selectedSocietyId);
+      const success = await establishGuardSession({
+        guard_id: guard.guard_id,
+        name: guard.name,
+        password: guard.password,
+      });
+      if (success) {
+        auditLoginSuccess('guard', guard.guard_id, guard.name, 'otp');
+        registerOneSignalUser({
+          userType: 'guard',
+          userId: guard.guard_id,
+          userName: guard.name,
+          societyId: selectedSocietyId,
+        });
+        promptPushPermission();
+        onGuardLogin();
+      } else {
+        setError(t('login.invalidCredentials'));
+      }
       return;
     }
 
@@ -706,6 +712,8 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                   <p className="text-xs text-muted-foreground text-center mb-3 leading-relaxed">{t('login.adminUsePassword')}</p>
                 )}
 
+                {loginRole === 'guard' && <GuardLoginPreview variant="inline" />}
+
                 {loginRole && (
                 <div className="flex gap-1 p-1 bg-muted rounded-xl mb-4">
                   <button
@@ -823,9 +831,9 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                       <button type="submit" className="btn-primary mt-1" disabled={loading}>
                         {loading ? t('login.loggingIn') : t('resident.login')}
                       </button>
-                      {loginRole === 'resident' && (
+                      {(loginRole === 'resident' || loginRole === 'admin' || loginRole === 'guard') && (
                         <button type="button" className="text-xs text-primary text-center mt-1 underline" onClick={() => setShowResetFlow(true)}>
-                          Forgot Password?
+                          {t('login.forgotPassword')}
                         </button>
                       )}
                     </form>
@@ -839,9 +847,13 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
         )}
       </div>
       <LoginFooter />
-      {showResetFlow && selectedSocietyId && loginRole === 'resident' && (
+      {showResetFlow && selectedSocietyId && (loginRole === 'resident' || loginRole === 'admin' || loginRole === 'guard') && (
         <div className="fixed inset-0 z-50 bg-background">
-          <PasswordResetFlow userType="resident" societyId={selectedSocietyId} onBack={() => setShowResetFlow(false)} />
+          <PasswordResetFlow
+            userType={loginRole === 'admin' ? 'admin' : loginRole === 'guard' ? 'guard' : 'resident'}
+            societyId={selectedSocietyId}
+            onBack={() => setShowResetFlow(false)}
+          />
         </div>
       )}
     </div>

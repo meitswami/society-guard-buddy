@@ -11,6 +11,8 @@ interface AppState {
   societyId: string | null;
   setSocietyId: (id: string | null) => void;
   login: (id: string, password: string) => Promise<boolean>;
+  /** After OTP or direct DB lookup — does not depend on guards[] cache. */
+  establishGuardSession: (guard: { guard_id: string; name: string; password: string }) => Promise<boolean>;
   logout: () => Promise<void>;
   hydrateGuardSession: (session: { societyId: string; shiftId: string; guardId: string }) => Promise<boolean>;
   loadGuards: () => Promise<void>;
@@ -105,6 +107,32 @@ export const useStore = create<AppState>()((set, get) => ({
       return true;
     }
     return false;
+  },
+
+  establishGuardSession: async (guardRow) => {
+    const sid = get().societyId;
+    if (!sid) return false;
+    const loggedIn: Guard = {
+      id: guardRow.guard_id,
+      name: guardRow.name,
+      password: guardRow.password,
+      loginTime: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from('guard_shifts')
+      .insert({
+        guard_id: guardRow.guard_id,
+        guard_name: guardRow.name,
+        login_time: new Date().toISOString(),
+        society_id: sid,
+      })
+      .select()
+      .single();
+    if (error || !data?.id) return false;
+    set({ currentGuard: loggedIn, shiftId: data.id });
+    writePersistedSession({ v: 1, role: 'guard', societyId: sid, shiftId: data.id, guardId: guardRow.guard_id });
+    void get().loadGuards();
+    return true;
   },
 
   hydrateGuardSession: async (session) => {

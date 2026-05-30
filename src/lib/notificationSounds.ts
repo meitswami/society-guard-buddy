@@ -3,6 +3,7 @@ export const NOTIFICATION_SOUND_PRESETS = [
   { id: 'digital', label: 'Digital beep' },
   { id: 'chime', label: 'Soft chime' },
   { id: 'bell', label: 'Bell tone' },
+  { id: 'siren', label: 'Emergency siren' },
   { id: 'custom', label: 'Society custom (admin upload)' },
 ] as const;
 
@@ -49,6 +50,12 @@ export function playPresetNotificationSound(preset: string) {
     case 'bell':
       playTone(523, 200, 'triangle', 0.14);
       setTimeout(() => playTone(659, 220, 'triangle', 0.12), 120);
+      break;
+    case 'siren':
+      playTone(880, 100, 'sawtooth', 0.12);
+      setTimeout(() => playTone(660, 100, 'sawtooth', 0.1), 90);
+      setTimeout(() => playTone(880, 100, 'sawtooth', 0.12), 180);
+      setTimeout(() => playTone(660, 100, 'sawtooth', 0.1), 270);
       break;
     case 'custom':
       break;

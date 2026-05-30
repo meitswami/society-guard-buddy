@@ -10,6 +10,7 @@ when version tags are published.
 
 ### Added
 
+- **Emergency / Alert mode** — Guards get a dedicated **Alert** tab; residents get an **Emergency or Alert** button on the Alerts tab. Both can attach photos and broadcast to all resident portals, FCM push, and saved WhatsApp numbers (member/resident `whatsapp_phone` or fallback `phone`, plus flat owner phone) via `send-emergency-alert` edge function. Migration `20260524140000_emergency_alert_whatsapp.sql`; optional WhatsApp via `WHATSAPP_ACCESS_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` secrets.
 - **Society meetings** — Admin meetings flow with scheduling, attendees, decisions, documents, minutes/discussion, optional audio; database tables `meetings`, `meeting_attendees`, `meeting_decisions`, `meeting_documents`, plus executives-present migration.
 - **Finance — period report** — Sub-tab under Finance with default range (financial year from 1 April to today), verified collections by payment channel, head-wise separate-entry expenses, and balance summary cards.
 - **Finance — period PDF** — Client-side PDF export via jsPDF (`src/lib/financePeriodReportPdf.ts`).

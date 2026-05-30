@@ -37,6 +37,13 @@
 - **Quick access:** every allowed module tile; order by **local usage count** (per society, `localStorage`), then A–Z on ties.
 - **Bottom navigation:** tabs sorted **A–Z** by label (with “A–Z navigation” hint).
 
+### Guards (admin)
+
+- **Worker profile photo** per guard: capture via **camera** or **gallery**, stored in `guards.photo_url` (Supabase Storage `guard-documents`).
+- **List UI:** small thumbnail beside **guard ID**; **double-tap** thumbnail to enlarge full-screen.
+- **Photo ID:** front/back per document type (Aadhaar, PAN, etc.) with camera or gallery upload.
+- **Multiple documents:** `guard_attachments` table — browse many files (images + PDF) or take photo; custom label per batch; thumbnails with double-tap enlarge.
+
 ### Platform / data
 
 - **`setSocietyId`** in Zustand: if the society UUID **unchanged**, the store **no longer clears** guards/visitors/flats/members (fixes unnecessary wipes on admin re-render / Strict Mode dev double-mount).
@@ -58,6 +65,7 @@ Apply all pending files under `supabase/migrations/`. Highlights:
 | `20260512100000` | Enable `finance` in `society_roles.permissions` |
 | `20260515120000` | `meetings.meeting_kind` |
 | `20260515140000` | Poll elections (`poll_kind`, `election_*`, `poll_election_ballots`) |
+| `20260524120000` | `guards.photo_url`, `guard_attachments` (worker photos + multi-document uploads) |
 
 ---
 

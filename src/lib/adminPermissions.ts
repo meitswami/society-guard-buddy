@@ -8,6 +8,7 @@ export type AdminPanelPermissions = {
   splits: boolean;
   events: boolean;
   meetings: boolean;
+  committee: boolean;
   polls: boolean;
   notifications: boolean;
   parking: boolean;
@@ -35,6 +36,7 @@ export const NEW_CUSTOM_ROLE_PERMISSIONS: AdminPanelPermissions = {
   splits: false,
   events: false,
   meetings: false,
+  committee: false,
   polls: false,
   notifications: false,
   parking: false,
@@ -61,6 +63,7 @@ export const FULL_ADMIN_PERMISSIONS: AdminPanelPermissions = {
   splits: true,
   events: true,
   meetings: true,
+  committee: true,
   polls: true,
   notifications: true,
   parking: true,
@@ -118,6 +121,7 @@ export type AdminTab =
   | 'donations'
   | 'events'
   | 'meetings'
+  | 'committee'
   | 'polls'
   | 'parking'
   | 'splits'
@@ -146,6 +150,7 @@ const TAB_PERM: Record<AdminTab, keyof AdminPanelPermissions | null> = {
   donations: 'donations',
   events: 'events',
   meetings: 'meetings',
+  committee: 'committee',
   polls: 'polls',
   parking: 'parking',
   splits: 'splits',

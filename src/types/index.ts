@@ -100,4 +100,5 @@ export type TabType =
   | 'blacklist'
   | 'report'
   | 'settings'
-  | 'tour';
+  | 'tour'
+  | 'emergency';

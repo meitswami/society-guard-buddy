@@ -28,6 +28,7 @@ const TABLES = [
   "flats",
   "geofence_settings",
   "guard_documents",
+  "guard_attachments",
   "guard_shifts",
   "guards",
   "maintenance_charges",

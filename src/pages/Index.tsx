@@ -14,7 +14,8 @@ import { permissionsFromAdminJoin, type AdminPanelPermissions } from '@/lib/admi
 import DashboardPage from '@/pages/DashboardPage';
 import UnifiedLoginPage from '@/pages/UnifiedLoginPage';
 import SocietyLoginGate from '@/components/SocietyLoginGate';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useUnifiedLoginFlow } from '@/hooks/use-unified-login-flow';
+import GuardLoginPreview from '@/components/GuardLoginPreview';
 import { useShowSuperadminLogin } from '@/hooks/use-show-superadmin-login';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
@@ -24,6 +25,7 @@ import QuickEntryPage from '@/pages/QuickEntryPage';
 import DirectoryPage from '@/pages/DirectoryPage';
 import BlacklistPage from '@/pages/BlacklistPage';
 import SettingsPage from '@/pages/SettingsPage';
+import EmergencyAlertPanel from '@/components/EmergencyAlertPanel';
 import BottomNav from '@/components/BottomNav';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
@@ -35,10 +37,11 @@ import { toast } from 'sonner';
 type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 
 const AppContent = () => {
-  const { currentGuard, theme, setSocietyId, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, hydrateGuardSession } = useStore();
+  const { currentGuard, theme, societyId, setSocietyId, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, hydrateGuardSession } = useStore();
   const { t } = useLanguage();
   useGuardGeofenceMonitor(currentGuard);
-  const isMobile = useIsMobile();
+  const useUnifiedLogin = useUnifiedLoginFlow();
+  const [guardPreviewOpen, setGuardPreviewOpen] = useState(false);
   const showSuperadminEntry = useShowSuperadminLogin();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const guardTabRef = useRef<TabType>('dashboard');
@@ -240,8 +243,8 @@ const AppContent = () => {
 
   // Show login chooser or specific login
   if (!currentGuard) {
-    // Mobile: single unified login page
-    if (isMobile) {
+    // Phone & tablet: single unified login page
+    if (useUnifiedLogin) {
       return (
         <UnifiedLoginPage
           onGuardLogin={() => {}}
@@ -306,6 +309,13 @@ const AppContent = () => {
               className="btn-primary w-full py-4 text-base">
               🛡️ {t('login.guardLogin')}
             </button>
+            <button
+              type="button"
+              onClick={() => setGuardPreviewOpen(true)}
+              className="w-full py-3 text-sm rounded-xl border border-primary/30 text-primary font-medium hover:bg-primary/5 transition-colors"
+            >
+              {t('guard.preview.open')}
+            </button>
             <button onClick={() => setUserMode('resident')}
               className="w-full py-4 text-base rounded-xl bg-secondary text-secondary-foreground font-semibold hover:opacity-90 transition-opacity">
               🏠 {t('resident.loginTitle')}
@@ -322,6 +332,9 @@ const AppContent = () => {
             )}
           </div>
           <LoginFooter />
+          {guardPreviewOpen && (
+            <GuardLoginPreview variant="fullscreen" onClose={() => setGuardPreviewOpen(false)} />
+          )}
         </div>
       );
     }
@@ -363,7 +376,7 @@ const AppContent = () => {
   }
 
   // Guard tabs (tour last — full in-app guide)
-  const guardTabs: TabType[] = ['dashboard', 'quick', 'visitor', 'delivery', 'vehicle', 'blacklist', 'directory', 'settings', 'tour'];
+  const guardTabs: TabType[] = ['dashboard', 'quick', 'visitor', 'delivery', 'vehicle', 'blacklist', 'emergency', 'directory', 'settings', 'tour'];
 
   return (
     <div className="min-h-screen bg-background">
@@ -374,6 +387,13 @@ const AppContent = () => {
       {activeTab === 'delivery' && <DeliveryEntryPage onDone={goHome} />}
       {activeTab === 'vehicle' && <VehiclePage />}
       {activeTab === 'blacklist' && <BlacklistPage />}
+      {activeTab === 'emergency' && societyId && currentGuard && (
+        <EmergencyAlertPanel
+          societyId={societyId}
+          senderName={currentGuard.name}
+          senderRole="guard"
+        />
+      )}
       {activeTab === 'directory' && <DirectoryPage />}
       {activeTab === 'settings' && <SettingsPage />}
       {activeTab === 'tour' && currentGuard && <TourGuideHub role="guard" t={t} />}
