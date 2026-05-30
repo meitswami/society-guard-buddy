@@ -713,6 +713,7 @@ export type Database = {
       }
       expenses: {
         Row: {
+          attachment_urls: unknown
           bill_screenshot_url: string | null
           created_at: string
           expense_date: string
@@ -724,6 +725,7 @@ export type Database = {
           paid_by_name: string | null
           payment_method: string
           record_status: string
+          recording_date: string
           service_kind: string
           split_type: string
           title: string
@@ -731,6 +733,7 @@ export type Database = {
           vendor_or_service: string | null
         }
         Insert: {
+          attachment_urls?: unknown
           bill_screenshot_url?: string | null
           created_at?: string
           expense_date?: string
@@ -742,6 +745,7 @@ export type Database = {
           paid_by_name?: string | null
           payment_method?: string
           record_status?: string
+          recording_date?: string
           service_kind?: string
           split_type?: string
           title: string
@@ -749,6 +753,7 @@ export type Database = {
           vendor_or_service?: string | null
         }
         Update: {
+          attachment_urls?: unknown
           bill_screenshot_url?: string | null
           created_at?: string
           expense_date?: string
@@ -760,6 +765,7 @@ export type Database = {
           paid_by_name?: string | null
           payment_method?: string
           record_status?: string
+          recording_date?: string
           service_kind?: string
           split_type?: string
           title?: string
@@ -1285,6 +1291,7 @@ export type Database = {
           payment_date: string | null
           payment_method: string
           payment_status: string
+          recording_date: string
           rejection_reason: string | null
           resident_name: string | null
           reviewed_at: string | null
@@ -1308,6 +1315,7 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string
           payment_status?: string
+          recording_date?: string
           rejection_reason?: string | null
           resident_name?: string | null
           reviewed_at?: string | null
@@ -1331,6 +1339,7 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string
           payment_status?: string
+          recording_date?: string
           rejection_reason?: string | null
           resident_name?: string | null
           reviewed_at?: string | null

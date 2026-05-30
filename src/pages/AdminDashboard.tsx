@@ -156,6 +156,13 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         .eq('payment_status', 'verified');
       for (const p of pays ?? []) maintenanceCollected += Number((p as { amount: number }).amount ?? 0);
     }
+    // Also include verified finance ledger entries (outsider payments, corpus, etc.)
+    const { data: ledgerRows } = await supabase
+      .from('finance_entries')
+      .select('total_amount')
+      .eq('society_id', sid)
+      .eq('payment_status', 'verified');
+    for (const le of ledgerRows ?? []) maintenanceCollected += Number((le as { total_amount: number }).total_amount ?? 0);
 
     let splitwiseExpenseTotal = 0;
     const { data: groupRows } = await supabase.from('expense_groups').select('id').eq('society_id', sid);
@@ -208,23 +215,41 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     try {
       const sid = admin.societyId;
       if (!sid) { setMaintenanceMonthlyData([]); return; }
+      const monthMap = new Map<string, { total: number; count: number }>();
+
+      // Maintenance payments — group by due_date (transaction date)
       const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', sid);
       const chargeIds = (chargeRows ?? []).map((r: { id: string }) => r.id);
-      if (chargeIds.length === 0) { setMaintenanceMonthlyData([]); return; }
-      const { data: pays } = await supabase
-        .from('maintenance_payments')
-        .select('amount, payment_date, verified_at, created_at')
-        .in('charge_id', chargeIds)
+      if (chargeIds.length > 0) {
+        const { data: pays } = await supabase
+          .from('maintenance_payments')
+          .select('amount, due_date')
+          .in('charge_id', chargeIds)
+          .eq('payment_status', 'verified');
+        for (const p of pays ?? []) {
+          const dateStr = String((p as any).due_date || '');
+          const month = dateStr.slice(0, 7) || 'Unknown';
+          const entry = monthMap.get(month) || { total: 0, count: 0 };
+          entry.total += Number((p as any).amount ?? 0);
+          entry.count += 1;
+          monthMap.set(month, entry);
+        }
+      }
+
+      // Finance ledger entries — group by entry_month (transaction month)
+      const { data: ledgerRows } = await supabase
+        .from('finance_entries')
+        .select('total_amount, entry_month, created_at')
+        .eq('society_id', sid)
         .eq('payment_status', 'verified');
-      const monthMap = new Map<string, { total: number; count: number }>();
-      for (const p of pays ?? []) {
-        const dateStr = String((p as any).payment_date || (p as any).verified_at || (p as any).created_at || '');
-        const month = dateStr.slice(0, 7) || 'Unknown';
+      for (const le of ledgerRows ?? []) {
+        const month = (le as any).entry_month || String((le as any).created_at || '').slice(0, 7) || 'Unknown';
         const entry = monthMap.get(month) || { total: 0, count: 0 };
-        entry.total += Number((p as any).amount ?? 0);
+        entry.total += Number((le as any).total_amount ?? 0);
         entry.count += 1;
         monthMap.set(month, entry);
       }
+
       const sorted = [...monthMap.entries()]
         .sort(([a], [b]) => b.localeCompare(a))
         .map(([month, data]) => ({ month, ...data }));
@@ -245,12 +270,12 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       if (groupIds.length === 0) { setSplitwiseMonthlyData([]); return; }
       const { data: expenses } = await supabase
         .from('expenses')
-        .select('total_amount, expense_date, created_at')
+        .select('total_amount, expense_date')
         .in('group_id', groupIds)
         .eq('record_status', 'active');
       const monthMap = new Map<string, { total: number; count: number }>();
       for (const e of expenses ?? []) {
-        const dateStr = String((e as any).expense_date || (e as any).created_at || '');
+        const dateStr = String((e as any).expense_date || '');
         const month = dateStr.slice(0, 7) || 'Unknown';
         const entry = monthMap.get(month) || { total: 0, count: 0 };
         entry.total += Number((e as any).total_amount ?? 0);
@@ -473,7 +498,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               <p className="text-xl font-bold tabular-nums">
                 ₹{stats.maintenanceCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
               </p>
-              <p className="text-xs text-muted-foreground">Maintenance collected (verified)</p>
+              <p className="text-xs text-muted-foreground">Total collection (verified)</p>
             </button>
             <button type="button" onClick={() => void openSplitwiseMonthlyModal()} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-teal-500/30 transition-all">
               <Split className="w-5 h-5 text-teal-600 mb-2" />
