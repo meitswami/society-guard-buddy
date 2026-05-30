@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, IndianRupee, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench, Landmark } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, IndianRupee, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench, Landmark, X } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
 import DashboardPage from '@/pages/DashboardPage';
@@ -192,6 +192,87 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     void loadStats();
     loadKycPending();
   }, [admin.societyId, loadStats]);
+
+  // Monthly breakdown popup state
+  const [maintenanceMonthlyModal, setMaintenanceMonthlyModal] = useState(false);
+  const [maintenanceMonthlyData, setMaintenanceMonthlyData] = useState<{ month: string; total: number; count: number }[]>([]);
+  const [maintenanceMonthlyLoading, setMaintenanceMonthlyLoading] = useState(false);
+
+  const [splitwiseMonthlyModal, setSplitwiseMonthlyModal] = useState(false);
+  const [splitwiseMonthlyData, setSplitwiseMonthlyData] = useState<{ month: string; total: number; count: number }[]>([]);
+  const [splitwiseMonthlyLoading, setSplitwiseMonthlyLoading] = useState(false);
+
+  const openMaintenanceMonthlyModal = async () => {
+    setMaintenanceMonthlyModal(true);
+    setMaintenanceMonthlyLoading(true);
+    try {
+      const sid = admin.societyId;
+      if (!sid) { setMaintenanceMonthlyData([]); return; }
+      const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', sid);
+      const chargeIds = (chargeRows ?? []).map((r: { id: string }) => r.id);
+      if (chargeIds.length === 0) { setMaintenanceMonthlyData([]); return; }
+      const { data: pays } = await supabase
+        .from('maintenance_payments')
+        .select('amount, payment_date, verified_at, created_at')
+        .in('charge_id', chargeIds)
+        .eq('payment_status', 'verified');
+      const monthMap = new Map<string, { total: number; count: number }>();
+      for (const p of pays ?? []) {
+        const dateStr = String((p as any).payment_date || (p as any).verified_at || (p as any).created_at || '');
+        const month = dateStr.slice(0, 7) || 'Unknown';
+        const entry = monthMap.get(month) || { total: 0, count: 0 };
+        entry.total += Number((p as any).amount ?? 0);
+        entry.count += 1;
+        monthMap.set(month, entry);
+      }
+      const sorted = [...monthMap.entries()]
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([month, data]) => ({ month, ...data }));
+      setMaintenanceMonthlyData(sorted);
+    } finally {
+      setMaintenanceMonthlyLoading(false);
+    }
+  };
+
+  const openSplitwiseMonthlyModal = async () => {
+    setSplitwiseMonthlyModal(true);
+    setSplitwiseMonthlyLoading(true);
+    try {
+      const sid = admin.societyId;
+      if (!sid) { setSplitwiseMonthlyData([]); return; }
+      const { data: groupRows } = await supabase.from('expense_groups').select('id').eq('society_id', sid);
+      const groupIds = (groupRows ?? []).map((r: { id: string }) => r.id);
+      if (groupIds.length === 0) { setSplitwiseMonthlyData([]); return; }
+      const { data: expenses } = await supabase
+        .from('expenses')
+        .select('total_amount, expense_date, created_at')
+        .in('group_id', groupIds)
+        .eq('record_status', 'active');
+      const monthMap = new Map<string, { total: number; count: number }>();
+      for (const e of expenses ?? []) {
+        const dateStr = String((e as any).expense_date || (e as any).created_at || '');
+        const month = dateStr.slice(0, 7) || 'Unknown';
+        const entry = monthMap.get(month) || { total: 0, count: 0 };
+        entry.total += Number((e as any).total_amount ?? 0);
+        entry.count += 1;
+        monthMap.set(month, entry);
+      }
+      const sorted = [...monthMap.entries()]
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([month, data]) => ({ month, ...data }));
+      setSplitwiseMonthlyData(sorted);
+    } finally {
+      setSplitwiseMonthlyLoading(false);
+    }
+  };
+
+  const formatMonthLabel = (ym: string): string => {
+    if (!ym || ym.length < 7) return ym;
+    const [y, m] = ym.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const idx = parseInt(m, 10) - 1;
+    return `${months[idx] ?? m} ${y}`;
+  };
 
   const tabUsageKey = admin.societyId ? `sgb_admin_tab_use_${admin.societyId}` : null;
 
@@ -387,14 +468,14 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               <p className="text-2xl font-bold">{stats.meetingsHeld}</p>
               <p className="text-xs text-muted-foreground">Meetings held</p>
             </button>
-            <button type="button" onClick={() => goToTab('finance')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-emerald-500/30 transition-all">
+            <button type="button" onClick={() => void openMaintenanceMonthlyModal()} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-emerald-500/30 transition-all">
               <IndianRupee className="w-5 h-5 text-emerald-600 mb-2" />
               <p className="text-xl font-bold tabular-nums">
                 ₹{stats.maintenanceCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
               </p>
               <p className="text-xs text-muted-foreground">Maintenance collected (verified)</p>
             </button>
-            <button type="button" onClick={() => goToTab('splits')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-teal-500/30 transition-all">
+            <button type="button" onClick={() => void openSplitwiseMonthlyModal()} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-teal-500/30 transition-all">
               <Split className="w-5 h-5 text-teal-600 mb-2" />
               <p className="text-xl font-bold tabular-nums">
                 ₹{stats.splitwiseExpenseTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
@@ -499,6 +580,105 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     <div className="min-h-screen bg-background">
       <TourGuideFirstLogin role="admin" userId={admin.id} adminPermissions={admin.permissions} t={t} />
       {renderContent()}
+
+      {/* Maintenance Monthly Breakdown Modal */}
+      {maintenanceMonthlyModal && (
+        <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
+          <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3 max-h-[80vh] overflow-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IndianRupee className="w-4 h-4 text-emerald-600" />
+                <p className="text-sm font-semibold">Maintenance Collection — Monthly</p>
+              </div>
+              <button type="button" onClick={() => setMaintenanceMonthlyModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Verified maintenance payments grouped by month</p>
+            {maintenanceMonthlyLoading ? (
+              <p className="text-xs text-muted-foreground text-center py-6">Loading…</p>
+            ) : maintenanceMonthlyData.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">No verified payments found</p>
+            ) : (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase font-medium px-2 pb-1 border-b border-border">
+                  <span>Month</span>
+                  <div className="flex gap-4">
+                    <span className="w-12 text-right">Count</span>
+                    <span className="w-24 text-right">Amount</span>
+                  </div>
+                </div>
+                {maintenanceMonthlyData.map((row) => (
+                  <div key={row.month} className="flex items-center justify-between text-xs px-2 py-1.5 rounded hover:bg-muted/40">
+                    <span className="font-medium">{formatMonthLabel(row.month)}</span>
+                    <div className="flex gap-4">
+                      <span className="w-12 text-right text-muted-foreground">{row.count}</span>
+                      <span className="w-24 text-right font-mono font-semibold">₹{row.total.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between text-xs px-2 py-2 border-t border-border font-semibold">
+                  <span>Total</span>
+                  <span className="font-mono">₹{maintenanceMonthlyData.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            )}
+            <button type="button" className="btn-secondary text-xs w-full" onClick={() => { setMaintenanceMonthlyModal(false); goToTab('finance'); }}>
+              Go to Finance
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Splitwise Monthly Breakdown Modal */}
+      {splitwiseMonthlyModal && (
+        <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
+          <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3 max-h-[80vh] overflow-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Split className="w-4 h-4 text-teal-600" />
+                <p className="text-sm font-semibold">Splitwise Expenses — Monthly</p>
+              </div>
+              <button type="button" onClick={() => setSplitwiseMonthlyModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Active splitwise expenses grouped by month</p>
+            {splitwiseMonthlyLoading ? (
+              <p className="text-xs text-muted-foreground text-center py-6">Loading…</p>
+            ) : splitwiseMonthlyData.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">No active expenses found</p>
+            ) : (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase font-medium px-2 pb-1 border-b border-border">
+                  <span>Month</span>
+                  <div className="flex gap-4">
+                    <span className="w-12 text-right">Count</span>
+                    <span className="w-24 text-right">Amount</span>
+                  </div>
+                </div>
+                {splitwiseMonthlyData.map((row) => (
+                  <div key={row.month} className="flex items-center justify-between text-xs px-2 py-1.5 rounded hover:bg-muted/40">
+                    <span className="font-medium">{formatMonthLabel(row.month)}</span>
+                    <div className="flex gap-4">
+                      <span className="w-12 text-right text-muted-foreground">{row.count}</span>
+                      <span className="w-24 text-right font-mono font-semibold">₹{row.total.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between text-xs px-2 py-2 border-t border-border font-semibold">
+                  <span>Total</span>
+                  <span className="font-mono">₹{splitwiseMonthlyData.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            )}
+            <button type="button" className="btn-secondary text-xs w-full" onClick={() => { setSplitwiseMonthlyModal(false); goToTab('splits'); }}>
+              Go to Splitwise
+            </button>
+          </div>
+        </div>
+      )}
+
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
         <p className="text-center text-[9px] text-muted-foreground pt-1 border-t border-border/60 bg-card">
           A–Z navigation
