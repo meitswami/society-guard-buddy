@@ -1535,19 +1535,20 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const financePeriodReport = useMemo(() => {
     const receiptByMethod = { cash: 0, bank: 0, other: 0 };
     let verifiedPaymentCount = 0;
+    // Build linked IDs only from verified payments IN the date range
+    const linkedFinanceEntryIds = new Set<string>();
     for (const p of payments) {
       if (String(p.payment_status) !== 'verified') continue;
-      const d = paymentVerifiedAtOrDate(p);
+      // Use due_date (transaction date) for period filtering
+      const d = String((p as any).due_date || (p as any).payment_date || (p as any).verified_at || (p as any).created_at || '');
       if (!dateInInclusiveRange(d, periodFrom, periodTo)) continue;
       const amt = Number(p.amount || 0);
       const ch = normalizePaymentChannel(p.payment_method);
       receiptByMethod[ch] += amt;
       verifiedPaymentCount += 1;
+      const feId = (p as any).finance_entry_id;
+      if (typeof feId === 'string' && feId.length > 0) linkedFinanceEntryIds.add(feId);
     }
-
-    const linkedFinanceEntryIds = new Set(
-      payments.map((p: any) => p.finance_entry_id).filter((id: unknown) => typeof id === 'string' && String(id).length > 0),
-    );
 
     const expenseByMethod = { cash: 0, bank: 0, other: 0 };
     const expenseByHead = new Map<string, { cash: number; bank: number; other: number; total: number }>();

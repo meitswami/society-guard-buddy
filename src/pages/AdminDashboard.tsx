@@ -148,21 +148,30 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     let maintenanceCollected = 0;
     const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', sid);
     const chargeIds = (chargeRows ?? []).map((r: { id: string }) => r.id);
+    let linkedEntryIds = new Set<string>();
     if (chargeIds.length > 0) {
       const { data: pays } = await supabase
         .from('maintenance_payments')
-        .select('amount')
+        .select('amount, finance_entry_id')
         .in('charge_id', chargeIds)
         .eq('payment_status', 'verified');
       for (const p of pays ?? []) maintenanceCollected += Number((p as { amount: number }).amount ?? 0);
+      // Collect linked finance_entry_ids to avoid double-counting
+      linkedEntryIds = new Set(
+        (pays ?? []).map((p: any) => p.finance_entry_id).filter((id: unknown) => typeof id === 'string' && id.length > 0)
+      );
     }
-    // Also include verified finance ledger entries (outsider payments, corpus, etc.)
+    // Also include verified finance ledger entries NOT already linked to maintenance payments
     const { data: ledgerRows } = await supabase
       .from('finance_entries')
-      .select('total_amount')
+      .select('id, total_amount')
       .eq('society_id', sid)
       .eq('payment_status', 'verified');
-    for (const le of ledgerRows ?? []) maintenanceCollected += Number((le as { total_amount: number }).total_amount ?? 0);
+    for (const le of ledgerRows ?? []) {
+      if (!linkedEntryIds.has((le as any).id)) {
+        maintenanceCollected += Number((le as { total_amount: number }).total_amount ?? 0);
+      }
+    }
 
     let splitwiseExpenseTotal = 0;
     const { data: groupRows } = await supabase.from('expense_groups').select('id').eq('society_id', sid);
@@ -216,6 +225,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       const sid = admin.societyId;
       if (!sid) { setMaintenanceMonthlyData([]); return; }
       const monthMap = new Map<string, { total: number; count: number }>();
+      const linkedEntryIds = new Set<string>();
 
       // Maintenance payments — group by due_date (transaction date)
       const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', sid);
@@ -223,7 +233,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       if (chargeIds.length > 0) {
         const { data: pays } = await supabase
           .from('maintenance_payments')
-          .select('amount, due_date')
+          .select('amount, due_date, finance_entry_id')
           .in('charge_id', chargeIds)
           .eq('payment_status', 'verified');
         for (const p of pays ?? []) {
@@ -233,16 +243,20 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           entry.total += Number((p as any).amount ?? 0);
           entry.count += 1;
           monthMap.set(month, entry);
+          // Track linked finance entries to avoid double-counting
+          const feId = (p as any).finance_entry_id;
+          if (typeof feId === 'string' && feId.length > 0) linkedEntryIds.add(feId);
         }
       }
 
-      // Finance ledger entries — group by entry_month (transaction month)
+      // Finance ledger entries NOT already linked to maintenance payments — group by entry_month
       const { data: ledgerRows } = await supabase
         .from('finance_entries')
-        .select('total_amount, entry_month, created_at')
+        .select('id, total_amount, entry_month, created_at')
         .eq('society_id', sid)
         .eq('payment_status', 'verified');
       for (const le of ledgerRows ?? []) {
+        if (linkedEntryIds.has((le as any).id)) continue; // skip already counted
         const month = (le as any).entry_month || String((le as any).created_at || '').slice(0, 7) || 'Unknown';
         const entry = monthMap.get(month) || { total: 0, count: 0 };
         entry.total += Number((le as any).total_amount ?? 0);
@@ -613,13 +627,13 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <IndianRupee className="w-4 h-4 text-emerald-600" />
-                <p className="text-sm font-semibold">Maintenance Collection — Monthly</p>
+                <p className="text-sm font-semibold">Total Collection — Monthly</p>
               </div>
               <button type="button" onClick={() => setMaintenanceMonthlyModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-[10px] text-muted-foreground">Verified maintenance payments grouped by month</p>
+            <p className="text-[10px] text-muted-foreground">Verified payments and ledger entries grouped by transaction month</p>
             {maintenanceMonthlyLoading ? (
               <p className="text-xs text-muted-foreground text-center py-6">Loading…</p>
             ) : maintenanceMonthlyData.length === 0 ? (
