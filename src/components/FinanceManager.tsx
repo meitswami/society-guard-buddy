@@ -482,6 +482,38 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       }
     }
 
+    // Duplicate detection: check if same flat + charge + due_date + amount already exists
+    if (mode === 'flats_only' || mode === 'flats_plus_outsider') {
+      const chargeIds = (charges ?? []).map((c: any) => c.id);
+      if (payForm.charge_id && chargeIds.length > 0) {
+        const dupeFlats: string[] = [];
+        for (const flatNum of payForm.selected_flats) {
+          const dueDate = useSameDateForSelectedFlats ? payForm.due_date : (flatDueDates[flatNum] || payForm.due_date);
+          const { data: existing } = await supabase
+            .from('maintenance_payments')
+            .select('id')
+            .eq('charge_id', payForm.charge_id)
+            .eq('flat_number', flatNum)
+            .eq('due_date', dueDate)
+            .eq('amount', Number(payForm.amount))
+            .in('payment_status', ['verified', 'pending'])
+            .limit(1);
+          if (existing && existing.length > 0) {
+            dupeFlats.push(flatNum);
+          }
+        }
+        if (dupeFlats.length > 0) {
+          const confirmed = await confirmAction(
+            'Duplicate entry detected',
+            `Flat(s) ${dupeFlats.join(', ')} already have a payment recorded for this receipt type, date, and amount. Do you still want to proceed?`,
+            'Record anyway',
+            'Cancel',
+          );
+          if (!confirmed) return;
+        }
+      }
+    }
+
     let screenshotUrl = payForm.screenshot_url.trim() || null;
     const fileInput = document.getElementById('finance-payment-receipt') as HTMLInputElement | null;
     const file = fileInput?.files?.[0];
@@ -1533,13 +1565,53 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   );
 
   const financePeriodReport = useMemo(() => {
+    // --- Opening balances: all verified transactions BEFORE periodFrom ---
+    const openingReceipt = { cash: 0, bank: 0, other: 0 };
+    const openingExpense = { cash: 0, bank: 0, other: 0 };
+    const openingLinkedIds = new Set<string>();
+
+    for (const p of payments) {
+      if (String(p.payment_status) !== 'verified') continue;
+      const d = String((p as any).due_date || (p as any).payment_date || (p as any).verified_at || (p as any).created_at || '');
+      const t = new Date(d).getTime();
+      if (Number.isNaN(t)) continue;
+      const fromMs = new Date(`${periodFrom}T00:00:00`).getTime();
+      if (t >= fromMs) continue; // not before period
+      const amt = Number(p.amount || 0);
+      const ch = normalizePaymentChannel(p.payment_method);
+      openingReceipt[ch] += amt;
+      const feId = (p as any).finance_entry_id;
+      if (typeof feId === 'string' && feId.length > 0) openingLinkedIds.add(feId);
+    }
+
+    for (const e of ledgerEntries) {
+      const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
+      const t = new Date(ledgerDate).getTime();
+      if (Number.isNaN(t)) continue;
+      const fromMs = new Date(`${periodFrom}T00:00:00`).getTime();
+      if (t >= fromMs) continue; // not before period
+      const amt = Number(e.total_amount || 0);
+      const ch = normalizePaymentChannel(e.payment_method);
+      if (e.destination === 'separate_entry') {
+        openingExpense[ch] += amt;
+      } else if (e.destination === 'current_month_maintenance' || e.destination === 'corpus') {
+        if (!openingLinkedIds.has(e.id)) {
+          openingReceipt[ch] += amt;
+        }
+      }
+    }
+
+    const openingCash = openingReceipt.cash - openingExpense.cash;
+    const openingBank = openingReceipt.bank - openingExpense.bank;
+    const openingOther = openingReceipt.other - openingExpense.other;
+    const openingBalance = openingCash + openingBank + openingOther;
+
+    // --- Period transactions ---
     const receiptByMethod = { cash: 0, bank: 0, other: 0 };
     let verifiedPaymentCount = 0;
-    // Build linked IDs only from verified payments IN the date range
     const linkedFinanceEntryIds = new Set<string>();
     for (const p of payments) {
       if (String(p.payment_status) !== 'verified') continue;
-      // Use due_date (transaction date) for period filtering
       const d = String((p as any).due_date || (p as any).payment_date || (p as any).verified_at || (p as any).created_at || '');
       if (!dateInInclusiveRange(d, periodFrom, periodTo)) continue;
       const amt = Number(p.amount || 0);
@@ -1581,6 +1653,12 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     const otherNet = receiptByMethod.other - expenseByMethod.other;
     const totalBalance = cashInHand + cashInBank + otherNet;
 
+    // Closing = Opening + Period net
+    const closingCash = openingCash + cashInHand;
+    const closingBank = openingBank + cashInBank;
+    const closingOther = openingOther + otherNet;
+    const closingBalance = openingBalance + totalBalance;
+
     return {
       verifiedPaymentCount,
       receiptByMethod,
@@ -1593,6 +1671,14 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       otherNet,
       totalBalance,
       extraLedgerReceipt,
+      openingCash,
+      openingBank,
+      openingOther,
+      openingBalance,
+      closingCash,
+      closingBank,
+      closingOther,
+      closingBalance,
     };
   }, [periodFrom, periodTo, payments, ledgerEntries]);
 
@@ -3261,6 +3347,37 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="stat-card flex flex-col gap-1 border-blue-500/20 bg-blue-500/5">
+              <span className="text-[10px] text-muted-foreground uppercase">Opening cash in hand</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.openingCash >= 0 ? 'text-blue-600' : 'text-destructive'}`}>
+                ₹{financePeriodReport.openingCash.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-muted-foreground">Balance before period</span>
+            </div>
+            <div className="stat-card flex flex-col gap-1 border-blue-500/20 bg-blue-500/5">
+              <span className="text-[10px] text-muted-foreground uppercase">Opening cash in bank</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.openingBank >= 0 ? 'text-blue-600' : 'text-destructive'}`}>
+                ₹{financePeriodReport.openingBank.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-muted-foreground">Balance before period</span>
+            </div>
+            <div className="stat-card flex flex-col gap-1 border-blue-500/20 bg-blue-500/5">
+              <span className="text-[10px] text-muted-foreground uppercase">Opening other</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.openingOther >= 0 ? 'text-blue-600' : 'text-destructive'}`}>
+                ₹{financePeriodReport.openingOther.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="stat-card flex flex-col gap-1 border-blue-500/30 bg-blue-500/10">
+              <span className="text-[10px] text-muted-foreground uppercase">Opening balance (total)</span>
+              <span className={`text-xl font-bold font-mono ${financePeriodReport.openingBalance >= 0 ? 'text-blue-700' : 'text-destructive'}`}>
+                ₹{financePeriodReport.openingBalance.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-muted-foreground">All channels before period</span>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground uppercase font-medium mt-3">Period movement (receipts − expenses)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <div className="stat-card flex flex-col gap-1">
               <span className="text-[10px] text-muted-foreground uppercase">Cash in hand (net)</span>
               <span className={`text-lg font-bold font-mono ${financePeriodReport.cashInHand >= 0 ? 'text-green-600' : 'text-destructive'}`}>
@@ -3281,12 +3398,41 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                 ₹{financePeriodReport.otherNet.toLocaleString('en-IN')}
               </span>
             </div>
-            <div className="stat-card flex flex-col gap-1 border-primary/30 bg-primary/5">
-              <span className="text-[10px] text-muted-foreground uppercase">Total balance (all)</span>
-              <span className={`text-xl font-bold font-mono ${financePeriodReport.totalBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+            <div className="stat-card flex flex-col gap-1">
+              <span className="text-[10px] text-muted-foreground uppercase">Period net</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.totalBalance >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                 ₹{financePeriodReport.totalBalance.toLocaleString('en-IN')}
               </span>
-              <span className="text-[10px] text-muted-foreground">Cash in hand + bank + other</span>
+              <span className="text-[10px] text-muted-foreground">All channels this period</span>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground uppercase font-medium mt-3">Closing balances (opening + period)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="stat-card flex flex-col gap-1 border-primary/20 bg-primary/5">
+              <span className="text-[10px] text-muted-foreground uppercase">Closing cash in hand</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.closingCash >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                ₹{financePeriodReport.closingCash.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="stat-card flex flex-col gap-1 border-primary/20 bg-primary/5">
+              <span className="text-[10px] text-muted-foreground uppercase">Closing cash in bank</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.closingBank >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                ₹{financePeriodReport.closingBank.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="stat-card flex flex-col gap-1 border-primary/20 bg-primary/5">
+              <span className="text-[10px] text-muted-foreground uppercase">Closing other</span>
+              <span className={`text-lg font-bold font-mono ${financePeriodReport.closingOther >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                ₹{financePeriodReport.closingOther.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="stat-card flex flex-col gap-1 border-primary/30 bg-primary/10">
+              <span className="text-[10px] text-muted-foreground uppercase">Closing balance (total)</span>
+              <span className={`text-xl font-bold font-mono ${financePeriodReport.closingBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                ₹{financePeriodReport.closingBalance.toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] text-muted-foreground">Carry forward to next period</span>
             </div>
           </div>
         </div>

@@ -203,6 +203,25 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       return;
     }
 
+    // Duplicate detection: check if same title + amount + expense_date already exists in this group
+    const { data: existingExp } = await supabase
+      .from('expenses')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('title', ef.title.trim())
+      .eq('total_amount', total)
+      .eq('expense_date', ef.expense_date)
+      .limit(1);
+    if (existingExp && existingExp.length > 0) {
+      const confirmed = await confirmAction(
+        'Duplicate entry detected',
+        `An expense with the same title, amount (₹${total}), and date already exists in this group. Do you still want to proceed?`,
+        'Record anyway',
+        'Cancel',
+      );
+      if (!confirmed) return;
+    }
+
     let billUrl: string | null = null;
     const fileInput = document.getElementById(`expense-bill-${groupId}`) as HTMLInputElement | null;
     const file = fileInput?.files?.[0];

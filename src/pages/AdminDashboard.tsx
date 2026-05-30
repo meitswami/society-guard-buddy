@@ -161,12 +161,13 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         (pays ?? []).map((p: any) => p.finance_entry_id).filter((id: unknown) => typeof id === 'string' && id.length > 0)
       );
     }
-    // Also include verified finance ledger entries NOT already linked to maintenance payments
+    // Also include verified finance ledger RECEIPT entries (not expenses) NOT already linked to maintenance payments
     const { data: ledgerRows } = await supabase
       .from('finance_entries')
-      .select('id, total_amount')
+      .select('id, total_amount, destination')
       .eq('society_id', sid)
-      .eq('payment_status', 'verified');
+      .eq('payment_status', 'verified')
+      .in('destination', ['current_month_maintenance', 'corpus']);
     for (const le of ledgerRows ?? []) {
       if (!linkedEntryIds.has((le as any).id)) {
         maintenanceCollected += Number((le as { total_amount: number }).total_amount ?? 0);
@@ -249,12 +250,13 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         }
       }
 
-      // Finance ledger entries NOT already linked to maintenance payments — group by entry_month
+      // Finance ledger RECEIPT entries (not expenses) NOT already linked to maintenance payments — group by entry_month
       const { data: ledgerRows } = await supabase
         .from('finance_entries')
         .select('id, total_amount, entry_month, created_at')
         .eq('society_id', sid)
-        .eq('payment_status', 'verified');
+        .eq('payment_status', 'verified')
+        .in('destination', ['current_month_maintenance', 'corpus']);
       for (const le of ledgerRows ?? []) {
         if (linkedEntryIds.has((le as any).id)) continue; // skip already counted
         const month = (le as any).entry_month || String((le as any).created_at || '').slice(0, 7) || 'Unknown';
