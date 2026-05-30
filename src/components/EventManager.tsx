@@ -6,6 +6,7 @@ import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { toast } from 'sonner';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
+import { DateInput } from '@/components/DateInput';
 
 interface Props { adminName?: string; }
 
@@ -162,7 +163,7 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
           <input className="input-field" placeholder="Event Title" value={ef.title} onChange={e => setEf({...ef, title: e.target.value})} />
           <textarea className="input-field" placeholder="Description" value={ef.description} onChange={e => setEf({...ef, description: e.target.value})} />
           <div className="grid grid-cols-2 gap-2">
-            <input className="input-field" type="date" value={ef.event_date} onChange={e => setEf({...ef, event_date: e.target.value})} />
+            <DateInput className="input-field" value={ef.event_date} onChange={e => setEf({...ef, event_date: e.target.value})} />
             <input className="input-field" type="time" value={ef.event_time} onChange={e => setEf({...ef, event_time: e.target.value})} />
           </div>
           <input className="input-field" placeholder="Location" value={ef.location} onChange={e => setEf({...ef, location: e.target.value})} />

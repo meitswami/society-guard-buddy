@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
 import { insertFinanceLedgerForGroupExpense, syncFinanceLedgerFromGroupExpenseEdit } from '@/lib/groupExpenseFinanceLedger';
+import { DateInput } from '@/components/DateInput';
 
 interface Props {
   adminName?: string;
@@ -920,9 +921,8 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                     <option value="recurring">Recurring (monthly)</option>
                     <option value="temporary">Temporary / ad-hoc</option>
                   </select>
-                  <input
+                  <DateInput
                     className="input-field text-sm"
-                    type="date"
                     value={ef.expense_date}
                     onChange={(e) => setEf({ ...ef, expense_date: e.target.value })}
                   />
@@ -1286,9 +1286,8 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                 <option value="recurring">Recurring</option>
                 <option value="temporary">Temporary</option>
               </select>
-              <input
+              <DateInput
                 className="input-field"
-                type="date"
                 value={expenseEdit.expense_date}
                 onChange={(e) => setExpenseEdit({ ...expenseEdit, expense_date: e.target.value })}
               />

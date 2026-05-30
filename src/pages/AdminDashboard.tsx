@@ -279,14 +279,11 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const visibleTabs = tabs.filter((tab) => isAdminTabAllowed(tab.id, admin.permissions));
 
   const quickAccessTabs = useMemo(() => {
-    const list = visibleTabs.filter((t) => t.id !== 'overview');
-    return [...list].sort((a, b) => {
-      const ua = tabUsageMap[a.id] ?? 0;
-      const ub = tabUsageMap[b.id] ?? 0;
-      if (ub !== ua) return ub - ua;
-      return a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
-    });
-  }, [visibleTabs, tabUsageMap]);
+    const pinnedIds: AdminTab[] = ['finance', 'report', 'splits', 'residents', 'committee', 'directory'];
+    return pinnedIds
+      .map((id) => visibleTabs.find((t) => t.id === id))
+      .filter(Boolean) as typeof visibleTabs;
+  }, [visibleTabs]);
 
   const bottomNavTabsAlphabetical = useMemo(
     () => [...visibleTabs].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })),
@@ -385,29 +382,29 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           </div>
           <ElectionResultsBanner societyId={admin.societyId} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            <div className="card-section p-4">
+            <button type="button" onClick={() => goToTab('meetings')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-indigo-500/30 transition-all">
               <ScrollText className="w-5 h-5 text-indigo-500 mb-2" />
               <p className="text-2xl font-bold">{stats.meetingsHeld}</p>
               <p className="text-xs text-muted-foreground">Meetings held</p>
-            </div>
-            <div className="card-section p-4">
+            </button>
+            <button type="button" onClick={() => goToTab('finance')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-emerald-500/30 transition-all">
               <IndianRupee className="w-5 h-5 text-emerald-600 mb-2" />
               <p className="text-xl font-bold tabular-nums">
                 ₹{stats.maintenanceCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
               </p>
               <p className="text-xs text-muted-foreground">Maintenance collected (verified)</p>
-            </div>
-            <div className="card-section p-4">
+            </button>
+            <button type="button" onClick={() => goToTab('splits')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-teal-500/30 transition-all">
               <Split className="w-5 h-5 text-teal-600 mb-2" />
               <p className="text-xl font-bold tabular-nums">
                 ₹{stats.splitwiseExpenseTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
               </p>
               <p className="text-xs text-muted-foreground">Splitwise expenses (active)</p>
-            </div>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="card-section p-4">
+            <button type="button" onClick={() => goToTab('visitor')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-blue-500/30 transition-all">
               <Users className="w-5 h-5 text-blue-500 mb-2" />
               <p className="text-2xl font-bold">{stats.visitors}</p>
               <p className="text-xs text-muted-foreground">{t('admin.totalVisitors')}</p>
@@ -423,8 +420,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                   <span className="font-medium text-foreground tabular-nums">{stats.visitorsService}</span>
                 </p>
               </div>
-            </div>
-            <div className="card-section p-4">
+            </button>
+            <button type="button" onClick={() => goToTab('vehicle')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-orange-500/30 transition-all">
               <Car className="w-5 h-5 text-orange-500 mb-2" />
               <p className="text-2xl font-bold">{stats.vehicles}</p>
               <p className="text-xs text-muted-foreground">{t('admin.totalVehicles')}</p>
@@ -438,8 +435,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                   <span className="font-medium text-foreground tabular-nums">{stats.vehiclesTwoWheelers}</span>
                 </p>
               </div>
-            </div>
-            <div className="card-section p-4">
+            </button>
+            <button type="button" onClick={() => goToTab('residents')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-purple-500/30 transition-all">
               <Home className="w-5 h-5 text-purple-500 mb-2" />
               <p className="text-2xl font-bold">{stats.flats}</p>
               <p className="text-xs text-muted-foreground">{t('admin.totalFlats')}</p>
@@ -447,8 +444,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                 Members registered:{' '}
                 <span className="font-medium text-foreground tabular-nums">{stats.members}</span>
               </p>
-            </div>
-            <div className="card-section p-4">
+            </button>
+            <button type="button" onClick={() => goToTab('guards')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-green-500/30 transition-all">
               <Shield className="w-5 h-5 text-green-500 mb-2" />
               <p className="text-2xl font-bold">{stats.guards}</p>
               <p className="text-xs text-muted-foreground">{t('admin.totalGuards')}</p>
@@ -456,7 +453,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                 Blacklist:{' '}
                 <span className="font-medium text-foreground tabular-nums">{stats.blacklist}</span>
               </p>
-            </div>
+            </button>
           </div>
 
           {/* KYC Pending Alerts */}
@@ -477,8 +474,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
 
           {/* Quick access — all modules, most-used first */}
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Quick access</p>
-          <p className="text-[10px] text-muted-foreground mb-3">Tiles ordered by how often you open each screen (this device).</p>
-          <div className="grid grid-cols-4 gap-2 mb-4">
+          <div className="grid grid-cols-3 gap-2 mb-4">
             {quickAccessTabs.map((tab) => {
               const Icon = tab.icon;
               return (

@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { fmtDateTime, fmtTime } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { confirmAction, showToast } from '@/lib/swal';
+import { DateInput } from '@/components/DateInput';
 
 const LogsPage = () => {
   const { visitors, markExit } = useStore();
@@ -76,7 +77,7 @@ const LogsPage = () => {
           <input className="input-field pl-9" placeholder={t('logs.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-2">
-          <input type="date" className="input-field text-xs flex-1" value={dateFilter} onChange={e => setDateFilter(e.target.value)} />
+          <DateInput className="input-field text-xs flex-1" value={dateFilter} onChange={e => setDateFilter(e.target.value)} />
           <div className="flex gap-1">
             {['all', 'visitor', 'delivery', 'service'].map(c => (
               <button key={c}

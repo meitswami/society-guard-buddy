@@ -10,6 +10,7 @@ import { fmtDate, fmtDateTimeFull, fmtIsoDateToDisplay, fmtIsoMonthToDisplay, fm
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
+import { DateInput } from '@/components/DateInput';
 import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -1467,6 +1468,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     for (const e of ledgerEntries) {
       const m = e.entry_month || format(new Date(e.created_at), 'yyyy-MM');
       if (m !== totalsMonth) continue;
+      if (e.destination === 'separate_entry') continue;
       const k = `${e.record_mode}||${e.destination}`;
       const cur = map.get(k) ?? { total: 0, flatUnits: 0, entries: 0 };
       cur.total += Number(e.total_amount || 0);
@@ -1485,6 +1487,30 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const totalsMonthNet = useMemo(
     () => totalsBreakdown.reduce((s, r) => s + r.total, 0),
     [totalsBreakdown],
+  );
+
+  const totalsOutflowBreakdown = useMemo(() => {
+    const map = new Map<string, { total: number; flatUnits: number; entries: number; method: string }>();
+    for (const e of ledgerEntries) {
+      const m = e.entry_month || format(new Date(e.created_at), 'yyyy-MM');
+      if (m !== totalsMonth) continue;
+      if (e.destination !== 'separate_entry') continue;
+      const head = (e.title || 'Society expense').trim() || 'Society expense';
+      const cur = map.get(head) ?? { total: 0, flatUnits: 0, entries: 0, method: '' };
+      cur.total += Number(e.total_amount || 0);
+      cur.flatUnits += Number(e.aggregate_flat_count || 0);
+      cur.entries += 1;
+      cur.method = e.payment_method;
+      map.set(head, cur);
+    }
+    return [...map.entries()]
+      .map(([head, v]) => ({ head, ...v }))
+      .sort((a, b) => a.head.localeCompare(b.head));
+  }, [ledgerEntries, totalsMonth]);
+
+  const totalsMonthOutflow = useMemo(
+    () => totalsOutflowBreakdown.reduce((s, r) => s + r.total, 0),
+    [totalsOutflowBreakdown],
   );
 
   const flatMultiOptions = useMemo(
@@ -2195,9 +2221,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               <input className="input-field" placeholder="Screenshot URL (paste link, optional)" value={payForm.screenshot_url} onChange={e => setPayForm({...payForm, screenshot_url: e.target.value})} />
               <label className="text-[10px] font-medium text-muted-foreground uppercase">Or upload receipt / bill</label>
               <input id="finance-payment-receipt" type="file" accept="image/*,application/pdf" className="text-xs" />
-              <input
+              <DateInput
                 className="input-field"
-                type="date"
                 value={payForm.due_date}
                 onChange={e => {
                   const nextDate = e.target.value;
@@ -2283,9 +2308,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               <div className="w-full max-w-xs bg-card border border-border rounded-xl p-4">
                 <p className="text-sm font-semibold mb-1">Select due date</p>
                 <p className="text-xs text-muted-foreground mb-3">Flat {flatDateModal.flatNumber}</p>
-                <input
+                <DateInput
                   className="input-field"
-                  type="date"
                   value={flatDateModal.date}
                   onChange={(e) => setFlatDateModal((prev) => ({ ...prev, date: e.target.value }))}
                 />
@@ -2853,9 +2877,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       onChange={(e) => setPaymentEdit({ ...paymentEdit, transaction_id: e.target.value })}
                       placeholder="Transaction / reference ID"
                     />
-                    <input
+                    <DateInput
                       className="input-field"
-                      type="date"
                       value={paymentEdit.due_date}
                       onChange={(e) => setPaymentEdit({ ...paymentEdit, due_date: e.target.value })}
                     />
@@ -2956,13 +2979,11 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="text-xs flex flex-col gap-1">
                   <span className="text-muted-foreground">Opening (from)</span>
-                  <input type="date" className="input-field" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
-                  {periodFrom && <span className="text-[10px] text-muted-foreground">{fmtIsoDateToDisplay(periodFrom)}</span>}
+                  <DateInput className="input-field" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
                 </label>
                 <label className="text-xs flex flex-col gap-1">
                   <span className="text-muted-foreground">Closing (to)</span>
-                  <input type="date" className="input-field" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
-                  {periodTo && <span className="text-[10px] text-muted-foreground">{fmtIsoDateToDisplay(periodTo)}</span>}
+                  <DateInput className="input-field" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
                 </label>
               </div>
               {periodFrom > periodTo && (
@@ -3267,6 +3288,52 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                 </div>
               ))
             )}
+          </div>
+
+          {/* Outflow Section */}
+          <div className="mt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+              <div className="stat-card flex flex-col gap-1">
+                <span className="text-[10px] text-muted-foreground uppercase">Outflow (payments made)</span>
+                <span className="text-xl font-bold text-red-600">₹{totalsMonthOutflow.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="stat-card flex flex-col gap-1">
+                <span className="text-[10px] text-muted-foreground uppercase">Expense heads</span>
+                <span className="text-xl font-bold font-mono">{totalsOutflowBreakdown.length}</span>
+              </div>
+              <div className="stat-card flex flex-col gap-1">
+                <span className="text-[10px] text-muted-foreground uppercase">Net (Inflow − Outflow)</span>
+                <span className={`text-xl font-bold font-mono ${(totalsMonthNet - totalsMonthOutflow) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ₹{(totalsMonthNet - totalsMonthOutflow).toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {totalsOutflowBreakdown.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-10">
+                  No outflow entries for {totalsMonth}. Record separate entries (expenses / payments made) to populate this section.
+                </p>
+              ) : (
+                totalsOutflowBreakdown.map((row) => (
+                  <div
+                    key={row.head}
+                    className="card-section p-3 flex justify-between items-start gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">{row.head}</p>
+                      <p className="text-[10px] text-muted-foreground capitalize">
+                        {row.method.replace(/_/g, ' ')} · {row.entries} entr{row.entries === 1 ? 'y' : 'ies'}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-red-600">₹{row.total.toLocaleString('en-IN')}</p>
+                      <p className="text-[10px] text-muted-foreground">{row.flatUnits} flat units</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

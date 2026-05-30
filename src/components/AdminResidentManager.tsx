@@ -12,6 +12,7 @@ import type { Flat, Member } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { exportResidentsDirectoryPdf, type PdfFlat, type PdfMember } from '@/lib/exportResidentsPdf';
 import SensitiveAdminVerifyModal from '@/components/SensitiveAdminVerifyModal';
+import { DateInput } from '@/components/DateInput';
 
 type MemberDocumentKind = 'photo_id' | 'tenant_doc' | 'service_doc';
 type MemberDocDraft = {
@@ -1277,18 +1278,16 @@ const AdminResidentManager = ({
                                   <div className="grid grid-cols-2 gap-2">
                                     <div>
                                       <label className="text-[10px] font-medium text-muted-foreground block mb-0.5">Date of joining</label>
-                                      <input
+                                      <DateInput
                                         className="input-field text-xs w-full"
-                                        type="date"
                                         value={memberForm.dateJoining}
                                         onChange={e => setMemberForm({ ...memberForm, dateJoining: e.target.value })}
                                       />
                                     </div>
                                     <div>
                                       <label className="text-[10px] font-medium text-muted-foreground block mb-0.5">Date of leave</label>
-                                      <input
+                                      <DateInput
                                         className="input-field text-xs w-full"
-                                        type="date"
                                         value={memberForm.dateLeave}
                                         onChange={e => setMemberForm({ ...memberForm, dateLeave: e.target.value })}
                                       />

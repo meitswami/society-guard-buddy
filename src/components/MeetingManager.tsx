@@ -27,6 +27,7 @@ import {
 import { toast } from 'sonner';
 import { fmtDateTimeFull } from '@/lib/dateFormat';
 import { confirmAction } from '@/lib/swal';
+import { DateInput } from '@/components/DateInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1429,8 +1430,8 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>Date</Label>
-                <Input
-                  type="date"
+                <DateInput
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={newForm.meetingDate}
                   onChange={(e) => setNewForm((p) => ({ ...p, meetingDate: e.target.value }))}
                 />
@@ -1630,7 +1631,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                   </div>
                   <Input value={metaDraft.title} onChange={(e) => setMetaDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Title" />
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="date" value={metaDraft.meetingDate} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingDate: e.target.value }))} />
+                    <DateInput className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={metaDraft.meetingDate} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingDate: e.target.value }))} />
                     <Input type="time" value={metaDraft.meetingTime} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingTime: e.target.value }))} />
                   </div>
                   <Input

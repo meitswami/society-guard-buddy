@@ -5,6 +5,7 @@ import { Heart, Plus, Upload } from 'lucide-react';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { toast } from 'sonner';
+import { DateInput } from '@/components/DateInput';
 
 interface Props { adminName?: string; }
 
@@ -183,7 +184,7 @@ const DonationManager = ({ adminName = 'Admin' }: Props) => {
           )}
           <textarea className="input-field" placeholder="Description" value={cf.description} onChange={e => setCf({...cf, description: e.target.value})} />
           <input className="input-field" placeholder="Target Amount (₹)" type="number" value={cf.target_amount} onChange={e => setCf({...cf, target_amount: e.target.value})} />
-          <input className="input-field" type="date" value={cf.end_date} onChange={e => setCf({...cf, end_date: e.target.value})} />
+          <DateInput className="input-field" value={cf.end_date} onChange={e => setCf({...cf, end_date: e.target.value})} />
           <button onClick={addCampaign} className="btn-primary">Create Campaign</button>
         </div>
       )}
