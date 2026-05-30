@@ -229,22 +229,27 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       const linkedEntryIds = new Set<string>();
 
       // Maintenance payments — group by due_date (transaction date)
-      const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', sid);
+      const { data: chargeRows } = await supabase.from('maintenance_charges').select('id, title').eq('society_id', sid);
       const chargeIds = (chargeRows ?? []).map((r: { id: string }) => r.id);
+      const chargeTitleById = new Map((chargeRows ?? []).map((r: any) => [r.id, String(r.title || '')]));
+
       if (chargeIds.length > 0) {
         const { data: pays } = await supabase
           .from('maintenance_payments')
-          .select('amount, due_date, finance_entry_id')
+          .select('amount, due_date, finance_entry_id, charge_id')
           .in('charge_id', chargeIds)
           .eq('payment_status', 'verified');
         for (const p of pays ?? []) {
+          // Try to extract month from charge title (e.g. "Maintenance February 2026" or "Feb 2026")
+          const chargeTitle = chargeTitleById.get((p as any).charge_id) || '';
+          const titleMonth = extractMonthFromTitle(chargeTitle);
+          // Use charge title month if available, otherwise fall back to due_date
           const dateStr = String((p as any).due_date || '');
-          const month = dateStr.slice(0, 7) || 'Unknown';
+          const month = titleMonth || (dateStr.slice(0, 7) || 'Unknown');
           const entry = monthMap.get(month) || { total: 0, count: 0 };
           entry.total += Number((p as any).amount ?? 0);
           entry.count += 1;
           monthMap.set(month, entry);
-          // Track linked finance entries to avoid double-counting
           const feId = (p as any).finance_entry_id;
           if (typeof feId === 'string' && feId.length > 0) linkedEntryIds.add(feId);
         }
@@ -258,7 +263,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         .eq('payment_status', 'verified')
         .in('destination', ['current_month_maintenance', 'corpus']);
       for (const le of ledgerRows ?? []) {
-        if (linkedEntryIds.has((le as any).id)) continue; // skip already counted
+        if (linkedEntryIds.has((le as any).id)) continue;
         const month = (le as any).entry_month || String((le as any).created_at || '').slice(0, 7) || 'Unknown';
         const entry = monthMap.get(month) || { total: 0, count: 0 };
         entry.total += Number((le as any).total_amount ?? 0);
@@ -313,6 +318,29 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const idx = parseInt(m, 10) - 1;
     return `${months[idx] ?? m} ${y}`;
+  };
+
+  /** Extract yyyy-MM from charge title like "Maintenance February 2026" or "Feb 26 Maintenance" */
+  const extractMonthFromTitle = (title: string): string | null => {
+    const monthNames: Record<string, string> = {
+      jan: '01', january: '01', feb: '02', february: '02', mar: '03', march: '03',
+      apr: '04', april: '04', may: '05', jun: '06', june: '06',
+      jul: '07', july: '07', aug: '08', august: '08', sep: '09', september: '09',
+      oct: '10', october: '10', nov: '11', november: '11', dec: '12', december: '12',
+    };
+    const lower = title.toLowerCase();
+    for (const [name, mm] of Object.entries(monthNames)) {
+      if (lower.includes(name)) {
+        // Try to find a year (4-digit or 2-digit)
+        const year4 = lower.match(/20\d{2}/);
+        if (year4) return `${year4[0]}-${mm}`;
+        const year2 = lower.match(/\b(\d{2})\b/);
+        if (year2) return `20${year2[1]}-${mm}`;
+        // Default to current year
+        return `${new Date().getFullYear()}-${mm}`;
+      }
+    }
+    return null;
   };
 
   const tabUsageKey = admin.societyId ? `sgb_admin_tab_use_${admin.societyId}` : null;
@@ -653,7 +681,9 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                   <div key={row.month} className="flex items-center justify-between text-xs px-2 py-1.5 rounded hover:bg-muted/40">
                     <span className="font-medium">{formatMonthLabel(row.month)}</span>
                     <div className="flex gap-4">
-                      <span className="w-12 text-right text-muted-foreground">{row.count}</span>
+                      <span className={`w-12 text-right ${row.count > 29 ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                        {row.count}{row.count > 29 ? ' ⚠' : ''}
+                      </span>
                       <span className="w-24 text-right font-mono font-semibold">₹{row.total.toLocaleString('en-IN')}</span>
                     </div>
                   </div>
