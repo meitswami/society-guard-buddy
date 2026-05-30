@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Split, Plus, Trash2, Pencil } from 'lucide-react';
+import { Split, Plus, Trash2, Pencil, Paperclip, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { useStore } from '@/store/useStore';
@@ -83,7 +83,10 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     payment_method: string;
     notes: string;
     record_status: string;
+    attachment_urls: string[];
   } | null>(null);
+  const [editAttachmentFiles, setEditAttachmentFiles] = useState<File[]>([]);
+  const [editAttachmentUploading, setEditAttachmentUploading] = useState(false);
 
   const activeFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
 
@@ -547,6 +550,10 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
   };
 
   const openExpenseEdit = (exp: any) => {
+    const existingAttachments: string[] = Array.isArray(exp.attachment_urls) ? exp.attachment_urls : [];
+    const legacyBill = exp.bill_screenshot_url && !existingAttachments.includes(exp.bill_screenshot_url)
+      ? [exp.bill_screenshot_url]
+      : [];
     setExpenseEdit({
       id: exp.id,
       title: exp.title ?? '',
@@ -557,7 +564,9 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       payment_method: exp.payment_method ?? 'cash',
       notes: exp.notes ?? '',
       record_status: exp.record_status ?? 'active',
+      attachment_urls: [...legacyBill, ...existingAttachments],
     });
+    setEditAttachmentFiles([]);
   };
 
   const saveExpenseEdit = async () => {
@@ -569,6 +578,27 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       toast.error('Enter a valid total amount');
       return;
     }
+
+    // Upload new attachment files
+    let allAttachmentUrls = [...expenseEdit.attachment_urls];
+    if (editAttachmentFiles.length > 0) {
+      setEditAttachmentUploading(true);
+      for (const file of editAttachmentFiles) {
+        if (file.size > 8 * 1024 * 1024) {
+          toast.error(`File too large (max 8 MB): ${file.name}`);
+          setEditAttachmentUploading(false);
+          return;
+        }
+        const url = await uploadExpenseBill(old.group_id, file);
+        if (!url) {
+          setEditAttachmentUploading(false);
+          return;
+        }
+        allAttachmentUrls.push(url);
+      }
+      setEditAttachmentUploading(false);
+    }
+
     const oldTotal = Number(old.total_amount);
     const expSplits = splits.filter((s) => s.expense_id === old.id);
 
@@ -597,6 +627,8 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         payment_method: expenseEdit.payment_method,
         notes: expenseEdit.notes.trim() || null,
         record_status: expenseEdit.record_status,
+        attachment_urls: allAttachmentUrls,
+        bill_screenshot_url: allAttachmentUrls[0] || null,
       })
       .eq('id', expenseEdit.id);
     if (error) {
@@ -639,6 +671,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
 
     toast.success('Expense updated');
     setExpenseEdit(null);
+    setEditAttachmentFiles([]);
     loadAll();
   };
 
@@ -1165,6 +1198,24 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                       View bill / receipt
                     </a>
                   )}
+                  {Array.isArray((exp as any).attachment_urls) && (exp as any).attachment_urls.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {((exp as any).attachment_urls as string[]).map((url, idx) => {
+                        const fileName = decodeURIComponent(url.split('/').pop() || 'Attachment').replace(/^[a-f0-9-]+_/, '');
+                        return (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-primary underline inline-flex items-center gap-0.5"
+                          >
+                            <Paperclip className="w-2.5 h-2.5" />{fileName}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
                   {exp.notes && <p className="text-[10px] text-muted-foreground mb-2 italic">{exp.notes}</p>}
                   <div className="space-y-1 mb-2">
                     {expSplits.map((s) => (
@@ -1309,6 +1360,82 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
               onChange={(e) => setExpenseEdit({ ...expenseEdit, notes: e.target.value })}
               placeholder="Notes"
             />
+
+            {/* Attachments section */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1">
+                <Paperclip className="w-3 h-3" /> Attachments (images, PDFs, documents)
+              </label>
+              {expenseEdit.attachment_urls.length > 0 && (
+                <div className="space-y-1">
+                  {expenseEdit.attachment_urls.map((url, idx) => {
+                    const fileName = decodeURIComponent(url.split('/').pop() || 'Attachment').replace(/^[a-f0-9-]+_/, '');
+                    return (
+                      <div key={idx} className="flex items-center gap-2 bg-muted/30 rounded px-2 py-1">
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-primary underline truncate flex-1 min-w-0"
+                        >
+                          {fileName}
+                        </a>
+                        <button
+                          type="button"
+                          className="text-destructive hover:text-destructive/80 shrink-0"
+                          onClick={() =>
+                            setExpenseEdit({
+                              ...expenseEdit,
+                              attachment_urls: expenseEdit.attachment_urls.filter((_, i) => i !== idx),
+                            })
+                          }
+                          aria-label={`Remove ${fileName}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {editAttachmentFiles.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] text-muted-foreground">New files to upload:</p>
+                  {editAttachmentFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-muted/30 rounded px-2 py-1">
+                      <span className="text-[11px] truncate flex-1 min-w-0">{file.name}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {(file.size / 1024).toFixed(0)} KB
+                      </span>
+                      <button
+                        type="button"
+                        className="text-destructive hover:text-destructive/80 shrink-0"
+                        onClick={() => setEditAttachmentFiles((prev) => prev.filter((_, i) => i !== idx))}
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input
+                id="edit-expense-attachments"
+                type="file"
+                accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,audio/*"
+                multiple
+                className="text-xs"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length) {
+                    setEditAttachmentFiles((prev) => [...prev, ...files]);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <p className="text-[10px] text-muted-foreground">Max 8 MB per file. Images, PDFs, documents, audio accepted.</p>
+            </div>
+
             <select
               className="input-field"
               value={expenseEdit.record_status}
@@ -1318,10 +1445,15 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
               <option value="archived">Archived</option>
             </select>
             <div className="flex gap-2">
-              <button type="button" className="btn-primary flex-1" onClick={() => void saveExpenseEdit()}>
-                Save changes
+              <button
+                type="button"
+                className="btn-primary flex-1"
+                onClick={() => void saveExpenseEdit()}
+                disabled={editAttachmentUploading}
+              >
+                {editAttachmentUploading ? 'Uploading…' : 'Save changes'}
               </button>
-              <button type="button" className="btn-secondary flex-1" onClick={() => setExpenseEdit(null)}>
+              <button type="button" className="btn-secondary flex-1" onClick={() => { setExpenseEdit(null); setEditAttachmentFiles([]); }}>
                 Cancel
               </button>
             </div>
