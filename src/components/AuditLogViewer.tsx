@@ -7,6 +7,8 @@ import { fmtDateTimeFull } from '@/lib/dateFormat';
 import FinanceAuditAlarms from '@/components/FinanceAuditAlarms';
 import FinanceIntegrityAudit from '@/components/FinanceIntegrityAudit';
 import SocietyGovernanceGuide from '@/components/SocietyGovernanceGuide';
+import ManualAuditTracer from '@/components/ManualAuditTracer';
+import type { AdminTab } from '@/lib/adminPermissions';
 
 interface AuditLog {
   id: string;
@@ -39,7 +41,7 @@ const eventLabels: Record<string, string> = {
   geofence_violation: '📍 Geofence / Location breach',
 };
 
-const AuditLogViewer = () => {
+const AuditLogViewer = ({ onNavigate }: { onNavigate?: (tab: AdminTab) => void }) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -115,6 +117,11 @@ const AuditLogViewer = () => {
       {/* Internal Finance Audit — negative balances, discrepancies, bugs */}
       <div className="mb-4">
         <FinanceIntegrityAudit />
+      </div>
+
+      {/* Manual Discrepancy Tracer — trace recording vs reporting mismatches */}
+      <div className="mb-4">
+        <ManualAuditTracer onNavigate={onNavigate} />
       </div>
 
       {/* Society Governance Framework — Principal, Purpose, Vision, Planning, Policy */}
