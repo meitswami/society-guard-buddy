@@ -404,7 +404,7 @@ const FinanceIntegrityAudit = () => {
         });
       }
 
-      /* ─── 9. FLATS WITH NO PAYMENTS THIS MONTH ─── */
+      /* ─── 10. FLATS WITH NO PAYMENTS THIS MONTH ─── */
       const currentMonth = format(new Date(), 'yyyy-MM');
       const flatsWithPaymentThisMonth = new Set<string>();
       for (const p of verifiedPayments) {
