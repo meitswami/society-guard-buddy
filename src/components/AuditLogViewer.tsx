@@ -5,6 +5,8 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { FileText, Shield, AlertTriangle, Info, Search, Filter } from 'lucide-react';
 import { fmtDateTimeFull } from '@/lib/dateFormat';
 import FinanceAuditAlarms from '@/components/FinanceAuditAlarms';
+import FinanceIntegrityAudit from '@/components/FinanceIntegrityAudit';
+import SocietyGovernanceGuide from '@/components/SocietyGovernanceGuide';
 
 interface AuditLog {
   id: string;
@@ -108,6 +110,16 @@ const AuditLogViewer = () => {
       {/* Finance Audit Alarms — duplicate maintenance detection */}
       <div className="mb-4">
         <FinanceAuditAlarms />
+      </div>
+
+      {/* Internal Finance Audit — negative balances, discrepancies, bugs */}
+      <div className="mb-4">
+        <FinanceIntegrityAudit />
+      </div>
+
+      {/* Society Governance Framework — Principal, Purpose, Vision, Planning, Policy */}
+      <div className="mb-4">
+        <SocietyGovernanceGuide />
       </div>
 
       {/* Search & Filter */}
