@@ -1,18 +1,44 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
-import { AlertTriangle, IndianRupee, RefreshCw } from 'lucide-react';
+import { AlertTriangle, IndianRupee, RefreshCw, Trash2, Pencil, X, Check } from 'lucide-react';
 import { format } from 'date-fns';
-import { fmtIsoMonthToDisplay } from '@/lib/dateFormat';
+import { fmtIsoMonthToDisplay, fmtIsoDateToDisplay } from '@/lib/dateFormat';
+import { toast } from 'sonner';
+import { confirmAction } from '@/lib/swal';
+
+interface PaymentRow {
+  id: string;
+  charge_id: string;
+  flat_number: string;
+  amount: number;
+  payment_method: string;
+  payment_status: string;
+  due_date: string | null;
+  payment_date: string | null;
+  created_at: string;
+  transaction_id: string | null;
+  notes: string | null;
+  finance_entry_id: string | null;
+}
 
 interface DuplicateAlarm {
   flat_number: string;
   charge_title: string;
-  month: string; // yyyy-MM
+  charge_id: string;
+  month: string;
   payment_method: string;
   count: number;
   total_amount: number;
-  payment_ids: string[];
+  payments: PaymentRow[];
+}
+
+interface EditState {
+  id: string;
+  amount: string;
+  payment_method: string;
+  payment_status: string;
+  notes: string;
 }
 
 const normalizeChannel = (method: unknown): string => {
@@ -31,6 +57,8 @@ const FinanceAuditAlarms = () => {
   const societyId = useStore((s) => s.societyId);
   const [alarms, setAlarms] = useState<DuplicateAlarm[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [editState, setEditState] = useState<EditState | null>(null);
 
   const detect = useCallback(async () => {
     if (!societyId) {
@@ -40,7 +68,6 @@ const FinanceAuditAlarms = () => {
     }
     setLoading(true);
 
-    // Load maintenance charges for this society
     const { data: charges } = await supabase
       .from('maintenance_charges')
       .select('id, title, frequency')
@@ -52,7 +79,6 @@ const FinanceAuditAlarms = () => {
       return;
     }
 
-    // Only look at monthly charges
     const monthlyCharges = charges.filter(
       (c) => (c.frequency ?? '').toLowerCase() === 'monthly',
     );
@@ -65,10 +91,9 @@ const FinanceAuditAlarms = () => {
     const chargeIds = monthlyCharges.map((c) => c.id);
     const chargeMap = new Map(monthlyCharges.map((c) => [c.id, c.title]));
 
-    // Load all verified/pending payments for these charges
     const { data: payments } = await supabase
       .from('maintenance_payments')
-      .select('id, charge_id, flat_number, amount, payment_method, due_date, payment_date, created_at, payment_status')
+      .select('id, charge_id, flat_number, amount, payment_method, due_date, payment_date, created_at, payment_status, transaction_id, notes, finance_entry_id')
       .in('charge_id', chargeIds)
       .in('payment_status', ['verified', 'pending']);
 
@@ -78,23 +103,20 @@ const FinanceAuditAlarms = () => {
       return;
     }
 
-    // Group by flat_number + charge_id + month + channel
-    // A duplicate = same flat, same charge, same month, same channel, more than 1 entry
-    const groupKey = (p: typeof payments[0]) => {
+    const groupKey = (p: PaymentRow) => {
       const dateStr = p.due_date || p.payment_date || p.created_at || '';
       const month = dateStr ? format(new Date(dateStr), 'yyyy-MM') : 'unknown';
       const channel = normalizeChannel(p.payment_method);
       return `${p.flat_number}||${p.charge_id}||${month}||${channel}`;
     };
 
-    const groups = new Map<string, typeof payments>();
-    for (const p of payments) {
+    const groups = new Map<string, PaymentRow[]>();
+    for (const p of payments as PaymentRow[]) {
       const key = groupKey(p);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(p);
     }
 
-    // Find duplicates (count > 1)
     const duplicates: DuplicateAlarm[] = [];
     for (const [key, group] of groups) {
       if (group.length <= 1) continue;
@@ -103,15 +125,15 @@ const FinanceAuditAlarms = () => {
       duplicates.push({
         flat_number,
         charge_title: chargeTitle,
+        charge_id,
         month,
         payment_method: channel,
         count: group.length,
         total_amount: group.reduce((sum, p) => sum + Number(p.amount || 0), 0),
-        payment_ids: group.map((p) => p.id),
+        payments: group,
       });
     }
 
-    // Sort by month descending, then flat number
     duplicates.sort((a, b) => {
       if (a.month !== b.month) return b.month.localeCompare(a.month);
       return a.flat_number.localeCompare(b.flat_number);
@@ -124,6 +146,77 @@ const FinanceAuditAlarms = () => {
   useEffect(() => {
     void detect();
   }, [detect]);
+
+  const handleDelete = async (payment: PaymentRow) => {
+    const ok = await confirmAction(
+      'Delete this payment entry?',
+      `₹${Number(payment.amount).toLocaleString('en-IN')} for Flat ${payment.flat_number} via ${payment.payment_method}. This cannot be undone.`,
+      'Delete',
+      'Cancel',
+    );
+    if (!ok) return;
+
+    const feId = payment.finance_entry_id;
+
+    const { error } = await supabase.from('maintenance_payments').delete().eq('id', payment.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    // Clean up linked finance_entry if no other payments reference it
+    if (feId) {
+      const { data: remaining } = await supabase
+        .from('maintenance_payments')
+        .select('id')
+        .eq('finance_entry_id', feId);
+      if (!remaining || remaining.length === 0) {
+        await supabase.from('finance_entry_allocations').delete().eq('finance_entry_id', feId);
+        await supabase.from('finance_entry_counterparties').delete().eq('finance_entry_id', feId);
+        await supabase.from('finance_entries').delete().eq('id', feId);
+      }
+    }
+
+    toast.success('Payment entry deleted');
+    setEditState(null);
+    setExpandedIdx(null);
+    void detect();
+  };
+
+  const startEdit = (payment: PaymentRow) => {
+    setEditState({
+      id: payment.id,
+      amount: String(payment.amount),
+      payment_method: payment.payment_method ?? 'cash',
+      payment_status: payment.payment_status,
+      notes: payment.notes ?? '',
+    });
+  };
+
+  const cancelEdit = () => setEditState(null);
+
+  const saveEdit = async () => {
+    if (!editState) return;
+    const payload: Record<string, unknown> = {
+      amount: Number(editState.amount),
+      payment_method: editState.payment_method,
+      payment_status: editState.payment_status,
+      notes: editState.notes.trim() || null,
+    };
+
+    const { error } = await (supabase as any)
+      .from('maintenance_payments')
+      .update(payload)
+      .eq('id', editState.id);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Payment entry updated');
+    setEditState(null);
+    void detect();
+  };
 
   if (loading) {
     return (
@@ -178,9 +271,12 @@ const FinanceAuditAlarms = () => {
       {alarms.map((alarm, idx) => (
         <div
           key={idx}
-          className="card-section p-3 border-destructive/40 bg-destructive/5 animate-in fade-in"
+          className="card-section p-3 border-destructive/40 bg-destructive/5"
         >
-          <div className="flex items-start gap-3">
+          <div
+            className="flex items-start gap-3 cursor-pointer"
+            onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
+          >
             <div className="w-9 h-9 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0">
               <AlertTriangle className="w-4 h-4 text-destructive" />
             </div>
@@ -196,15 +292,153 @@ const FinanceAuditAlarms = () => {
                 <span className="text-xs font-mono bg-destructive/10 text-destructive px-2 py-0.5 rounded">
                   ₹{alarm.total_amount.toLocaleString('en-IN')} total ({alarm.count} entries)
                 </span>
-                <span className="text-[10px] text-muted-foreground">
-                  IDs: {alarm.payment_ids.map((id) => id.slice(0, 6)).join(', ')}
-                </span>
               </div>
-              <p className="text-[10px] text-destructive/80 mt-1.5 font-medium">
-                ⚡ Action needed: Verify in Finance → Payments tab and remove the duplicate entry.
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Tap to expand and edit/remove individual entries
               </p>
             </div>
           </div>
+
+          {/* Expanded: show individual payment rows with edit/delete */}
+          {expandedIdx === idx && (
+            <div className="mt-3 pt-3 border-t border-destructive/20 space-y-2">
+              {alarm.payments.map((p) => (
+                <div
+                  key={p.id}
+                  className="bg-background border border-border rounded-lg p-3"
+                >
+                  {editState?.id === p.id ? (
+                    /* Edit mode */
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase">Amount (₹)</label>
+                          <input
+                            type="number"
+                            className="input-field mt-0.5 text-sm"
+                            value={editState.amount}
+                            onChange={(e) => setEditState({ ...editState, amount: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase">Method</label>
+                          <select
+                            className="input-field mt-0.5 text-sm"
+                            value={editState.payment_method}
+                            onChange={(e) => setEditState({ ...editState, payment_method: e.target.value })}
+                          >
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="neft">NEFT</option>
+                            <option value="rtgs">RTGS</option>
+                            <option value="online">Online</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase">Status</label>
+                        <select
+                          className="input-field mt-0.5 text-sm"
+                          value={editState.payment_status}
+                          onChange={(e) => setEditState({ ...editState, payment_status: e.target.value })}
+                        >
+                          <option value="verified">Verified</option>
+                          <option value="pending">Pending</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase">Notes</label>
+                        <input
+                          className="input-field mt-0.5 text-sm"
+                          value={editState.notes}
+                          placeholder="Optional note"
+                          onChange={(e) => setEditState({ ...editState, notes: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-end pt-1">
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          className="px-3 py-1.5 text-xs rounded-lg bg-secondary text-secondary-foreground flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" /> Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void saveEdit()}
+                          className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground flex items-center gap-1"
+                        >
+                          <Check className="w-3 h-3" /> Save
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* View mode */
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold font-mono">
+                            ₹{Number(p.amount).toLocaleString('en-IN')}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                            p.payment_status === 'verified'
+                              ? 'bg-green-500/10 text-green-600'
+                              : p.payment_status === 'rejected'
+                                ? 'bg-destructive/10 text-destructive'
+                                : 'bg-amber-500/10 text-amber-600'
+                          }`}>
+                            {p.payment_status}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                            {p.payment_method}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Due: {p.due_date ? fmtIsoDateToDisplay(p.due_date) : '—'} · Created: {fmtIsoDateToDisplay(p.created_at)}
+                        </p>
+                        {p.transaction_id && (
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            Txn: {p.transaction_id}
+                          </p>
+                        )}
+                        {p.notes && (
+                          <p className="text-[10px] text-muted-foreground italic mt-0.5">
+                            {p.notes}
+                          </p>
+                        )}
+                        <p className="text-[9px] text-muted-foreground/60 font-mono mt-0.5">
+                          ID: {p.id.slice(0, 8)}
+                        </p>
+                      </div>
+                      <div className="flex gap-1.5 flex-shrink-0 ml-2">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(p)}
+                          className="p-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                          aria-label="Edit payment"
+                          title="Edit this entry"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(p)}
+                          className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20"
+                          aria-label="Delete payment"
+                          title="Remove this duplicate entry"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
