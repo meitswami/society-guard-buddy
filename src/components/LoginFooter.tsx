@@ -29,6 +29,12 @@ export function LoginFooter() {
           <Link to="/contact" className={linkClass}>
             {t("login.footerContact")}
           </Link>
+          <span className="mx-0.5 shrink-0 text-border sm:mx-0" aria-hidden>
+            |
+          </span>
+          <Link to="/about" className={linkClass}>
+            About
+          </Link>
         </nav>
         <p className="text-center text-[10px] text-muted-foreground sm:text-[11px]">{t("app.footer")}</p>
       </div>
