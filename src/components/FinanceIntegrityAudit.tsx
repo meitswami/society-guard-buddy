@@ -248,7 +248,79 @@ const FinanceIntegrityAudit = () => {
         });
       }
 
-      /* ─── 5. ORPHANED PAYMENTS (no finance_entry_id) ─── */
+      /* ─── 5. PERIOD REPORT CROSS-VERIFICATION (date-boundary double-count detection) ─── */
+      // Simulate the period report logic per month and compare against raw payment sums
+      // This catches the exact bug where payment dates and entry_month fall in different periods
+      const monthlyPaymentTotals = new Map<string, number>(); // yyyy-MM → sum from payments
+      const monthlyReportTotals = new Map<string, number>(); // yyyy-MM → what period report would show
+
+      // Raw payment totals per month (ground truth)
+      for (const p of verifiedPayments) {
+        const d = p.due_date || p.payment_date || p.created_at || '';
+        if (!d) continue;
+        const month = format(new Date(d), 'yyyy-MM');
+        monthlyPaymentTotals.set(month, (monthlyPaymentTotals.get(month) || 0) + Number(p.amount || 0));
+      }
+
+      // Simulate period report per month: payments in range + unlinked ledger entries in range
+      for (const [month] of monthlyPaymentTotals) {
+        const fromYmd = `${month}-01`;
+        const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
+        const toYmd = `${month}-${String(lastDay).padStart(2, '0')}`;
+
+        let reportTotal = 0;
+        // Payments in this month's range
+        for (const p of verifiedPayments) {
+          const d = p.due_date || p.payment_date || p.created_at || '';
+          if (!d) continue;
+          const t = new Date(d).getTime();
+          if (t >= new Date(`${fromYmd}T00:00:00`).getTime() && t <= new Date(`${toYmd}T23:59:59.999`).getTime()) {
+            reportTotal += Number(p.amount || 0);
+          }
+        }
+        // Unlinked ledger entries in this month's range (what period report adds on top)
+        for (const e of allLedger) {
+          if (e.destination === 'separate_entry') continue;
+          const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
+          const t = new Date(ledgerDate).getTime();
+          if (t < new Date(`${fromYmd}T00:00:00`).getTime() || t > new Date(`${toYmd}T23:59:59.999`).getTime()) continue;
+          if (!linkedFeIds.has(e.id)) {
+            reportTotal += Number(e.total_amount || 0);
+          }
+        }
+        monthlyReportTotals.set(month, reportTotal);
+      }
+
+      // Check for months where report total exceeds payment total (over-counting)
+      const overCountedMonths: { month: string; paymentTotal: number; reportTotal: number; excess: number }[] = [];
+      for (const [month, payTotal] of monthlyPaymentTotals) {
+        const repTotal = monthlyReportTotals.get(month) || 0;
+        if (repTotal > payTotal + 1) { // tolerance of ₹1 for rounding
+          overCountedMonths.push({ month, paymentTotal: payTotal, reportTotal: repTotal, excess: repTotal - payTotal });
+        }
+      }
+
+      if (overCountedMonths.length > 0) {
+        const totalExcess = overCountedMonths.reduce((s, m) => s + m.excess, 0);
+        addFinding({
+          severity: 'critical',
+          title: `Period Report Over-Counting: ₹${totalExcess.toLocaleString('en-IN')} excess across ${overCountedMonths.length} month(s)`,
+          description: `The period report shows more receipts than actual payments for: ${overCountedMonths.map((m) => `${fmtIsoMonthToDisplay(m.month)} (₹${m.excess.toLocaleString('en-IN')} extra)`).join(', ')}.`,
+          reason: 'This happens when a finance_entry has entry_month in one period but its linked payments have due_date in a different period. The deduplication fails at the date boundary — payments are not counted (wrong month) but the unlinked ledger entry IS counted (right month), causing double-counting.',
+          rectification: '1. Go to Finance → Payments tab and check entries near month boundaries (last/first few days).\n2. Ensure payment due_date matches the finance_entry entry_month.\n3. Or update the payment due_date to fall within the correct month.\n4. The system fix has been applied — this check verifies historical data integrity.',
+          data: { months: overCountedMonths },
+        });
+      } else {
+        addFinding({
+          severity: 'pass',
+          title: 'Period Report Totals Verified',
+          description: 'No date-boundary over-counting detected. Period report figures match raw payment sums.',
+          reason: '',
+          rectification: '',
+        });
+      }
+
+      /* ─── 6. ORPHANED PAYMENTS (no finance_entry_id) ─── */
       const orphanedPayments = verifiedPayments.filter((p) => !p.finance_entry_id);
       if (orphanedPayments.length > 0) {
         const orphanTotal = orphanedPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -270,7 +342,7 @@ const FinanceIntegrityAudit = () => {
         });
       }
 
-      /* ─── 6. FINANCE ENTRIES WITH WRONG FLAT COUNT ─── */
+      /* ─── 7. FINANCE ENTRIES WITH WRONG FLAT COUNT ─── */
       const feWithAllocMismatch: string[] = [];
       for (const e of allLedger) {
         if (e.record_mode === 'flats_only' && e.aggregate_flat_count > 0) {
@@ -292,7 +364,7 @@ const FinanceIntegrityAudit = () => {
         });
       }
 
-      /* ─── 7. AMOUNT MISMATCH: charge amount vs recorded payment ─── */
+      /* ─── 8. AMOUNT MISMATCH: charge amount vs recorded payment ─── */
       const monthlyCharges = (charges ?? []).filter((c) => (c.frequency ?? '').toLowerCase() === 'monthly');
       let amountMismatchCount = 0;
       for (const p of verifiedPayments) {
@@ -315,7 +387,7 @@ const FinanceIntegrityAudit = () => {
         });
       }
 
-      /* ─── 8. PENDING PAYMENTS STUCK ─── */
+      /* ─── 9. PENDING PAYMENTS STUCK ─── */
       const pendingPayments = allPayments.filter((p) => p.payment_status === 'pending');
       const oldPending = pendingPayments.filter((p) => {
         const d = new Date(p.created_at || '');

@@ -1761,10 +1761,17 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   );
 
   const financePeriodReport = useMemo(() => {
+    // --- Collect ALL finance_entry_ids linked to any verified payment (for deduplication) ---
+    const allLinkedFeIds = new Set<string>();
+    for (const p of payments) {
+      if (String(p.payment_status) !== 'verified') continue;
+      const feId = (p as any).finance_entry_id;
+      if (typeof feId === 'string' && feId.length > 0) allLinkedFeIds.add(feId);
+    }
+
     // --- Opening balances: all verified transactions BEFORE periodFrom ---
     const openingReceipt = { cash: 0, bank: 0, other: 0 };
     const openingExpense = { cash: 0, bank: 0, other: 0 };
-    const openingLinkedIds = new Set<string>();
 
     for (const p of payments) {
       if (String(p.payment_status) !== 'verified') continue;
@@ -1776,8 +1783,6 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       const amt = Number(p.amount || 0);
       const ch = normalizePaymentChannel(p.payment_method);
       openingReceipt[ch] += amt;
-      const feId = (p as any).finance_entry_id;
-      if (typeof feId === 'string' && feId.length > 0) openingLinkedIds.add(feId);
     }
 
     for (const e of ledgerEntries) {
@@ -1791,7 +1796,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       if (e.destination === 'separate_entry') {
         openingExpense[ch] += amt;
       } else if (e.destination === 'current_month_maintenance' || e.destination === 'corpus') {
-        if (!openingLinkedIds.has(e.id)) {
+        if (!allLinkedFeIds.has(e.id)) {
           openingReceipt[ch] += amt;
         }
       }
@@ -1805,7 +1810,6 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     // --- Period transactions ---
     const receiptByMethod = { cash: 0, bank: 0, other: 0 };
     let verifiedPaymentCount = 0;
-    const linkedFinanceEntryIds = new Set<string>();
     for (const p of payments) {
       if (String(p.payment_status) !== 'verified') continue;
       const d = String((p as any).due_date || (p as any).payment_date || (p as any).verified_at || (p as any).created_at || '');
@@ -1814,8 +1818,6 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       const ch = normalizePaymentChannel(p.payment_method);
       receiptByMethod[ch] += amt;
       verifiedPaymentCount += 1;
-      const feId = (p as any).finance_entry_id;
-      if (typeof feId === 'string' && feId.length > 0) linkedFinanceEntryIds.add(feId);
     }
 
     const expenseByMethod = { cash: 0, bank: 0, other: 0 };
@@ -1835,7 +1837,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         cur.total += amt;
         expenseByHead.set(head, cur);
       } else if (e.destination === 'current_month_maintenance' || e.destination === 'corpus') {
-        if (!linkedFinanceEntryIds.has(e.id)) {
+        if (!allLinkedFeIds.has(e.id)) {
           extraLedgerReceipt += amt;
           receiptByMethod[ch] += amt;
         }
