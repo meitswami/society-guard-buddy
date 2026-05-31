@@ -4,6 +4,7 @@ import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { FileText, Shield, AlertTriangle, Info, Search, Filter } from 'lucide-react';
 import { fmtDateTimeFull } from '@/lib/dateFormat';
+import FinanceAuditAlarms from '@/components/FinanceAuditAlarms';
 
 interface AuditLog {
   id: string;
@@ -102,6 +103,11 @@ const AuditLogViewer = () => {
           <p className="text-lg font-bold">{stats.resets}</p>
           <p className="text-[10px] text-muted-foreground">Pwd Changes</p>
         </div>
+      </div>
+
+      {/* Finance Audit Alarms — duplicate maintenance detection */}
+      <div className="mb-4">
+        <FinanceAuditAlarms />
       </div>
 
       {/* Search & Filter */}
