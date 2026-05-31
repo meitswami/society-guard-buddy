@@ -1664,6 +1664,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     };
 
     // Maintenance payments in range
+    const countedFinanceEntryIds = new Set<string>();
     for (const p of payments) {
       if (String(p.payment_status) !== 'verified') continue;
       const d = String(p.due_date || p.payment_date || p.verified_at || p.created_at || '');
@@ -1683,6 +1684,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         method: String(p.payment_method || 'cash'),
         status: 'paid',
       });
+      const feId = (p as any).finance_entry_id;
+      if (typeof feId === 'string' && feId.length > 0) countedFinanceEntryIds.add(feId);
     }
 
     // Ledger allocations (outsider/corpus entries allocated to flats) in range
@@ -1690,7 +1693,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       if (e.destination === 'separate_entry') continue;
       const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
       if (!isInRange(ledgerDate)) continue;
-      if (e.record_mode === 'flats_only') continue; // already counted via maintenance_payments
+      // Skip flats_only entries that are already counted via their linked maintenance_payments
+      if (e.record_mode === 'flats_only' && countedFinanceEntryIds.has(e.id)) continue;
       const allocations = e.finance_entry_allocations ?? [];
       for (const alloc of allocations) {
         const flatNum = alloc.flat_number;

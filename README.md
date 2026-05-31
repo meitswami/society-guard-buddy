@@ -35,6 +35,7 @@ Apply SQL in `supabase/migrations/` (full table: **[docs/VERSION-2-RELEASE.md](.
 - **Meetings:** Full module (see readme.md).
 - **Community:** Donations (presets), Splitwise, events, polls & elections, parking.
 - **Ops:** Notifications (FCM / OneSignal), REPORTS, audit, geofence, settings; **Capacitor** for native builds.
+- **About Page (`/about`):** Public-facing page reflecting the society's Vision, Purpose, Planning & Project Structure, and Guiding Principles. Linked from login footer.
 
 ---
 
@@ -76,6 +77,23 @@ Expandable reference panel covering:
 
 ---
 
+## About Page (`/about`)
+
+A public-facing standalone page accessible from the login footer. Communicates the project's identity to residents, committee members, and prospective societies.
+
+### Sections
+
+| Section | Content |
+|---------|---------|
+| **Vision** | Immediate goals (digital-first, 100% tracking, auto-reports) + Long-term vision (self-auditing, predictive budgeting, paperless AGM, vendor management, multi-society federation, AI insights). North star statement. |
+| **Purpose** | Core purpose cards (transparency, accountability, trust, error elimination). Problems solved (duplicates, negative balances, unverified payments, mismatches, paper logs). |
+| **Planning & Structure** | 10-module system map with descriptions. Data flow pipeline visualization. Collaboration roles table (Admin, Treasurer, Secretary, Committee, Residents). Technology stack badges. |
+| **Guiding Principles** | Transparency First · Accountability by Design · Member-Centric · Data Integrity · Simplicity · Compliance Ready |
+
+Route: `/about` · Component: `src/pages/AboutPage.tsx` · Linked from: `LoginFooter.tsx`
+
+---
+
 ## Tech stack
 
 React 18 · TypeScript · Vite · Tailwind · shadcn/ui · Zustand · Supabase (Postgres, RLS, Storage, Edge Functions) · jsPDF · Sonner / SweetAlert2 · Capacitor.
@@ -110,7 +128,7 @@ npm run dev
 
 Set **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_PUBLISHABLE_KEY`**. Optional: Firebase / FCM / reCAPTCHA per `.env.example`. Run all Supabase migrations.
 
-**Code map:** `AdminGuardManager.tsx` (guard photos & documents), `FinanceManager.tsx`, `FinanceAuditAlarms.tsx` (duplicate detection + inline edit/delete), `FinanceIntegrityAudit.tsx` (self-audit engine), `SocietyGovernanceGuide.tsx` (governance framework), `MeetingManager.tsx`, `PollManager.tsx`, `electionTally.ts`, `ElectionResultsBanner.tsx`, `DonationManager.tsx`, `AdminDashboard.tsx`, `ResidentDashboard.tsx`, `ReportPage.tsx`, `NotificationCenter.tsx`, `PhotoCapture.tsx`, `useStore.ts`, `supabase/functions/*`.
+**Code map:** `AdminGuardManager.tsx` (guard photos & documents), `FinanceManager.tsx`, `FinanceAuditAlarms.tsx` (duplicate detection + inline edit/delete), `FinanceIntegrityAudit.tsx` (self-audit engine), `SocietyGovernanceGuide.tsx` (governance framework), `AboutPage.tsx` (public vision/purpose/planning page), `MeetingManager.tsx`, `PollManager.tsx`, `electionTally.ts`, `ElectionResultsBanner.tsx`, `DonationManager.tsx`, `AdminDashboard.tsx`, `ResidentDashboard.tsx`, `ReportPage.tsx`, `NotificationCenter.tsx`, `PhotoCapture.tsx`, `useStore.ts`, `supabase/functions/*`.
 
 ---
 
@@ -130,6 +148,19 @@ Set **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_PUBLISHABLE_KEY`**. Optional: F
 - **[docs/VERSION-2-RELEASE.md](./docs/VERSION-2-RELEASE.md)** — **Version 2** shipped features & migration index  
 - **[CHANGELOG.md](./CHANGELOG.md)** — Keep a Changelog entries  
 - **[docs/PRODUCT-V2.md](./docs/PRODUCT-V2.md)** — Future roadmap (not all shipped)
+
+---
+
+## Public Pages
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/about` | About Kutumbika | Vision, Purpose, Planning & Structure, Guiding Principles |
+| `/privacy` | Privacy Policy | Data collection, usage, retention, security |
+| `/terms` | Terms of Service | Usage terms and conditions |
+| `/contact` | Contact | Support and communication channels |
+| `/delete-account` | Delete Account | Account deletion instructions |
+| `/society-signup` | Society Signup | New society registration form |
 
 ---
 
