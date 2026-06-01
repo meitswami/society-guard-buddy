@@ -311,7 +311,7 @@ const AboutPage = () => {
           <div className="grid gap-3 sm:grid-cols-2">
             {[
               { title: 'Transparency First', desc: 'Every financial transaction, every decision, every action is visible to those it affects. No hidden ledgers.' },
-              { title: 'Accountability by Design', desc: 'The system doesn't just record — it enforces. Who did what, when, and from where is always answerable.' },
+              { title: 'Accountability by Design', desc: 'The system does not just record - it enforces. Who did what, when, and from where is always answerable.' },
               { title: 'Member-Centric', desc: 'Built for residents, not just administrators. Self-service, visibility, and participation are core features.' },
               { title: 'Data Integrity', desc: 'Cross-verification at every layer. Recording must match reporting. Discrepancies are flagged, not hidden.' },
               { title: 'Simplicity', desc: 'Mobile-first, minimal clicks. A guard with basic smartphone skills can operate the gate module.' },

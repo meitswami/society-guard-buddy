@@ -99,7 +99,7 @@ const sections: Section[] = [
         heading: 'Long-Term Vision',
         points: [
           'Fully self-auditing system — anomalies detected and flagged in real-time without human intervention.',
-          'Predictive budgeting — based on historical expense patterns, forecast next quarter's needs.',
+          "Predictive budgeting — based on historical expense patterns, forecast next quarter's needs.",
           'Paperless AGM — resolutions, voting, minutes all digital with e-signatures.',
           'Integrated vendor management — payments to vendors tracked end-to-end with GST compliance.',
           'Member self-service — residents view their ledger, download receipts, raise disputes online.',
