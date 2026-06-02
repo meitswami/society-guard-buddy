@@ -2,36 +2,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { AlertTriangle, IndianRupee, RefreshCw, Trash2, Pencil, X, Check } from 'lucide-react';
-import { format } from 'date-fns';
 import { fmtIsoMonthToDisplay, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { toast } from 'sonner';
 import { confirmAction } from '@/lib/swal';
+import {
+  findDuplicatePaymentGroups,
+  type AuditPaymentRow,
+  type DuplicatePaymentGroup,
+} from '@/lib/financeAuditDetection';
+import { deleteMaintenancePayment } from '@/lib/financeAuditRemediation';
+import FinanceLedgerOvercountPanel from '@/components/FinanceLedgerOvercountPanel';
 
-interface PaymentRow {
-  id: string;
-  charge_id: string;
-  flat_number: string;
-  amount: number;
-  payment_method: string;
-  payment_status: string;
-  due_date: string | null;
-  payment_date: string | null;
-  created_at: string;
+type PaymentRow = AuditPaymentRow & {
   transaction_id: string | null;
   notes: string | null;
-  finance_entry_id: string | null;
-}
-
-interface DuplicateAlarm {
-  flat_number: string;
-  charge_title: string;
-  charge_id: string;
-  month: string;
-  payment_method: string;
-  count: number;
-  total_amount: number;
-  payments: PaymentRow[];
-}
+};
 
 interface EditState {
   id: string;
@@ -41,21 +26,10 @@ interface EditState {
   notes: string;
 }
 
-const normalizeChannel = (method: unknown): string => {
-  const x = String(method ?? 'cash').toLowerCase().replace(/\s/g, '');
-  if (x === 'cash') return 'cash';
-  if (
-    ['upi', 'bank_transfer', 'razorpay', 'online', 'card', 'neft', 'rtgs', 'imps', 'netbanking', 'cheque', 'dd'].some(
-      (k) => x === k || x.includes(k),
-    )
-  )
-    return 'bank';
-  return 'other';
-};
-
 const FinanceAuditAlarms = () => {
+  const [refreshKey, setRefreshKey] = useState(0);
   const societyId = useStore((s) => s.societyId);
-  const [alarms, setAlarms] = useState<DuplicateAlarm[]>([]);
+  const [alarms, setAlarms] = useState<DuplicatePaymentGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [editState, setEditState] = useState<EditState | null>(null);
@@ -89,7 +63,6 @@ const FinanceAuditAlarms = () => {
     }
 
     const chargeIds = monthlyCharges.map((c) => c.id);
-    const chargeMap = new Map(monthlyCharges.map((c) => [c.id, c.title]));
 
     const { data: payments } = await supabase
       .from('maintenance_payments')
@@ -103,45 +76,14 @@ const FinanceAuditAlarms = () => {
       return;
     }
 
-    const groupKey = (p: PaymentRow) => {
-      const dateStr = p.due_date || p.payment_date || p.created_at || '';
-      const month = dateStr ? format(new Date(dateStr), 'yyyy-MM') : 'unknown';
-      const channel = normalizeChannel(p.payment_method);
-      return `${p.flat_number}||${p.charge_id}||${month}||${channel}`;
-    };
-
-    const groups = new Map<string, PaymentRow[]>();
-    for (const p of payments as PaymentRow[]) {
-      const key = groupKey(p);
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(p);
-    }
-
-    const duplicates: DuplicateAlarm[] = [];
-    for (const [key, group] of groups) {
-      if (group.length <= 1) continue;
-      const [flat_number, charge_id, month, channel] = key.split('||');
-      const chargeTitle = chargeMap.get(charge_id) ?? 'Unknown charge';
-      duplicates.push({
-        flat_number,
-        charge_title: chargeTitle,
-        charge_id,
-        month,
-        payment_method: channel,
-        count: group.length,
-        total_amount: group.reduce((sum, p) => sum + Number(p.amount || 0), 0),
-        payments: group,
-      });
-    }
-
-    duplicates.sort((a, b) => {
-      if (a.month !== b.month) return b.month.localeCompare(a.month);
-      return a.flat_number.localeCompare(b.flat_number);
+    const chargeTitleById = new Map(monthlyCharges.map((c) => [c.id, c.title]));
+    const duplicates = findDuplicatePaymentGroups(payments as PaymentRow[], chargeTitleById, {
+      chargeIds,
     });
 
     setAlarms(duplicates);
     setLoading(false);
-  }, [societyId]);
+  }, [societyId, refreshKey]);
 
   useEffect(() => {
     void detect();
@@ -156,25 +98,10 @@ const FinanceAuditAlarms = () => {
     );
     if (!ok) return;
 
-    const feId = payment.finance_entry_id;
-
-    const { error } = await supabase.from('maintenance_payments').delete().eq('id', payment.id);
-    if (error) {
-      toast.error(error.message);
+    const res = await deleteMaintenancePayment(payment.id, payment.finance_entry_id);
+    if (!res.ok) {
+      toast.error(res.error);
       return;
-    }
-
-    // Clean up linked finance_entry if no other payments reference it
-    if (feId) {
-      const { data: remaining } = await supabase
-        .from('maintenance_payments')
-        .select('id')
-        .eq('finance_entry_id', feId);
-      if (!remaining || remaining.length === 0) {
-        await supabase.from('finance_entry_allocations').delete().eq('finance_entry_id', feId);
-        await supabase.from('finance_entry_counterparties').delete().eq('finance_entry_id', feId);
-        await supabase.from('finance_entries').delete().eq('id', feId);
-      }
     }
 
     toast.success('Payment entry deleted');
@@ -218,31 +145,31 @@ const FinanceAuditAlarms = () => {
     void detect();
   };
 
-  if (loading) {
-    return (
-      <div className="card-section p-4">
-        <p className="text-sm text-muted-foreground">Scanning for duplicate maintenance entries…</p>
-      </div>
-    );
-  }
-
-  if (alarms.length === 0) {
-    return (
-      <div className="card-section p-4 border-green-500/30 bg-green-500/5">
-        <div className="flex items-center gap-2">
-          <IndianRupee className="w-4 h-4 text-green-600" />
-          <p className="text-sm font-medium text-green-700 dark:text-green-400">
-            No duplicate maintenance credits detected
-          </p>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          All monthly maintenance entries appear correctly recorded (no flat credited twice in the same month via the same channel).
-        </p>
-      </div>
-    );
-  }
+  const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
   return (
+    <div className="space-y-4">
+      <FinanceLedgerOvercountPanel onResolved={bumpRefresh} />
+
+      {loading ? (
+        <div className="card-section p-4">
+          <p className="text-sm text-muted-foreground">Scanning for duplicate maintenance payment rows…</p>
+        </div>
+      ) : alarms.length === 0 ? (
+        <div className="card-section p-4 border-green-500/30 bg-green-500/5">
+          <div className="flex items-center gap-2">
+            <IndianRupee className="w-4 h-4 text-green-600" />
+            <p className="text-sm font-medium text-green-700 dark:text-green-400">
+              No duplicate maintenance payment rows
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            No flat has two verified/pending payments for the same monthly charge, month, and channel. If Internal Audit
+            still flags an issue, check Ledger double-count above — that is a different problem (extra finance
+            ledger receipt).
+          </p>
+        </div>
+      ) : (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -254,7 +181,7 @@ const FinanceAuditAlarms = () => {
               ⚠️ Duplicate Maintenance Credits Detected
             </h3>
             <p className="text-[10px] text-muted-foreground">
-              {alarms.length} alarm{alarms.length > 1 ? 's' : ''} — same flat credited twice in the same month
+              {alarms.length} group{alarms.length > 1 ? 's' : ''} — same flat + charge + month + channel twice
             </p>
           </div>
         </div>
@@ -441,6 +368,8 @@ const FinanceAuditAlarms = () => {
           )}
         </div>
       ))}
+    </div>
+      )}
     </div>
   );
 };

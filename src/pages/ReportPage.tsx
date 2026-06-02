@@ -674,15 +674,25 @@ const ReportPage = () => {
 
           {/* Donations & Splits - Clickable */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <button onClick={openDonationModal} className="border border-border rounded-xl p-4 bg-card/50 text-left hover:border-primary/40 transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-2">
-                <Heart className="w-4 h-4 text-rose-500" />
-                <h2 className="text-sm font-semibold">{t('report.donationsStatuses')}</h2>
-              </div>
+            <DescriptiveStatCard
+              {...REPORT_PAGE_METRICS.moduleDonations}
+              title={t('report.donationsStatuses')}
+              caption={t('report.donationsStatuses')}
+              icon={
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-rose-500" />
+                  <h2 className="text-sm font-semibold">{t('report.donationsStatuses')}</h2>
+                </div>
+              }
+              value={donationStatuses.reduce((s, d) => s + d.count, 0)}
+              onNavigate={openDonationModal}
+              navigateLabel="View donation detail"
+              className="border border-border rounded-xl bg-card/50 shadow-none"
+            >
               {donationStatuses.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No donations for this month.</p>
+                <p className="text-xs text-muted-foreground mt-2">No donations for this month.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 mt-2 w-full">
                   {donationStatuses.map((s) => (
                     <div key={s.status} className="flex items-center justify-between text-xs">
                       <span className="capitalize">{s.status}</span>
@@ -691,18 +701,28 @@ const ReportPage = () => {
                   ))}
                 </div>
               )}
-            </button>
+            </DescriptiveStatCard>
 
-            <button onClick={openSplitModal} className="border border-border rounded-xl p-4 bg-card/50 text-left hover:border-primary/40 transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-1">
-                <Split className="w-4 h-4 text-amber-600" />
-                <h2 className="text-sm font-semibold">{t('report.splitwiseFromGroups')}</h2>
-              </div>
-              <p className="text-[10px] text-muted-foreground mb-2">{t('report.splitwiseFromGroupsHint')}</p>
+            <DescriptiveStatCard
+              {...REPORT_PAGE_METRICS.moduleExpenseSplits}
+              title={t('report.splitwiseFromGroups')}
+              caption={t('report.splitwiseFromGroups')}
+              icon={
+                <div className="flex items-center gap-2">
+                  <Split className="w-4 h-4 text-amber-600" />
+                  <h2 className="text-sm font-semibold">{t('report.splitwiseFromGroups')}</h2>
+                </div>
+              }
+              value={splitStatuses.reduce((s, d) => s + d.count, 0)}
+              onNavigate={openSplitModal}
+              navigateLabel="View split detail"
+              className="border border-border rounded-xl bg-card/50 shadow-none"
+            >
+              <p className="text-[10px] text-muted-foreground mt-1">{t('report.splitwiseFromGroupsHint')}</p>
               {splitStatuses.length === 0 ? (
-                <p className="text-xs text-muted-foreground">{t('report.noSplitwiseSplits')}</p>
+                <p className="text-xs text-muted-foreground mt-2">{t('report.noSplitwiseSplits')}</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 mt-2 w-full">
                   {splitStatuses.map((s) => (
                     <div key={s.status} className="flex items-center justify-between text-xs">
                       <span className="capitalize">{s.status}</span>
@@ -711,7 +731,7 @@ const ReportPage = () => {
                   ))}
                 </div>
               )}
-            </button>
+            </DescriptiveStatCard>
           </div>
         </div>
       )}

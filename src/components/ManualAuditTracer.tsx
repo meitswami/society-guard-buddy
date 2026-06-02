@@ -18,6 +18,8 @@ import {
 import { format } from 'date-fns';
 import { fmtIsoMonthToDisplay, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import type { AdminTab } from '@/lib/adminPermissions';
+import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
+import { MANUAL_AUDIT_METRICS } from '@/lib/descriptiveMetricCopy';
 
 interface Props {
   onNavigate?: (tab: AdminTab) => void;
@@ -241,8 +243,9 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
         // 3. Check for duplicate payments in this month
         const dupeKey = (p: any) => {
           const d = p.due_date || p.payment_date || p.created_at || '';
+          const month = d ? format(new Date(d), 'yyyy-MM') : 'unknown';
           const ch = normalizePaymentChannel(p.payment_method);
-          return `${p.flat_number}||${p.charge_id}||${ch}`;
+          return `${p.flat_number}||${p.charge_id}||${month}||${ch}`;
         };
         const dupeGroups = new Map<string, any[]>();
         for (const p of periodPayments) {
@@ -455,29 +458,35 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
       {result && (
         <div className="space-y-3">
           {/* Summary card */}
-          <div className={`card-section p-3 ${Math.abs(result.difference) < 1 ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">System ({result.source})</p>
-                <p className="text-lg font-bold font-mono">₹{result.computedTotal.toLocaleString('en-IN')}</p>
+          <div className={`grid grid-cols-3 gap-2 ${Math.abs(result.difference) < 1 ? '' : ''}`}>
+            <DescriptiveStatCard
+              {...MANUAL_AUDIT_METRICS.computedTotal}
+              caption={`System (${result.source})`}
+              value={`₹${result.computedTotal.toLocaleString('en-IN')}`}
+              valueClassName="text-base font-mono"
+              className={`!p-2.5 ${Math.abs(result.difference) < 1 ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}
+            />
+            {Math.abs(result.difference) < 1 ? (
+              <div className="stat-card flex flex-col items-center justify-center gap-1 border-green-500/30 bg-green-500/5">
+                <CheckCircle2 className="w-6 h-6 text-green-500" />
+                <p className="text-[10px] text-muted-foreground">Match</p>
               </div>
-              <div className="text-center">
-                {Math.abs(result.difference) < 1 ? (
-                  <CheckCircle2 className="w-6 h-6 text-green-500 mx-auto" />
-                ) : (
-                  <div>
-                    <p className={`text-lg font-bold font-mono ${result.difference > 0 ? 'text-destructive' : 'text-amber-600'}`}>
-                      {result.difference > 0 ? '+' : ''}₹{result.difference.toLocaleString('en-IN')}
-                    </p>
-                    <p className="text-[9px] text-muted-foreground">{result.difference > 0 ? 'Over-reported' : 'Under-reported'}</p>
-                  </div>
-                )}
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Expected (yours)</p>
-                <p className="text-lg font-bold font-mono">₹{result.expectedTotal.toLocaleString('en-IN')}</p>
-              </div>
-            </div>
+            ) : (
+              <DescriptiveStatCard
+                {...MANUAL_AUDIT_METRICS.difference}
+                caption={result.difference > 0 ? 'Over-reported' : 'Under-reported'}
+                value={`${result.difference > 0 ? '+' : ''}₹${result.difference.toLocaleString('en-IN')}`}
+                valueClassName={`text-base font-mono ${result.difference > 0 ? 'text-destructive' : 'text-amber-600'}`}
+                className="!p-2.5 border-amber-500/30 bg-amber-500/5"
+              />
+            )}
+            <DescriptiveStatCard
+              {...MANUAL_AUDIT_METRICS.expectedTotal}
+              caption="Expected (yours)"
+              value={`₹${result.expectedTotal.toLocaleString('en-IN')}`}
+              valueClassName="text-base font-mono"
+              className={`!p-2.5 ${Math.abs(result.difference) < 1 ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}
+            />
           </div>
 
           {/* Findings with navigation */}

@@ -118,8 +118,8 @@ const AuditLogViewer = ({ onNavigate }: { onNavigate?: (tab: AdminTab) => void }
         />
       </div>
 
-      {/* Finance Audit Alarms — duplicate maintenance detection */}
-      <div className="mb-4">
+      {/* Finance Audit Alarms — ledger double-count + duplicate payment rows */}
+      <div className="mb-4" id="finance-audit-alarms">
         <FinanceAuditAlarms />
       </div>
 

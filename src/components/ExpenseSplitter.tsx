@@ -923,22 +923,20 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         </div>
       </div>
 
-      <div className="card-section p-3 mb-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium text-foreground">Eligible flats pool</p>
-            <p className="text-[10px] text-muted-foreground">
-              {includeVacantFlats ? `All flats (${flats.length})` : `Occupied / sold (${activeFlats.length})`}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIncludeVacantFlats((v) => !v)}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-border"
-          >
-            {includeVacantFlats ? 'Include vacant: ON' : 'Include vacant: OFF'}
-          </button>
-        </div>
+      <div className="flex items-stretch gap-2 mb-4">
+        <DescriptiveStatCard
+          {...EVENT_EXPENSE_METRICS.eligibleFlatsPool}
+          className="flex-1 !p-3"
+          value={includeVacantFlats ? flats.length : activeFlats.length}
+          caption={includeVacantFlats ? `All flats (${flats.length})` : `Occupied / sold (${activeFlats.length})`}
+        />
+        <button
+          type="button"
+          onClick={() => setIncludeVacantFlats((v) => !v)}
+          className="text-xs px-2.5 py-1.5 rounded-lg border border-border self-center shrink-0"
+        >
+          {includeVacantFlats ? 'Include vacant: ON' : 'Include vacant: OFF'}
+        </button>
       </div>
 
       <DescriptiveStatCard

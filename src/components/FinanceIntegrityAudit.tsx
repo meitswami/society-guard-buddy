@@ -16,10 +16,25 @@ import {
 import { format } from 'date-fns';
 import { fmtIsoMonthToDisplay } from '@/lib/dateFormat';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
+import {
+  analyzeLedgerOvercountByMonth,
+  findDuplicatePaymentGroups,
+  normalizePaymentChannel,
+  type AuditLedgerRow,
+  type AuditPaymentRow,
+  type LedgerOvercountMonth,
+} from '@/lib/financeAuditDetection';
 
 /* ─── Types ─── */
 
 type Severity = 'critical' | 'warning' | 'info' | 'pass';
+
+type FindingKind =
+  | 'duplicate_payments'
+  | 'ledger_overcount'
+  | 'recording_mismatch'
+  | 'orphaned_payments'
+  | 'generic';
 
 interface AuditFinding {
   id: string;
@@ -28,7 +43,9 @@ interface AuditFinding {
   description: string;
   reason: string;
   rectification: string;
+  kind?: FindingKind;
   data?: Record<string, unknown>;
+  ledgerIssues?: LedgerOvercountMonth[];
 }
 
 interface AuditResult {
@@ -37,18 +54,8 @@ interface AuditResult {
   summary: { critical: number; warning: number; info: number; pass: number };
 }
 
-/* ─── Helpers ─── */
-
-const normalizePaymentChannel = (method: unknown): 'cash' | 'bank' | 'other' => {
-  const x = String(method ?? 'cash').toLowerCase().replace(/\s/g, '');
-  if (x === 'cash') return 'cash';
-  if (
-    ['upi', 'bank_transfer', 'razorpay', 'online', 'card', 'neft', 'rtgs', 'imps', 'netbanking', 'cheque', 'dd'].some(
-      (k) => x === k || x.includes(k),
-    )
-  )
-    return 'bank';
-  return 'other';
+const scrollToAuditAlarms = () => {
+  document.getElementById('finance-audit-alarms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 const sevIcon = (s: Severity) => {
@@ -115,8 +122,12 @@ const FinanceIntegrityAudit = () => {
         .select('id, flat_number, is_occupied')
         .eq('society_id', societyId);
 
-      const allPayments = (payments ?? []) as any[];
-      const allLedger = (ledgerEntries ?? []) as any[];
+      const allPayments = (payments ?? []) as AuditPaymentRow[];
+      const allLedger = (ledgerEntries ?? []) as AuditLedgerRow[];
+      const monthlyChargeIds = (charges ?? [])
+        .filter((c) => (c.frequency ?? '').toLowerCase() === 'monthly')
+        .map((c) => c.id);
+      const chargeTitleById = new Map((charges ?? []).map((c) => [c.id, c.title]));
       const allFlats = (flats ?? []) as any[];
       const verifiedPayments = allPayments.filter((p) => p.payment_status === 'verified');
 
@@ -182,40 +193,28 @@ const FinanceIntegrityAudit = () => {
         });
       }
 
-      /* ─── 3. DUPLICATE PAYMENT DETECTION ─── */
-      const dupeKey = (p: any) => {
-        const dateStr = p.due_date || p.payment_date || p.created_at || '';
-        const month = dateStr ? format(new Date(dateStr), 'yyyy-MM') : 'unknown';
-        const ch = normalizePaymentChannel(p.payment_method);
-        return `${p.flat_number}||${p.charge_id}||${month}||${ch}`;
-      };
+      /* ─── 3. DUPLICATE PAYMENT DETECTION (monthly charges — same as alarm panel) ─── */
+      const duplicateGroups = findDuplicatePaymentGroups(allPayments, chargeTitleById, {
+        chargeIds: monthlyChargeIds,
+      });
 
-      const dupeGroups = new Map<string, any[]>();
-      for (const p of allPayments.filter((x) => x.payment_status === 'verified' || x.payment_status === 'pending')) {
-        const key = dupeKey(p);
-        if (!dupeGroups.has(key)) dupeGroups.set(key, []);
-        dupeGroups.get(key)!.push(p);
-      }
-
-      let dupeCount = 0;
-      for (const [, group] of dupeGroups) {
-        if (group.length > 1) dupeCount++;
-      }
-
-      if (dupeCount > 0) {
+      if (duplicateGroups.length > 0) {
         addFinding({
           severity: 'critical',
-          title: `${dupeCount} Duplicate Payment Group${dupeCount > 1 ? 's' : ''} Found`,
-          description: `Same flat + same charge + same month + same channel has multiple entries.`,
-          reason: 'Payments were recorded more than once — either by admin double-click, network retry, or manual re-entry without checking existing records.',
-          rectification: 'Use the "Duplicate Maintenance Credits" alarm panel above to expand and delete the extra entries directly.',
-          data: { duplicateGroups: dupeCount },
+          kind: 'duplicate_payments',
+          title: `${duplicateGroups.length} Duplicate Payment Group${duplicateGroups.length > 1 ? 's' : ''} Found`,
+          description: `Same flat + monthly charge + month + channel has multiple maintenance_payments rows.`,
+          reason:
+            'Two or more payment rows exist for the same flat and month. This is different from ledger double-count (an extra finance_entries receipt without duplicate payments).',
+          rectification:
+            'Scroll to "Duplicate maintenance payment rows" above, expand the group, and delete or edit the extra payment. Keep one verified row per flat per month.',
+          data: { duplicateGroups: duplicateGroups.length },
         });
       } else {
         addFinding({
           severity: 'pass',
-          title: 'No Duplicate Payments',
-          description: 'Each flat has at most one payment per charge per month per channel.',
+          title: 'No Duplicate Payment Rows',
+          description: 'Each flat has at most one monthly maintenance payment per month per channel.',
           reason: '',
           rectification: '',
         });
@@ -233,10 +232,13 @@ const FinanceIntegrityAudit = () => {
       if (discrepancy > 1) {
         addFinding({
           severity: 'warning',
+          kind: 'recording_mismatch',
           title: `Recording vs Ledger Discrepancy: ₹${discrepancy.toLocaleString('en-IN')}`,
           description: `Sum of verified maintenance_payments (₹${mpTotal.toLocaleString('en-IN')}) does not match sum of finance_entries[flats_only] (₹${feFlatsOnlyTotal.toLocaleString('en-IN')}).`,
-          reason: 'This happens when: (1) A payment was recorded without creating a finance_entry (older data or bug), (2) A finance_entry was deleted but the payment remains, (3) Amount was edited in one table but not the other.',
-          rectification: '1. Identify payments without a finance_entry_id — these are orphaned records.\n2. Check if any finance_entry has a different total_amount than the sum of its linked payments.\n3. Re-record missing entries or delete orphaned ones from the Payments tab.',
+          reason:
+            'Lifetime totals differ — often orphaned payments (no finance_entry_id), deleted ledger rows, or amount edits in only one table. This is not the same as period-report double-count.',
+          rectification:
+            '1. Review orphaned payments below if flagged.\n2. Use Finance → Payments / Receipts to align amounts.\n3. For month-specific inflation, use "Ledger double-count" fixes above.',
           data: { maintenancePaymentsTotal: mpTotal, financeEntriesTotal: feFlatsOnlyTotal, difference: discrepancy },
         });
       } else {
@@ -249,73 +251,36 @@ const FinanceIntegrityAudit = () => {
         });
       }
 
-      /* ─── 5. PERIOD REPORT CROSS-VERIFICATION (date-boundary double-count detection) ─── */
-      // Simulate the period report logic per month and compare against raw payment sums
-      // This catches the exact bug where payment dates and entry_month fall in different periods
-      const monthlyPaymentTotals = new Map<string, number>(); // yyyy-MM → sum from payments
-      const monthlyReportTotals = new Map<string, number>(); // yyyy-MM → what period report would show
+      /* ─── 5. PERIOD REPORT LEDGER DOUBLE-COUNT (matches FinanceManager period report) ─── */
+      const ledgerOvercountIssues = analyzeLedgerOvercountByMonth(verifiedPayments, allLedger);
 
-      // Raw payment totals per month (ground truth)
-      for (const p of verifiedPayments) {
-        const d = p.due_date || p.payment_date || p.created_at || '';
-        if (!d) continue;
-        const month = format(new Date(d), 'yyyy-MM');
-        monthlyPaymentTotals.set(month, (monthlyPaymentTotals.get(month) || 0) + Number(p.amount || 0));
-      }
-
-      // Simulate period report per month: payments in range + unlinked ledger entries in range
-      for (const [month] of monthlyPaymentTotals) {
-        const fromYmd = `${month}-01`;
-        const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
-        const toYmd = `${month}-${String(lastDay).padStart(2, '0')}`;
-
-        let reportTotal = 0;
-        // Payments in this month's range
-        for (const p of verifiedPayments) {
-          const d = p.due_date || p.payment_date || p.created_at || '';
-          if (!d) continue;
-          const t = new Date(d).getTime();
-          if (t >= new Date(`${fromYmd}T00:00:00`).getTime() && t <= new Date(`${toYmd}T23:59:59.999`).getTime()) {
-            reportTotal += Number(p.amount || 0);
-          }
-        }
-        // Unlinked ledger entries in this month's range (what period report adds on top)
-        for (const e of allLedger) {
-          if (e.destination === 'separate_entry') continue;
-          const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
-          const t = new Date(ledgerDate).getTime();
-          if (t < new Date(`${fromYmd}T00:00:00`).getTime() || t > new Date(`${toYmd}T23:59:59.999`).getTime()) continue;
-          if (!linkedFeIds.has(e.id)) {
-            reportTotal += Number(e.total_amount || 0);
-          }
-        }
-        monthlyReportTotals.set(month, reportTotal);
-      }
-
-      // Check for months where report total exceeds payment total (over-counting)
-      const overCountedMonths: { month: string; paymentTotal: number; reportTotal: number; excess: number }[] = [];
-      for (const [month, payTotal] of monthlyPaymentTotals) {
-        const repTotal = monthlyReportTotals.get(month) || 0;
-        if (repTotal > payTotal + 1) { // tolerance of ₹1 for rounding
-          overCountedMonths.push({ month, paymentTotal: payTotal, reportTotal: repTotal, excess: repTotal - payTotal });
-        }
-      }
-
-      if (overCountedMonths.length > 0) {
-        const totalExcess = overCountedMonths.reduce((s, m) => s + m.excess, 0);
+      if (ledgerOvercountIssues.length > 0) {
+        const totalExcess = ledgerOvercountIssues.reduce((s, m) => s + m.excess, 0);
+        const orphanCount = ledgerOvercountIssues.reduce((s, m) => s + m.unlinkedLedger.length, 0);
         addFinding({
           severity: 'critical',
-          title: `Period Report Over-Counting: ₹${totalExcess.toLocaleString('en-IN')} excess across ${overCountedMonths.length} month(s)`,
-          description: `The period report shows more receipts than actual payments for: ${overCountedMonths.map((m) => `${fmtIsoMonthToDisplay(m.month)} (₹${m.excess.toLocaleString('en-IN')} extra)`).join(', ')}.`,
-          reason: 'This happens when a finance_entry has entry_month in one period but its linked payments have due_date in a different period. The deduplication fails at the date boundary — payments are not counted (wrong month) but the unlinked ledger entry IS counted (right month), causing double-counting.',
-          rectification: '1. Go to Finance → Payments tab and check entries near month boundaries (last/first few days).\n2. Ensure payment due_date matches the finance_entry entry_month.\n3. Or update the payment due_date to fall within the correct month.\n4. The system fix has been applied — this check verifies historical data integrity.',
-          data: { months: overCountedMonths },
+          kind: 'ledger_overcount',
+          title: `Ledger Double-Count in Reports: ₹${totalExcess.toLocaleString('en-IN')} across ${ledgerOvercountIssues.length} month(s)`,
+          description: `Period reports count extra receipt(s) beyond verified payments — usually ${orphanCount} unlinked finance_entries row(s). Months: ${ledgerOvercountIssues.map((m) => `${fmtIsoMonthToDisplay(m.month)} (+₹${m.excess.toLocaleString('en-IN')})`).join(', ')}.`,
+          reason:
+            'An extra finance ledger receipt exists without linked maintenance_payments (or payment/ledger months disagree). This inflates period reports but does NOT appear in "duplicate payment rows" — there may still be only one payment per flat.',
+          rectification:
+            'Use the "Ledger double-count (period reports)" panel above: delete orphan ledger entries, or align payment due_date with ledger entry_month. Then re-run this audit.',
+          data: {
+            months: ledgerOvercountIssues.map((m) => ({
+              month: m.month,
+              excess: m.excess,
+              unlinkedCount: m.unlinkedLedger.length,
+              boundaryCount: m.dateBoundary.length,
+            })),
+          },
+          ledgerIssues: ledgerOvercountIssues,
         });
       } else {
         addFinding({
           severity: 'pass',
           title: 'Period Report Totals Verified',
-          description: 'No date-boundary over-counting detected. Period report figures match raw payment sums.',
+          description: 'No ledger double-count in monthly period reports.',
           reason: '',
           rectification: '',
         });
@@ -327,11 +292,22 @@ const FinanceIntegrityAudit = () => {
         const orphanTotal = orphanedPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
         addFinding({
           severity: 'warning',
+          kind: 'orphaned_payments',
           title: `${orphanedPayments.length} Orphaned Payment${orphanedPayments.length > 1 ? 's' : ''} (₹${orphanTotal.toLocaleString('en-IN')})`,
           description: 'These verified payments have no linked finance_entry record.',
           reason: 'Likely recorded before the ledger system was introduced, or the finance_entry was deleted while the payment remained.',
-          rectification: '1. These payments are counted in totals but lack a ledger trail.\n2. Re-record them via Finance → Record Payment to create proper ledger entries, then delete the orphaned ones.\n3. Or accept them as legacy data if the amounts are correct.',
-          data: { count: orphanedPayments.length, total: orphanTotal },
+          rectification:
+            'Finance → Payments: re-record with ledger, or delete orphan payment rows if they are mistakes. Sample rows are listed when you expand this finding.',
+          data: {
+            count: orphanedPayments.length,
+            total: orphanTotal,
+            samples: orphanedPayments.slice(0, 8).map((p) => ({
+              id: p.id.slice(0, 8),
+              flat: p.flat_number,
+              amount: p.amount,
+              due: p.due_date,
+            })),
+          },
         });
       } else {
         addFinding({
@@ -569,6 +545,39 @@ const FinanceIntegrityAudit = () => {
                           <ArrowRight className="w-3 h-3" /> How to Rectify
                         </p>
                         <p className="text-xs text-foreground mt-1 whitespace-pre-line">{f.rectification}</p>
+                        {(f.kind === 'ledger_overcount' || f.kind === 'duplicate_payments') && (
+                          <button
+                            type="button"
+                            className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              scrollToAuditAlarms();
+                            }}
+                          >
+                            Open fix panel above
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {f.kind === 'ledger_overcount' && f.ledgerIssues && f.ledgerIssues.length > 0 && (
+                      <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 space-y-2">
+                        <p className="text-[10px] font-semibold uppercase text-muted-foreground">Affected months</p>
+                        {f.ledgerIssues.map((issue) => (
+                          <div key={issue.month} className="text-xs">
+                            <p className="font-medium">
+                              {fmtIsoMonthToDisplay(issue.month)} — ₹{issue.excess.toLocaleString('en-IN')} extra
+                            </p>
+                            {issue.unlinkedLedger.length > 0 && (
+                              <ul className="mt-1 space-y-0.5 text-[10px] text-muted-foreground list-disc pl-4">
+                                {issue.unlinkedLedger.slice(0, 4).map((e) => (
+                                  <li key={e.id}>
+                                    Orphan ledger: {e.title || 'Entry'} · ₹{e.total_amount.toLocaleString('en-IN')}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                     {f.data && (

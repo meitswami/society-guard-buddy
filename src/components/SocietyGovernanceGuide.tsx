@@ -71,7 +71,8 @@ const sections: Section[] = [
       {
         heading: 'Problems Addressed',
         points: [
-          'Double-entry of maintenance (same flat credited twice) — detected by Duplicate Alarms above.',
+          'Duplicate maintenance payment rows (same flat credited twice) — Duplicate payment alarms above.',
+          'Ledger double-count in period reports (extra finance_entries receipt) — Ledger double-count panel above; fix with delete or month alignment.',
           'Negative cash/bank balance — flagged by Internal Audit with root cause and fix steps.',
           'Unverified payments sitting for weeks — audit flags pending entries > 7 days.',
           'Mismatch between what was recorded vs what is reported — cross-checked automatically.',
