@@ -21,7 +21,7 @@ import AdminResidentManager from '@/components/AdminResidentManager';
 import AdminPasswordChange from '@/components/AdminPasswordChange';
 import BiometricSetup from '@/components/BiometricSetup';
 import AuditLogViewer from '@/components/AuditLogViewer';
-import FinanceManager from '@/components/FinanceManager';
+import FinanceManager, { type FinanceSubTab } from '@/components/FinanceManager';
 import DonationManager from '@/components/DonationManager';
 import EventsModule from '@/components/EventsModule';
 import PollManager from '@/components/PollManager';
@@ -54,6 +54,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const { setSocietyId, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, loadGuards } = useStore();
   const notificationFeedRevision = useNotificationsRealtimeRevision(true, `admin-${admin.id}`);
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [financeInitialSubTab, setFinanceInitialSubTab] = useState<FinanceSubTab | null>(null);
   const activeTabRef = useRef<AdminTab>('overview');
   const exitBackTsRef = useRef(0);
   const [stats, setStats] = useState({
@@ -382,13 +383,20 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   );
 
   const goToTab = useCallback(
-    (tab: AdminTab) => {
+    (tab: AdminTab, opts?: { financeSubTab?: FinanceSubTab }) => {
+      if (tab === 'finance' && opts?.financeSubTab) setFinanceInitialSubTab(opts.financeSubTab);
       recordTabUse(tab);
       setActiveTab(tab);
       if (tab === 'overview' && admin.societyId) void loadStats();
     },
     [recordTabUse, admin.societyId, loadStats],
   );
+
+  useEffect(() => {
+    if (activeTab !== 'splits') return;
+    setFinanceInitialSubTab('record_payment');
+    setActiveTab('finance');
+  }, [activeTab]);
 
   const handleLogout = async () => {
     const confirmed = await confirmAction(
@@ -497,11 +505,20 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         </div>
       );
       case 'audit': return <AuditLogViewer onNavigate={setActiveTab} />;
-      case 'finance': return <FinanceManager adminName={admin.name} adminId={admin.id} />;
+      case 'finance':
+        return (
+          <FinanceManager
+            adminName={admin.name}
+            adminId={admin.id}
+            initialSubTab={financeInitialSubTab ?? undefined}
+            onInitialSubTabConsumed={() => setFinanceInitialSubTab(null)}
+          />
+        );
       case 'donations': return <DonationManager adminName={admin.name} />;
       case 'events':
-      case 'splits':
         return <EventsModule adminName={admin.name} onNavigateTab={goToTab} />;
+      case 'splits':
+        return null;
       case 'meetings': return <MeetingManager adminName={admin.name} />;
       case 'committee': return <CommitteeManager />;
       case 'polls': return <PollManager adminName={admin.name} />;
@@ -735,7 +752,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         </div>
       )}
 
-      {/* Splitwise Monthly Breakdown Modal */}
+      {/* Event food expenses — monthly breakdown */}
       {splitwiseMonthlyModal && (
         <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
           <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3 max-h-[80vh] overflow-auto">

@@ -691,10 +691,10 @@ const translations: Record<string, Record<Lang, string>> = {
   },
   'report.maintenanceLinkedToLedger': { en: 'Linked to finance ledger', hi: 'वित्त लेजर से जुड़ा' },
   'report.maintenanceNotLinkedToLedger': { en: 'Not linked to ledger', hi: 'लेजर से अलग' },
-  'report.splitwiseFromGroups': { en: 'Splitwise (expense groups)', hi: 'स्प्लिटवाइज़ (खर्च समूह)' },
+  'report.splitwiseFromGroups': { en: 'Society payments (expense groups)', hi: 'समाज भुगतान (खर्च समूह)' },
   'report.splitwiseFromGroupsHint': {
-    en: 'Only expenses under a society expense group, active records in the month.',
-    hi: 'समाज के खर्च समूह के अंतर्गत, सक्रिय रिकॉर्ड।',
+    en: 'General society payments (utilities, vendors) under Record payment — active records in the month. Event food is under Events.',
+    hi: 'रिकॉर्ड भुगतान के तहत सामान्य समाज भुगतान — सक्रिय रिकॉर्ड। इवेंट भोजन इवेंट्स में।',
   },
   'report.receiptsLedgerStatus': { en: 'Receipts — ledger status', hi: 'रसीद — लेजर स्थिति' },
   'report.financeLedgerSubtitle': {
@@ -710,8 +710,8 @@ const translations: Record<string, Record<Lang, string>> = {
     hi: 'इस माह नियत तारीख वाला कोई रखरखाव भुगतान नहीं।',
   },
   'report.noSplitwiseSplits': {
-    en: 'No split entries for grouped expenses in this month.',
-    hi: 'इस माह समूहित खर्चों पर कोई स्प्लिट नहीं।',
+    en: 'No society payment splits in this month.',
+    hi: 'इस माह कोई समाज भुगतान स्प्लिट नहीं।',
   },
   'report.colMode': { en: 'Mode', hi: 'मोड' },
   'report.colDestination': { en: 'Destination', hi: 'गंतव्य' },

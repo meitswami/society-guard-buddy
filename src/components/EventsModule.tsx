@@ -2,10 +2,11 @@ import { Calendar, UtensilsCrossed } from 'lucide-react';
 import EventManager from '@/components/EventManager';
 import ExpenseSplitter from '@/components/ExpenseSplitter';
 import type { AdminTab } from '@/lib/adminPermissions';
+import type { FinanceSubTab } from '@/components/FinanceManager';
 
 type Props = {
   adminName?: string;
-  onNavigateTab?: (tab: AdminTab) => void;
+  onNavigateTab?: (tab: AdminTab, opts?: { financeSubTab?: FinanceSubTab }) => void;
 };
 
 /**
@@ -37,7 +38,7 @@ const EventsModule = ({ adminName = 'Admin', onNavigateTab }: Props) => {
             <button
               type="button"
               className="text-primary underline font-medium"
-              onClick={() => onNavigateTab('finance')}
+              onClick={() => onNavigateTab('finance', { financeSubTab: 'record_payment' })}
             >
               Finance → Record Payment
             </button>
@@ -65,7 +66,9 @@ const EventsModule = ({ adminName = 'Admin', onNavigateTab }: Props) => {
           adminName={adminName}
           foodOnly
           embedded
-          onOpenFinance={onNavigateTab ? () => onNavigateTab('finance') : undefined}
+          onOpenFinance={
+            onNavigateTab ? () => onNavigateTab('finance', { financeSubTab: 'record_payment' }) : undefined
+          }
         />
       </section>
     </div>

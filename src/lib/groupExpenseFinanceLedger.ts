@@ -1,5 +1,6 @@
 import { format, isValid, parse } from 'date-fns';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { buildGroupExpenseLedgerTitle, joinNoteLines } from '@/lib/financeExpenseHead';
 
 export function entryMonthFromExpenseDate(expenseDate: string): string {
   const d = parse(expenseDate, 'yyyy-MM-dd', new Date());
@@ -32,6 +33,8 @@ export async function insertFinanceLedgerForGroupExpense(
     flats: { id: string; flat_number: string }[];
     counterpartyName: string;
     counterpartyRelation: string | null;
+    expenseCategory: 'food' | 'payment';
+    eventTitle?: string | null;
   },
 ): Promise<{ error: string | null }> {
   const transaction_date = opts.expenseDate.slice(0, 10);
@@ -42,10 +45,17 @@ export async function insertFinanceLedgerForGroupExpense(
     return { error: 'Split amounts do not match expense total for ledger' };
   }
   const allocation_style = allocationStyleForAmounts(amounts);
-  const title = `[${opts.groupName}] ${opts.title.trim()}`;
-  const noteLines = [opts.notes?.trim() || null, opts.vendor_or_service?.trim() ? `Vendor: ${opts.vendor_or_service.trim()}` : null].filter(
-    Boolean,
-  ) as string[];
+  const { ledgerTitle, detailNote } = buildGroupExpenseLedgerTitle({
+    expenseCategory: opts.expenseCategory,
+    groupName: opts.groupName,
+    expenseTitle: opts.title,
+    eventTitle: opts.eventTitle,
+  });
+  const notes = joinNoteLines([
+    detailNote,
+    opts.notes?.trim() || null,
+    opts.vendor_or_service?.trim() ? `Vendor: ${opts.vendor_or_service.trim()}` : null,
+  ]);
 
   const { data: fe, error: feErr } = await client
     .from('finance_entries')
@@ -60,8 +70,8 @@ export async function insertFinanceLedgerForGroupExpense(
       total_amount: opts.total,
       aggregate_flat_count: opts.allocationSplits.length,
       charge_id: null,
-      title,
-      notes: noteLines.length ? noteLines.join('\n') : null,
+      title: ledgerTitle,
+      notes,
       screenshot_url: opts.screenshot_url,
       transaction_id: null,
       payment_method: opts.payment_method,
@@ -122,6 +132,8 @@ export async function syncFinanceLedgerFromGroupExpenseEdit(
     allocationSplits: { flat_number: string; amount: number }[];
     counterpartyName: string;
     counterpartyRelation: string | null;
+    expenseCategory: 'food' | 'payment';
+    eventTitle?: string | null;
   },
 ): Promise<{ error: string | null }> {
   const { data: fe, error: findErr } = await client.from('finance_entries').select('id').eq('expense_id', opts.expenseId).maybeSingle();
@@ -136,10 +148,17 @@ export async function syncFinanceLedgerFromGroupExpenseEdit(
     return { error: 'Split amounts do not match expense total for ledger sync' };
   }
   const allocation_style = allocationStyleForAmounts(amounts);
-  const title = `[${opts.groupName}] ${opts.title.trim()}`;
-  const noteLines = [opts.notes?.trim() || null, opts.vendor_or_service?.trim() ? `Vendor: ${opts.vendor_or_service.trim()}` : null].filter(
-    Boolean,
-  ) as string[];
+  const { ledgerTitle, detailNote } = buildGroupExpenseLedgerTitle({
+    expenseCategory: opts.expenseCategory,
+    groupName: opts.groupName,
+    expenseTitle: opts.title,
+    eventTitle: opts.eventTitle,
+  });
+  const notes = joinNoteLines([
+    detailNote,
+    opts.notes?.trim() || null,
+    opts.vendor_or_service?.trim() ? `Vendor: ${opts.vendor_or_service.trim()}` : null,
+  ]);
 
   const { error: upErr } = await client
     .from('finance_entries')
@@ -149,8 +168,8 @@ export async function syncFinanceLedgerFromGroupExpenseEdit(
       total_amount: opts.total,
       aggregate_flat_count: opts.allocationSplits.length,
       allocation_style,
-      title,
-      notes: noteLines.length ? noteLines.join('\n') : null,
+      title: ledgerTitle,
+      notes,
       payment_method: opts.payment_method,
       created_by: opts.adminName,
     })

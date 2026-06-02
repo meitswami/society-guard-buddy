@@ -166,14 +166,18 @@ const ReportPage = () => {
         setDonationStatuses([...dMap.entries()].map(([status, v]) => ({ status, ...v })));
       }
 
-      // Splitwise
-      const { data: groups } = await supabase.from('expense_groups').select('id').eq('society_id', societyId);
+      // Society payments (Record payment) — not event food
+      const { data: groups } = await supabase
+        .from('expense_groups')
+        .select('id')
+        .eq('society_id', societyId)
+        .eq('group_kind', 'general');
       const groupIds = (groups as { id: string }[] | null)?.map((g) => g.id) ?? [];
       if (!groupIds.length) { setSplitStatuses([]); }
       else {
         const { data: ex } = await supabase
           .from('expenses').select('id, expense_date, record_status, group_id')
-          .in('group_id', groupIds).eq('record_status', 'active')
+          .in('group_id', groupIds).eq('record_status', 'active').eq('expense_category', 'payment')
           .gte('expense_date', dueFrom).lte('expense_date', dueTo);
         const expIds = (ex as { id: string }[] | null)?.map((x) => x.id) ?? [];
         if (!expIds.length) { setSplitStatuses([]); }
@@ -441,8 +445,8 @@ const ReportPage = () => {
       amount: s.total,
       status: s.status,
     }));
-    setModalTitle('Expense Splits — Summary');
-    setModalSubtitle(`Splitwise entries for ${reportMonth}`);
+    setModalTitle('Society payment splits — Summary');
+    setModalSubtitle(`Record payment entries for ${reportMonth}`);
     setModalTotal(total);
     setModalRows(rows);
     setModalOpen(true);

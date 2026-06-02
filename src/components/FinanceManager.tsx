@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
@@ -28,10 +28,24 @@ import {
   FINANCE_PERIOD_METRICS,
   FINANCE_TOTALS_METRICS,
 } from '@/lib/descriptiveMetricCopy';
+import ExpenseSplitter from '@/components/ExpenseSplitter';
+import { financeExpenseHeadFromLedgerEntry } from '@/lib/financeExpenseHead';
+
+export type FinanceSubTab =
+  | 'maintenance'
+  | 'payments'
+  | 'record_payment'
+  | 'receipts'
+  | 'period'
+  | 'totals'
+  | 'reminders'
+  | 'flat_report';
 
 interface Props {
   adminName?: string;
   adminId?: string;
+  initialSubTab?: FinanceSubTab;
+  onInitialSubTabConsumed?: () => void;
 }
 
 const normalizeTitle = (value: unknown) => String(value ?? '').trim().toLowerCase();
@@ -119,10 +133,10 @@ type FinanceLedgerRow = {
   finance_entry_allocations: { flat_number: string; amount: number; flat_id: string | null }[] | null;
 };
 
-const isSplitwiseLedgerEntry = (e: FinanceLedgerRow) => Boolean(e.expense_id);
+const isGroupExpenseLedgerEntry = (e: FinanceLedgerRow) => Boolean(e.expense_id);
 
 const isLedgerInSocietyPool = (e: FinanceLedgerRow) => {
-  if (isSplitwiseLedgerEntry(e)) return false;
+  if (isGroupExpenseLedgerEntry(e)) return false;
   if (e.distributed_at) return false;
   const allocCount = e.finance_entry_allocations?.length ?? 0;
   if (e.record_mode === 'society_pool') return allocCount === 0;
@@ -132,11 +146,11 @@ const isLedgerInSocietyPool = (e: FinanceLedgerRow) => {
 const transactionFilterHint = (filter: string): string => {
   switch (filter) {
     case 'all_payments':
-      return 'Event / function expenses only — shared celebration costs (adults+kids split), not society maintenance receipts.';
+      return 'Society payments recorded via Record payment — vendor bills, utilities, repairs split across flats (not event food or maintenance receipts).';
     case 'all_receipts':
       return 'Society collections — flat owners, outsiders, monthly/one-time charges; pooled until you distribute to flats.';
     case 'all':
-      return 'Everything in this period: society receipts and event-expense ledger rows.';
+      return 'Everything in this period: society receipts and society-payment ledger rows.';
     case 'society_pool_pending':
       return 'Receipts recorded in the society pool that are not yet split equally across flats.';
     default:
@@ -183,13 +197,47 @@ function PeriodMetric({
   );
 }
 
-const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
+const FinanceManager = ({
+  adminName = 'Admin',
+  adminId: _adminId,
+  initialSubTab,
+  onInitialSubTabConsumed,
+}: Props) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
-  const [subTab, setSubTab] = useState<'maintenance' | 'payments' | 'receipts' | 'period' | 'totals' | 'reminders' | 'flat_report'>('maintenance');
+  const [subTab, setSubTab] = useState<FinanceSubTab>('maintenance');
+  const [expenseCategoryById, setExpenseCategoryById] = useState<Map<string, string>>(new Map());
   const [charges, setCharges] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<FinanceLedgerRow[]>([]);
+
+  useEffect(() => {
+    if (!initialSubTab) return;
+    setSubTab(initialSubTab);
+    onInitialSubTabConsumed?.();
+  }, [initialSubTab, onInitialSubTabConsumed]);
+
+  const isSocietyPaymentLedgerEntry = useCallback(
+    (e: FinanceLedgerRow) => {
+      if (!e.expense_id) return false;
+      const cat = expenseCategoryById.get(e.expense_id);
+      return cat !== 'food';
+    },
+    [expenseCategoryById],
+  );
+
+  const ledgerEntryKindLabel = useCallback(
+    (e: FinanceLedgerRow) => {
+      if (!e.expense_id) {
+        return isLedgerInSocietyPool(e)
+          ? 'Society pool — not yet distributed'
+          : 'Ledger-only (no maintenance payment rows)';
+      }
+      if (expenseCategoryById.get(e.expense_id) === 'food') return 'Event food expense';
+      return 'Society payment (split across flats)';
+    },
+    [expenseCategoryById],
+  );
   const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null; is_occupied: boolean | null }[]>([]);
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
   const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
@@ -398,18 +446,33 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       .eq('society_id', societyId)
       .order('created_at', { ascending: false })
       .limit(2500);
-    setLedgerEntries((led as FinanceLedgerRow[]) ?? []);
+    const ledRows = (led as FinanceLedgerRow[]) ?? [];
+    setLedgerEntries(ledRows);
+
+    const linkedExpenseIds = ledRows.map((e) => e.expense_id).filter((id): id is string => Boolean(id));
+    if (linkedExpenseIds.length > 0) {
+      const { data: expCats } = await supabase
+        .from('expenses')
+        .select('id, expense_category')
+        .in('id', linkedExpenseIds);
+      setExpenseCategoryById(
+        new Map((expCats ?? []).map((row) => [String((row as { id: string }).id), String((row as { expense_category?: string }).expense_category ?? '')])),
+      );
+    } else {
+      setExpenseCategoryById(new Map());
+    }
   };
 
   const loadFlatReportData = async () => {
     if (!societyId) return;
     setFlatReportLoading(true);
     try {
-      // Load expense splits from Splitwise module
+      // Society payments (Record payment) — not event food
       const { data: groupRows } = await supabase
         .from('expense_groups')
         .select('id, name')
-        .eq('society_id', societyId);
+        .eq('society_id', societyId)
+        .eq('group_kind', 'general');
       const groupIds = (groupRows ?? []).map((g) => g.id);
       let expRows: any[] = [];
       let splitRows: any[] = [];
@@ -418,7 +481,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           .from('expenses')
           .select('id, title, total_amount, expense_date, payment_method, vendor_or_service, service_kind, group_id, split_type, paid_by_flat, paid_by_flats, record_status')
           .in('group_id', groupIds)
-          .eq('record_status', 'active');
+          .eq('record_status', 'active')
+          .eq('expense_category', 'payment');
         expRows = exps ?? [];
         const expIds = expRows.map((e) => e.id);
         if (expIds.length > 0) {
@@ -1565,7 +1629,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
     const options: { value: string; label: string }[] = [
       { value: 'all', label: '--All--' },
-      { value: 'all_payments', label: 'Event / function expense records' },
+      { value: 'all_payments', label: 'Society payment records' },
       { value: 'all_receipts', label: 'All society receipt records' },
     ];
     if (ledgerEntries.some((e) => isLedgerInSocietyPool(e))) {
@@ -1622,7 +1686,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     )
       return false;
     const fe = p.finance_entry_id ? financeEntryById.get(p.finance_entry_id as string) : undefined;
-    if (fe && isSplitwiseLedgerEntry(fe)) return false;
+    if (fe && isGroupExpenseLedgerEntry(fe)) return false;
     if (receiptModeFilter !== 'all') {
       const mode = fe?.record_mode ?? 'flats_only';
       if (mode !== receiptModeFilter) return false;
@@ -1667,8 +1731,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
   const scopedLedgerOnly = useMemo(() => {
     return ledgerEntries.filter((e) => {
-      const splitwise = isSplitwiseLedgerEntry(e);
-      if (paymentTypeFilter === 'all_payments' && !splitwise) return false;
+      const societyPayment = isSocietyPaymentLedgerEntry(e);
+      if (paymentTypeFilter === 'all_payments' && !societyPayment) return false;
       if (
         (paymentTypeFilter === 'all_receipts' ||
           paymentTypeFilter === 'society_pool_pending' ||
@@ -1680,7 +1744,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           paymentTypeFilter === 'quarterly' ||
           paymentTypeFilter === 'yearly' ||
           paymentTypeFilter === 'one-time') &&
-        splitwise
+        societyPayment
       )
         return false;
       if (paymentTypeFilter === 'society_pool_pending' && !isLedgerInSocietyPool(e)) return false;
@@ -1695,7 +1759,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       }
 
       if (paymentTypeFilter === 'all' || paymentTypeFilter === 'all_payments' || paymentTypeFilter === 'all_receipts') {
-        // include (splitwise / society split applied above)
+        // include (society payment / receipt filters applied above)
       } else if (paymentTypeFilter === 'society_pool_pending') {
         // include pooled rows only
       } else if (paymentTypeFilter === 'monthly_maintenance') {
@@ -1737,6 +1801,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     filterStatus,
     paymentSearchQuery,
     chargeById,
+    isSocietyPaymentLedgerEntry,
   ]);
 
   const unpaidReceiptRows = useMemo(() => {
@@ -1845,7 +1910,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       const m = ledgerMonthValue(e);
       if (m !== totalsMonth) continue;
       if (e.destination !== 'separate_entry') continue;
-      const head = (e.title || 'Society expense').trim() || 'Society expense';
+      const head = financeExpenseHeadFromLedgerEntry(e.title, e.expense_id ? expenseCategoryById.get(e.expense_id) : null);
       const cur = map.get(head) ?? { total: 0, flatUnits: 0, entries: 0, method: '' };
       cur.total += Number(e.total_amount || 0);
       cur.flatUnits += Number(e.aggregate_flat_count || 0);
@@ -1856,7 +1921,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     return [...map.entries()]
       .map(([head, v]) => ({ head, ...v }))
       .sort((a, b) => a.head.localeCompare(b.head));
-  }, [ledgerEntries, totalsMonth]);
+  }, [ledgerEntries, totalsMonth, expenseCategoryById]);
 
   const totalsMonthOutflow = useMemo(
     () => totalsOutflowBreakdown.reduce((s, r) => s + r.total, 0),
@@ -1967,7 +2032,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       }
     }
 
-    // Expense splits from Splitwise in range
+    // Society payment splits (Record payment) in range
     for (const split of flatReportSplits) {
       const exp = flatReportExpenses.find((e) => e.id === split.expense_id);
       if (!exp) continue;
@@ -2085,7 +2150,10 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       const ch = normalizePaymentChannel(e.payment_method);
       if (e.destination === 'separate_entry') {
         expenseByMethod[ch] += amt;
-        const head = (e.title || 'Society expense').trim() || 'Society expense';
+        const head = financeExpenseHeadFromLedgerEntry(
+          e.title,
+          e.expense_id ? expenseCategoryById.get(e.expense_id) : null,
+        );
         const cur = expenseByHead.get(head) ?? { cash: 0, bank: 0, other: 0, total: 0 };
         cur[ch] += amt;
         cur.total += amt;
@@ -2132,7 +2200,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       closingOther,
       closingBalance,
     };
-  }, [periodFrom, periodTo, payments, ledgerEntries]);
+  }, [periodFrom, periodTo, payments, ledgerEntries, expenseCategoryById]);
 
   const collectReportAudienceIds = (): string[] => {
     if (reportAudience === 'all') return residentUsers.map((r) => r.id);
@@ -2441,6 +2509,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           [
             { id: 'maintenance' as const, label: 'Create Receipts' },
             { id: 'payments' as const, label: 'Record receipt' },
+            { id: 'record_payment' as const, label: 'Record payment' },
             { id: 'receipts' as const, label: 'Transactions' },
             { id: 'period' as const, label: 'Period report' },
             { id: 'totals' as const, label: 'Totals' },
@@ -2962,6 +3031,17 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         </div>
       )}
 
+      {subTab === 'record_payment' && (
+        <div>
+          <p className="text-xs text-muted-foreground mb-3 leading-snug">
+            Record society outflows (electricity, vendors, repairs) and split across flats — same pattern as{' '}
+            <span className="text-foreground font-medium">Record receipt</span> for inflows. Event food/catering →{' '}
+            <span className="text-foreground font-medium">Events &amp; food</span>.
+          </p>
+          <ExpenseSplitter adminName={adminName} paymentOnly embedded />
+        </div>
+      )}
+
       {subTab === 'receipts' && (
         <div>
           <input
@@ -3266,11 +3346,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                           <div className="min-w-0">
                             <p className="text-[11px] text-muted-foreground">
                               {ledgerMonthDisplay(item.e)} ·{' '}
-                              {isSplitwiseLedgerEntry(item.e)
-                                ? 'Event / function expense'
-                                : isLedgerInSocietyPool(item.e)
-                                  ? 'Society pool — not yet distributed'
-                                  : 'Ledger-only (no maintenance payment rows)'}
+                              {ledgerEntryKindLabel(item.e)}
                             </p>
                             <p className="text-sm font-semibold truncate">{item.e.title || 'Finance entry'}</p>
                             <p className="text-[10px] text-muted-foreground">
@@ -4125,7 +4201,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               <div>
                 <h3 className="text-sm font-semibold">Flat-wise Financial Report</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Per-flat breakdown of maintenance receipts and expense splits (Splitwise) for reporting &amp; visibility — not for accounting.
+                  Per-flat breakdown of maintenance receipts and society payment splits for reporting &amp; visibility — not for accounting.
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

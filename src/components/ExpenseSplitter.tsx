@@ -16,12 +16,20 @@ import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { RecordingDateBanner } from '@/components/RecordingDateBanner';
 import { EVENT_EXPENSE_METRICS } from '@/lib/descriptiveMetricCopy';
 import { billingMonthFromDate, isBillingDateInEntryMonth, todayRecordingDate } from '@/lib/financeDates';
+import { SOCIETY_PAYMENT_EXPENSE_HEADS } from '@/lib/financeExpenseHead';
 
 interface Props {
   adminName?: string;
   foodOnly?: boolean;
+  paymentOnly?: boolean;
   embedded?: boolean;
   onOpenFinance?: () => void;
+}
+
+function ledgerCounterpartyPrefix(foodOnly: boolean, paymentOnly: boolean): string {
+  if (foodOnly) return 'Event food';
+  if (paymentOnly) return 'Society payment';
+  return 'Event expense';
 }
 
 type FundingSource = 'residents' | 'society_fund';
@@ -62,7 +70,13 @@ async function uploadExpenseBill(groupId: string, file: File): Promise<string | 
   return data.publicUrl;
 }
 
-const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = false, onOpenFinance }: Props) => {
+const ExpenseSplitter = ({
+  adminName = 'Admin',
+  foodOnly = false,
+  paymentOnly = false,
+  embedded = false,
+  onOpenFinance,
+}: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [groups, setGroups] = useState<ExpenseGroupRow[]>([]);
   const [events, setEvents] = useState<{ id: string; title: string; event_date: string }[]>([]);
@@ -87,6 +101,15 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
     adult_weight: '1',
     child_weight: '0.5',
   });
+  const [paymentHeadPreset, setPaymentHeadPreset] = useState('');
+
+  const ledgerExpenseCategory = (): 'food' | 'payment' => (foodOnly ? 'food' : 'payment');
+
+  const eventTitleForGroup = (groupId: string): string | null => {
+    const g = groups.find((x) => x.id === groupId);
+    if (!g?.event_id) return null;
+    return events.find((ev) => ev.id === g.event_id)?.title ?? null;
+  };
   const [ef, setEf] = useState({
     title: '',
     total_amount: '',
@@ -160,17 +183,23 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
         : { data: [] as FlatMemberRow[] };
     setFlatMembers((memberRes.data as FlatMemberRow[]) ?? []);
 
-    const { data: ev } = await supabase
-      .from('events')
-      .select('id, title, event_date')
-      .eq('society_id', societyId)
-      .order('event_date', { ascending: false })
-      .limit(80);
-    setEvents((ev as { id: string; title: string; event_date: string }[]) ?? []);
+    if (foodOnly) {
+      const { data: ev } = await supabase
+        .from('events')
+        .select('id, title, event_date')
+        .eq('society_id', societyId)
+        .order('event_date', { ascending: false })
+        .limit(80);
+      setEvents((ev as { id: string; title: string; event_date: string }[]) ?? []);
+    } else {
+      setEvents([]);
+    }
 
     let groupQuery = supabase.from('expense_groups').select('*').eq('society_id', societyId);
     if (foodOnly) {
       groupQuery = groupQuery.eq('group_kind', 'event');
+    } else if (paymentOnly) {
+      groupQuery = groupQuery.eq('group_kind', 'general');
     }
     const { data: g } = await groupQuery.order('created_at', { ascending: false });
     if (g) setGroups(g);
@@ -184,6 +213,8 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
     let expQuery = supabase.from('expenses').select('*').in('group_id', groupIds);
     if (foodOnly) {
       expQuery = expQuery.eq('expense_category', 'food');
+    } else if (paymentOnly) {
+      expQuery = expQuery.eq('expense_category', 'payment');
     }
     const { data: e } = await expQuery.order('created_at', { ascending: false });
     if (e) setExpenses(e);
@@ -194,7 +225,7 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
     }
     const { data: s } = await supabase.from('expense_splits').select('*').in('expense_id', expIds);
     if (s) setSplits(s);
-  }, [societyId]);
+  }, [societyId, foodOnly, paymentOnly]);
 
   useEffect(() => {
     void loadAll();
@@ -210,7 +241,7 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
       payment_method: 'cash',
       notes: '',
     });
-    setSplitMode('by_headcount');
+    setSplitMode(paymentOnly ? 'even' : 'by_headcount');
     setSplitFlats([]);
     setPaidByFlats([]);
     setCustomSplits({});
@@ -235,8 +266,8 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
         description: gf.description?.trim() || null,
         created_by: adminName,
         society_id: societyId,
-        event_id: gf.event_id || null,
-        group_kind: foodOnly ? 'event' : gf.group_kind,
+        event_id: foodOnly ? gf.event_id || null : paymentOnly ? null : gf.event_id || null,
+        group_kind: foodOnly ? 'event' : paymentOnly ? 'general' : gf.group_kind,
         adult_weight: Number(gf.adult_weight) || 1,
         child_weight: Number(gf.child_weight) || 0.5,
       },
@@ -250,6 +281,7 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
       child_weight: '0.5',
     });
     setShowGroupForm(false);
+    setPaymentHeadPreset('');
     toast.success('Group created');
     loadAll();
   };
@@ -385,8 +417,10 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
         vendor_or_service: ef.vendor_or_service?.trim() || null,
         allocationSplits: [{ flat_number: 'SOCIETY', amount: total }],
         flats,
-        counterpartyName: `Event expense: ${groupName}`,
+        counterpartyName: `${ledgerCounterpartyPrefix(foodOnly, paymentOnly)}: ${groupName}`,
         counterpartyRelation: 'Society fund (no per-flat split)',
+        expenseCategory: ledgerExpenseCategory(),
+        eventTitle: eventTitleForGroup(groupId),
       });
       if (ledgerRes.error) {
         toast.error(ledgerRes.error);
@@ -582,8 +616,10 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
       vendor_or_service: ef.vendor_or_service?.trim() || null,
       allocationSplits: splitRows.map((r) => ({ flat_number: r.flat_number, amount: r.amount })),
       flats,
-      counterpartyName: `Event expense: ${groupName}`,
+      counterpartyName: `${ledgerCounterpartyPrefix(foodOnly, paymentOnly)}: ${groupName}`,
       counterpartyRelation: `Advanced by flat(s): ${paidBySorted.join(', ')}`,
+      expenseCategory: ledgerExpenseCategory(),
+      eventTitle: eventTitleForGroup(groupId),
     });
     if (ledgerRes.error) {
       toast.error(ledgerRes.error);
@@ -802,7 +838,10 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
       return;
     }
 
-    const groupName = groups.find((g) => g.id === old.group_id)?.name ?? 'Expense group';
+    const groupId = String(old.group_id || '');
+    const groupName = groups.find((g) => g.id === groupId)?.name ?? 'Expense group';
+    const editCategory: 'food' | 'payment' =
+      String(old.expense_category) === 'food' || foodOnly ? 'food' : 'payment';
     const { data: splitFresh } = await supabase.from('expense_splits').select('flat_number, amount').eq('expense_id', expenseEdit.id);
     const allocationSplits =
       old.split_type === 'society_fund'
@@ -828,8 +867,10 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
       vendor_or_service: expenseEdit.vendor_or_service.trim() || null,
       flats,
       allocationSplits,
-      counterpartyName: `Event expense: ${groupName}`,
+      counterpartyName: `${ledgerCounterpartyPrefix(foodOnly, paymentOnly)}: ${groupName}`,
       counterpartyRelation,
+      expenseCategory: editCategory,
+      eventTitle: editCategory === 'food' ? eventTitleForGroup(groupId) : null,
     });
     if (syncRes.error) {
       toast.error(`Expense updated, but ledger sync failed: ${syncRes.error}`);
@@ -931,7 +972,7 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
 
   return (
     <div className={embedded ? '' : 'page-container pb-24'}>
-      <RecordingDateBanner className={embedded ? 'mb-3' : 'mb-4'} />
+      {!(paymentOnly && embedded) && <RecordingDateBanner className={embedded ? 'mb-3' : 'mb-4'} />}
 
       {!embedded && (
         <div className="flex items-center gap-3 mb-4">
@@ -939,11 +980,19 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
             <Split className="w-5 h-5 text-orange-500" />
           </div>
           <div>
-            <h1 className="page-title">{foodOnly ? 'Food expenses (events)' : 'Event & function expenses'}</h1>
+            <h1 className="page-title">
+              {foodOnly
+                ? 'Food expenses (events)'
+                : paymentOnly
+                  ? 'Record payment'
+                  : 'Event & function expenses'}
+            </h1>
             <p className="text-xs text-muted-foreground">
               {foodOnly
                 ? 'Catering and meal costs split by adults & kids per flat'
-                : 'Split celebration / function costs by family — adults & kids per flat (not monthly maintenance)'}
+                : paymentOnly
+                  ? 'Society outflows — utilities, vendors, repairs — split across flats or society fund'
+                  : 'Split celebration / function costs by family — adults & kids per flat (not monthly maintenance)'}
             </p>
           </div>
         </div>
@@ -1005,63 +1054,115 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
         onClick={() => setShowGroupForm(!showGroupForm)}
         className="btn-primary w-full mb-4 flex items-center justify-center gap-2"
       >
-        <Plus className="w-4 h-4" /> {foodOnly ? 'New food expense group' : 'New event / function group'}
+        <Plus className="w-4 h-4" />{' '}
+        {foodOnly ? 'New food expense group' : paymentOnly ? 'New expense head' : 'New event / function group'}
       </button>
 
       {showGroupForm && (
         <div className="card-section p-4 mb-4 flex flex-col gap-3">
-          <input
-            className="input-field"
-            placeholder={foodOnly ? 'Group name (e.g. Annual day lunch, Diwali dinner)' : 'Group name (e.g. Diwali 2026, Annual day lunch)'}
-            value={gf.name}
-            onChange={(e) => setGf({ ...gf, name: e.target.value })}
-          />
-          <select
-            className="input-field"
-            value={gf.event_id}
-            onChange={(e) => setGf({ ...gf, event_id: e.target.value })}
-          >
-            <option value="">{foodOnly ? 'Select calendar event (required)' : 'Link to calendar event (optional)'}</option>
-            {events.map((ev) => (
-              <option key={ev.id} value={ev.id}>
-                {ev.title} ({ev.event_date})
-              </option>
-            ))}
-          </select>
+          {paymentOnly ? (
+            <>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Expense head</label>
+              <select
+                className="input-field"
+                value={paymentHeadPreset}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setPaymentHeadPreset(v);
+                  if (v && v !== '__custom__') setGf({ ...gf, name: v });
+                }}
+              >
+                <option value="">Choose head…</option>
+                {SOCIETY_PAYMENT_EXPENSE_HEADS.map((h) => (
+                  <option key={h} value={h}>
+                    {h}
+                  </option>
+                ))}
+                <option value="__custom__">Custom head…</option>
+              </select>
+              <input
+                className="input-field"
+                placeholder="Head name (e.g. Electricity, Lift AMC)"
+                value={gf.name}
+                onChange={(e) => {
+                  setGf({ ...gf, name: e.target.value });
+                  setPaymentHeadPreset('__custom__');
+                }}
+              />
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Each head appears separately in Finance period reports. Do not use a generic &quot;Events &amp;
+                Functions&quot; head for society bills.
+              </p>
+            </>
+          ) : (
+            <input
+              className="input-field"
+              placeholder={
+                foodOnly
+                  ? 'Group name (e.g. Annual day lunch, Diwali dinner)'
+                  : 'Group name (e.g. Diwali 2026, Annual day lunch)'
+              }
+              value={gf.name}
+              onChange={(e) => setGf({ ...gf, name: e.target.value })}
+            />
+          )}
+          {(foodOnly || (!paymentOnly && !foodOnly)) && (
+            <select
+              className="input-field"
+              value={gf.event_id}
+              onChange={(e) => setGf({ ...gf, event_id: e.target.value })}
+            >
+              <option value="">{foodOnly ? 'Select calendar event (required)' : 'Link to calendar event (optional)'}</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {ev.title} ({ev.event_date})
+                </option>
+              ))}
+            </select>
+          )}
           <textarea
             className="input-field"
             placeholder="Description (optional)"
             value={gf.description}
             onChange={(e) => setGf({ ...gf, description: e.target.value })}
           />
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase">Adult weight</label>
-              <input
-                className="input-field"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value={gf.adult_weight}
-                onChange={(e) => setGf({ ...gf, adult_weight: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase">Child weight</label>
-              <input
-                className="input-field"
-                type="number"
-                step="0.1"
-                min="0"
-                value={gf.child_weight}
-                onChange={(e) => setGf({ ...gf, child_weight: e.target.value })}
-              />
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground leading-snug">
-            Default split uses each flat&apos;s members from Residents (age &amp; relation). Child = under 18 or
-            son/daughter. Weights apply per person (e.g. adult 1, child 0.5).
-          </p>
+          {(foodOnly || (!paymentOnly && !foodOnly)) && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase">Adult weight</label>
+                  <input
+                    className="input-field"
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={gf.adult_weight}
+                    onChange={(e) => setGf({ ...gf, adult_weight: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase">Child weight</label>
+                  <input
+                    className="input-field"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={gf.child_weight}
+                    onChange={(e) => setGf({ ...gf, child_weight: e.target.value })}
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Default split uses each flat&apos;s members from Residents (age &amp; relation). Child = under 18 or
+                son/daughter. Weights apply per person (e.g. adult 1, child 0.5).
+              </p>
+            </>
+          )}
+          {paymentOnly && (
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              Split equally across flats by default, or pick flats and custom amounts per payment.
+            </p>
+          )}
           <button type="button" onClick={addGroup} className="btn-primary">
             Create group
           </button>
@@ -1179,18 +1280,26 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
               <div className="flex flex-col gap-2 mb-3 pt-2 border-t border-border">
                 <input
                   className="input-field text-sm"
-                  placeholder={foodOnly ? 'Food item (e.g. Lunch catering, Snacks)' : 'Expense title (e.g. Common area electricity)'}
+                  placeholder={
+                    foodOnly
+                      ? 'Food item (e.g. Lunch catering, Snacks)'
+                      : paymentOnly
+                        ? 'Payment title (e.g. Electricity bill, Plumber)'
+                        : 'Expense title (e.g. Common area electricity)'
+                  }
                   value={ef.title}
                   onChange={(e) => setEf({ ...ef, title: e.target.value })}
                 />
                 <input
                   className="input-field text-sm"
-                  placeholder={foodOnly ? 'Caterer / vendor (optional)' : 'Vendor / service (optional)'}
+                  placeholder={
+                    foodOnly ? 'Caterer / vendor (optional)' : paymentOnly ? 'Payee / vendor (optional)' : 'Vendor / service (optional)'
+                  }
                   value={ef.vendor_or_service}
                   onChange={(e) => setEf({ ...ef, vendor_or_service: e.target.value })}
                 />
-                <div className={foodOnly ? '' : 'grid grid-cols-2 gap-2'}>
-                  {!foodOnly && (
+                <div className={foodOnly || paymentOnly ? '' : 'grid grid-cols-2 gap-2'}>
+                  {!foodOnly && !paymentOnly && (
                     <select
                       className="input-field text-sm"
                       value={ef.service_kind}
