@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { ledgerTransactionDate, paymentBillingDate } from '@/lib/financeDates';
 
 export type PaymentChannel = 'cash' | 'bank' | 'other';
 
@@ -56,7 +57,7 @@ export type DuplicatePaymentGroup = {
 
 /** Same flat + charge + calendar month + channel (verified or pending). */
 export function paymentDuplicateGroupKey(p: AuditPaymentRow): string {
-  const dateStr = p.due_date || p.payment_date || p.created_at || '';
+  const dateStr = paymentBillingDate(p) || '';
   const month = dateStr ? format(new Date(dateStr), 'yyyy-MM') : 'unknown';
   const channel = normalizePaymentChannel(p.payment_method);
   return `${p.flat_number}||${p.charge_id}||${month}||${channel}`;
@@ -147,7 +148,7 @@ export function analyzeLedgerOvercountByMonth(
 
   const monthlyPaymentTotals = new Map<string, number>();
   for (const p of verifiedPayments) {
-    const d = p.due_date || p.payment_date || p.created_at || '';
+    const d = paymentBillingDate(p);
     if (!d) continue;
     const month = format(new Date(d), 'yyyy-MM');
     monthlyPaymentTotals.set(month, (monthlyPaymentTotals.get(month) || 0) + Number(p.amount || 0));
@@ -156,7 +157,7 @@ export function analyzeLedgerOvercountByMonth(
   const months = new Set<string>([...monthlyPaymentTotals.keys()]);
   for (const e of allLedger) {
     if (!isReceiptDestination(e.destination)) continue;
-    const m = e.entry_month || (e.created_at ? format(new Date(e.created_at), 'yyyy-MM') : '');
+    const m = format(new Date(ledgerTransactionDate(e)), 'yyyy-MM');
     if (m) months.add(m);
   }
 
@@ -171,7 +172,7 @@ export function analyzeLedgerOvercountByMonth(
 
     let reportTotal = 0;
     for (const p of verifiedPayments) {
-      const d = p.due_date || p.payment_date || p.created_at || '';
+      const d = paymentBillingDate(p);
       if (!d) continue;
       const t = new Date(d).getTime();
       if (t >= fromMs && t <= toMs) reportTotal += Number(p.amount || 0);
@@ -180,7 +181,7 @@ export function analyzeLedgerOvercountByMonth(
     const unlinkedLedger: LedgerOvercountEntry[] = [];
     for (const e of allLedger) {
       if (!isReceiptDestination(e.destination)) continue;
-      const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
+      const ledgerDate = ledgerTransactionDate(e);
       const t = new Date(ledgerDate).getTime();
       if (t < fromMs || t > toMs) continue;
       if (!linkedFeIds.has(e.id)) {
@@ -207,9 +208,9 @@ export function analyzeLedgerOvercountByMonth(
       if (!p.finance_entry_id) continue;
       const entry = ledgerById.get(p.finance_entry_id);
       if (!entry) continue;
-      const pDate = p.due_date || p.payment_date || p.created_at || '';
+      const pDate = paymentBillingDate(p);
       const pMonth = pDate ? format(new Date(pDate), 'yyyy-MM') : '';
-      const eMonth = entry.entry_month || '';
+      const eMonth = entry.entry_month || (entry.transaction_date ? format(new Date(entry.transaction_date), 'yyyy-MM') : '');
       if (pMonth && eMonth && pMonth !== eMonth && (pMonth === month || eMonth === month)) {
         dateBoundary.push({
           payment: p,

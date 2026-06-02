@@ -34,7 +34,8 @@ export async function insertFinanceLedgerForGroupExpense(
     counterpartyRelation: string | null;
   },
 ): Promise<{ error: string | null }> {
-  const entry_month = entryMonthFromExpenseDate(opts.expenseDate);
+  const transaction_date = opts.expenseDate.slice(0, 10);
+  const entry_month = entryMonthFromExpenseDate(transaction_date);
   const amounts = opts.allocationSplits.map((s) => s.amount);
   const sum = Number(amounts.reduce((a, b) => a + b, 0).toFixed(2));
   if (Math.abs(sum - opts.total) > 0.02) {
@@ -55,6 +56,7 @@ export async function insertFinanceLedgerForGroupExpense(
       allocation_style,
       include_vacant: false,
       entry_month,
+      transaction_date,
       total_amount: opts.total,
       aggregate_flat_count: opts.allocationSplits.length,
       charge_id: null,
@@ -126,7 +128,8 @@ export async function syncFinanceLedgerFromGroupExpenseEdit(
   if (findErr) return { error: findErr.message };
   if (!fe?.id) return { error: null };
 
-  const entry_month = entryMonthFromExpenseDate(opts.expenseDate);
+  const transaction_date = opts.expenseDate.slice(0, 10);
+  const entry_month = entryMonthFromExpenseDate(transaction_date);
   const amounts = opts.allocationSplits.map((s) => s.amount);
   const sum = Number(amounts.reduce((a, b) => a + b, 0).toFixed(2));
   if (Math.abs(sum - opts.total) > 0.02) {
@@ -142,6 +145,7 @@ export async function syncFinanceLedgerFromGroupExpenseEdit(
     .from('finance_entries')
     .update({
       entry_month,
+      transaction_date,
       total_amount: opts.total,
       aggregate_flat_count: opts.allocationSplits.length,
       allocation_style,

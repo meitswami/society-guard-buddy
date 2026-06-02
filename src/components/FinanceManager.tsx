@@ -14,6 +14,15 @@ import { DateInput } from '@/components/DateInput';
 import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DescriptiveStatCard, DescriptiveStatSummary } from '@/components/DescriptiveStatCard';
+import { RecordingDateBanner } from '@/components/RecordingDateBanner';
+import {
+  billingMonthFromDate,
+  isBillingDateInEntryMonth,
+  ledgerEntryMonthFromBilling,
+  ledgerTransactionDate,
+  paymentBillingDate,
+  todayRecordingDate,
+} from '@/lib/financeDates';
 import {
   FINANCE_FLAT_REPORT_METRICS,
   FINANCE_PERIOD_METRICS,
@@ -42,19 +51,15 @@ const isCurrentMonthChargeTitle = (title: string, date = new Date()) => {
 const buildCurrentMonthChargeTitle = (date = new Date()) => `${format(date, 'MMMM')} Monthly Maintenance`;
 
 const paymentMonthValue = (payment: any) => {
-  const raw = payment?.due_date || payment?.payment_date || payment?.created_at;
+  const raw = paymentBillingDate(payment);
   if (!raw) return '';
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return '';
-  return format(date, 'yyyy-MM');
+  return billingMonthFromDate(raw);
 };
 
 const paymentMonthLabel = (payment: any) => {
-  const raw = payment?.due_date || payment?.payment_date || payment?.created_at;
+  const raw = paymentBillingDate(payment);
   if (!raw) return 'Unknown month';
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return 'Unknown month';
-  return fmtIsoMonthToDisplay(format(date, 'yyyy-MM'));
+  return fmtIsoMonthToDisplay(billingMonthFromDate(raw));
 };
 
 const defaultFinancePeriodFrom = () => {
@@ -96,6 +101,7 @@ type FinanceLedgerRow = {
   allocation_style: string;
   include_vacant: boolean;
   entry_month: string | null;
+  transaction_date: string | null;
   total_amount: number;
   aggregate_flat_count: number;
   charge_id: string | null;
@@ -138,14 +144,9 @@ const transactionFilterHint = (filter: string): string => {
   }
 };
 
-const ledgerMonthValue = (e: FinanceLedgerRow) =>
-  e.entry_month || format(new Date(e.created_at), 'yyyy-MM');
+const ledgerMonthValue = (e: FinanceLedgerRow) => billingMonthFromDate(ledgerTransactionDate(e));
 
-const ledgerMonthDisplay = (e: FinanceLedgerRow) => {
-  const ym = ledgerMonthValue(e);
-  if (!ym) return 'Unknown month';
-  return fmtIsoMonthToDisplay(ym);
-};
+const ledgerMonthDisplay = (e: FinanceLedgerRow) => fmtIsoMonthToDisplay(ledgerMonthValue(e));
 
 async function uploadPaymentReceipt(file: File): Promise<string | null> {
   const safe = file.name.replace(/[^\w.-]/g, '_');
@@ -213,7 +214,6 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     screenshot_url: '',
     notes: '',
     due_date: format(new Date(), 'yyyy-MM-dd'),
-    recording_date: format(new Date(), 'yyyy-MM-dd'),
   });
   const [filterStatus, setFilterStatus] = useState('all');
   const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
@@ -269,6 +269,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     payment_method: string;
     total_amount: string;
     entry_month: string;
+    transaction_date: string;
   } | null>(null);
   const [autoReminderEnabled, setAutoReminderEnabled] = useState(true);
   const [autoReminderSchedule, setAutoReminderSchedule] = useState<'once_12pm' | 'twice_12pm_7pm'>('once_12pm');
@@ -591,8 +592,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
             payment_method: entry.payment_method,
             payment_status: 'verified',
             payment_date: now,
-            due_date: entry.entry_month ? `${entry.entry_month}-01` : format(new Date(), 'yyyy-MM-dd'),
-            recording_date: format(new Date(), 'yyyy-MM-dd'),
+            due_date: ledgerTransactionDate(entry),
+            recording_date: todayRecordingDate(),
             transaction_id: entry.transaction_id,
             screenshot_url: entry.screenshot_url,
             notes: entry.notes,
@@ -768,7 +769,13 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     const allocationRows: { flat_number: string; flat_id: string | null; amount: number }[] = [];
     const mpRows: Record<string, unknown>[] = [];
     const now = new Date().toISOString();
-    const entryMonth = format(new Date(payForm.due_date), 'yyyy-MM');
+    const recordingDate = todayRecordingDate();
+    const primaryBillingDate = payForm.due_date;
+    const entryMonth = billingMonthFromDate(primaryBillingDate);
+    if (!isBillingDateInEntryMonth(primaryBillingDate, entryMonth)) {
+      toast.error('Billing date must fall within the entry month shown below.');
+      return;
+    }
     const chargeTitle = charges.find((c) => c.id === payForm.charge_id)?.title ?? '';
 
     const buildMpRow = (flat_number: string, amount: number, flat_id: string | null) => ({
@@ -786,7 +793,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         payForm.payment_method === 'cash' || payForm.payment_method === 'upi' ? 'verified' : 'pending',
       payment_date: now,
       due_date: useSameDateForSelectedFlats ? payForm.due_date : flatDueDates[flat_number] || payForm.due_date,
-      recording_date: payForm.recording_date,
+      recording_date: recordingDate,
       transaction_id: payForm.transaction_id || null,
       screenshot_url: screenshotUrl,
       notes: payForm.notes || null,
@@ -892,6 +899,18 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
     const aggregateFlatCount = mode === 'society_pool' ? 0 : n;
 
+    const billingDatesForRows = mpRows.map((r) => String((r as { due_date: string }).due_date || primaryBillingDate));
+    for (const d of billingDatesForRows) {
+      if (!isBillingDateInEntryMonth(d, entryMonth)) {
+        toast.error(`Each flat billing date must be in ${fmtIsoMonthToDisplay(entryMonth)}. Check: ${fmtIsoDateToDisplay(d)}`);
+        return;
+      }
+    }
+    const transactionDate =
+      billingDatesForRows.length > 0
+        ? billingDatesForRows.reduce((a, b) => (a < b ? a : b))
+        : primaryBillingDate;
+
     const { data: feRow, error: feErr } = await supabase
       .from('finance_entries')
       .insert({
@@ -901,6 +920,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         allocation_style: allocationStyle,
         include_vacant: payForm.allocationIncludeVacant,
         entry_month: entryMonth,
+        transaction_date: transactionDate,
         total_amount: totalAmount,
         aggregate_flat_count: aggregateFlatCount,
         charge_id: chargeIdForEntry,
@@ -983,7 +1003,6 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       screenshot_url: '',
       notes: '',
       due_date: format(new Date(), 'yyyy-MM-dd'),
-      recording_date: payForm.recording_date,
     });
     setUseSameDateForSelectedFlats(true);
     setFlatDueDates({});
@@ -1353,6 +1372,11 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
   const saveLedgerEdit = async () => {
     if (!ledgerEdit) return;
+    const entryMonth = ledgerEntryMonthFromBilling(ledgerEdit.transaction_date);
+    if (!isBillingDateInEntryMonth(ledgerEdit.transaction_date, entryMonth)) {
+      toast.error('Billing date must fall within the entry month.');
+      return;
+    }
     const { error } = await supabase
       .from('finance_entries')
       .update({
@@ -1362,7 +1386,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         transaction_id: ledgerEdit.transaction_id.trim() || null,
         payment_method: ledgerEdit.payment_method,
         total_amount: Number(ledgerEdit.total_amount) || 0,
-        entry_month: ledgerEdit.entry_month || null,
+        entry_month: entryMonth,
+        transaction_date: ledgerEdit.transaction_date,
       })
       .eq('id', ledgerEdit.id);
     if (error) {
@@ -1471,6 +1496,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   };
 
   const openLedgerEdit = (e: FinanceLedgerRow) => {
+    const txDate = ledgerTransactionDate(e);
     setLedgerEdit({
       id: e.id,
       title: e.title ?? '',
@@ -1479,7 +1505,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       transaction_id: e.transaction_id ?? '',
       payment_method: e.payment_method ?? 'cash',
       total_amount: String(e.total_amount ?? ''),
-      entry_month: e.entry_month ?? '',
+      entry_month: e.entry_month ?? billingMonthFromDate(txDate),
+      transaction_date: txDate,
     });
   };
 
@@ -1789,7 +1816,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const totalsBreakdown = useMemo(() => {
     const map = new Map<string, { total: number; flatUnits: number; entries: number }>();
     for (const e of ledgerEntries) {
-      const m = e.entry_month || format(new Date(e.created_at), 'yyyy-MM');
+      const m = ledgerMonthValue(e);
       if (m !== totalsMonth) continue;
       if (e.destination === 'separate_entry') continue;
       const k = `${e.record_mode}||${e.destination}`;
@@ -1815,7 +1842,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const totalsOutflowBreakdown = useMemo(() => {
     const map = new Map<string, { total: number; flatUnits: number; entries: number; method: string }>();
     for (const e of ledgerEntries) {
-      const m = e.entry_month || format(new Date(e.created_at), 'yyyy-MM');
+      const m = ledgerMonthValue(e);
       if (m !== totalsMonth) continue;
       if (e.destination !== 'separate_entry') continue;
       const head = (e.title || 'Society expense').trim() || 'Society expense';
@@ -1893,8 +1920,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     const countedFinanceEntryIds = new Set<string>();
     for (const p of payments) {
       if (String(p.payment_status) !== 'verified') continue;
-      const d = String(p.due_date || p.payment_date || p.verified_at || p.created_at || '');
-      if (!isInRange(d)) continue;
+      const d = paymentBillingDate(p);
+      if (!d || !isInRange(d)) continue;
       const flatNum = String(p.flat_number || '');
       if (!flatNum) continue;
       const amt = Number(p.amount || 0);
@@ -1917,8 +1944,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     // Ledger allocations (outsider/corpus entries allocated to flats) in range
     for (const e of ledgerEntries) {
       if (e.destination === 'separate_entry') continue;
-      const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
-      if (!isInRange(ledgerDate)) continue;
+      const ledgerDate = ledgerTransactionDate(e);
+      if (!ledgerDate || !isInRange(ledgerDate)) continue;
       // Skip flats_only entries that are already counted via their linked maintenance_payments
       if (e.record_mode === 'flats_only' && countedFinanceEntryIds.has(e.id)) continue;
       const allocations = e.finance_entry_allocations ?? [];
@@ -2001,7 +2028,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
     for (const p of payments) {
       if (String(p.payment_status) !== 'verified') continue;
-      const d = String((p as any).due_date || (p as any).payment_date || (p as any).verified_at || (p as any).created_at || '');
+      const d = paymentBillingDate(p as { due_date?: string });
+      if (!d) continue;
       const t = new Date(d).getTime();
       if (Number.isNaN(t)) continue;
       const fromMs = new Date(`${periodFrom}T00:00:00`).getTime();
@@ -2012,7 +2040,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     }
 
     for (const e of ledgerEntries) {
-      const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
+      const ledgerDate = ledgerTransactionDate(e);
       const t = new Date(ledgerDate).getTime();
       if (Number.isNaN(t)) continue;
       const fromMs = new Date(`${periodFrom}T00:00:00`).getTime();
@@ -2038,8 +2066,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     let verifiedPaymentCount = 0;
     for (const p of payments) {
       if (String(p.payment_status) !== 'verified') continue;
-      const d = String((p as any).due_date || (p as any).payment_date || (p as any).verified_at || (p as any).created_at || '');
-      if (!dateInInclusiveRange(d, periodFrom, periodTo)) continue;
+      const d = paymentBillingDate(p as { due_date?: string });
+      if (!d || !dateInInclusiveRange(d, periodFrom, periodTo)) continue;
       const amt = Number(p.amount || 0);
       const ch = normalizePaymentChannel(p.payment_method);
       receiptByMethod[ch] += amt;
@@ -2051,8 +2079,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
     let extraLedgerReceipt = 0;
     for (const e of ledgerEntries) {
-      const ledgerDate = e.entry_month ? `${e.entry_month}-01` : e.created_at;
-      if (!dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
+      const ledgerDate = ledgerTransactionDate(e);
+      if (!ledgerDate || !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
       const amt = Number(e.total_amount || 0);
       const ch = normalizePaymentChannel(e.payment_method);
       if (e.destination === 'separate_entry') {
@@ -2385,6 +2413,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           />
         </div>
       </div>
+
+      <RecordingDateBanner className="mb-4" />
 
       <div className="card-section p-3 mb-4">
         <div className="flex items-center justify-between gap-3">
@@ -2809,33 +2839,27 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               <input className="input-field" placeholder="Screenshot URL (paste link, optional)" value={payForm.screenshot_url} onChange={e => setPayForm({...payForm, screenshot_url: e.target.value})} />
               <label className="text-[10px] font-medium text-muted-foreground uppercase">Or upload receipt / bill</label>
               <input id="finance-payment-receipt" type="file" accept="image/*,application/pdf" className="text-xs" />
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Transaction / due date</label>
-                  <DateInput
-                    className="input-field"
-                    value={payForm.due_date}
-                    onChange={e => {
-                      const nextDate = e.target.value;
-                      setPayForm({...payForm, due_date: nextDate});
-                      if (useSameDateForSelectedFlats) {
-                        setFlatDueDates((prev) => {
-                          const next = { ...prev };
-                          for (const flat of payForm.selected_flats) next[flat] = nextDate;
-                          return next;
-                        });
-                      }
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Recording date</label>
-                  <DateInput
-                    className="input-field"
-                    value={payForm.recording_date}
-                    onChange={e => setPayForm({...payForm, recording_date: e.target.value})}
-                  />
-                </div>
+              <div>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">Billing / transaction date</label>
+                <DateInput
+                  className="input-field"
+                  value={payForm.due_date}
+                  onChange={e => {
+                    const nextDate = e.target.value;
+                    setPayForm({ ...payForm, due_date: nextDate });
+                    if (useSameDateForSelectedFlats) {
+                      setFlatDueDates((prev) => {
+                        const next = { ...prev };
+                        for (const flat of payForm.selected_flats) next[flat] = nextDate;
+                        return next;
+                      });
+                    }
+                  }}
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Entry month for reports: {fmtIsoMonthToDisplay(billingMonthFromDate(payForm.due_date))} (billing date must
+                  fall in this month)
+                </p>
               </div>
               {payForm.recordMode !== 'society_pool' && !useSameDateForSelectedFlats && payForm.selected_flats.length > 0 && (
                 <div className="rounded-lg border border-border p-2 space-y-1.5">
@@ -3529,18 +3553,18 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       onChange={(e) => setPaymentEdit({ ...paymentEdit, transaction_id: e.target.value })}
                       placeholder="Transaction / reference ID"
                     />
-                    <DateInput
-                      className="input-field"
-                      value={paymentEdit.due_date}
-                      onChange={(e) => setPaymentEdit({ ...paymentEdit, due_date: e.target.value })}
-                    />
-                    <p className="text-[10px] text-muted-foreground -mt-2">Transaction / due date</p>
-                    <DateInput
-                      className="input-field"
-                      value={paymentEdit.recording_date}
-                      onChange={(e) => setPaymentEdit({ ...paymentEdit, recording_date: e.target.value })}
-                    />
-                    <p className="text-[10px] text-muted-foreground -mt-2">Recording date</p>
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase">Billing / transaction date</label>
+                      <DateInput
+                        className="input-field"
+                        value={paymentEdit.due_date}
+                        onChange={(e) => setPaymentEdit({ ...paymentEdit, due_date: e.target.value })}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Recorded on: {paymentEdit.recording_date ? fmtIsoDateToDisplay(paymentEdit.recording_date) : '—'} (not
+                      used in period reports)
+                    </p>
                     <textarea
                       className="input-field"
                       value={paymentEdit.notes}
@@ -3616,13 +3640,22 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       placeholder="Transaction / reference ID"
                     />
                     <div>
-                      <label className="text-[10px] font-medium text-muted-foreground uppercase">Entry month (yyyy-MM)</label>
-                      <input
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase">Billing / transaction date</label>
+                      <DateInput
                         className="input-field"
-                        type="month"
-                        value={ledgerEdit.entry_month}
-                        onChange={(e) => setLedgerEdit({ ...ledgerEdit, entry_month: e.target.value })}
+                        value={ledgerEdit.transaction_date}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setLedgerEdit({
+                            ...ledgerEdit,
+                            transaction_date: next,
+                            entry_month: billingMonthFromDate(next),
+                          });
+                        }}
                       />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Entry month: {fmtIsoMonthToDisplay(ledgerEdit.entry_month)}
+                      </p>
                     </div>
                     <textarea
                       className="input-field"

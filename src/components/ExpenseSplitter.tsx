@@ -7,13 +7,15 @@ import { useStore } from '@/store/useStore';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { format } from 'date-fns';
-import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
+import { fmtIsoDateToDisplay, fmtIsoMonthToDisplay } from '@/lib/dateFormat';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
 import { insertFinanceLedgerForGroupExpense, syncFinanceLedgerFromGroupExpenseEdit } from '@/lib/groupExpenseFinanceLedger';
 import { computeHeadcountAmounts, headcountForFlat, type FlatMemberRow } from '@/lib/flatHeadcountSplit';
 import { DateInput } from '@/components/DateInput';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
+import { RecordingDateBanner } from '@/components/RecordingDateBanner';
 import { EVENT_EXPENSE_METRICS } from '@/lib/descriptiveMetricCopy';
+import { billingMonthFromDate, isBillingDateInEntryMonth, todayRecordingDate } from '@/lib/financeDates';
 
 interface Props {
   adminName?: string;
@@ -91,7 +93,6 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
     vendor_or_service: '',
     service_kind: 'one_time' as 'recurring' | 'one_time' | 'temporary',
     expense_date: format(new Date(), 'yyyy-MM-dd'),
-    recording_date: format(new Date(), 'yyyy-MM-dd'),
     payment_method: 'cash',
     notes: '',
   });
@@ -206,7 +207,6 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
       vendor_or_service: '',
       service_kind: 'one_time',
       expense_date: format(new Date(), 'yyyy-MM-dd'),
-      recording_date: format(new Date(), 'yyyy-MM-dd'),
       payment_method: 'cash',
       notes: '',
     });
@@ -289,6 +289,13 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
       toast.error('Title and total amount are required');
       return;
     }
+    const recordingDate = todayRecordingDate();
+    const billingDate = ef.expense_date.slice(0, 10);
+    const entryMonth = billingMonthFromDate(billingDate);
+    if (!isBillingDateInEntryMonth(billingDate, entryMonth)) {
+      toast.error('Billing date must fall within its calendar month.');
+      return;
+    }
     const total = Number(ef.total_amount);
     if (!total || total <= 0) {
       toast.error('Enter a valid total amount');
@@ -350,8 +357,8 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
             bill_screenshot_url: billUrl,
             service_kind: ef.service_kind,
             vendor_or_service: ef.vendor_or_service?.trim() || null,
-            expense_date: ef.expense_date,
-            recording_date: ef.recording_date,
+            expense_date: billingDate,
+            recording_date: recordingDate,
             notes: ef.notes?.trim() || null,
             record_status: 'active',
             expense_category: foodOnly ? 'food' : 'payment',
@@ -371,7 +378,7 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
         expenseId: socExpense.id,
         title: ef.title.trim(),
         total,
-        expenseDate: ef.expense_date,
+        expenseDate: billingDate,
         payment_method: ef.payment_method,
         screenshot_url: billUrl,
         notes: ef.notes?.trim() || null,
@@ -538,8 +545,8 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
           bill_screenshot_url: billUrl,
           service_kind: ef.service_kind,
           vendor_or_service: ef.vendor_or_service?.trim() || null,
-          expense_date: ef.expense_date,
-          recording_date: ef.recording_date,
+          expense_date: billingDate,
+          recording_date: recordingDate,
           notes: ef.notes?.trim() || null,
           record_status: 'active',
           expense_category: foodOnly ? 'food' : 'payment',
@@ -924,6 +931,8 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
 
   return (
     <div className={embedded ? '' : 'page-container pb-24'}>
+      <RecordingDateBanner className={embedded ? 'mb-3' : 'mb-4'} />
+
       {!embedded && (
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
@@ -1193,21 +1202,16 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
                     </select>
                   )}
                   <div>
-                    <label className="text-[10px] font-medium text-muted-foreground uppercase">Bill / transaction date</label>
+                    <label className="text-[10px] font-medium text-muted-foreground uppercase">Billing / transaction date</label>
                     <DateInput
                       className="input-field text-sm"
                       value={ef.expense_date}
                       onChange={(e) => setEf({ ...ef, expense_date: e.target.value })}
                     />
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Used in reports · month: {fmtIsoMonthToDisplay(billingMonthFromDate(ef.expense_date))}
+                    </p>
                   </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase">Recording date</label>
-                  <DateInput
-                    className="input-field text-sm"
-                    value={ef.recording_date}
-                    onChange={(e) => setEf({ ...ef, recording_date: e.target.value })}
-                  />
                 </div>
                 <input
                   className="input-field text-sm"
@@ -1655,7 +1659,7 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
                 <option value="temporary">Temporary</option>
               </select>
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase">Bill / transaction date</label>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">Billing / transaction date</label>
                 <DateInput
                   className="input-field"
                   value={expenseEdit.expense_date}
@@ -1663,14 +1667,9 @@ const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = fal
                 />
               </div>
             </div>
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase">Recording date</label>
-              <DateInput
-                className="input-field"
-                value={expenseEdit.recording_date}
-                onChange={(e) => setExpenseEdit({ ...expenseEdit, recording_date: e.target.value })}
-              />
-            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Recorded on: {expenseEdit.recording_date ? fmtIsoDateToDisplay(expenseEdit.recording_date) : '—'}
+            </p>
             <select
               className="input-field"
               value={expenseEdit.payment_method}
