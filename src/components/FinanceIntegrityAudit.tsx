@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fmtIsoMonthToDisplay } from '@/lib/dateFormat';
+import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 
 /* ─── Types ─── */
 
@@ -485,22 +486,50 @@ const FinanceIntegrityAudit = () => {
         <div className="space-y-3">
           {/* Summary bar */}
           <div className="grid grid-cols-4 gap-2">
-            <div className="card-section p-2 text-center border-destructive/30">
-              <p className="text-lg font-bold text-destructive">{result.summary.critical}</p>
-              <p className="text-[9px] text-muted-foreground">Critical</p>
-            </div>
-            <div className="card-section p-2 text-center border-amber-500/30">
-              <p className="text-lg font-bold text-amber-500">{result.summary.warning}</p>
-              <p className="text-[9px] text-muted-foreground">Warnings</p>
-            </div>
-            <div className="card-section p-2 text-center border-blue-500/30">
-              <p className="text-lg font-bold text-blue-500">{result.summary.info}</p>
-              <p className="text-[9px] text-muted-foreground">Info</p>
-            </div>
-            <div className="card-section p-2 text-center border-green-500/30">
-              <p className="text-lg font-bold text-green-500">{result.summary.pass}</p>
-              <p className="text-[9px] text-muted-foreground">Passed</p>
-            </div>
+            <DescriptiveStatCard
+              title="Critical"
+              caption="Critical"
+              description="Checks that indicate data integrity risk or broken links between payments and ledger."
+              howCalculated="Count of self-audit findings with severity critical."
+              variant="stat"
+              contentAlign="center"
+              value={result.summary.critical}
+              valueClassName="text-lg text-destructive"
+              className="p-2 border-destructive/30"
+            />
+            <DescriptiveStatCard
+              title="Warnings"
+              caption="Warnings"
+              description="Possible duplicates or mismatches that should be reviewed by the treasurer."
+              howCalculated="Count of findings with severity warning."
+              variant="stat"
+              contentAlign="center"
+              value={result.summary.warning}
+              valueClassName="text-lg text-amber-500"
+              className="p-2 border-amber-500/30"
+            />
+            <DescriptiveStatCard
+              title="Info"
+              caption="Info"
+              description="Informational notices that do not block reporting but help reconciliation."
+              howCalculated="Count of findings with severity info."
+              variant="stat"
+              contentAlign="center"
+              value={result.summary.info}
+              valueClassName="text-lg text-blue-500"
+              className="p-2 border-blue-500/30"
+            />
+            <DescriptiveStatCard
+              title="Passed"
+              caption="Passed"
+              description="Rules that completed with no issues detected."
+              howCalculated="Count of findings with severity pass."
+              variant="stat"
+              contentAlign="center"
+              value={result.summary.pass}
+              valueClassName="text-lg text-green-500"
+              className="p-2 border-green-500/30"
+            />
           </div>
 
           <p className="text-[10px] text-muted-foreground">

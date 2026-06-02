@@ -116,7 +116,7 @@ const sections: Section[] = [
       {
         heading: 'Project Structure',
         points: [
-          'Finance Module: Maintenance charges → Payments → Ledger entries → Period reports.',
+          'Finance Module: Society receipts (maintenance, corpus, pool). Event/function costs use Event expenses tab — split by adults & kids per flat from Residents data.',
           'Audit Module: Security logs + Finance alarms + Self-audit engine + Governance guide.',
           'Resident Portal: View committee, pay maintenance, see notices, raise complaints.',
           'Guard Module: Visitor entry/exit, vehicle tracking, geofence, biometric attendance.',
@@ -126,7 +126,8 @@ const sections: Section[] = [
       {
         heading: 'Data Flow & Integrity',
         points: [
-          'Every payment creates both a maintenance_payment record AND a finance_entry (ledger).',
+          'Pool receipts create a finance_entry only; use “Distribute equally to all flats” to create per-flat allocations and maintenance_payment rows when linked to a charge.',
+          'Direct flat recordings create maintenance_payment + finance_entry + allocations immediately.',
           'finance_entry_allocations break down per-flat amounts for multi-flat recordings.',
           'Expense entries (separate_entry) reduce the balance; receipt entries increase it.',
           'Period reports compute: Opening Balance + Receipts − Expenses = Closing Balance.',

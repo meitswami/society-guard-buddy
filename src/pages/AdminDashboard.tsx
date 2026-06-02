@@ -36,6 +36,8 @@ import { isAdminTabAllowed, type AdminPanelPermissions, type AdminTab } from '@/
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
 import { ElectionResultsBanner } from '@/components/ElectionResultsBanner';
+import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
+import { ADMIN_HOME_METRICS } from '@/lib/descriptiveMetricCopy';
 
 interface Props {
   admin: {
@@ -403,8 +405,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'meetings', label: 'Meetings', icon: ScrollText, group: 'meetings' },
     { id: 'committee', label: 'Committee', icon: Landmark, group: 'meetings' },
     { id: 'donations', label: 'Donations', icon: Heart, group: 'finance' },
-    { id: 'splits', label: 'Splitwise', icon: Split, group: 'finance' },
-    // Community
+    // Community — event/function cost sharing (adults + kids per flat)
+    { id: 'splits', label: 'Event expenses', icon: Split, group: 'community' },
     { id: 'events', label: 'Events', icon: Calendar, group: 'community' },
     { id: 'polls', label: 'Polls', icon: Vote, group: 'community' },
     { id: 'notifications', label: 'Notify', icon: Bell, group: 'community' },
@@ -532,33 +534,44 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           </div>
           <ElectionResultsBanner societyId={admin.societyId} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            <button type="button" onClick={() => goToTab('meetings')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-indigo-500/30 transition-all">
-              <ScrollText className="w-5 h-5 text-indigo-500 mb-2" />
-              <p className="text-2xl font-bold">{stats.meetingsHeld}</p>
-              <p className="text-xs text-muted-foreground">Meetings held</p>
-            </button>
-            <button type="button" onClick={() => void openMaintenanceMonthlyModal()} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-emerald-500/30 transition-all">
-              <IndianRupee className="w-5 h-5 text-emerald-600 mb-2" />
-              <p className="text-xl font-bold tabular-nums">
-                ₹{stats.maintenanceCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-              </p>
-              <p className="text-xs text-muted-foreground">Total collection (verified)</p>
-            </button>
-            <button type="button" onClick={() => void openSplitwiseMonthlyModal()} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-teal-500/30 transition-all">
-              <Split className="w-5 h-5 text-teal-600 mb-2" />
-              <p className="text-xl font-bold tabular-nums">
-                ₹{stats.splitwiseExpenseTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-              </p>
-              <p className="text-xs text-muted-foreground">Splitwise expenses (active)</p>
-            </button>
+            <DescriptiveStatCard
+              {...ADMIN_HOME_METRICS.meetingsHeld}
+              icon={<ScrollText className="w-5 h-5 text-indigo-500" />}
+              value={stats.meetingsHeld}
+              onNavigate={() => goToTab('meetings')}
+              navigateLabel="Open Meetings"
+              className="hover:ring-indigo-500/30"
+            />
+            <DescriptiveStatCard
+              {...ADMIN_HOME_METRICS.maintenanceCollected}
+              icon={<IndianRupee className="w-5 h-5 text-emerald-600" />}
+              value={`₹${stats.maintenanceCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+              valueClassName="text-xl"
+              onNavigate={() => void openMaintenanceMonthlyModal()}
+              navigateLabel="Monthly breakdown"
+              className="hover:ring-emerald-500/30"
+            />
+            <DescriptiveStatCard
+              {...ADMIN_HOME_METRICS.splitwiseExpenseTotal}
+              icon={<Split className="w-5 h-5 text-teal-600" />}
+              value={`₹${stats.splitwiseExpenseTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+              valueClassName="text-xl"
+              onNavigate={() => void openSplitwiseMonthlyModal()}
+              navigateLabel="Monthly breakdown"
+              className="hover:ring-teal-500/30"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-6">
-            <button type="button" onClick={() => goToTab('visitor')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-blue-500/30 transition-all">
-              <Users className="w-5 h-5 text-blue-500 mb-2" />
-              <p className="text-2xl font-bold">{stats.visitors}</p>
-              <p className="text-xs text-muted-foreground">{t('admin.totalVisitors')}</p>
-              <div className="mt-2 pt-2 border-t border-border space-y-0.5 text-[10px] text-muted-foreground">
+            <DescriptiveStatCard
+              {...ADMIN_HOME_METRICS.visitors}
+              icon={<Users className="w-5 h-5 text-blue-500" />}
+              value={stats.visitors}
+              onNavigate={() => goToTab('visitor')}
+              navigateLabel="Open Visitor log"
+              className="hover:ring-blue-500/30"
+            >
+              <div className="mt-2 pt-2 border-t border-border space-y-0.5 text-[10px] text-muted-foreground w-full">
                 <p className="flex justify-between gap-2">
                   <span>Guest visitors</span>
                   <span className="font-medium text-foreground tabular-nums">{stats.visitorsGuest}</span>
@@ -570,12 +583,16 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                   <span className="font-medium text-foreground tabular-nums">{stats.visitorsService}</span>
                 </p>
               </div>
-            </button>
-            <button type="button" onClick={() => goToTab('vehicle')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-orange-500/30 transition-all">
-              <Car className="w-5 h-5 text-orange-500 mb-2" />
-              <p className="text-2xl font-bold">{stats.vehicles}</p>
-              <p className="text-xs text-muted-foreground">{t('admin.totalVehicles')}</p>
-              <div className="mt-2 pt-2 border-t border-border space-y-0.5 text-[10px] text-muted-foreground">
+            </DescriptiveStatCard>
+            <DescriptiveStatCard
+              {...ADMIN_HOME_METRICS.vehicles}
+              icon={<Car className="w-5 h-5 text-orange-500" />}
+              value={stats.vehicles}
+              onNavigate={() => goToTab('vehicle')}
+              navigateLabel="Open Vehicles"
+              className="hover:ring-orange-500/30"
+            >
+              <div className="mt-2 pt-2 border-t border-border space-y-0.5 text-[10px] text-muted-foreground w-full">
                 <p className="flex justify-between gap-2">
                   <span>Cars</span>
                   <span className="font-medium text-foreground tabular-nums">{stats.vehiclesCars}</span>
@@ -585,25 +602,33 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                   <span className="font-medium text-foreground tabular-nums">{stats.vehiclesTwoWheelers}</span>
                 </p>
               </div>
-            </button>
-            <button type="button" onClick={() => goToTab('residents')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-purple-500/30 transition-all">
-              <Home className="w-5 h-5 text-purple-500 mb-2" />
-              <p className="text-2xl font-bold">{stats.flats}</p>
-              <p className="text-xs text-muted-foreground">{t('admin.totalFlats')}</p>
-              <p className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground">
+            </DescriptiveStatCard>
+            <DescriptiveStatCard
+              {...ADMIN_HOME_METRICS.flats}
+              icon={<Home className="w-5 h-5 text-purple-500" />}
+              value={stats.flats}
+              onNavigate={() => goToTab('residents')}
+              navigateLabel="Open Residents"
+              className="hover:ring-purple-500/30"
+            >
+              <p className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground w-full">
                 Members registered:{' '}
                 <span className="font-medium text-foreground tabular-nums">{stats.members}</span>
               </p>
-            </button>
-            <button type="button" onClick={() => goToTab('guards')} className="card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-green-500/30 transition-all">
-              <Shield className="w-5 h-5 text-green-500 mb-2" />
-              <p className="text-2xl font-bold">{stats.guards}</p>
-              <p className="text-xs text-muted-foreground">{t('admin.totalGuards')}</p>
-              <p className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground">
+            </DescriptiveStatCard>
+            <DescriptiveStatCard
+              {...ADMIN_HOME_METRICS.guards}
+              icon={<Shield className="w-5 h-5 text-green-500" />}
+              value={stats.guards}
+              onNavigate={() => goToTab('guards')}
+              navigateLabel="Open Guards"
+              className="hover:ring-green-500/30"
+            >
+              <p className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground w-full">
                 Blacklist:{' '}
                 <span className="font-medium text-foreground tabular-nums">{stats.blacklist}</span>
               </p>
-            </button>
+            </DescriptiveStatCard>
           </div>
 
           {/* KYC Pending Alerts */}
@@ -708,13 +733,13 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Split className="w-4 h-4 text-teal-600" />
-                <p className="text-sm font-semibold">Splitwise Expenses — Monthly</p>
+                <p className="text-sm font-semibold">Event expenses — Monthly</p>
               </div>
               <button type="button" onClick={() => setSplitwiseMonthlyModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-[10px] text-muted-foreground">Active splitwise expenses grouped by month</p>
+            <p className="text-[10px] text-muted-foreground">Active event/function expenses grouped by month</p>
             {splitwiseMonthlyLoading ? (
               <p className="text-xs text-muted-foreground text-center py-6">Loading…</p>
             ) : splitwiseMonthlyData.length === 0 ? (
@@ -744,7 +769,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               </div>
             )}
             <button type="button" className="btn-secondary text-xs w-full" onClick={() => { setSplitwiseMonthlyModal(false); goToTab('splits'); }}>
-              Go to Splitwise
+              Go to Event expenses
             </button>
           </div>
         </div>

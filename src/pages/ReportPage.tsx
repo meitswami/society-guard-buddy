@@ -6,6 +6,8 @@ import { format, parse, endOfMonth } from 'date-fns';
 import { fmtDate, fmtDateTime } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
+import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
+import { REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
 
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }
 
@@ -530,32 +532,59 @@ const ReportPage = () => {
           <div className="mb-4 rounded-lg border border-border bg-card/40 p-3">
             <p className="text-[11px] font-medium text-foreground mb-2">{t('report.financeNetTitle')}</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <button onClick={openCashInHandModal} className="rounded-md border border-border/80 bg-background/60 px-2.5 py-2 text-left hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer">
-                <p className="text-[10px] text-muted-foreground">{t('report.cashInHand')}</p>
-                <p className="text-sm font-mono font-semibold">₹{reportMonthNet.cashInHand.toLocaleString('en-IN')}</p>
-              </button>
-              <button onClick={openBankBalanceModal} className="rounded-md border border-border/80 bg-background/60 px-2.5 py-2 text-left hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer">
-                <p className="text-[10px] text-muted-foreground">{t('report.balanceInBank')}</p>
-                <p className="text-sm font-mono font-semibold">₹{reportMonthNet.cashInBank.toLocaleString('en-IN')}</p>
-              </button>
-              <button onClick={openOtherNetModal} className="rounded-md border border-border/80 bg-background/60 px-2.5 py-2 text-left hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer">
-                <p className="text-[10px] text-muted-foreground">{t('report.otherNet')}</p>
-                <p className="text-sm font-mono font-semibold">₹{reportMonthNet.otherNet.toLocaleString('en-IN')}</p>
-              </button>
-              <button onClick={openTotalBalanceModal} className="rounded-md border border-primary/30 bg-primary/5 px-2.5 py-2 text-left hover:border-primary/60 hover:bg-primary/10 transition-all cursor-pointer">
-                <p className="text-[10px] text-muted-foreground">{t('report.totalBalance')}</p>
-                <p className="text-sm font-mono font-semibold text-primary">₹{reportMonthNet.totalBalance.toLocaleString('en-IN')}</p>
-              </button>
+              <DescriptiveStatCard
+                {...REPORT_PAGE_METRICS.reportCashInHand}
+                caption={t('report.cashInHand')}
+                value={`₹${reportMonthNet.cashInHand.toLocaleString('en-IN')}`}
+                valueClassName="text-sm font-mono"
+                onNavigate={openCashInHandModal}
+                navigateLabel="View entries"
+                className="!p-2.5 rounded-md border border-border/80 bg-background/60 shadow-none"
+              />
+              <DescriptiveStatCard
+                {...REPORT_PAGE_METRICS.reportCashInBank}
+                caption={t('report.balanceInBank')}
+                value={`₹${reportMonthNet.cashInBank.toLocaleString('en-IN')}`}
+                valueClassName="text-sm font-mono"
+                onNavigate={openBankBalanceModal}
+                navigateLabel="View entries"
+                className="!p-2.5 rounded-md border border-border/80 bg-background/60 shadow-none"
+              />
+              <DescriptiveStatCard
+                {...REPORT_PAGE_METRICS.reportOtherNet}
+                caption={t('report.otherNet')}
+                value={`₹${reportMonthNet.otherNet.toLocaleString('en-IN')}`}
+                valueClassName="text-sm font-mono"
+                onNavigate={openOtherNetModal}
+                navigateLabel="View entries"
+                className="!p-2.5 rounded-md border border-border/80 bg-background/60 shadow-none"
+              />
+              <DescriptiveStatCard
+                {...REPORT_PAGE_METRICS.reportTotalBalance}
+                caption={t('report.totalBalance')}
+                value={`₹${reportMonthNet.totalBalance.toLocaleString('en-IN')}`}
+                valueClassName="text-sm font-mono text-primary"
+                onNavigate={openTotalBalanceModal}
+                navigateLabel="View entries"
+                className="!p-2.5 rounded-md border border-primary/30 bg-primary/5 shadow-none"
+              />
             </div>
           </div>
 
           {/* Gross clickable */}
-          <button onClick={openGrossAmountModal} className="w-full mb-4 rounded-lg border border-border bg-muted/20 p-3 text-left hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{t('report.financeGross')}</span>
-              <span className="text-sm font-mono font-semibold">₹{financeMonthTotal.toLocaleString('en-IN')} · {financeEntries.length} {t('report.entryCountLabel')}</span>
-            </div>
-          </button>
+          <DescriptiveStatCard
+            {...REPORT_PAGE_METRICS.financeGross}
+            caption={t('report.financeGross')}
+            className="w-full mb-4 rounded-lg border border-border bg-muted/20 !p-3 shadow-none"
+            value={
+              <span className="text-sm font-mono font-semibold">
+                ₹{financeMonthTotal.toLocaleString('en-IN')} · {financeEntries.length} {t('report.entryCountLabel')}
+              </span>
+            }
+            valueClassName="text-sm"
+            onNavigate={openGrossAmountModal}
+            navigateLabel="View ledger entries"
+          />
 
           {/* Ledger Table */}
           {financeGroups.length === 0 ? (
@@ -692,21 +721,40 @@ const ReportPage = () => {
         <div>
           {/* Stat boxes - clickable */}
           <div className="grid grid-cols-3 gap-2 mb-5">
-            <button onClick={openVisitorModal} className="stat-card items-center text-center hover:border-primary/40 transition-all cursor-pointer">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xl font-bold font-mono">{visitorStats.totalVisitors}</span>
-              <span className="text-[10px] text-muted-foreground">{t('dashboard.visitors')}</span>
-            </button>
-            <button onClick={openDeliveryModal} className="stat-card items-center text-center hover:border-primary/40 transition-all cursor-pointer">
-              <Truck className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xl font-bold font-mono">{visitorStats.totalDeliveries}</span>
-              <span className="text-[10px] text-muted-foreground">{t('dashboard.deliveries')}</span>
-            </button>
-            <div className="stat-card items-center text-center">
-              <DoorOpen className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xl font-bold font-mono">{visitorStats.currentlyInside}</span>
-              <span className="text-[10px] text-muted-foreground">{t('dashboard.insideNow')}</span>
-            </div>
+            <DescriptiveStatCard
+              title={t('dashboard.visitors')}
+              caption={t('dashboard.visitors')}
+              description="Visitor log entries in the selected report month."
+              howCalculated="Count of visitor records in the month filter."
+              contentAlign="center"
+              icon={<Users className="w-4 h-4 text-muted-foreground" />}
+              value={visitorStats.totalVisitors}
+              onNavigate={openVisitorModal}
+              navigateLabel="View visitor list"
+              className="p-3"
+            />
+            <DescriptiveStatCard
+              title={t('dashboard.deliveries')}
+              caption={t('dashboard.deliveries')}
+              description="Delivery personnel entries in the selected month."
+              howCalculated="Visitors categorised as deliveries in the month."
+              contentAlign="center"
+              icon={<Truck className="w-4 h-4 text-muted-foreground" />}
+              value={visitorStats.totalDeliveries}
+              onNavigate={openDeliveryModal}
+              navigateLabel="View delivery list"
+              className="p-3"
+            />
+            <DescriptiveStatCard
+              title={t('dashboard.insideNow')}
+              caption={t('dashboard.insideNow')}
+              description="Visitors who entered but have no exit time recorded yet."
+              howCalculated="Entries in month with exit_time null."
+              contentAlign="center"
+              icon={<DoorOpen className="w-4 h-4 text-muted-foreground" />}
+              value={visitorStats.currentlyInside}
+              className="p-3"
+            />
           </div>
 
           {/* Visitor entries list */}
@@ -737,16 +785,28 @@ const ReportPage = () => {
       {activeTab === 'vehicle' && (
         <div>
           <div className="grid grid-cols-2 gap-2 mb-5">
-            <button onClick={openVehicleModal} className="stat-card items-center text-center hover:border-primary/40 transition-all cursor-pointer">
-              <Car className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xl font-bold font-mono">{visitorStats.totalVehicles}</span>
-              <span className="text-[10px] text-muted-foreground">Vehicle Entries</span>
-            </button>
-            <div className="stat-card items-center text-center">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xl font-bold font-mono">{visitorStats.uniqueFlats}</span>
-              <span className="text-[10px] text-muted-foreground">Unique Flats</span>
-            </div>
+            <DescriptiveStatCard
+              title="Vehicle entries"
+              caption="Vehicle entries"
+              description="Visitor log rows that include a vehicle number in the period."
+              howCalculated="Count of month visitors with vehicle_number set."
+              contentAlign="center"
+              icon={<Car className="w-4 h-4 text-muted-foreground" />}
+              value={visitorStats.totalVehicles}
+              onNavigate={openVehicleModal}
+              navigateLabel="View vehicles"
+              className="p-3"
+            />
+            <DescriptiveStatCard
+              title="Unique flats"
+              caption="Unique flats"
+              description="Distinct flat numbers that had vehicle entries in the period."
+              howCalculated="Distinct flat_number on vehicle visitor rows."
+              contentAlign="center"
+              icon={<Users className="w-4 h-4 text-muted-foreground" />}
+              value={visitorStats.uniqueFlats}
+              className="p-3"
+            />
           </div>
 
           {/* Vehicle entries list */}
@@ -784,75 +844,135 @@ const ReportPage = () => {
           <p className="text-xs text-muted-foreground mb-4">Summary across all modules for {reportMonth}</p>
 
           <div className="grid grid-cols-2 gap-3">
-            {/* Finance */}
-            <button onClick={openGrossAmountModal} className="border border-border rounded-xl p-4 bg-card/50 text-left hover:border-primary/40 transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-2">
-                <IndianRupee className="w-4 h-4 text-green-600" />
-                <h3 className="text-xs font-semibold">Finance</h3>
-              </div>
-              <p className="text-lg font-mono font-semibold">₹{financeMonthTotal.toLocaleString('en-IN')}</p>
-              <p className="text-[10px] text-muted-foreground">{financeEntries.length} entries</p>
-            </button>
+            <DescriptiveStatCard
+              {...REPORT_PAGE_METRICS.financeGross}
+              title="Finance"
+              caption="Finance"
+              icon={
+                <div className="flex items-center gap-2">
+                  <IndianRupee className="w-4 h-4 text-green-600" />
+                  <span className="text-xs font-semibold">Finance</span>
+                </div>
+              }
+              value={`₹${financeMonthTotal.toLocaleString('en-IN')}`}
+              onNavigate={openGrossAmountModal}
+              navigateLabel="View finance detail"
+              className="border border-border rounded-xl bg-card/50 shadow-none"
+            >
+              <p className="text-[10px] text-muted-foreground mt-1">{financeEntries.length} entries</p>
+            </DescriptiveStatCard>
 
-            {/* Guard Shifts */}
-            <button onClick={openShiftModal} className="border border-border rounded-xl p-4 bg-card/50 text-left hover:border-primary/40 transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="w-4 h-4 text-blue-600" />
-                <h3 className="text-xs font-semibold">Guard Shifts</h3>
-              </div>
-              <p className="text-lg font-mono font-semibold">{shifts.length}</p>
-              <p className="text-[10px] text-muted-foreground">Login/Logout records</p>
-            </button>
+            <DescriptiveStatCard
+              {...REPORT_PAGE_METRICS.guardShifts}
+              title="Guard Shifts"
+              caption="Guard Shifts"
+              icon={
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-semibold">Guard Shifts</span>
+                </div>
+              }
+              value={shifts.length}
+              onNavigate={openShiftModal}
+              navigateLabel="View shift list"
+              className="border border-border rounded-xl bg-card/50 shadow-none"
+            >
+              <p className="text-[10px] text-muted-foreground mt-1">Login/Logout records</p>
+            </DescriptiveStatCard>
 
-            {/* Visitors */}
-            <button onClick={openVisitorModal} className="border border-border rounded-xl p-4 bg-card/50 text-left hover:border-primary/40 transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4 text-indigo-600" />
-                <h3 className="text-xs font-semibold">Visitors</h3>
-              </div>
-              <p className="text-lg font-mono font-semibold">{visitorStats.totalVisitors}</p>
-              <p className="text-[10px] text-muted-foreground">Guest entries</p>
-            </button>
+            <DescriptiveStatCard
+              {...REPORT_PAGE_METRICS.moduleVisitors}
+              title="Visitors"
+              caption="Visitors"
+              icon={
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  <span className="text-xs font-semibold">Visitors</span>
+                </div>
+              }
+              value={visitorStats.totalVisitors}
+              onNavigate={openVisitorModal}
+              navigateLabel="View visitors"
+              className="border border-border rounded-xl bg-card/50 shadow-none"
+            >
+              <p className="text-[10px] text-muted-foreground mt-1">Guest entries</p>
+            </DescriptiveStatCard>
 
-            {/* Vehicles */}
-            <button onClick={openVehicleModal} className="border border-border rounded-xl p-4 bg-card/50 text-left hover:border-primary/40 transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-2">
-                <Car className="w-4 h-4 text-orange-600" />
-                <h3 className="text-xs font-semibold">Vehicles</h3>
-              </div>
-              <p className="text-lg font-mono font-semibold">{visitorStats.totalVehicles}</p>
-              <p className="text-[10px] text-muted-foreground">Vehicle entries</p>
-            </button>
+            <DescriptiveStatCard
+              {...REPORT_PAGE_METRICS.moduleVehicles}
+              title="Vehicles"
+              caption="Vehicles"
+              icon={
+                <div className="flex items-center gap-2">
+                  <Car className="w-4 h-4 text-orange-600" />
+                  <span className="text-xs font-semibold">Vehicles</span>
+                </div>
+              }
+              value={visitorStats.totalVehicles}
+              onNavigate={openVehicleModal}
+              navigateLabel="View vehicles"
+              className="border border-border rounded-xl bg-card/50 shadow-none"
+            >
+              <p className="text-[10px] text-muted-foreground mt-1">Vehicle entries</p>
+            </DescriptiveStatCard>
 
-            {/* Deliveries */}
-            <button onClick={openDeliveryModal} className="border border-border rounded-xl p-4 bg-card/50 text-left hover:border-primary/40 transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-2">
-                <Truck className="w-4 h-4 text-teal-600" />
-                <h3 className="text-xs font-semibold">Deliveries</h3>
-              </div>
-              <p className="text-lg font-mono font-semibold">{visitorStats.totalDeliveries}</p>
-              <p className="text-[10px] text-muted-foreground">Delivery/Service entries</p>
-            </button>
+            <DescriptiveStatCard
+              {...REPORT_PAGE_METRICS.moduleDeliveries}
+              title="Deliveries"
+              caption="Deliveries"
+              icon={
+                <div className="flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-teal-600" />
+                  <span className="text-xs font-semibold">Deliveries</span>
+                </div>
+              }
+              value={visitorStats.totalDeliveries}
+              onNavigate={openDeliveryModal}
+              navigateLabel="View deliveries"
+              className="border border-border rounded-xl bg-card/50 shadow-none"
+            >
+              <p className="text-[10px] text-muted-foreground mt-1">Delivery/Service entries</p>
+            </DescriptiveStatCard>
 
-            {/* Donations */}
-            <button onClick={openDonationModal} className="border border-border rounded-xl p-4 bg-card/50 text-left hover:border-primary/40 transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-2">
-                <Heart className="w-4 h-4 text-rose-500" />
-                <h3 className="text-xs font-semibold">Donations</h3>
-              </div>
-              <p className="text-lg font-mono font-semibold">{donationStatuses.reduce((s, d) => s + d.count, 0)}</p>
-              <p className="text-[10px] text-muted-foreground">₹{donationStatuses.reduce((s, d) => s + d.total, 0).toLocaleString('en-IN')}</p>
-            </button>
+            <DescriptiveStatCard
+              {...REPORT_PAGE_METRICS.moduleDonations}
+              title="Donations"
+              caption="Donations"
+              icon={
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-rose-500" />
+                  <span className="text-xs font-semibold">Donations</span>
+                </div>
+              }
+              value={donationStatuses.reduce((s, d) => s + d.count, 0)}
+              onNavigate={openDonationModal}
+              navigateLabel="View donations"
+              className="border border-border rounded-xl bg-card/50 shadow-none"
+            >
+              <p className="text-[10px] text-muted-foreground mt-1">
+                ₹{donationStatuses.reduce((s, d) => s + d.total, 0).toLocaleString('en-IN')}
+              </p>
+            </DescriptiveStatCard>
 
-            {/* Expense Splits */}
-            <button onClick={openSplitModal} className="border border-border rounded-xl p-4 bg-card/50 text-left hover:border-primary/40 transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-2">
-                <Split className="w-4 h-4 text-amber-600" />
-                <h3 className="text-xs font-semibold">Expense Splits</h3>
-              </div>
-              <p className="text-lg font-mono font-semibold">{splitStatuses.reduce((s, d) => s + d.count, 0)}</p>
-              <p className="text-[10px] text-muted-foreground">₹{splitStatuses.reduce((s, d) => s + d.total, 0).toLocaleString('en-IN')}</p>
-            </button>
+            <DescriptiveStatCard
+              {...REPORT_PAGE_METRICS.moduleExpenseSplits}
+              title="Expense Splits"
+              caption="Expense Splits"
+              icon={
+                <div className="flex items-center gap-2">
+                  <Split className="w-4 h-4 text-amber-600" />
+                  <span className="text-xs font-semibold">Expense Splits</span>
+                </div>
+              }
+              value={splitStatuses.reduce((s, d) => s + d.count, 0)}
+              onNavigate={openSplitModal}
+              navigateLabel="View splits"
+              className="border border-border rounded-xl bg-card/50 shadow-none"
+            >
+              <p className="text-[10px] text-muted-foreground mt-1">
+                ₹{splitStatuses.reduce((s, d) => s + d.total, 0).toLocaleString('en-IN')}
+              </p>
+            </DescriptiveStatCard>
 
             {/* Parking - placeholder */}
             <div className="border border-border rounded-xl p-4 bg-card/50 opacity-60">

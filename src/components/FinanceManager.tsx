@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange } from 'lucide-react';
+import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
@@ -13,6 +13,12 @@ import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/a
 import { DateInput } from '@/components/DateInput';
 import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DescriptiveStatCard, DescriptiveStatSummary } from '@/components/DescriptiveStatCard';
+import {
+  FINANCE_FLAT_REPORT_METRICS,
+  FINANCE_PERIOD_METRICS,
+  FINANCE_TOTALS_METRICS,
+} from '@/lib/descriptiveMetricCopy';
 
 interface Props {
   adminName?: string;
@@ -93,6 +99,8 @@ type FinanceLedgerRow = {
   total_amount: number;
   aggregate_flat_count: number;
   charge_id: string | null;
+  expense_id: string | null;
+  distributed_at: string | null;
   title: string | null;
   notes: string | null;
   screenshot_url: string | null;
@@ -103,6 +111,31 @@ type FinanceLedgerRow = {
   created_at: string;
   finance_entry_counterparties: { name: string; relation_to_society: string | null }[] | null;
   finance_entry_allocations: { flat_number: string; amount: number; flat_id: string | null }[] | null;
+};
+
+const isSplitwiseLedgerEntry = (e: FinanceLedgerRow) => Boolean(e.expense_id);
+
+const isLedgerInSocietyPool = (e: FinanceLedgerRow) => {
+  if (isSplitwiseLedgerEntry(e)) return false;
+  if (e.distributed_at) return false;
+  const allocCount = e.finance_entry_allocations?.length ?? 0;
+  if (e.record_mode === 'society_pool') return allocCount === 0;
+  return e.allocation_style === 'none' && allocCount === 0 && e.aggregate_flat_count === 0;
+};
+
+const transactionFilterHint = (filter: string): string => {
+  switch (filter) {
+    case 'all_payments':
+      return 'Event / function expenses only — shared celebration costs (adults+kids split), not society maintenance receipts.';
+    case 'all_receipts':
+      return 'Society collections — flat owners, outsiders, monthly/one-time charges; pooled until you distribute to flats.';
+    case 'all':
+      return 'Everything in this period: society receipts and event-expense ledger rows.';
+    case 'society_pool_pending':
+      return 'Receipts recorded in the society pool that are not yet split equally across flats.';
+    default:
+      return 'Filter by charge type or recording mode. Use society pool when recording, then distribute from the receipt row when needed.';
+  }
 };
 
 const ledgerMonthValue = (e: FinanceLedgerRow) =>
@@ -123,6 +156,32 @@ async function uploadPaymentReceipt(file: File): Promise<string | null> {
   return data.publicUrl;
 }
 
+function PeriodMetric({
+  metricKey,
+  value,
+  valueClassName,
+  className,
+}: {
+  metricKey: keyof typeof FINANCE_PERIOD_METRICS;
+  value: ReactNode;
+  valueClassName?: string;
+  className?: string;
+}) {
+  const copy = FINANCE_PERIOD_METRICS[metricKey];
+  return (
+    <DescriptiveStatCard
+      variant="stat"
+      title={copy.title}
+      caption={copy.title}
+      description={copy.description}
+      howCalculated={copy.howCalculated}
+      value={value}
+      valueClassName={valueClassName}
+      className={className}
+    />
+  );
+}
+
 const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
@@ -136,8 +195,9 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [form, setForm] = useState({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
+  const [distributingPoolEntryId, setDistributingPoolEntryId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({
-    recordMode: 'flats_only' as 'flats_only' | 'flats_plus_outsider' | 'outsider_only',
+    recordMode: 'society_pool' as 'society_pool' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only',
     destination: 'current_month_maintenance' as 'current_month_maintenance' | 'corpus' | 'separate_entry',
     allocationStyle: 'same_per_flat' as 'same_per_flat' | 'split_total_equally',
     allocationIncludeVacant: false,
@@ -169,7 +229,9 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   });
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const [paymentMonthFilter, setPaymentMonthFilter] = useState('all');
-  const [receiptModeFilter, setReceiptModeFilter] = useState<'all' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only'>('all');
+  const [receiptModeFilter, setReceiptModeFilter] = useState<
+    'all' | 'society_pool' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only'
+  >('all');
   const [totalsMonth, setTotalsMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [periodFrom, setPeriodFrom] = useState(defaultFinancePeriodFrom);
   const [periodTo, setPeriodTo] = useState(defaultFinancePeriodTo);
@@ -483,11 +545,123 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     await loadAll();
   };
 
+  const distributePoolToAllFlats = async (entry: FinanceLedgerRow) => {
+    if (!societyId || !isLedgerInSocietyPool(entry)) return;
+    const scopeFlats = entry.include_vacant ? flats : flats.filter((f) => f.is_occupied);
+    if (scopeFlats.length === 0) {
+      toast.error('No flats available to distribute to');
+      return;
+    }
+    const perFlat = Number((Number(entry.total_amount) / scopeFlats.length).toFixed(2));
+    const ok = await confirmAction(
+      'Distribute to all flats equally?',
+      `₹${Number(entry.total_amount).toLocaleString('en-IN')} across ${scopeFlats.length} flat(s) ≈ ₹${perFlat.toLocaleString('en-IN')} each.${
+        entry.destination === 'current_month_maintenance' && entry.charge_id
+          ? ' Verified maintenance payment rows will be created per flat.'
+          : ''
+      }`,
+      'Distribute',
+      'Cancel',
+    );
+    if (!ok) return;
+
+    setDistributingPoolEntryId(entry.id);
+    try {
+      let allocated = 0;
+      const allocationRows: { flat_number: string; flat_id: string | null; amount: number }[] = [];
+      const mpRows: Record<string, unknown>[] = [];
+      const now = new Date().toISOString();
+      const chargeTitle = entry.charge_id ? charges.find((c) => c.id === entry.charge_id)?.title ?? '' : '';
+
+      for (let i = 0; i < scopeFlats.length; i++) {
+        const flat = scopeFlats[i];
+        const isLast = i === scopeFlats.length - 1;
+        const amount = isLast
+          ? Number((Number(entry.total_amount) - allocated).toFixed(2))
+          : perFlat;
+        allocated += amount;
+        allocationRows.push({ flat_number: flat.flat_number, flat_id: flat.id, amount });
+        if (entry.destination === 'current_month_maintenance' && entry.charge_id) {
+          mpRows.push({
+            charge_id: entry.charge_id,
+            flat_id: flat.id,
+            flat_number: flat.flat_number,
+            resident_name: residentLabelForFlatRow(flat.id, flat.owner_name, primaryByFlatId),
+            amount,
+            payment_method: entry.payment_method,
+            payment_status: 'verified',
+            payment_date: now,
+            due_date: entry.entry_month ? `${entry.entry_month}-01` : format(new Date(), 'yyyy-MM-dd'),
+            recording_date: format(new Date(), 'yyyy-MM-dd'),
+            transaction_id: entry.transaction_id,
+            screenshot_url: entry.screenshot_url,
+            notes: entry.notes,
+            submitted_by: 'admin',
+            submitted_by_user_id: null,
+            verified_by: adminName,
+            verified_at: now,
+            reviewed_at: now,
+            rejection_reason: null,
+            finance_entry_id: entry.id,
+          });
+        }
+      }
+
+      const { error: allocErr } = await supabase.from('finance_entry_allocations').insert(
+        allocationRows.map((a) => ({
+          finance_entry_id: entry.id,
+          flat_id: a.flat_id,
+          flat_number: a.flat_number,
+          amount: a.amount,
+        })),
+      );
+      if (allocErr) {
+        toast.error(allocErr.message);
+        return;
+      }
+
+      if (mpRows.length > 0) {
+        const { error: payErr } = await supabase.from('maintenance_payments').insert(mpRows);
+        if (payErr) {
+          await supabase.from('finance_entry_allocations').delete().eq('finance_entry_id', entry.id);
+          toast.error(payErr.message);
+          return;
+        }
+      }
+
+      const { error: updErr } = await supabase
+        .from('finance_entries')
+        .update({
+          allocation_style: 'split_total_equally',
+          aggregate_flat_count: scopeFlats.length,
+          distributed_at: now,
+          title: entry.title || chargeTitle || 'Society receipt (distributed)',
+        })
+        .eq('id', entry.id);
+      if (updErr) {
+        toast.error(updErr.message);
+        return;
+      }
+
+      toast.success(`Distributed across ${scopeFlats.length} flat(s)`);
+      setSelectedLedger(null);
+      await loadAll();
+    } finally {
+      setDistributingPoolEntryId(null);
+    }
+  };
+
   const recordPayment = async () => {
     if (!societyId) return;
     const mode = payForm.recordMode;
     const n = payForm.selected_flats.length;
-    if (n === 0) {
+
+    if (mode === 'society_pool') {
+      if (!payForm.amount || Number(payForm.amount) <= 0) {
+        toast.error('Enter the total receipt amount for the society pool');
+        return;
+      }
+    } else if (n === 0) {
       toast.error('Select at least one flat');
       return;
     }
@@ -534,7 +708,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     }
 
     // Duplicate detection: check if same flat + charge + due_date + amount already exists
-    if (mode === 'flats_only' || mode === 'flats_plus_outsider') {
+    if (mode !== 'society_pool' && (mode === 'flats_only' || mode === 'flats_plus_outsider')) {
       const chargeIds = (charges ?? []).map((c: any) => c.id);
       if (payForm.charge_id && chargeIds.length > 0) {
         const dupeFlats: string[] = [];
@@ -624,6 +798,11 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       rejection_reason: null,
     });
 
+    if (mode === 'society_pool') {
+      allocationStyle = 'none';
+      totalAmount = Number(payForm.amount);
+    }
+
     if (mode === 'flats_only') {
       const perFlat = Number(payForm.amount);
       allocationStyle = n > 1 ? 'same_per_flat' : 'none';
@@ -683,13 +862,21 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       }
     }
 
-    const needsCounterparty = mode === 'outsider_only' || mode === 'flats_plus_outsider';
+    const needsCounterparty =
+      mode === 'outsider_only' ||
+      mode === 'flats_plus_outsider' ||
+      (mode === 'society_pool' && payForm.outsiderName.trim().length > 0);
     const entryTitle =
-      mode === 'outsider_only'
-        ? payForm.entryTitle.trim() || `Outsider: ${payForm.outsiderName.trim()}`
-        : mode === 'flats_plus_outsider'
-          ? payForm.entryTitle.trim() || `${chargeTitle} + outsider (${payForm.outsiderName.trim()})`
-          : chargeTitle;
+      mode === 'society_pool'
+        ? payForm.entryTitle.trim() ||
+          (payForm.outsiderName.trim() ? `Receipt: ${payForm.outsiderName.trim()}` : '') ||
+          chargeTitle ||
+          'Society pool receipt'
+        : mode === 'outsider_only'
+          ? payForm.entryTitle.trim() || `Outsider: ${payForm.outsiderName.trim()}`
+          : mode === 'flats_plus_outsider'
+            ? payForm.entryTitle.trim() || `${chargeTitle} + outsider (${payForm.outsiderName.trim()})`
+            : chargeTitle;
 
     const chargeIdForEntry =
       mode === 'outsider_only' && payForm.destination !== 'current_month_maintenance'
@@ -697,7 +884,13 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         : payForm.charge_id || null;
 
     const destForEntry =
-      mode === 'flats_only' ? 'current_month_maintenance' : payForm.destination;
+      mode === 'flats_only'
+        ? 'current_month_maintenance'
+        : mode === 'society_pool' && payForm.destination === 'separate_entry'
+          ? 'corpus'
+          : payForm.destination;
+
+    const aggregateFlatCount = mode === 'society_pool' ? 0 : n;
 
     const { data: feRow, error: feErr } = await supabase
       .from('finance_entries')
@@ -709,7 +902,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         include_vacant: payForm.allocationIncludeVacant,
         entry_month: entryMonth,
         total_amount: totalAmount,
-        aggregate_flat_count: n,
+        aggregate_flat_count: aggregateFlatCount,
         charge_id: chargeIdForEntry,
         title: entryTitle,
         notes: payForm.notes || null,
@@ -741,17 +934,19 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       }
     }
 
-    const { error: allocErr } = await supabase.from('finance_entry_allocations').insert(
-      allocationRows.map((a) => ({
-        finance_entry_id: entryId,
-        flat_id: a.flat_id,
-        flat_number: a.flat_number,
-        amount: a.amount,
-      })),
-    );
-    if (allocErr) {
-      toast.error(allocErr.message);
-      return;
+    if (allocationRows.length > 0) {
+      const { error: allocErr } = await supabase.from('finance_entry_allocations').insert(
+        allocationRows.map((a) => ({
+          finance_entry_id: entryId,
+          flat_id: a.flat_id,
+          flat_number: a.flat_number,
+          amount: a.amount,
+        })),
+      );
+      if (allocErr) {
+        toast.error(allocErr.message);
+        return;
+      }
     }
 
     if (mpRows.length > 0) {
@@ -772,7 +967,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
     const allFlatNumbers = flats.map((f) => f.flat_number);
 
     setPayForm({
-      recordMode: 'flats_only',
+      recordMode: 'society_pool',
       destination: 'current_month_maintenance',
       allocationStyle: 'same_per_flat',
       allocationIncludeVacant: false,
@@ -788,13 +983,14 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       screenshot_url: '',
       notes: '',
       due_date: format(new Date(), 'yyyy-MM-dd'),
+      recording_date: payForm.recording_date,
     });
     setUseSameDateForSelectedFlats(true);
     setFlatDueDates({});
     setAutoSelectedChargeHint('');
     setPaymentNotifyAudience('none');
     setShowPaymentForm(false);
-    const recordedCount = mpRows.length || n;
+    const recordedCount = mode === 'society_pool' ? 1 : mpRows.length || n;
 
     let notifySuffix = '';
     if (notifyAudience !== 'none') {
@@ -802,8 +998,9 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
       const title = `Payment recorded: ${entryTitle}`;
       const lines = [
         `${adminName} recorded a ${methodLabel} finance entry (“${entryTitle}”).`,
-        `Flats in this record: ${snapshotFlats.join(', ')}.`,
-        `Total ₹${totalAmount.toLocaleString('en-IN')}.`,
+        mode === 'society_pool'
+          ? `₹${totalAmount.toLocaleString('en-IN')} is in the society pool until you distribute it equally to flats.`
+          : `Flats in this record: ${snapshotFlats.join(', ')}. Total ₹${totalAmount.toLocaleString('en-IN')}.`,
       ];
       if (notifyAudience === 'all') {
         lines.push(`This update was shared with all ${allFlatNumbers.length} society flat(s).`);
@@ -1341,9 +1538,12 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
     const options: { value: string; label: string }[] = [
       { value: 'all', label: '--All--' },
-      { value: 'all_payments', label: 'All Payment Records' },
-      { value: 'all_receipts', label: 'All Receipts Records' },
+      { value: 'all_payments', label: 'Event / function expense records' },
+      { value: 'all_receipts', label: 'All society receipt records' },
     ];
+    if (ledgerEntries.some((e) => isLedgerInSocietyPool(e))) {
+      options.push({ value: 'society_pool_pending', label: 'In society pool (not yet distributed)' });
+    }
     if (keys.has('monthly_maintenance')) options.push({ value: 'monthly_maintenance', label: 'Monthly Maintenance Charges' });
     if (keys.has('monthly')) options.push({ value: 'monthly', label: 'Monthly (non-maintenance)' });
     if (keys.has('quarterly')) options.push({ value: 'quarterly', label: 'Quarterly charges' });
@@ -1387,9 +1587,16 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
   }, [payForm.selected_flats, payForm.due_date, useSameDateForSelectedFlats, flatDueDates]);
 
   const scopedReceiptPayments = payments.filter((p) => {
-    if (paymentTypeFilter === 'corpus' || paymentTypeFilter === 'outsider_mixed' || paymentTypeFilter === 'all_payments') return false;
+    if (
+      paymentTypeFilter === 'corpus' ||
+      paymentTypeFilter === 'outsider_mixed' ||
+      paymentTypeFilter === 'all_payments' ||
+      paymentTypeFilter === 'society_pool_pending'
+    )
+      return false;
+    const fe = p.finance_entry_id ? financeEntryById.get(p.finance_entry_id as string) : undefined;
+    if (fe && isSplitwiseLedgerEntry(fe)) return false;
     if (receiptModeFilter !== 'all') {
-      const fe = p.finance_entry_id ? financeEntryById.get(p.finance_entry_id as string) : undefined;
       const mode = fe?.record_mode ?? 'flats_only';
       if (mode !== receiptModeFilter) return false;
     }
@@ -1433,8 +1640,25 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
   const scopedLedgerOnly = useMemo(() => {
     return ledgerEntries.filter((e) => {
+      const splitwise = isSplitwiseLedgerEntry(e);
+      if (paymentTypeFilter === 'all_payments' && !splitwise) return false;
+      if (
+        (paymentTypeFilter === 'all_receipts' ||
+          paymentTypeFilter === 'society_pool_pending' ||
+          paymentTypeFilter === 'monthly_maintenance' ||
+          paymentTypeFilter === 'corpus' ||
+          paymentTypeFilter === 'outsider_mixed' ||
+          paymentTypeFilter === 'other' ||
+          paymentTypeFilter === 'monthly' ||
+          paymentTypeFilter === 'quarterly' ||
+          paymentTypeFilter === 'yearly' ||
+          paymentTypeFilter === 'one-time') &&
+        splitwise
+      )
+        return false;
+      if (paymentTypeFilter === 'society_pool_pending' && !isLedgerInSocietyPool(e)) return false;
+
       if (financeEntryIdsWithPayments.has(e.id)) return false;
-      if (paymentTypeFilter === 'all_receipts') return false;
       if (receiptModeFilter !== 'all' && e.record_mode !== receiptModeFilter) return false;
       if (paymentMonthFilter !== 'all' && ledgerMonthValue(e) !== paymentMonthFilter) return false;
 
@@ -1443,8 +1667,10 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         if (e.payment_status !== filterStatus) return false;
       }
 
-      if (paymentTypeFilter === 'all' || paymentTypeFilter === 'all_payments') {
-        // include
+      if (paymentTypeFilter === 'all' || paymentTypeFilter === 'all_payments' || paymentTypeFilter === 'all_receipts') {
+        // include (splitwise / society split applied above)
+      } else if (paymentTypeFilter === 'society_pool_pending') {
+        // include pooled rows only
       } else if (paymentTypeFilter === 'monthly_maintenance') {
         if (e.destination === 'corpus') return false;
         const ch = e.charge_id ? chargeById.get(e.charge_id) : null;
@@ -2147,9 +2373,16 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
         </div>
         <div>
           <h1 className="page-title">Finance Management</h1>
-          <p className="text-xs text-muted-foreground">
-            {charges.length} receipt types · {payments.length} receipts · {ledgerEntries.length} ledger entries
-          </p>
+          <DescriptiveStatSummary
+            className="!px-0 !py-0 !mb-0 !border-0 !bg-transparent"
+            label={
+              <span className="text-xs">
+                {charges.length} receipt types · {payments.length} receipts · {ledgerEntries.length} ledger entries
+              </span>
+            }
+            description="Quick counts for this society’s finance module scope."
+            howCalculated="Receipt types = maintenance_charges rows. Receipts = maintenance_payments. Ledger entries = finance_entries (pool, direct, event mirror)."
+          />
         </div>
       </div>
 
@@ -2327,7 +2560,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           {showPaymentForm && (
             <div className="card-section p-4 mb-4 flex flex-col gap-3">
               <div>
-                <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Recording mode</p>
+                <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Recording style</p>
                 <select
                   className="input-field"
                   value={payForm.recordMode}
@@ -2338,15 +2571,21 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                     })
                   }
                 >
-                  <option value="flats_only">Flats only (maintenance)</option>
-                  <option value="flats_plus_outsider">Flats + outsider</option>
-                  <option value="outsider_only">Outsider only</option>
+                  <option value="society_pool">Society pool (default — distribute to flats later)</option>
+                  <option value="flats_only">Direct to selected flats (per-flat amount)</option>
+                  <option value="flats_plus_outsider">Selected flats + outsider share</option>
+                  <option value="outsider_only">Outsider only (split across selected flats now)</option>
                 </select>
+                <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+                  {payForm.recordMode === 'society_pool'
+                    ? 'Receipt stays in the society pool. Open it under Transactions and use “Distribute equally to all flats” when ready.'
+                    : 'Amount is allocated to the flats you select below at record time.'}
+                </p>
               </div>
-              {payForm.recordMode !== 'flats_only' && (
+              {(payForm.recordMode === 'society_pool' || payForm.recordMode !== 'flats_only') && (
                 <div>
                   <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">
-                    Destination (outsider portion / ledger context)
+                    {payForm.recordMode === 'society_pool' ? 'Ledger destination' : 'Destination (outsider / ledger)'}
                   </p>
                   <select
                     className="input-field"
@@ -2358,12 +2597,45 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       })
                     }
                   >
-                    <option value="current_month_maintenance">Adjust current month maintenance</option>
+                    <option value="current_month_maintenance">Current month maintenance / collections</option>
                     <option value="corpus">Corpus / sinking fund</option>
-                    <option value="separate_entry">Separate ledger entry (no flat maintenance posting)</option>
+                    {payForm.recordMode !== 'society_pool' && (
+                      <option value="separate_entry">Separate ledger entry (expense-style, no flat posting)</option>
+                    )}
                   </select>
                 </div>
               )}
+              {payForm.recordMode === 'society_pool' && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <p className="text-xs font-medium text-foreground">Society pool receipt</p>
+                  <input
+                    className="input-field"
+                    type="number"
+                    placeholder="Total amount received (₹)"
+                    value={payForm.amount}
+                    onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })}
+                  />
+                  <input
+                    className="input-field"
+                    placeholder="Payer name (flat owner, outsider, vendor — optional)"
+                    value={payForm.outsiderName}
+                    onChange={(e) => setPayForm({ ...payForm, outsiderName: e.target.value })}
+                  />
+                  <input
+                    className="input-field"
+                    placeholder="Reference / relation (optional)"
+                    value={payForm.outsiderRelation}
+                    onChange={(e) => setPayForm({ ...payForm, outsiderRelation: e.target.value })}
+                  />
+                  <input
+                    className="input-field"
+                    placeholder="Title override (optional)"
+                    value={payForm.entryTitle}
+                    onChange={(e) => setPayForm({ ...payForm, entryTitle: e.target.value })}
+                  />
+                </div>
+              )}
+              {payForm.recordMode !== 'society_pool' && (
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <input
                   type="checkbox"
@@ -2372,6 +2644,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                 />
                 Include vacant flats in this picker (allocation scope)
               </label>
+              )}
               {(payForm.recordMode === 'outsider_only' || payForm.recordMode === 'flats_plus_outsider') && (
                 <div className="rounded-lg border border-border p-3 space-y-2 bg-muted/20">
                   <p className="text-xs font-medium text-foreground">Outsider / payer</p>
@@ -2428,7 +2701,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               {autoSelectedChargeHint && (
                 <p className="text-[11px] text-muted-foreground">{autoSelectedChargeHint}</p>
               )}
-              {(payForm.recordMode === 'flats_only' ||
+              {(payForm.recordMode === 'society_pool' ||
+                payForm.recordMode === 'flats_only' ||
                 payForm.recordMode === 'flats_plus_outsider' ||
                 (payForm.recordMode === 'outsider_only' && payForm.destination === 'current_month_maintenance')) && (
                 <select
@@ -2452,6 +2726,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                   ))}
                 </select>
               )}
+              {payForm.recordMode !== 'society_pool' && (
               <FlatMultiSelect
                 flats={flatOptionsWithPrimaryLabel(paymentScopeFlats, primaryByFlatId)}
                 selected={payForm.selected_flats}
@@ -2484,6 +2759,18 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                 selectedBadgeByFlat={selectedFlatDateBadges}
                 label="Flats (multi-select)"
               />
+              )}
+              {payForm.recordMode === 'society_pool' && (
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={payForm.allocationIncludeVacant}
+                    onChange={(e) => setPayForm({ ...payForm, allocationIncludeVacant: e.target.checked })}
+                  />
+                  When distributing later, include vacant flats in the equal split
+                </label>
+              )}
+              {payForm.recordMode !== 'society_pool' && (
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <input
                   type="checkbox"
@@ -2502,6 +2789,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                 />
                 Use same due date for selected flats
               </label>
+              )}
               {(payForm.recordMode === 'flats_only' || payForm.recordMode === 'flats_plus_outsider') && (
                 <input
                   className="input-field"
@@ -2549,7 +2837,7 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                   />
                 </div>
               </div>
-              {!useSameDateForSelectedFlats && payForm.selected_flats.length > 0 && (
+              {payForm.recordMode !== 'society_pool' && !useSameDateForSelectedFlats && payForm.selected_flats.length > 0 && (
                 <div className="rounded-lg border border-border p-2 space-y-1.5">
                   <p className="text-[10px] uppercase font-medium text-muted-foreground">Per-flat due dates</p>
                   {payForm.selected_flats.map((flatNum) => (
@@ -2612,8 +2900,9 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
             </div>
           )}
 
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Payment records appear in the <span className="font-medium">Transactions</span> tab.
+          <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+            Pool receipts and flat-wise records appear under <span className="font-medium">Transactions</span>.
+            Event &amp; function splits stay under <span className="font-medium">Event expenses</span> (adults/kids per flat).
           </p>
 
           {flatDateModal.open && (
@@ -2707,27 +2996,39 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
               }
             >
               <option value="all">All recording modes</option>
+              <option value="society_pool">Society pool (undistributed)</option>
               <option value="flats_only">Flats only</option>
               <option value="flats_plus_outsider">Flats + outsider</option>
               <option value="outsider_only">Outsider only</option>
             </select>
+            <p className="text-[10px] text-muted-foreground leading-snug">{transactionFilterHint(paymentTypeFilter)}</p>
           </div>
 
-          <p className="text-[10px] text-muted-foreground mb-2">
-            {filterStatus === 'unpaid' ? (
-              <>
-                {unpaidReceiptRows.length} unpaid flats · Type: {selectedReceiptTypeLabel} · Month:{' '}
-                {selectedReceiptMonthLabel}
-              </>
-            ) : (
-              <>
-                {receiptSummary.count} entries · ₹{receiptSummary.sum.toLocaleString('en-IN')} total ·{' '}
-                {receiptSummary.flatCount} flat(s) · Type: {selectedReceiptTypeLabel} · Mode:{' '}
-                {receiptModeFilter === 'all' ? 'All' : receiptModeFilter.replace(/_/g, ' ')} · Month:{' '}
-                {selectedReceiptMonthLabel}
-              </>
-            )}
-          </p>
+          {filterStatus === 'unpaid' ? (
+            <DescriptiveStatSummary
+              label={
+                <>
+                  {unpaidReceiptRows.length} unpaid flats · Type: {selectedReceiptTypeLabel} · Month:{' '}
+                  {selectedReceiptMonthLabel}
+                </>
+              }
+              description="Flats that have not paid for the filters you selected (verified payments only)."
+              howCalculated="Target flats minus flats with at least one verified payment matching charge/type/month filters."
+            />
+          ) : (
+            <DescriptiveStatSummary
+              label={
+                <>
+                  {receiptSummary.count} entries · ₹{receiptSummary.sum.toLocaleString('en-IN')} total ·{' '}
+                  {receiptSummary.flatCount} flat(s) · Type: {selectedReceiptTypeLabel} · Mode:{' '}
+                  {receiptModeFilter === 'all' ? 'All' : receiptModeFilter.replace(/_/g, ' ')} · Month:{' '}
+                  {selectedReceiptMonthLabel}
+                </>
+              }
+              description="Totals for the current transaction list after filters (status, type, month, mode)."
+              howCalculated="Count and sum of visible maintenance_payment rows plus ledger-only rows in scopedLedgerOnly."
+            />
+          )}
 
           {filterStatus !== 'unpaid' && (
             <div className="flex flex-wrap gap-2 items-center mb-3 card-section p-2">
@@ -2939,7 +3240,12 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                         <div className="flex justify-between items-start gap-2">
                           <div className="min-w-0">
                             <p className="text-[11px] text-muted-foreground">
-                              {ledgerMonthDisplay(item.e)} · Ledger-only (no maintenance payment rows)
+                              {ledgerMonthDisplay(item.e)} ·{' '}
+                              {isSplitwiseLedgerEntry(item.e)
+                                ? 'Event / function expense'
+                                : isLedgerInSocietyPool(item.e)
+                                  ? 'Society pool — not yet distributed'
+                                  : 'Ledger-only (no maintenance payment rows)'}
                             </p>
                             <p className="text-sm font-semibold truncate">{item.e.title || 'Finance entry'}</p>
                             <p className="text-[10px] text-muted-foreground">
@@ -2969,6 +3275,17 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-border items-center">
+                      {isLedgerInSocietyPool(item.e) && (
+                        <button
+                          type="button"
+                          className="btn-primary text-[10px] py-1 px-2 flex items-center gap-1"
+                          disabled={distributingPoolEntryId === item.e.id}
+                          onClick={() => void distributePoolToAllFlats(item.e!)}
+                        >
+                          <Users className="w-3 h-3" />
+                          {distributingPoolEntryId === item.e.id ? 'Distributing…' : 'Distribute equally to all flats'}
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="btn-secondary text-[10px] py-1 px-2 flex items-center gap-1"
@@ -3094,6 +3411,14 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                       <p>
                         <span className="text-muted-foreground">Allocation style:</span> {selectedLedger.allocation_style}
                       </p>
+                      {selectedLedger.distributed_at ? (
+                        <p>
+                          <span className="text-muted-foreground">Distributed at:</span>{' '}
+                          {fmtDateTimeFull(selectedLedger.distributed_at)}
+                        </p>
+                      ) : isLedgerInSocietyPool(selectedLedger) ? (
+                        <p className="text-amber-600">In society pool — not yet split across flats.</p>
+                      ) : null}
                       {(() => {
                         const rawCp = selectedLedger.finance_entry_counterparties;
                         const cp = Array.isArray(rawCp) ? rawCp[0] : rawCp;
@@ -3137,6 +3462,19 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
                           Open attachment
                         </a>
                       </div>
+                    )}
+                    {isLedgerInSocietyPool(selectedLedger) && (
+                      <button
+                        type="button"
+                        className="btn-primary w-full mt-3 flex items-center justify-center gap-2 text-xs"
+                        disabled={distributingPoolEntryId === selectedLedger.id}
+                        onClick={() => void distributePoolToAllFlats(selectedLedger)}
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        {distributingPoolEntryId === selectedLedger.id
+                          ? 'Distributing…'
+                          : 'Distribute equally to all flats'}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -3546,93 +3884,82 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            <div className="stat-card flex flex-col gap-1 border-blue-500/20 bg-blue-500/5">
-              <span className="text-[10px] text-muted-foreground uppercase">Opening cash in hand</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.openingCash >= 0 ? 'text-blue-600' : 'text-destructive'}`}>
-                ₹{financePeriodReport.openingCash.toLocaleString('en-IN')}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Balance before period</span>
-            </div>
-            <div className="stat-card flex flex-col gap-1 border-blue-500/20 bg-blue-500/5">
-              <span className="text-[10px] text-muted-foreground uppercase">Opening cash in bank</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.openingBank >= 0 ? 'text-blue-600' : 'text-destructive'}`}>
-                ₹{financePeriodReport.openingBank.toLocaleString('en-IN')}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Balance before period</span>
-            </div>
-            <div className="stat-card flex flex-col gap-1 border-blue-500/20 bg-blue-500/5">
-              <span className="text-[10px] text-muted-foreground uppercase">Opening other</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.openingOther >= 0 ? 'text-blue-600' : 'text-destructive'}`}>
-                ₹{financePeriodReport.openingOther.toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div className="stat-card flex flex-col gap-1 border-blue-500/30 bg-blue-500/10">
-              <span className="text-[10px] text-muted-foreground uppercase">Opening balance (total)</span>
-              <span className={`text-xl font-bold font-mono ${financePeriodReport.openingBalance >= 0 ? 'text-blue-700' : 'text-destructive'}`}>
-                ₹{financePeriodReport.openingBalance.toLocaleString('en-IN')}
-              </span>
-              <span className="text-[10px] text-muted-foreground">All channels before period</span>
-            </div>
+            <PeriodMetric
+              metricKey="openingCash"
+              className="border-blue-500/20 bg-blue-500/5"
+              value={`₹${financePeriodReport.openingCash.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.openingCash >= 0 ? 'text-blue-600' : 'text-destructive'}
+            />
+            <PeriodMetric
+              metricKey="openingBank"
+              className="border-blue-500/20 bg-blue-500/5"
+              value={`₹${financePeriodReport.openingBank.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.openingBank >= 0 ? 'text-blue-600' : 'text-destructive'}
+            />
+            <PeriodMetric
+              metricKey="openingOther"
+              className="border-blue-500/20 bg-blue-500/5"
+              value={`₹${financePeriodReport.openingOther.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.openingOther >= 0 ? 'text-blue-600' : 'text-destructive'}
+            />
+            <PeriodMetric
+              metricKey="openingBalance"
+              className="border-blue-500/30 bg-blue-500/10"
+              value={`₹${financePeriodReport.openingBalance.toLocaleString('en-IN')}`}
+              valueClassName={`text-xl ${financePeriodReport.openingBalance >= 0 ? 'text-blue-700' : 'text-destructive'}`}
+            />
           </div>
 
           <p className="text-[10px] text-muted-foreground uppercase font-medium mt-3">Period movement (receipts − expenses)</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            <div className="stat-card flex flex-col gap-1">
-              <span className="text-[10px] text-muted-foreground uppercase">Cash in hand (net)</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.cashInHand >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                ₹{financePeriodReport.cashInHand.toLocaleString('en-IN')}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Receipts cash − expense cash</span>
-            </div>
-            <div className="stat-card flex flex-col gap-1">
-              <span className="text-[10px] text-muted-foreground uppercase">Cash in bank (net)</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.cashInBank >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                ₹{financePeriodReport.cashInBank.toLocaleString('en-IN')}
-              </span>
-              <span className="text-[10px] text-muted-foreground">UPI / transfer / online − same</span>
-            </div>
-            <div className="stat-card flex flex-col gap-1">
-              <span className="text-[10px] text-muted-foreground uppercase">Other channels (net)</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.otherNet >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                ₹{financePeriodReport.otherNet.toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div className="stat-card flex flex-col gap-1">
-              <span className="text-[10px] text-muted-foreground uppercase">Period net</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.totalBalance >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                ₹{financePeriodReport.totalBalance.toLocaleString('en-IN')}
-              </span>
-              <span className="text-[10px] text-muted-foreground">All channels this period</span>
-            </div>
+            <PeriodMetric
+              metricKey="cashInHand"
+              value={`₹${financePeriodReport.cashInHand.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.cashInHand >= 0 ? 'text-green-600' : 'text-destructive'}
+            />
+            <PeriodMetric
+              metricKey="cashInBank"
+              value={`₹${financePeriodReport.cashInBank.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.cashInBank >= 0 ? 'text-green-600' : 'text-destructive'}
+            />
+            <PeriodMetric
+              metricKey="otherNet"
+              value={`₹${financePeriodReport.otherNet.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.otherNet >= 0 ? 'text-green-600' : 'text-destructive'}
+            />
+            <PeriodMetric
+              metricKey="totalBalance"
+              value={`₹${financePeriodReport.totalBalance.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.totalBalance >= 0 ? 'text-green-600' : 'text-destructive'}
+            />
           </div>
 
           <p className="text-[10px] text-muted-foreground uppercase font-medium mt-3">Closing balances (opening + period)</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            <div className="stat-card flex flex-col gap-1 border-primary/20 bg-primary/5">
-              <span className="text-[10px] text-muted-foreground uppercase">Closing cash in hand</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.closingCash >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                ₹{financePeriodReport.closingCash.toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div className="stat-card flex flex-col gap-1 border-primary/20 bg-primary/5">
-              <span className="text-[10px] text-muted-foreground uppercase">Closing cash in bank</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.closingBank >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                ₹{financePeriodReport.closingBank.toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div className="stat-card flex flex-col gap-1 border-primary/20 bg-primary/5">
-              <span className="text-[10px] text-muted-foreground uppercase">Closing other</span>
-              <span className={`text-lg font-bold font-mono ${financePeriodReport.closingOther >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                ₹{financePeriodReport.closingOther.toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div className="stat-card flex flex-col gap-1 border-primary/30 bg-primary/10">
-              <span className="text-[10px] text-muted-foreground uppercase">Closing balance (total)</span>
-              <span className={`text-xl font-bold font-mono ${financePeriodReport.closingBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                ₹{financePeriodReport.closingBalance.toLocaleString('en-IN')}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Carry forward to next period</span>
-            </div>
+            <PeriodMetric
+              metricKey="closingCash"
+              className="border-primary/20 bg-primary/5"
+              value={`₹${financePeriodReport.closingCash.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.closingCash >= 0 ? 'text-primary' : 'text-destructive'}
+            />
+            <PeriodMetric
+              metricKey="closingBank"
+              className="border-primary/20 bg-primary/5"
+              value={`₹${financePeriodReport.closingBank.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.closingBank >= 0 ? 'text-primary' : 'text-destructive'}
+            />
+            <PeriodMetric
+              metricKey="closingOther"
+              className="border-primary/20 bg-primary/5"
+              value={`₹${financePeriodReport.closingOther.toLocaleString('en-IN')}`}
+              valueClassName={financePeriodReport.closingOther >= 0 ? 'text-primary' : 'text-destructive'}
+            />
+            <PeriodMetric
+              metricKey="closingBalance"
+              className="border-primary/30 bg-primary/10"
+              value={`₹${financePeriodReport.closingBalance.toLocaleString('en-IN')}`}
+              valueClassName={`text-xl ${financePeriodReport.closingBalance >= 0 ? 'text-primary' : 'text-destructive'}`}
+            />
           </div>
         </div>
       )}
@@ -3655,20 +3982,24 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-            <div className="stat-card flex flex-col gap-1">
-              <span className="text-[10px] text-muted-foreground uppercase">Inflow (ledger)</span>
-              <span className="text-xl font-bold text-green-600">₹{totalsMonthNet.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="stat-card flex flex-col gap-1">
-              <span className="text-[10px] text-muted-foreground uppercase">Groups</span>
-              <span className="text-xl font-bold font-mono">{totalsBreakdown.length}</span>
-            </div>
-            <div className="stat-card flex flex-col gap-1">
-              <span className="text-[10px] text-muted-foreground uppercase">Flat allocation rows</span>
-              <span className="text-xl font-bold font-mono">
-                {totalsBreakdown.reduce((s, r) => s + r.flatUnits, 0)}
-              </span>
-            </div>
+            <DescriptiveStatCard
+              {...FINANCE_TOTALS_METRICS.inflow}
+              variant="stat"
+              value={`₹${totalsMonthNet.toLocaleString('en-IN')}`}
+              valueClassName="text-xl text-green-600"
+            />
+            <DescriptiveStatCard
+              {...FINANCE_TOTALS_METRICS.groups}
+              variant="stat"
+              value={totalsBreakdown.length}
+              valueClassName="text-xl"
+            />
+            <DescriptiveStatCard
+              {...FINANCE_TOTALS_METRICS.flatUnits}
+              variant="stat"
+              value={totalsBreakdown.reduce((s, r) => s + r.flatUnits, 0)}
+              valueClassName="text-xl"
+            />
           </div>
 
           <div className="space-y-2">
@@ -3701,20 +4032,24 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
           {/* Outflow Section */}
           <div className="mt-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-              <div className="stat-card flex flex-col gap-1">
-                <span className="text-[10px] text-muted-foreground uppercase">Outflow (payments made)</span>
-                <span className="text-xl font-bold text-red-600">₹{totalsMonthOutflow.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="stat-card flex flex-col gap-1">
-                <span className="text-[10px] text-muted-foreground uppercase">Expense heads</span>
-                <span className="text-xl font-bold font-mono">{totalsOutflowBreakdown.length}</span>
-              </div>
-              <div className="stat-card flex flex-col gap-1">
-                <span className="text-[10px] text-muted-foreground uppercase">Net (Inflow − Outflow)</span>
-                <span className={`text-xl font-bold font-mono ${(totalsMonthNet - totalsMonthOutflow) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  ₹{(totalsMonthNet - totalsMonthOutflow).toLocaleString('en-IN')}
-                </span>
-              </div>
+              <DescriptiveStatCard
+                {...FINANCE_TOTALS_METRICS.outflow}
+                variant="stat"
+                value={`₹${totalsMonthOutflow.toLocaleString('en-IN')}`}
+                valueClassName="text-xl text-red-600"
+              />
+              <DescriptiveStatCard
+                {...FINANCE_TOTALS_METRICS.expenseHeads}
+                variant="stat"
+                value={totalsOutflowBreakdown.length}
+                valueClassName="text-xl"
+              />
+              <DescriptiveStatCard
+                {...FINANCE_TOTALS_METRICS.netInflowOutflow}
+                variant="stat"
+                value={`₹${(totalsMonthNet - totalsMonthOutflow).toLocaleString('en-IN')}`}
+                valueClassName={`text-xl ${totalsMonthNet - totalsMonthOutflow >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              />
             </div>
 
             <div className="space-y-2">
@@ -3800,30 +4135,30 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
             <>
               {/* Summary cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="stat-card flex flex-col gap-1">
-                  <span className="text-[10px] text-muted-foreground uppercase">Total receipts</span>
-                  <span className="text-lg font-bold text-green-600 font-mono">
-                    ₹{flatReportData.reduce((s, r) => s + r.maintenance_paid, 0).toLocaleString('en-IN')}
-                  </span>
-                </div>
-                <div className="stat-card flex flex-col gap-1">
-                  <span className="text-[10px] text-muted-foreground uppercase">Total expense share</span>
-                  <span className="text-lg font-bold text-red-600 font-mono">
-                    ₹{flatReportData.reduce((s, r) => s + r.expense_share, 0).toLocaleString('en-IN')}
-                  </span>
-                </div>
-                <div className="stat-card flex flex-col gap-1">
-                  <span className="text-[10px] text-muted-foreground uppercase">Settled</span>
-                  <span className="text-lg font-bold text-blue-600 font-mono">
-                    ₹{flatReportData.reduce((s, r) => s + r.settled_amount, 0).toLocaleString('en-IN')}
-                  </span>
-                </div>
-                <div className="stat-card flex flex-col gap-1">
-                  <span className="text-[10px] text-muted-foreground uppercase">Unsettled</span>
-                  <span className="text-lg font-bold text-amber-600 font-mono">
-                    ₹{flatReportData.reduce((s, r) => s + r.unsettled_amount, 0).toLocaleString('en-IN')}
-                  </span>
-                </div>
+                <DescriptiveStatCard
+                  {...FINANCE_FLAT_REPORT_METRICS.totalReceipts}
+                  variant="stat"
+                  value={`₹${flatReportData.reduce((s, r) => s + r.maintenance_paid, 0).toLocaleString('en-IN')}`}
+                  valueClassName="text-lg text-green-600"
+                />
+                <DescriptiveStatCard
+                  {...FINANCE_FLAT_REPORT_METRICS.expenseShare}
+                  variant="stat"
+                  value={`₹${flatReportData.reduce((s, r) => s + r.expense_share, 0).toLocaleString('en-IN')}`}
+                  valueClassName="text-lg text-red-600"
+                />
+                <DescriptiveStatCard
+                  {...FINANCE_FLAT_REPORT_METRICS.settled}
+                  variant="stat"
+                  value={`₹${flatReportData.reduce((s, r) => s + r.settled_amount, 0).toLocaleString('en-IN')}`}
+                  valueClassName="text-lg text-blue-600"
+                />
+                <DescriptiveStatCard
+                  {...FINANCE_FLAT_REPORT_METRICS.unsettled}
+                  variant="stat"
+                  value={`₹${flatReportData.reduce((s, r) => s + r.unsettled_amount, 0).toLocaleString('en-IN')}`}
+                  valueClassName="text-lg text-amber-600"
+                />
               </div>
 
               {/* Per-flat breakdown */}

@@ -9,6 +9,7 @@ import { fmtDate, fmtDateTime } from '@/lib/dateFormat';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { supabase } from '@/integrations/supabase/client';
 import BiometricSetup from '@/components/BiometricSetup';
+import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 
 type StatFilter = 'all' | 'visitor' | 'vehicle' | 'delivery' | 'inside';
 
@@ -149,32 +150,69 @@ const DashboardPage = () => {
         <p className="text-center text-xs text-muted-foreground mb-3">{fmtDate(subDays(new Date(), dayOffset))}</p>
       )}
 
-      {/* Stats Grid — clickable */}
+      {/* Stats Grid — tap for description; optional filter from dialog */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <button onClick={() => toggleFilter('visitor')} className={`stat-card text-left transition-all ${activeFilter === 'visitor' ? 'ring-2 ring-primary' : ''}`}>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Users className="w-4 h-4" /><span className="text-xs">{t('dashboard.visitors')}</span>
-          </div>
-          <span className="text-2xl font-bold font-mono text-foreground">{stats.totalVisitors}</span>
-        </button>
-        <button onClick={() => toggleFilter('vehicle')} className={`stat-card text-left transition-all ${activeFilter === 'vehicle' ? 'ring-2 ring-primary' : ''}`}>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Car className="w-4 h-4" /><span className="text-xs">{t('dashboard.vehicles')}</span>
-          </div>
-          <span className="text-2xl font-bold font-mono text-foreground">{stats.totalVehicles}</span>
-        </button>
-        <button onClick={() => toggleFilter('delivery')} className={`stat-card text-left transition-all ${activeFilter === 'delivery' ? 'ring-2 ring-primary' : ''}`}>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Truck className="w-4 h-4" /><span className="text-xs">{t('dashboard.deliveries')}</span>
-          </div>
-          <span className="text-2xl font-bold font-mono text-foreground">{stats.totalDeliveries}</span>
-        </button>
-        <button onClick={() => toggleFilter('inside')} className={`stat-card text-left border-primary/30 transition-all ${activeFilter === 'inside' ? 'ring-2 ring-primary' : ''}`}>
-          <div className="flex items-center gap-2 text-primary">
-            <LogIn className="w-4 h-4" /><span className="text-xs">{t('dashboard.insideNow')}</span>
-          </div>
-          <span className="text-2xl font-bold font-mono text-primary">{stats.currentlyInside}</span>
-        </button>
+        <DescriptiveStatCard
+          title={t('dashboard.visitors')}
+          caption={t('dashboard.visitors')}
+          description="Guest and serviceman visitor entries for the selected day."
+          howCalculated="Rows in the visitor log for today / yesterday offset."
+          icon={
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Users className="w-4 h-4" />
+            </div>
+          }
+          value={stats.totalVisitors}
+          onNavigate={() => toggleFilter('visitor')}
+          navigateLabel="Filter list"
+          className={activeFilter === 'visitor' ? 'ring-2 ring-primary' : ''}
+        />
+        <DescriptiveStatCard
+          title={t('dashboard.vehicles')}
+          caption={t('dashboard.vehicles')}
+          description="Visitor entries that include a vehicle number."
+          howCalculated="Visitor rows with vehicle_number on the selected day."
+          icon={
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Car className="w-4 h-4" />
+            </div>
+          }
+          value={stats.totalVehicles}
+          onNavigate={() => toggleFilter('vehicle')}
+          navigateLabel="Filter list"
+          className={activeFilter === 'vehicle' ? 'ring-2 ring-primary' : ''}
+        />
+        <DescriptiveStatCard
+          title={t('dashboard.deliveries')}
+          caption={t('dashboard.deliveries')}
+          description="Delivery-category visitors for the day."
+          howCalculated="Visitors filtered as deliveries."
+          icon={
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Truck className="w-4 h-4" />
+            </div>
+          }
+          value={stats.totalDeliveries}
+          onNavigate={() => toggleFilter('delivery')}
+          navigateLabel="Filter list"
+          className={activeFilter === 'delivery' ? 'ring-2 ring-primary' : ''}
+        />
+        <DescriptiveStatCard
+          title={t('dashboard.insideNow')}
+          caption={t('dashboard.insideNow')}
+          description="People still inside the society (no exit recorded)."
+          howCalculated="Visitor rows with exit_time empty for the day view."
+          icon={
+            <div className="flex items-center gap-2 text-primary">
+              <LogIn className="w-4 h-4" />
+            </div>
+          }
+          value={stats.currentlyInside}
+          valueClassName="text-primary"
+          onNavigate={() => toggleFilter('inside')}
+          navigateLabel="Filter list"
+          className={`border-primary/30 ${activeFilter === 'inside' ? 'ring-2 ring-primary' : ''}`}
+        />
       </div>
 
       {/* Active filter label */}

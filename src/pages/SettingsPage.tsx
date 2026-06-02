@@ -6,6 +6,8 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
+import { ADMIN_HOME_METRICS } from '@/lib/descriptiveMetricCopy';
 
 const SettingsPage = () => {
   const { visitors, flats, members, residentVehicles, blacklist, societyId } = useStore();
@@ -132,27 +134,37 @@ const SettingsPage = () => {
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
           <Shield className="w-4 h-4 text-primary" /> Data Summary
         </h2>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="flex justify-between bg-secondary/50 rounded-lg px-3 py-2">
-            <span className="text-muted-foreground">Flats</span>
-            <span className="font-mono font-bold">{flats.length}</span>
-          </div>
-          <div className="flex justify-between bg-secondary/50 rounded-lg px-3 py-2">
-            <span className="text-muted-foreground">Members</span>
-            <span className="font-mono font-bold">{members.length}</span>
-          </div>
-          <div className="flex justify-between bg-secondary/50 rounded-lg px-3 py-2">
-            <span className="text-muted-foreground">Vehicles</span>
-            <span className="font-mono font-bold">{residentVehicles.length}</span>
-          </div>
-          <div className="flex justify-between bg-secondary/50 rounded-lg px-3 py-2">
-            <span className="text-muted-foreground">Visitors</span>
-            <span className="font-mono font-bold">{visitors.length}</span>
-          </div>
-          <div className="flex justify-between bg-secondary/50 rounded-lg px-3 py-2">
-            <span className="text-muted-foreground">Blacklist</span>
-            <span className="font-mono font-bold">{blacklist.length}</span>
-          </div>
+        <div className="grid grid-cols-2 gap-2">
+          <DescriptiveStatCard
+            {...ADMIN_HOME_METRICS.flats}
+            variant="stat"
+            value={flats.length}
+            className="!p-2.5"
+          />
+          <DescriptiveStatCard
+            {...ADMIN_HOME_METRICS.members}
+            variant="stat"
+            value={members.length}
+            className="!p-2.5"
+          />
+          <DescriptiveStatCard
+            {...ADMIN_HOME_METRICS.vehicles}
+            variant="stat"
+            value={residentVehicles.length}
+            className="!p-2.5"
+          />
+          <DescriptiveStatCard
+            {...ADMIN_HOME_METRICS.visitors}
+            variant="stat"
+            value={visitors.length}
+            className="!p-2.5"
+          />
+          <DescriptiveStatCard
+            {...ADMIN_HOME_METRICS.blacklist}
+            variant="stat"
+            value={blacklist.length}
+            className="!p-2.5 col-span-2"
+          />
         </div>
       </div>
 

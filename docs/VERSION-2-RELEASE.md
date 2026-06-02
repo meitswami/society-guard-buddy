@@ -18,7 +18,8 @@
 
 - **Period report** sub-tab: financial-year-style default range, verified inflows by channel, separate-entry expenses, balance cards.
 - **PDF export** (client jsPDF) and **send to members** with optional push; **`delivery_batch_id`** + **`read_at`** on notifications for batches and read receipts.
-- **Transactions** tab (renamed from “Receipts”) — list/filter payment and ledger-linked rows (wording reflects “records of payments”).
+- **Transactions** tab — filter **event/function expense records** vs **society receipt records**; **society pool** default on record (distribute equally to flats later).
+- **Event expenses** (was Splitwise) — groups link optional **Events**; default split **by adults & kids per flat** (member age/relation); admin nav under Community.
 - Ledger, maintenance payments, reminders, and verification flows as documented in migrations.
 
 ### Polls & society elections

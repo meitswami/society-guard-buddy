@@ -6,6 +6,8 @@ import { FileText, Shield, AlertTriangle, Info, Search, Filter } from 'lucide-re
 import { fmtDateTimeFull } from '@/lib/dateFormat';
 import FinanceAuditAlarms from '@/components/FinanceAuditAlarms';
 import FinanceIntegrityAudit from '@/components/FinanceIntegrityAudit';
+import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
+import { AUDIT_LOG_METRICS } from '@/lib/descriptiveMetricCopy';
 import SocietyGovernanceGuide from '@/components/SocietyGovernanceGuide';
 import ManualAuditTracer from '@/components/ManualAuditTracer';
 import type { AdminTab } from '@/lib/adminPermissions';
@@ -92,21 +94,28 @@ const AuditLogViewer = ({ onNavigate }: { onNavigate?: (tab: AdminTab) => void }
 
       {/* Stats cards */}
       <div className="grid grid-cols-3 gap-2 mb-4">
-        <div className="card-section p-3 text-center">
-          <Info className="w-4 h-4 text-blue-500 mx-auto mb-1" />
-          <p className="text-lg font-bold">{stats.total}</p>
-          <p className="text-[10px] text-muted-foreground">Total Events</p>
-        </div>
-        <div className="card-section p-3 text-center">
-          <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto mb-1" />
-          <p className="text-lg font-bold">{stats.failed}</p>
-          <p className="text-[10px] text-muted-foreground">Failed Logins</p>
-        </div>
-        <div className="card-section p-3 text-center">
-          <Shield className="w-4 h-4 text-green-500 mx-auto mb-1" />
-          <p className="text-lg font-bold">{stats.resets}</p>
-          <p className="text-[10px] text-muted-foreground">Pwd Changes</p>
-        </div>
+        <DescriptiveStatCard
+          {...AUDIT_LOG_METRICS.total}
+          contentAlign="center"
+          icon={<Info className="w-4 h-4 text-blue-500 mx-auto" />}
+          value={stats.total}
+          className="p-3"
+        />
+        <DescriptiveStatCard
+          {...AUDIT_LOG_METRICS.failed}
+          contentAlign="center"
+          icon={<AlertTriangle className="w-4 h-4 text-amber-500 mx-auto" />}
+          value={stats.failed}
+          className="p-3"
+        />
+        <DescriptiveStatCard
+          {...AUDIT_LOG_METRICS.resets}
+          contentAlign="center"
+          icon={<Shield className="w-4 h-4 text-green-500 mx-auto" />}
+          value={stats.resets}
+          caption="Pwd changes"
+          className="p-3"
+        />
       </div>
 
       {/* Finance Audit Alarms — duplicate maintenance detection */}

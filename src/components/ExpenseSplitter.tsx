@@ -10,14 +10,27 @@ import { format } from 'date-fns';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
 import { insertFinanceLedgerForGroupExpense, syncFinanceLedgerFromGroupExpenseEdit } from '@/lib/groupExpenseFinanceLedger';
+import { computeHeadcountAmounts, headcountForFlat, type FlatMemberRow } from '@/lib/flatHeadcountSplit';
 import { DateInput } from '@/components/DateInput';
+import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
+import { EVENT_EXPENSE_METRICS } from '@/lib/descriptiveMetricCopy';
 
 interface Props {
   adminName?: string;
 }
 
 type FundingSource = 'residents' | 'society_fund';
-type SplitMode = 'even' | 'custom';
+type SplitMode = 'even' | 'by_headcount' | 'custom';
+
+type ExpenseGroupRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  event_id?: string | null;
+  group_kind?: string | null;
+  adult_weight?: number | null;
+  child_weight?: number | null;
+};
 
 function parsePaidByFlats(exp: { paid_by_flats?: unknown; paid_by_flat: string }): string[] {
   const raw = exp.paid_by_flats;
@@ -46,20 +59,29 @@ async function uploadExpenseBill(groupId: string, file: File): Promise<string | 
 
 const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
   const societyId = useStore((s) => s.societyId);
-  const [groups, setGroups] = useState<any[]>([]);
+  const [groups, setGroups] = useState<ExpenseGroupRow[]>([]);
+  const [events, setEvents] = useState<{ id: string; title: string; event_date: string }[]>([]);
+  const [flatMembers, setFlatMembers] = useState<FlatMemberRow[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [splits, setSplits] = useState<any[]>([]);
   const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null; is_occupied: boolean | null }[]>([]);
   const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
   const [fundingSource, setFundingSource] = useState<FundingSource>('residents');
-  const [splitMode, setSplitMode] = useState<SplitMode>('even');
+  const [splitMode, setSplitMode] = useState<SplitMode>('by_headcount');
   const [splitFlats, setSplitFlats] = useState<string[]>([]);
   const [paidByFlats, setPaidByFlats] = useState<string[]>([]);
   const [customSplits, setCustomSplits] = useState<Record<string, string>>({});
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState<string | null>(null);
-  const [gf, setGf] = useState({ name: '', description: '' });
+  const [gf, setGf] = useState({
+    name: '',
+    description: '',
+    event_id: '',
+    group_kind: 'event' as 'event' | 'general',
+    adult_weight: '1',
+    child_weight: '0.5',
+  });
   const [ef, setEf] = useState({
     title: '',
     total_amount: '',
@@ -72,7 +94,14 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
   });
   const [billUploading, setBillUploading] = useState(false);
   const [expenseNotifyAudience, setExpenseNotifyAudience] = useState<AdminRecordNotifyAudience>('none');
-  const [editingGroup, setEditingGroup] = useState<{ id: string; name: string; description: string } | null>(null);
+  const [editingGroup, setEditingGroup] = useState<{
+    id: string;
+    name: string;
+    description: string;
+    event_id: string;
+    adult_weight: string;
+    child_weight: string;
+  } | null>(null);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(new Set());
   const [expenseEdit, setExpenseEdit] = useState<{
     id: string;
@@ -98,6 +127,8 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       setExpenses([]);
       setSplits([]);
       setFlats([]);
+      setFlatMembers([]);
+      setEvents([]);
       setPrimaryByFlatId(new Map());
       return;
     }
@@ -118,6 +149,20 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
     }
     setPrimaryByFlatId(map);
+
+    const memberRes =
+      flatIds.length > 0
+        ? await supabase.from('members').select('id, flat_id, name, age, relation').in('flat_id', flatIds)
+        : { data: [] as FlatMemberRow[] };
+    setFlatMembers((memberRes.data as FlatMemberRow[]) ?? []);
+
+    const { data: ev } = await supabase
+      .from('events')
+      .select('id, title, event_date')
+      .eq('society_id', societyId)
+      .order('event_date', { ascending: false })
+      .limit(80);
+    setEvents((ev as { id: string; title: string; event_date: string }[]) ?? []);
 
     const { data: g } = await supabase
       .from('expense_groups')
@@ -158,7 +203,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       payment_method: 'cash',
       notes: '',
     });
-    setSplitMode('even');
+    setSplitMode('by_headcount');
     setSplitFlats([]);
     setPaidByFlats([]);
     setCustomSplits({});
@@ -174,9 +219,25 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     }
     if (!gf.name) return;
     await supabase.from('expense_groups').insert([
-      { name: gf.name.trim(), description: gf.description?.trim() || null, created_by: adminName, society_id: societyId },
+      {
+        name: gf.name.trim(),
+        description: gf.description?.trim() || null,
+        created_by: adminName,
+        society_id: societyId,
+        event_id: gf.event_id || null,
+        group_kind: gf.group_kind,
+        adult_weight: Number(gf.adult_weight) || 1,
+        child_weight: Number(gf.child_weight) || 0.5,
+      },
     ]);
-    setGf({ name: '', description: '' });
+    setGf({
+      name: '',
+      description: '',
+      event_id: '',
+      group_kind: 'event',
+      adult_weight: '1',
+      child_weight: '0.5',
+    });
     setShowGroupForm(false);
     toast.success('Group created');
     loadAll();
@@ -186,6 +247,26 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
     const eligible = new Set(activeFlats.map((f) => f.flat_number));
     const chosen = splitFlats.length > 0 ? splitFlats : [...eligible];
     return [...new Set(chosen.filter((n) => eligible.has(n)))];
+  };
+
+  const groupWeights = (groupId: string) => {
+    const g = groups.find((x) => x.id === groupId);
+    return {
+      adult: Number(g?.adult_weight ?? 1) || 1,
+      child: Number(g?.child_weight ?? 0.5) || 0.5,
+    };
+  };
+
+  const headcountPreviewForGroup = (groupId: string) => {
+    const targets = targetFlatNumbers();
+    const { adult, child } = groupWeights(groupId);
+    const rows = targets.map((num) => {
+      const flat = activeFlats.find((f) => f.flat_number === num);
+      return headcountForFlat(num, flat?.id ?? null, flatMembers, adult, child);
+    });
+    const total = Number(ef.total_amount) || 0;
+    const amounts = total > 0 ? computeHeadcountAmounts(total, rows) : [];
+    return { rows, amounts, adult, child };
   };
 
   const setCustomFlatAmount = (flatNumber: string, amount: string) => {
@@ -285,7 +366,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         vendor_or_service: ef.vendor_or_service?.trim() || null,
         allocationSplits: [{ flat_number: 'SOCIETY', amount: total }],
         flats,
-        counterpartyName: `Splitwise: ${groupName}`,
+        counterpartyName: `Event expense: ${groupName}`,
         counterpartyRelation: 'Society fund (no per-flat split)',
       });
       if (ledgerRes.error) {
@@ -359,7 +440,14 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       resident_name: string | null;
     }> = [];
 
-    const splitType = splitMode === 'custom' ? 'custom' : splitFlats.length > 0 ? 'equal_selected' : 'equal_all';
+    const splitType =
+      splitMode === 'custom'
+        ? 'custom'
+        : splitMode === 'by_headcount'
+          ? 'by_headcount'
+          : splitFlats.length > 0
+            ? 'equal_selected'
+            : 'equal_all';
 
     if (splitMode === 'even') {
       const splitAmount = total / targets.length;
@@ -371,6 +459,29 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
           amount: Number(splitAmount.toFixed(2)),
           is_settled: paidBySorted.includes(num),
           settled_at: paidBySorted.includes(num) ? new Date().toISOString() : null,
+          resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
+        };
+      });
+    } else if (splitMode === 'by_headcount') {
+      const { adult, child } = groupWeights(groupId);
+      const headRows = targets.map((num) => {
+        const flat = activeFlats.find((f) => f.flat_number === num);
+        return headcountForFlat(num, flat?.id ?? null, flatMembers, adult, child);
+      });
+      const unitSum = headRows.reduce((s, r) => s + r.units, 0);
+      if (unitSum <= 0) {
+        toast.error('No headcount units — add members (age/relation) per flat in Residents');
+        return;
+      }
+      const amounts = computeHeadcountAmounts(total, headRows);
+      splitRows = amounts.map(({ flat_number, amount }) => {
+        const flat = activeFlats.find((f) => f.flat_number === flat_number);
+        return {
+          expense_id: '',
+          flat_number,
+          amount,
+          is_settled: paidBySorted.includes(flat_number),
+          settled_at: paidBySorted.includes(flat_number) ? new Date().toISOString() : null,
           resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
         };
       });
@@ -451,7 +562,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       vendor_or_service: ef.vendor_or_service?.trim() || null,
       allocationSplits: splitRows.map((r) => ({ flat_number: r.flat_number, amount: r.amount })),
       flats,
-      counterpartyName: `Splitwise: ${groupName}`,
+      counterpartyName: `Event expense: ${groupName}`,
       counterpartyRelation: `Advanced by flat(s): ${paidBySorted.join(', ')}`,
     });
     if (ledgerRes.error) {
@@ -510,7 +621,13 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       if (ok) suffix = ' · Residents notified';
     }
 
-    toast.success((splitMode === 'custom' ? 'Expense added with custom split' : 'Expense added & split') + suffix);
+    const splitMsg =
+      splitMode === 'custom'
+        ? 'Expense added with custom split'
+        : splitMode === 'by_headcount'
+          ? 'Expense split by adults & kids per flat'
+          : 'Expense added & split';
+    toast.success(splitMsg + suffix);
     loadAll();
   };
 
@@ -561,6 +678,9 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       .update({
         name,
         description: editingGroup.description.trim() || null,
+        event_id: editingGroup.event_id || null,
+        adult_weight: Number(editingGroup.adult_weight) || 1,
+        child_weight: Number(editingGroup.child_weight) || 0.5,
       })
       .eq('id', editingGroup.id)
       .eq('society_id', societyId);
@@ -674,7 +794,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         ? 'Society fund (no per-flat split)'
         : paidBy.length
           ? `Advanced by flat(s): ${paidBy.join(', ')}`
-          : 'Splitwise group expense';
+          : 'Event / function expense';
 
     const syncRes = await syncFinanceLedgerFromGroupExpenseEdit(supabase, {
       adminName,
@@ -688,7 +808,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       vendor_or_service: expenseEdit.vendor_or_service.trim() || null,
       flats,
       allocationSplits,
-      counterpartyName: `Splitwise: ${groupName}`,
+      counterpartyName: `Event expense: ${groupName}`,
       counterpartyRelation,
     });
     if (syncRes.error) {
@@ -796,8 +916,10 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
           <Split className="w-5 h-5 text-orange-500" />
         </div>
         <div>
-          <h1 className="page-title">Splitwise</h1>
-          <p className="text-xs text-muted-foreground">Society bills, shared costs, and per-flat balances</p>
+          <h1 className="page-title">Event &amp; function expenses</h1>
+          <p className="text-xs text-muted-foreground">
+            Split celebration / function costs by family — adults &amp; kids per flat (not monthly maintenance)
+          </p>
         </div>
       </div>
 
@@ -819,9 +941,18 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         </div>
       </div>
 
-      <div className="card-section p-4 mb-4 space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Balances</p>
-        <div className="space-y-1">
+      <DescriptiveStatCard
+        {...EVENT_EXPENSE_METRICS.balances}
+        className="mb-4"
+        value={
+          Object.values(balances).every((v) => v === 0) ? (
+            <span className="text-sm font-medium text-muted-foreground">All settled</span>
+          ) : (
+            <span className="text-sm font-medium">{Object.values(balances).filter((v) => v !== 0).length} flats with balance</span>
+          )
+        }
+      >
+        <div className="space-y-1 mt-2 w-full">
           {Object.entries(balances)
             .filter(([_, v]) => v !== 0)
             .map(([flat, amount]) => (
@@ -834,30 +965,70 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
             ))}
           {Object.values(balances).every((v) => v === 0) && <p className="text-xs text-muted-foreground">All settled! 🎉</p>}
         </div>
-      </div>
+      </DescriptiveStatCard>
 
       <button
         type="button"
         onClick={() => setShowGroupForm(!showGroupForm)}
         className="btn-primary w-full mb-4 flex items-center justify-center gap-2"
       >
-        <Plus className="w-4 h-4" /> New expense group
+        <Plus className="w-4 h-4" /> New event / function group
       </button>
 
       {showGroupForm && (
         <div className="card-section p-4 mb-4 flex flex-col gap-3">
           <input
             className="input-field"
-            placeholder="Group name (e.g. Society operations, Diwali)"
+            placeholder="Group name (e.g. Diwali 2026, Annual day lunch)"
             value={gf.name}
             onChange={(e) => setGf({ ...gf, name: e.target.value })}
           />
+          <select
+            className="input-field"
+            value={gf.event_id}
+            onChange={(e) => setGf({ ...gf, event_id: e.target.value })}
+          >
+            <option value="">Link to calendar event (optional)</option>
+            {events.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.title} ({ev.event_date})
+              </option>
+            ))}
+          </select>
           <textarea
             className="input-field"
             placeholder="Description (optional)"
             value={gf.description}
             onChange={(e) => setGf({ ...gf, description: e.target.value })}
           />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase">Adult weight</label>
+              <input
+                className="input-field"
+                type="number"
+                step="0.1"
+                min="0.1"
+                value={gf.adult_weight}
+                onChange={(e) => setGf({ ...gf, adult_weight: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase">Child weight</label>
+              <input
+                className="input-field"
+                type="number"
+                step="0.1"
+                min="0"
+                value={gf.child_weight}
+                onChange={(e) => setGf({ ...gf, child_weight: e.target.value })}
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground leading-snug">
+            Default split uses each flat&apos;s members from Residents (age &amp; relation). Child = under 18 or
+            son/daughter. Weights apply per person (e.g. adult 1, child 0.5).
+          </p>
           <button type="button" onClick={addGroup} className="btn-primary">
             Create group
           </button>
@@ -912,6 +1083,14 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
             <div className="flex justify-between items-start gap-2 mb-1">
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{g.name}</p>
+                {g.event_id && (
+                  <p className="text-[10px] text-primary mt-0.5">
+                    Linked event: {events.find((ev) => ev.id === g.event_id)?.title ?? 'Calendar event'}
+                  </p>
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  Split weights: adult ×{g.adult_weight ?? 1}, child ×{g.child_weight ?? 0.5}
+                </p>
                 {g.description && <p className="text-xs text-muted-foreground mt-0.5">{g.description}</p>}
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -920,7 +1099,14 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                   className="p-1.5 text-muted-foreground hover:text-primary"
                   title="Edit group"
                   onClick={() =>
-                    setEditingGroup({ id: g.id, name: g.name, description: g.description || '' })
+                    setEditingGroup({
+                      id: g.id,
+                      name: g.name,
+                      description: g.description || '',
+                      event_id: g.event_id ?? '',
+                      adult_weight: String(g.adult_weight ?? 1),
+                      child_weight: String(g.child_weight ?? 0.5),
+                    })
                   }
                 >
                   <Pencil className="w-4 h-4" />
@@ -1084,13 +1270,40 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                       onChange={(e) => {
                         const mode = e.target.value as SplitMode;
                         setSplitMode(mode);
-                        if (mode === 'even') setCustomSplits({});
+                        if (mode !== 'custom') setCustomSplits({});
                       }}
                     >
-                      <option value="even">Equal split among flats above (or all if none selected)</option>
+                      <option value="by_headcount">
+                        By family headcount (adults + kids per flat) — recommended for functions
+                      </option>
+                      <option value="even">Equal ₹ per flat (ignore family size)</option>
                       <option value="custom">Custom amount per flat (only “split among” flats)</option>
                     </select>
-                    {splitMode === 'even' ? (
+                    {splitMode === 'by_headcount' ? (
+                      <div className="rounded-lg border border-border p-2.5 space-y-1.5 max-h-52 overflow-y-auto">
+                        <p className="text-[10px] text-muted-foreground">
+                          Uses member list per flat (Residents). Missing members → 1 adult assumed.
+                        </p>
+                        {(() => {
+                          const { rows, amounts, adult, child } = headcountPreviewForGroup(g.id);
+                          if (rows.length === 0) {
+                            return <p className="text-xs text-muted-foreground">Select flats or leave empty for all.</p>;
+                          }
+                          return rows.map((row) => {
+                            const amt = amounts.find((a) => a.flat_number === row.flat_number);
+                            return (
+                              <div key={row.flat_number} className="flex justify-between text-xs gap-2">
+                                <span>
+                                  Flat {row.flat_number}: {row.adults} adult{row.adults !== 1 ? 's' : ''},{' '}
+                                  {row.kids} kid{row.kids !== 1 ? 's' : ''} (×{adult}/×{child})
+                                </span>
+                                <span className="font-mono shrink-0">{amt ? `₹${amt.amount}` : '—'}</span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    ) : splitMode === 'even' ? (
                       <p className="text-[11px] text-muted-foreground">
                         Each selected flat pays ₹
                         {(() => {
@@ -1173,7 +1386,15 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
                   className="btn-primary text-sm"
                   disabled={billUploading}
                 >
-                  {billUploading ? 'Uploading…' : fundingSource === 'society_fund' ? 'Record society expense' : splitMode === 'custom' ? 'Add with custom split' : 'Add & split equally'}
+                  {billUploading
+                    ? 'Uploading…'
+                    : fundingSource === 'society_fund'
+                      ? 'Record society expense'
+                      : splitMode === 'custom'
+                        ? 'Add with custom split'
+                        : splitMode === 'by_headcount'
+                          ? 'Add & split by adults/kids'
+                          : 'Add & split equally per flat'}
                 </button>
               </div>
             )}
@@ -1328,6 +1549,36 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
               onChange={(e) => setEditingGroup({ ...editingGroup, description: e.target.value })}
               placeholder="Description (optional)"
             />
+            <select
+              className="input-field"
+              value={editingGroup.event_id}
+              onChange={(e) => setEditingGroup({ ...editingGroup, event_id: e.target.value })}
+            >
+              <option value="">No linked event</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {ev.title} ({ev.event_date})
+                </option>
+              ))}
+            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="input-field"
+                type="number"
+                step="0.1"
+                value={editingGroup.adult_weight}
+                onChange={(e) => setEditingGroup({ ...editingGroup, adult_weight: e.target.value })}
+                placeholder="Adult weight"
+              />
+              <input
+                className="input-field"
+                type="number"
+                step="0.1"
+                value={editingGroup.child_weight}
+                onChange={(e) => setEditingGroup({ ...editingGroup, child_weight: e.target.value })}
+                placeholder="Child weight"
+              />
+            </div>
             <div className="flex gap-2">
               <button type="button" className="btn-primary flex-1" onClick={() => void saveGroupEdit()}>
                 Save
