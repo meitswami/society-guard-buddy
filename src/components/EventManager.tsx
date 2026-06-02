@@ -8,9 +8,13 @@ import { toast } from 'sonner';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { DateInput } from '@/components/DateInput';
 
-interface Props { adminName?: string; }
+interface Props {
+  adminName?: string;
+  /** When true, omit page title (used inside EventsModule). */
+  embedded?: boolean;
+}
 
-const EventManager = ({ adminName = 'Admin' }: Props) => {
+const EventManager = ({ adminName = 'Admin', embedded = false }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [events, setEvents] = useState<any[]>([]);
   const [rsvps, setRsvps] = useState<any[]>([]);
@@ -126,13 +130,15 @@ const EventManager = ({ adminName = 'Admin' }: Props) => {
   };
 
   return (
-    <div className="page-container pb-24">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-          <Calendar className="w-5 h-5 text-blue-500" />
+    <div className={embedded ? '' : 'page-container pb-24'}>
+      {!embedded && (
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+            <Calendar className="w-5 h-5 text-blue-500" />
+          </div>
+          <h1 className="page-title">Events &amp; Functions</h1>
         </div>
-        <h1 className="page-title">Events & Functions</h1>
-      </div>
+      )}
 
       <div className="card-section p-3 mb-4">
         <div className="flex items-center justify-between gap-3">

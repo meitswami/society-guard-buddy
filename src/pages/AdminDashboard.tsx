@@ -23,12 +23,11 @@ import BiometricSetup from '@/components/BiometricSetup';
 import AuditLogViewer from '@/components/AuditLogViewer';
 import FinanceManager from '@/components/FinanceManager';
 import DonationManager from '@/components/DonationManager';
-import EventManager from '@/components/EventManager';
+import EventsModule from '@/components/EventsModule';
 import PollManager from '@/components/PollManager';
 import MeetingManager from '@/components/MeetingManager';
 import CommitteeManager from '@/components/CommitteeManager';
 import ParkingManager from '@/components/ParkingManager';
-import ExpenseSplitter from '@/components/ExpenseSplitter';
 import NotificationCenter from '@/components/NotificationCenter';
 import { useNotificationsRealtimeRevision } from '@/hooks/useNotificationsRealtimeRevision';
 import { auditLogout } from '@/lib/auditLogger';
@@ -177,14 +176,19 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     }
 
     let splitwiseExpenseTotal = 0;
-    const { data: groupRows } = await supabase.from('expense_groups').select('id').eq('society_id', sid);
+    const { data: groupRows } = await supabase
+      .from('expense_groups')
+      .select('id')
+      .eq('society_id', sid)
+      .eq('group_kind', 'event');
     const groupIds = (groupRows ?? []).map((r: { id: string }) => r.id);
     if (groupIds.length > 0) {
       const { data: expenses } = await supabase
         .from('expenses')
         .select('total_amount')
         .in('group_id', groupIds)
-        .eq('record_status', 'active');
+        .eq('record_status', 'active')
+        .eq('expense_category', 'food');
       for (const e of expenses ?? []) splitwiseExpenseTotal += Number((e as { total_amount: number }).total_amount ?? 0);
     }
 
@@ -288,14 +292,19 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     try {
       const sid = admin.societyId;
       if (!sid) { setSplitwiseMonthlyData([]); return; }
-      const { data: groupRows } = await supabase.from('expense_groups').select('id').eq('society_id', sid);
+      const { data: groupRows } = await supabase
+        .from('expense_groups')
+        .select('id')
+        .eq('society_id', sid)
+        .eq('group_kind', 'event');
       const groupIds = (groupRows ?? []).map((r: { id: string }) => r.id);
       if (groupIds.length === 0) { setSplitwiseMonthlyData([]); return; }
       const { data: expenses } = await supabase
         .from('expenses')
         .select('total_amount, expense_date')
         .in('group_id', groupIds)
-        .eq('record_status', 'active');
+        .eq('record_status', 'active')
+        .eq('expense_category', 'food');
       const monthMap = new Map<string, { total: number; count: number }>();
       for (const e of expenses ?? []) {
         const dateStr = String((e as any).expense_date || '');
@@ -405,9 +414,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'meetings', label: 'Meetings', icon: ScrollText, group: 'meetings' },
     { id: 'committee', label: 'Committee', icon: Landmark, group: 'meetings' },
     { id: 'donations', label: 'Donations', icon: Heart, group: 'finance' },
-    // Community — event/function cost sharing (adults + kids per flat)
-    { id: 'splits', label: 'Event expenses', icon: Split, group: 'community' },
-    { id: 'events', label: 'Events', icon: Calendar, group: 'community' },
+    // Community — events + food catering splits (one module)
+    { id: 'events', label: 'Events & food', icon: Calendar, group: 'community' },
     { id: 'polls', label: 'Polls', icon: Vote, group: 'community' },
     { id: 'notifications', label: 'Notify', icon: Bell, group: 'community' },
     { id: 'parking', label: 'Parking', icon: ParkingSquare, group: 'community' },
@@ -431,7 +439,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const visibleTabs = tabs.filter((tab) => isAdminTabAllowed(tab.id, admin.permissions));
 
   const quickAccessTabs = useMemo(() => {
-    const pinnedIds: AdminTab[] = ['finance', 'report', 'splits', 'residents', 'committee', 'directory'];
+    const pinnedIds: AdminTab[] = ['finance', 'report', 'events', 'residents', 'committee', 'directory'];
     return pinnedIds
       .map((id) => visibleTabs.find((t) => t.id === id))
       .filter(Boolean) as typeof visibleTabs;
@@ -491,12 +499,13 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'audit': return <AuditLogViewer onNavigate={setActiveTab} />;
       case 'finance': return <FinanceManager adminName={admin.name} adminId={admin.id} />;
       case 'donations': return <DonationManager adminName={admin.name} />;
-      case 'events': return <EventManager adminName={admin.name} />;
+      case 'events':
+      case 'splits':
+        return <EventsModule adminName={admin.name} onNavigateTab={goToTab} />;
       case 'meetings': return <MeetingManager adminName={admin.name} />;
       case 'committee': return <CommitteeManager />;
       case 'polls': return <PollManager adminName={admin.name} />;
       case 'parking': return <ParkingManager />;
-      case 'splits': return <ExpenseSplitter adminName={admin.name} />;
       case 'notifications': return (
         <NotificationCenter
           adminName={admin.name}
@@ -733,7 +742,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Split className="w-4 h-4 text-teal-600" />
-                <p className="text-sm font-semibold">Event expenses — Monthly</p>
+                <p className="text-sm font-semibold">Event food expenses — Monthly</p>
               </div>
               <button type="button" onClick={() => setSplitwiseMonthlyModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="w-4 h-4" />
@@ -768,8 +777,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
                 </div>
               </div>
             )}
-            <button type="button" className="btn-secondary text-xs w-full" onClick={() => { setSplitwiseMonthlyModal(false); goToTab('splits'); }}>
-              Go to Event expenses
+            <button type="button" className="btn-secondary text-xs w-full" onClick={() => { setSplitwiseMonthlyModal(false); goToTab('events'); }}>
+              Go to Events &amp; food
             </button>
           </div>
         </div>

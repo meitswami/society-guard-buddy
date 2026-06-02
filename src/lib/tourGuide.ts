@@ -204,7 +204,6 @@ const ADMIN_BLOCKS: AdminTourBlock[] = [
     steps: [
       { titleKey: 'tour.admin.fn1.title', bodyKey: 'tour.admin.fn1.body', icon: 'dollar' },
       { titleKey: 'tour.admin.fn2.title', bodyKey: 'tour.admin.fn2.body', icon: 'heart' },
-      { titleKey: 'tour.admin.fn3.title', bodyKey: 'tour.admin.fn3.body', icon: 'split' },
     ],
   },
   {
@@ -213,6 +212,7 @@ const ADMIN_BLOCKS: AdminTourBlock[] = [
     tab: 'events',
     steps: [
       { titleKey: 'tour.admin.cm1.title', bodyKey: 'tour.admin.cm1.body', icon: 'calendar' },
+      { titleKey: 'tour.admin.fn3.title', bodyKey: 'tour.admin.fn3.body', icon: 'split' },
       { titleKey: 'tour.admin.cm1m.title', bodyKey: 'tour.admin.cm1m.body', icon: 'fileText' },
       { titleKey: 'tour.admin.cm2.title', bodyKey: 'tour.admin.cm2.body', icon: 'vote' },
       { titleKey: 'tour.admin.cm3.title', bodyKey: 'tour.admin.cm3.body', icon: 'bell' },
@@ -278,7 +278,7 @@ export function getAdminTourChapters(permissions: AdminPanelPermissions): TourCh
 function stepToAdminTab(titleKey: string): AdminTab | null {
   if (titleKey === 'tour.admin.fn1.title') return 'finance';
   if (titleKey === 'tour.admin.fn2.title') return 'donations';
-  if (titleKey === 'tour.admin.fn3.title') return 'splits';
+  if (titleKey === 'tour.admin.fn3.title') return 'events';
   if (titleKey === 'tour.admin.cm1.title') return 'events';
   if (titleKey === 'tour.admin.cm1m.title') return 'meetings';
   if (titleKey === 'tour.admin.cm2.title') return 'polls';

@@ -17,6 +17,9 @@ import { EVENT_EXPENSE_METRICS } from '@/lib/descriptiveMetricCopy';
 
 interface Props {
   adminName?: string;
+  foodOnly?: boolean;
+  embedded?: boolean;
+  onOpenFinance?: () => void;
 }
 
 type FundingSource = 'residents' | 'society_fund';
@@ -57,7 +60,7 @@ async function uploadExpenseBill(groupId: string, file: File): Promise<string | 
   return data.publicUrl;
 }
 
-const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
+const ExpenseSplitter = ({ adminName = 'Admin', foodOnly = false, embedded = false, onOpenFinance }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [groups, setGroups] = useState<ExpenseGroupRow[]>([]);
   const [events, setEvents] = useState<{ id: string; title: string; event_date: string }[]>([]);
@@ -164,11 +167,11 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       .limit(80);
     setEvents((ev as { id: string; title: string; event_date: string }[]) ?? []);
 
-    const { data: g } = await supabase
-      .from('expense_groups')
-      .select('*')
-      .eq('society_id', societyId)
-      .order('created_at', { ascending: false });
+    let groupQuery = supabase.from('expense_groups').select('*').eq('society_id', societyId);
+    if (foodOnly) {
+      groupQuery = groupQuery.eq('group_kind', 'event');
+    }
+    const { data: g } = await groupQuery.order('created_at', { ascending: false });
     if (g) setGroups(g);
 
     const groupIds = (g ?? []).map((x) => x.id);
@@ -177,7 +180,11 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       setSplits([]);
       return;
     }
-    const { data: e } = await supabase.from('expenses').select('*').in('group_id', groupIds).order('created_at', { ascending: false });
+    let expQuery = supabase.from('expenses').select('*').in('group_id', groupIds);
+    if (foodOnly) {
+      expQuery = expQuery.eq('expense_category', 'food');
+    }
+    const { data: e } = await expQuery.order('created_at', { ascending: false });
     if (e) setExpenses(e);
     const expIds = (e ?? []).map((x) => x.id);
     if (expIds.length === 0) {
@@ -218,6 +225,10 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
       return;
     }
     if (!gf.name) return;
+    if (foodOnly && !gf.event_id) {
+      toast.error('Link this food expense group to a calendar event');
+      return;
+    }
     await supabase.from('expense_groups').insert([
       {
         name: gf.name.trim(),
@@ -225,7 +236,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         created_by: adminName,
         society_id: societyId,
         event_id: gf.event_id || null,
-        group_kind: gf.group_kind,
+        group_kind: foodOnly ? 'event' : gf.group_kind,
         adult_weight: Number(gf.adult_weight) || 1,
         child_weight: Number(gf.child_weight) || 0.5,
       },
@@ -343,6 +354,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
             recording_date: ef.recording_date,
             notes: ef.notes?.trim() || null,
             record_status: 'active',
+            expense_category: foodOnly ? 'food' : 'payment',
           },
         ])
         .select('id')
@@ -530,6 +542,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
           recording_date: ef.recording_date,
           notes: ef.notes?.trim() || null,
           record_status: 'active',
+          expense_category: foodOnly ? 'food' : 'payment',
         },
       ])
       .select()
@@ -903,25 +916,38 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
 
   if (!societyId) {
     return (
-      <div className="page-container pb-24">
+      <div className={embedded ? '' : 'page-container pb-24'}>
         <p className="text-sm text-muted-foreground text-center py-12">Select a society to use expense splitting.</p>
       </div>
     );
   }
 
   return (
-    <div className="page-container pb-24">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-          <Split className="w-5 h-5 text-orange-500" />
+    <div className={embedded ? '' : 'page-container pb-24'}>
+      {!embedded && (
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+            <Split className="w-5 h-5 text-orange-500" />
+          </div>
+          <div>
+            <h1 className="page-title">{foodOnly ? 'Food expenses (events)' : 'Event & function expenses'}</h1>
+            <p className="text-xs text-muted-foreground">
+              {foodOnly
+                ? 'Catering and meal costs split by adults & kids per flat'
+                : 'Split celebration / function costs by family — adults & kids per flat (not monthly maintenance)'}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="page-title">Event &amp; function expenses</h1>
-          <p className="text-xs text-muted-foreground">
-            Split celebration / function costs by family — adults &amp; kids per flat (not monthly maintenance)
-          </p>
-        </div>
-      </div>
+      )}
+
+      {foodOnly && onOpenFinance && (
+        <p className="text-[10px] text-muted-foreground mb-3 leading-snug">
+          Non-food payments (electricity, vendors, repairs) →{' '}
+          <button type="button" className="text-primary underline" onClick={onOpenFinance}>
+            Finance → Record Payment
+          </button>
+        </p>
+      )}
 
       <div className="flex items-stretch gap-2 mb-4">
         <DescriptiveStatCard
@@ -970,14 +996,14 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
         onClick={() => setShowGroupForm(!showGroupForm)}
         className="btn-primary w-full mb-4 flex items-center justify-center gap-2"
       >
-        <Plus className="w-4 h-4" /> New event / function group
+        <Plus className="w-4 h-4" /> {foodOnly ? 'New food expense group' : 'New event / function group'}
       </button>
 
       {showGroupForm && (
         <div className="card-section p-4 mb-4 flex flex-col gap-3">
           <input
             className="input-field"
-            placeholder="Group name (e.g. Diwali 2026, Annual day lunch)"
+            placeholder={foodOnly ? 'Group name (e.g. Annual day lunch, Diwali dinner)' : 'Group name (e.g. Diwali 2026, Annual day lunch)'}
             value={gf.name}
             onChange={(e) => setGf({ ...gf, name: e.target.value })}
           />
@@ -986,7 +1012,7 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
             value={gf.event_id}
             onChange={(e) => setGf({ ...gf, event_id: e.target.value })}
           >
-            <option value="">Link to calendar event (optional)</option>
+            <option value="">{foodOnly ? 'Select calendar event (required)' : 'Link to calendar event (optional)'}</option>
             {events.map((ev) => (
               <option key={ev.id} value={ev.id}>
                 {ev.title} ({ev.event_date})
@@ -1144,26 +1170,28 @@ const ExpenseSplitter = ({ adminName = 'Admin' }: Props) => {
               <div className="flex flex-col gap-2 mb-3 pt-2 border-t border-border">
                 <input
                   className="input-field text-sm"
-                  placeholder="Expense title (e.g. Common area electricity)"
+                  placeholder={foodOnly ? 'Food item (e.g. Lunch catering, Snacks)' : 'Expense title (e.g. Common area electricity)'}
                   value={ef.title}
                   onChange={(e) => setEf({ ...ef, title: e.target.value })}
                 />
                 <input
                   className="input-field text-sm"
-                  placeholder="Vendor / service (optional)"
+                  placeholder={foodOnly ? 'Caterer / vendor (optional)' : 'Vendor / service (optional)'}
                   value={ef.vendor_or_service}
                   onChange={(e) => setEf({ ...ef, vendor_or_service: e.target.value })}
                 />
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    className="input-field text-sm"
-                    value={ef.service_kind}
-                    onChange={(e) => setEf({ ...ef, service_kind: e.target.value as typeof ef.service_kind })}
-                  >
-                    <option value="one_time">One-time</option>
-                    <option value="recurring">Recurring (monthly)</option>
-                    <option value="temporary">Temporary / ad-hoc</option>
-                  </select>
+                <div className={foodOnly ? '' : 'grid grid-cols-2 gap-2'}>
+                  {!foodOnly && (
+                    <select
+                      className="input-field text-sm"
+                      value={ef.service_kind}
+                      onChange={(e) => setEf({ ...ef, service_kind: e.target.value as typeof ef.service_kind })}
+                    >
+                      <option value="one_time">One-time</option>
+                      <option value="recurring">Recurring (monthly)</option>
+                      <option value="temporary">Temporary / ad-hoc</option>
+                    </select>
+                  )}
                   <div>
                     <label className="text-[10px] font-medium text-muted-foreground uppercase">Bill / transaction date</label>
                     <DateInput

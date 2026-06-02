@@ -167,6 +167,7 @@ const TAB_PERM: Record<AdminTab, keyof AdminPanelPermissions | null> = {
 };
 
 export function isAdminTabAllowed(tab: AdminTab, p: AdminPanelPermissions): boolean {
+  if (tab === 'splits') return !!p.events || !!p.splits;
   const key = TAB_PERM[tab];
   if (key === null) return true;
   return !!p[key];

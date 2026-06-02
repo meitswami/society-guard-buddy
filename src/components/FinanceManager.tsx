@@ -2902,7 +2902,8 @@ const FinanceManager = ({ adminName = 'Admin', adminId: _adminId }: Props) => {
 
           <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
             Pool receipts and flat-wise records appear under <span className="font-medium">Transactions</span>.
-            Event &amp; function splits stay under <span className="font-medium">Event expenses</span> (adults/kids per flat).
+            Food / catering for functions → <span className="font-medium">Events &amp; food</span> (split by family). All other
+            payments (vendors, utilities, repairs) → record here as society payment / expense.
           </p>
 
           {flatDateModal.open && (

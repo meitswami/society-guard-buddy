@@ -456,10 +456,10 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Launch campaigns, track progress, and acknowledge resident contributions.',
     hi: 'अभियान, प्रगति, योगदान दर्ज करें।',
   },
-  'tour.admin.fn3.title': { en: 'Expense splits', hi: 'खर्च बंटवारा' },
+  'tour.admin.fn3.title': { en: 'Event food expenses', hi: 'कार्यक्रम भोजन खर्च' },
   'tour.admin.fn3.body': {
-    en: 'Split ad-hoc society expenses across flats and settle who owes whom.',
-    hi: 'अतिरिक्त खर्च फ्लैटों में बाँटें और बकाया साफ़ करें।',
+    en: 'Link food and catering bills to a calendar event and split by adults and kids per flat. Other payments belong in Finance.',
+    hi: 'भोजन/कैटरिंग को कार्यक्रम से जोड़ें और परिवार के अनुसार बाँटें। अन्य भुगतान वित्त में दर्ज करें।',
   },
   'tour.admin.cm1.title': { en: 'Events', hi: 'इवेंट' },
   'tour.admin.cm1.body': {

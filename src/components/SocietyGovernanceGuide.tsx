@@ -117,7 +117,8 @@ const sections: Section[] = [
       {
         heading: 'Project Structure',
         points: [
-          'Finance Module: Society receipts (maintenance, corpus, pool). Event/function costs use Event expenses tab — split by adults & kids per flat from Residents data.',
+          'Finance Module: All society payments and receipts (maintenance, corpus, pool, vendors, utilities).',
+          'Events Module: Calendar events + food/catering only — split by adults & kids per flat from Residents data.',
           'Audit Module: Security logs + Finance alarms + Self-audit engine + Governance guide.',
           'Resident Portal: View committee, pay maintenance, see notices, raise complaints.',
           'Guard Module: Visitor entry/exit, vehicle tracking, geofence, biometric attendance.',

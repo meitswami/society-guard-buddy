@@ -15,11 +15,11 @@ export const ADMIN_HOME_METRICS = {
       'Adds amounts from maintenance_payments where payment_status = verified, for charges linked to this society.',
   },
   splitwiseExpenseTotal: {
-    title: 'Event / function expenses (active)',
+    title: 'Event food expenses (active)',
     description:
-      'Total of active bills in Event expenses groups (celebrations, functions). Not the same as monthly maintenance.',
+      'Total of active food/catering bills linked to calendar events, split among flats. Not monthly maintenance or general society payments.',
     howCalculated:
-      'Sums expenses.total_amount in expense_groups for this society where record_status = active.',
+      'Sums expenses.total_amount where record_status = active, expense_category = food, and group_kind = event.',
   },
   visitors: {
     title: 'Total visitors',
