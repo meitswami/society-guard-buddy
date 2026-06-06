@@ -270,6 +270,9 @@ export type Database = {
       committee_members: {
         Row: {
           created_at: string
+          flat_id: string | null
+          flat_number: string | null
+          flat_owner_name: string | null
           gender: string | null
           id: string
           is_active: boolean
@@ -280,13 +283,19 @@ export type Database = {
           rep_name: string | null
           rep_phone: string | null
           rep_photo: string | null
+          selection_type: string | null
           show_representative: boolean
           society_id: string
           sort_order: number
+          term_from: string | null
+          term_to: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          flat_id?: string | null
+          flat_number?: string | null
+          flat_owner_name?: string | null
           gender?: string | null
           id?: string
           is_active?: boolean
@@ -297,13 +306,19 @@ export type Database = {
           rep_name?: string | null
           rep_phone?: string | null
           rep_photo?: string | null
+          selection_type?: string | null
           show_representative?: boolean
           society_id: string
           sort_order?: number
+          term_from?: string | null
+          term_to?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          flat_id?: string | null
+          flat_number?: string | null
+          flat_owner_name?: string | null
           gender?: string | null
           id?: string
           is_active?: boolean
@@ -314,12 +329,22 @@ export type Database = {
           rep_name?: string | null
           rep_phone?: string | null
           rep_photo?: string | null
+          selection_type?: string | null
           show_representative?: boolean
           society_id?: string
           sort_order?: number
+          term_from?: string | null
+          term_to?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "committee_members_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "committee_members_society_id_fkey"
             columns: ["society_id"]
