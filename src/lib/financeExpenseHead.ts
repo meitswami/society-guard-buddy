@@ -1,18 +1,21 @@
-/** Society payment heads (Finance → Record payment). One group per head is recommended. */
-export const SOCIETY_PAYMENT_EXPENSE_HEADS = [
-  'Electricity',
-  'Water',
-  'Lift / AMC',
-  'Security',
-  'Housekeeping',
-  'Repairs & maintenance',
-  'Garden / landscaping',
-  'Insurance',
-  'Salaries / wages',
-  'Legal / professional',
-  'Stationery / office',
-  'Miscellaneous',
+/** Chart-of-accounts major heads for Finance → Record payment. */
+export const SOCIETY_PAYMENT_MAJOR_HEADS = [
+  'SALARY & WAGES',
+  'OPERATION & MAINTENANCE',
+  'FIXED ASSETS',
+  'LEGAL & PROFESSIONAL FEES',
+  'SOCIETY CORPUS FUND',
+  'CORPUS FUND (LEGAL)',
+  'FIXED DEPOSIT',
+  'BANK',
+  'CASH',
+  'MISCELLANEOUS',
 ] as const;
+
+export type SocietyPaymentMajorHead = (typeof SOCIETY_PAYMENT_MAJOR_HEADS)[number];
+
+/** @deprecated Use SOCIETY_PAYMENT_MAJOR_HEADS + sub-head group names instead. */
+export const SOCIETY_PAYMENT_EXPENSE_HEADS = SOCIETY_PAYMENT_MAJOR_HEADS;
 
 const GENERIC_EVENT_GROUP =
   /^(other\s+)?events?\s*(and|&|\/)\s*functions?|events?\s*&\s*functions?|event\s*\/\s*function|general\s+events?$/i;
@@ -20,6 +23,63 @@ const GENERIC_EVENT_GROUP =
 function joinNoteLines(parts: (string | null | undefined)[]): string | null {
   const lines = parts.map((p) => p?.trim()).filter(Boolean) as string[];
   return lines.length ? lines.join('\n') : null;
+}
+
+/** Guess major head from an existing sub-head / group name (legacy rows). */
+export function inferMajorHeadFromGroupName(name: string): SocietyPaymentMajorHead {
+  const n = (name || '').trim().toLowerCase();
+  if (!n) return 'MISCELLANEOUS';
+  if (/corpus.*legal|legal.*corpus/.test(n)) return 'CORPUS FUND (LEGAL)';
+  if (/corpus|society fund/.test(n)) return 'SOCIETY CORPUS FUND';
+  if (/fixed deposit|\bfd\b/.test(n)) return 'FIXED DEPOSIT';
+  if (/^bank\b|bank account/.test(n)) return 'BANK';
+  if (/^cash\b|petty cash/.test(n)) return 'CASH';
+  if (/legal|professional|audit|advocate|lawyer/.test(n)) return 'LEGAL & PROFESSIONAL FEES';
+  if (/fixed asset|furniture|chair|equipment|machine|softner|softener|installation|asset/.test(n)) return 'FIXED ASSETS';
+  if (/salary|wage|security|guard|sweeper|cleaning|garden|housekeeping|house keeping|labour|labor/.test(n)) {
+    return 'SALARY & WAGES';
+  }
+  if (/electric|water|wifi|cctv|dg set|diesel|printing|maintenance|repair|insurance|lift|amc|utility/.test(n)) {
+    return 'OPERATION & MAINTENANCE';
+  }
+  return 'MISCELLANEOUS';
+}
+
+export function resolveGroupMajorHead(group: { name: string; major_head?: string | null }): SocietyPaymentMajorHead {
+  const stored = group.major_head?.trim();
+  if (stored && (SOCIETY_PAYMENT_MAJOR_HEADS as readonly string[]).includes(stored)) {
+    return stored as SocietyPaymentMajorHead;
+  }
+  return inferMajorHeadFromGroupName(group.name);
+}
+
+export function groupMatchesPaymentHeadSearch(
+  group: { name: string; description?: string | null; major_head?: string | null },
+  query: string,
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const major = resolveGroupMajorHead(group);
+  return (
+    group.name.toLowerCase().includes(q) ||
+    major.toLowerCase().includes(q) ||
+    (group.description ?? '').toLowerCase().includes(q)
+  );
+}
+
+export function paymentGroupsByMajorHead<T extends { name: string; major_head?: string | null }>(
+  groups: T[],
+): Map<SocietyPaymentMajorHead, T[]> {
+  const map = new Map<SocietyPaymentMajorHead, T[]>();
+  for (const head of SOCIETY_PAYMENT_MAJOR_HEADS) map.set(head, []);
+  for (const g of groups) {
+    const major = resolveGroupMajorHead(g);
+    map.get(major)!.push(g);
+  }
+  for (const head of SOCIETY_PAYMENT_MAJOR_HEADS) {
+    map.get(head)!.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return map;
 }
 
 /** Ledger title + extra note lines for group-linked expenses. */

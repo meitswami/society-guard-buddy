@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Split, Plus, Trash2, Pencil, Paperclip, X } from 'lucide-react';
+import { Split, Plus, Trash2, Pencil, Paperclip, X, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { useStore } from '@/store/useStore';
@@ -16,7 +16,12 @@ import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { RecordingDateBanner } from '@/components/RecordingDateBanner';
 import { EVENT_EXPENSE_METRICS } from '@/lib/descriptiveMetricCopy';
 import { billingMonthFromDate, isBillingDateInEntryMonth, todayRecordingDate } from '@/lib/financeDates';
-import { SOCIETY_PAYMENT_EXPENSE_HEADS } from '@/lib/financeExpenseHead';
+import {
+  SOCIETY_PAYMENT_MAJOR_HEADS,
+  groupMatchesPaymentHeadSearch,
+  paymentGroupsByMajorHead,
+  type SocietyPaymentMajorHead,
+} from '@/lib/financeExpenseHead';
 
 interface Props {
   adminName?: string;
@@ -41,6 +46,7 @@ type ExpenseGroupRow = {
   description: string | null;
   event_id?: string | null;
   group_kind?: string | null;
+  major_head?: string | null;
   adult_weight?: number | null;
   child_weight?: number | null;
 };
@@ -98,10 +104,11 @@ const ExpenseSplitter = ({
     description: '',
     event_id: '',
     group_kind: 'event' as 'event' | 'general',
+    major_head: '' as SocietyPaymentMajorHead | '',
     adult_weight: '1',
     child_weight: '0.5',
   });
-  const [paymentHeadPreset, setPaymentHeadPreset] = useState('');
+  const [headSearchQuery, setHeadSearchQuery] = useState('');
 
   const ledgerExpenseCategory = (): 'food' | 'payment' => (foodOnly ? 'food' : 'payment');
 
@@ -260,6 +267,10 @@ const ExpenseSplitter = ({
       toast.error('Link this food expense group to a calendar event');
       return;
     }
+    if (paymentOnly && !gf.major_head) {
+      toast.error('Select a major head (e.g. Operation & maintenance)');
+      return;
+    }
     await supabase.from('expense_groups').insert([
       {
         name: gf.name.trim(),
@@ -268,6 +279,7 @@ const ExpenseSplitter = ({
         society_id: societyId,
         event_id: foodOnly ? gf.event_id || null : paymentOnly ? null : gf.event_id || null,
         group_kind: foodOnly ? 'event' : paymentOnly ? 'general' : gf.group_kind,
+        major_head: paymentOnly ? gf.major_head : null,
         adult_weight: Number(gf.adult_weight) || 1,
         child_weight: Number(gf.child_weight) || 0.5,
       },
@@ -277,11 +289,11 @@ const ExpenseSplitter = ({
       description: '',
       event_id: '',
       group_kind: 'event',
+      major_head: '',
       adult_weight: '1',
       child_weight: '0.5',
     });
     setShowGroupForm(false);
-    setPaymentHeadPreset('');
     toast.success('Group created');
     loadAll();
   };
@@ -962,6 +974,37 @@ const ExpenseSplitter = ({
 
   const flatOptions = flatOptionsWithPrimaryLabel(flats, primaryByFlatId);
 
+  const filteredPaymentGroups = useMemo(() => {
+    if (!paymentOnly) return groups;
+    return groups.filter((g) => groupMatchesPaymentHeadSearch(g, headSearchQuery));
+  }, [groups, headSearchQuery, paymentOnly]);
+
+  const paymentGroupsGrouped = useMemo(
+    () => paymentGroupsByMajorHead(filteredPaymentGroups),
+    [filteredPaymentGroups],
+  );
+
+  const subHeadsUnderSelectedMajor = useMemo(() => {
+    if (!gf.major_head) return [];
+    return paymentGroupsGrouped.get(gf.major_head as SocietyPaymentMajorHead) ?? [];
+  }, [paymentGroupsGrouped, gf.major_head]);
+
+  type GroupListItem =
+    | { kind: 'major'; major: SocietyPaymentMajorHead }
+    | { kind: 'group'; group: ExpenseGroupRow };
+
+  const groupListItems = useMemo((): GroupListItem[] => {
+    if (!paymentOnly) return groups.map((group) => ({ kind: 'group' as const, group }));
+    const items: GroupListItem[] = [];
+    for (const major of SOCIETY_PAYMENT_MAJOR_HEADS) {
+      const sectionGroups = paymentGroupsGrouped.get(major) ?? [];
+      if (sectionGroups.length === 0) continue;
+      items.push({ kind: 'major', major });
+      for (const group of sectionGroups) items.push({ kind: 'group', group });
+    }
+    return items;
+  }, [groups, paymentOnly, paymentGroupsGrouped]);
+
   if (!societyId) {
     return (
       <div className={embedded ? '' : 'page-container pb-24'}>
@@ -1049,6 +1092,19 @@ const ExpenseSplitter = ({
         </div>
       </DescriptiveStatCard>
 
+      {paymentOnly && (
+        <div className="relative mb-4">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input
+            className="input-field pl-9"
+            type="search"
+            placeholder="Search expense heads (e.g. Electricity, Security, Fixed assets)…"
+            value={headSearchQuery}
+            onChange={(e) => setHeadSearchQuery(e.target.value)}
+          />
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => setShowGroupForm(!showGroupForm)}
@@ -1062,36 +1118,52 @@ const ExpenseSplitter = ({
         <div className="card-section p-4 mb-4 flex flex-col gap-3">
           {paymentOnly ? (
             <>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase">Expense head</label>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Major head</label>
               <select
                 className="input-field"
-                value={paymentHeadPreset}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setPaymentHeadPreset(v);
-                  if (v && v !== '__custom__') setGf({ ...gf, name: v });
-                }}
+                value={gf.major_head}
+                onChange={(e) => setGf({ ...gf, major_head: e.target.value as SocietyPaymentMajorHead | '' })}
               >
-                <option value="">Choose head…</option>
-                {SOCIETY_PAYMENT_EXPENSE_HEADS.map((h) => (
+                <option value="">Choose major head…</option>
+                {SOCIETY_PAYMENT_MAJOR_HEADS.map((h) => (
                   <option key={h} value={h}>
                     {h}
                   </option>
                 ))}
-                <option value="__custom__">Custom head…</option>
               </select>
+              {gf.major_head && subHeadsUnderSelectedMajor.length > 0 && (
+                <div className="rounded-lg border border-border bg-muted/20 p-2.5 space-y-1.5">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase">Existing sub-heads</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {subHeadsUnderSelectedMajor.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className="text-[10px] px-2 py-1 rounded-md border border-border bg-background hover:border-primary/40"
+                        onClick={() => {
+                          setShowGroupForm(false);
+                          setShowExpenseForm(g.id);
+                        }}
+                      >
+                        {g.name}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-snug">
+                    Tap a sub-head to record a payment, or add a new one below.
+                  </p>
+                </div>
+              )}
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">New sub-head name</label>
               <input
                 className="input-field"
-                placeholder="Head name (e.g. Electricity, Lift AMC)"
+                placeholder="e.g. Electricity bill, Lift AMC, Security guards"
                 value={gf.name}
-                onChange={(e) => {
-                  setGf({ ...gf, name: e.target.value });
-                  setPaymentHeadPreset('__custom__');
-                }}
+                onChange={(e) => setGf({ ...gf, name: e.target.value })}
               />
               <p className="text-[10px] text-muted-foreground leading-snug">
-                Each head appears separately in Finance period reports. Do not use a generic &quot;Events &amp;
-                Functions&quot; head for society bills.
+                Sub-heads appear under the major head in period reports. Use specific names — not generic
+                &quot;Events &amp; Functions&quot;.
               </p>
             </>
           ) : (
@@ -1210,7 +1282,24 @@ const ExpenseSplitter = ({
         </div>
       )}
 
-      {groups.map((g) => {
+      {paymentOnly && headSearchQuery.trim() && filteredPaymentGroups.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-6 mb-3">
+          No expense heads match &quot;{headSearchQuery.trim()}&quot;.
+        </p>
+      )}
+
+      {groupListItems.map((item) => {
+        if (item.kind === 'major') {
+          return (
+            <h3
+              key={`major-${item.major}`}
+              className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 mt-1 border-b border-border/60 pb-1"
+            >
+              {item.major}
+            </h3>
+          );
+        }
+        const g = item.group;
         const gExpenses = expenses.filter((e) => e.group_id === g.id);
         return (
           <div key={g.id} className="card-section p-4 mb-3">
@@ -1222,9 +1311,11 @@ const ExpenseSplitter = ({
                     Linked event: {events.find((ev) => ev.id === g.event_id)?.title ?? 'Calendar event'}
                   </p>
                 )}
-                <p className="text-[10px] text-muted-foreground">
-                  Split weights: adult ×{g.adult_weight ?? 1}, child ×{g.child_weight ?? 0.5}
-                </p>
+                {!paymentOnly && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Split weights: adult ×{g.adult_weight ?? 1}, child ×{g.child_weight ?? 0.5}
+                  </p>
+                )}
                 {g.description && <p className="text-xs text-muted-foreground mt-0.5">{g.description}</p>}
               </div>
               <div className="flex items-center gap-1 shrink-0">

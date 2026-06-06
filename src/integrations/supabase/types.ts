@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -10,7 +10,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -414,6 +439,69 @@ export type Database = {
           },
         ]
       }
+      emergency_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          media_items: Json
+          message: string
+          notification_id: string | null
+          push_sent: number
+          sender_flat_number: string | null
+          sender_name: string
+          sender_role: string
+          society_id: string
+          title: string
+          whatsapp_failed: number
+          whatsapp_sent: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_items?: Json
+          message: string
+          notification_id?: string | null
+          push_sent?: number
+          sender_flat_number?: string | null
+          sender_name: string
+          sender_role: string
+          society_id: string
+          title: string
+          whatsapp_failed?: number
+          whatsapp_sent?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_items?: Json
+          message?: string
+          notification_id?: string | null
+          push_sent?: number
+          sender_flat_number?: string | null
+          sender_name?: string
+          sender_role?: string
+          society_id?: string
+          title?: string
+          whatsapp_failed?: number
+          whatsapp_sent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_alerts_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_alerts_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_contributions: {
         Row: {
           amount: number
@@ -572,95 +660,51 @@ export type Database = {
           },
         ]
       }
-      emergency_alerts: {
-        Row: {
-          created_at: string
-          id: string
-          media_items: Json
-          message: string
-          notification_id: string | null
-          push_sent: number
-          sender_flat_number: string | null
-          sender_name: string
-          sender_role: string
-          society_id: string
-          title: string
-          whatsapp_failed: number
-          whatsapp_sent: number
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          media_items?: Json
-          message: string
-          notification_id?: string | null
-          push_sent?: number
-          sender_flat_number?: string | null
-          sender_name: string
-          sender_role: string
-          society_id: string
-          title: string
-          whatsapp_failed?: number
-          whatsapp_sent?: number
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          media_items?: Json
-          message?: string
-          notification_id?: string | null
-          push_sent?: number
-          sender_flat_number?: string | null
-          sender_name?: string
-          sender_role?: string
-          society_id?: string
-          title?: string
-          whatsapp_failed?: number
-          whatsapp_sent?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "emergency_alerts_notification_id_fkey"
-            columns: ["notification_id"]
-            isOneToOne: false
-            referencedRelation: "notifications"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "emergency_alerts_society_id_fkey"
-            columns: ["society_id"]
-            isOneToOne: false
-            referencedRelation: "societies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       expense_groups: {
         Row: {
+          adult_weight: number
+          child_weight: number
           created_at: string
           created_by: string | null
           description: string | null
+          event_id: string | null
+          group_kind: string
           id: string
           name: string
           society_id: string | null
         }
         Insert: {
+          adult_weight?: number
+          child_weight?: number
           created_at?: string
           created_by?: string | null
           description?: string | null
+          event_id?: string | null
+          group_kind?: string
           id?: string
           name: string
           society_id?: string | null
         }
         Update: {
+          adult_weight?: number
+          child_weight?: number
           created_at?: string
           created_by?: string | null
           description?: string | null
+          event_id?: string | null
+          group_kind?: string
           id?: string
           name?: string
           society_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "expense_groups_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expense_groups_society_id_fkey"
             columns: ["society_id"]
@@ -713,15 +757,16 @@ export type Database = {
       }
       expenses: {
         Row: {
-          attachment_urls: unknown
+          attachment_urls: Json
           bill_screenshot_url: string | null
           created_at: string
+          expense_category: string
           expense_date: string
           group_id: string | null
           id: string
           notes: string | null
           paid_by_flat: string
-          paid_by_flats: unknown
+          paid_by_flats: Json
           paid_by_name: string | null
           payment_method: string
           record_status: string
@@ -733,15 +778,16 @@ export type Database = {
           vendor_or_service: string | null
         }
         Insert: {
-          attachment_urls?: unknown
+          attachment_urls?: Json
           bill_screenshot_url?: string | null
           created_at?: string
+          expense_category?: string
           expense_date?: string
           group_id?: string | null
           id?: string
           notes?: string | null
           paid_by_flat: string
-          paid_by_flats?: unknown
+          paid_by_flats?: Json
           paid_by_name?: string | null
           payment_method?: string
           record_status?: string
@@ -753,15 +799,16 @@ export type Database = {
           vendor_or_service?: string | null
         }
         Update: {
-          attachment_urls?: unknown
+          attachment_urls?: Json
           bill_screenshot_url?: string | null
           created_at?: string
+          expense_category?: string
           expense_date?: string
           group_id?: string | null
           id?: string
           notes?: string | null
           paid_by_flat?: string
-          paid_by_flats?: unknown
+          paid_by_flats?: Json
           paid_by_name?: string | null
           payment_method?: string
           record_status?: string
@@ -782,6 +829,44 @@ export type Database = {
           },
         ]
       }
+      fcm_web_tokens: {
+        Row: {
+          app_user_id: string
+          flat_number: string | null
+          id: string
+          society_id: string | null
+          token: string
+          updated_at: string
+          user_type: string
+        }
+        Insert: {
+          app_user_id: string
+          flat_number?: string | null
+          id?: string
+          society_id?: string | null
+          token: string
+          updated_at?: string
+          user_type: string
+        }
+        Update: {
+          app_user_id?: string
+          flat_number?: string | null
+          id?: string
+          society_id?: string | null
+          token?: string
+          updated_at?: string
+          user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fcm_web_tokens_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_entries: {
         Row: {
           aggregate_flat_count: number
@@ -790,6 +875,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           destination: string
+          distributed_at: string | null
           entry_month: string | null
           expense_id: string | null
           id: string
@@ -802,6 +888,7 @@ export type Database = {
           society_id: string
           title: string | null
           total_amount: number
+          transaction_date: string | null
           transaction_id: string | null
         }
         Insert: {
@@ -811,6 +898,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           destination?: string
+          distributed_at?: string | null
           entry_month?: string | null
           expense_id?: string | null
           id?: string
@@ -823,6 +911,7 @@ export type Database = {
           society_id: string
           title?: string | null
           total_amount?: number
+          transaction_date?: string | null
           transaction_id?: string | null
         }
         Update: {
@@ -832,6 +921,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           destination?: string
+          distributed_at?: string | null
           entry_month?: string | null
           expense_id?: string | null
           id?: string
@@ -844,6 +934,7 @@ export type Database = {
           society_id?: string
           title?: string | null
           total_amount?: number
+          transaction_date?: string | null
           transaction_id?: string | null
         }
         Relationships: [
@@ -852,6 +943,13 @@ export type Database = {
             columns: ["charge_id"]
             isOneToOne: false
             referencedRelation: "maintenance_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_entries_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
             referencedColumns: ["id"]
           },
           {
@@ -934,6 +1032,89 @@ export type Database = {
           },
         ]
       }
+      finance_reminder_dispatch_log: {
+        Row: {
+          charge_id: string
+          created_at: string
+          flat_number: string
+          id: string
+          reminder_date: string
+          reminder_slot: string
+          society_id: string
+        }
+        Insert: {
+          charge_id: string
+          created_at?: string
+          flat_number: string
+          id?: string
+          reminder_date: string
+          reminder_slot: string
+          society_id: string
+        }
+        Update: {
+          charge_id?: string
+          created_at?: string
+          flat_number?: string
+          id?: string
+          reminder_date?: string
+          reminder_slot?: string
+          society_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_reminder_dispatch_log_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_reminder_dispatch_log_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_reminder_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          schedule: string
+          society_id: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          schedule?: string
+          society_id: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          schedule?: string
+          society_id?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_reminder_settings_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: true
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flats: {
         Row: {
           created_at: string
@@ -943,8 +1124,8 @@ export type Database = {
           id: string
           intercom: string | null
           is_occupied: boolean | null
-          owner_name: string | null
           owner_lives_here: boolean
+          owner_name: string | null
           owner_phone: string | null
           society_id: string | null
           tenant_household_type: string | null
@@ -958,8 +1139,8 @@ export type Database = {
           id?: string
           intercom?: string | null
           is_occupied?: boolean | null
-          owner_name?: string | null
           owner_lives_here?: boolean
+          owner_name?: string | null
           owner_phone?: string | null
           society_id?: string | null
           tenant_household_type?: string | null
@@ -973,8 +1154,8 @@ export type Database = {
           id?: string
           intercom?: string | null
           is_occupied?: boolean | null
-          owner_name?: string | null
           owner_lives_here?: boolean
+          owner_name?: string | null
           owner_phone?: string | null
           society_id?: string | null
           tenant_household_type?: string | null
@@ -983,44 +1164,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "flats_society_id_fkey"
-            columns: ["society_id"]
-            isOneToOne: false
-            referencedRelation: "societies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      fcm_web_tokens: {
-        Row: {
-          app_user_id: string
-          flat_number: string | null
-          id: string
-          society_id: string | null
-          token: string
-          updated_at: string
-          user_type: string
-        }
-        Insert: {
-          app_user_id: string
-          flat_number?: string | null
-          id?: string
-          society_id?: string | null
-          token: string
-          updated_at?: string
-          user_type: string
-        }
-        Update: {
-          app_user_id?: string
-          flat_number?: string | null
-          id?: string
-          society_id?: string | null
-          token?: string
-          updated_at?: string
-          user_type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fcm_web_tokens_society_id_fkey"
             columns: ["society_id"]
             isOneToOne: false
             referencedRelation: "societies"
@@ -1374,153 +1517,6 @@ export type Database = {
           },
         ]
       }
-      members: {
-        Row: {
-          age: number | null
-          created_at: string
-          date_joining: string | null
-          date_leave: string | null
-          flat_id: string
-          gender: string | null
-          household_group: string
-          id: string
-          id_photo_back: string | null
-          id_photo_front: string | null
-          is_primary: boolean | null
-          name: string
-          phone: string | null
-          whatsapp_phone: string | null
-          photo: string | null
-          police_verification: string | null
-          relation: string | null
-          spouse_name: string | null
-        }
-        Insert: {
-          age?: number | null
-          created_at?: string
-          date_joining?: string | null
-          date_leave?: string | null
-          flat_id: string
-          gender?: string | null
-          household_group?: string
-          id?: string
-          id_photo_back?: string | null
-          id_photo_front?: string | null
-          is_primary?: boolean | null
-          name: string
-          phone?: string | null
-          whatsapp_phone?: string | null
-          photo?: string | null
-          police_verification?: string | null
-          relation?: string | null
-          spouse_name?: string | null
-        }
-        Update: {
-          age?: number | null
-          created_at?: string
-          date_joining?: string | null
-          date_leave?: string | null
-          flat_id?: string
-          gender?: string | null
-          household_group?: string
-          id?: string
-          id_photo_back?: string | null
-          id_photo_front?: string | null
-          is_primary?: boolean | null
-          name?: string
-          phone?: string | null
-          whatsapp_phone?: string | null
-          photo?: string | null
-          police_verification?: string | null
-          relation?: string | null
-          spouse_name?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "members_flat_id_fkey"
-            columns: ["flat_id"]
-            isOneToOne: false
-            referencedRelation: "flats"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      member_documents: {
-        Row: {
-          back_url: string | null
-          created_at: string
-          doc_kind: string
-          doc_type: string
-          front_url: string | null
-          id: string
-          member_id: string
-        }
-        Insert: {
-          back_url?: string | null
-          created_at?: string
-          doc_kind: string
-          doc_type: string
-          front_url?: string | null
-          id?: string
-          member_id: string
-        }
-        Update: {
-          back_url?: string | null
-          created_at?: string
-          doc_kind?: string
-          doc_type?: string
-          front_url?: string | null
-          id?: string
-          member_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "member_documents_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      society_dashboard_banners: {
-        Row: {
-          created_at: string
-          id: string
-          image_url: string
-          is_active: boolean
-          society_id: string
-          sort_order: number
-          title: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          image_url: string
-          is_active?: boolean
-          society_id: string
-          sort_order?: number
-          title?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          image_url?: string
-          is_active?: boolean
-          society_id?: string
-          sort_order?: number
-          title?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "society_dashboard_banners_society_id_fkey"
-            columns: ["society_id"]
-            isOneToOne: false
-            referencedRelation: "societies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       meeting_attendees: {
         Row: {
           attendee_role: string
@@ -1752,64 +1748,111 @@ export type Database = {
           },
         ]
       }
-      notifications: {
+      member_documents: {
         Row: {
+          back_url: string | null
           created_at: string
-          created_by: string | null
-          delivery_batch_id: string | null
+          doc_kind: string
+          doc_type: string
+          front_url: string | null
           id: string
-          is_read: boolean
-          message: string
-          media_items: unknown
-          read_at: string | null
-          society_id: string | null
-          sound_custom_url: string | null
-          sound_key: string
-          target_id: string | null
-          target_type: string
-          title: string
-          type: string
+          member_id: string
         }
         Insert: {
+          back_url?: string | null
           created_at?: string
-          created_by?: string | null
-          delivery_batch_id?: string | null
+          doc_kind: string
+          doc_type: string
+          front_url?: string | null
           id?: string
-          is_read?: boolean
-          message: string
-          media_items?: unknown
-          read_at?: string | null
-          society_id?: string | null
-          sound_custom_url?: string | null
-          sound_key?: string
-          target_id?: string | null
-          target_type?: string
-          title: string
-          type?: string
+          member_id: string
         }
         Update: {
+          back_url?: string | null
           created_at?: string
-          created_by?: string | null
-          delivery_batch_id?: string | null
+          doc_kind?: string
+          doc_type?: string
+          front_url?: string | null
           id?: string
-          is_read?: boolean
-          message?: string
-          media_items?: unknown
-          read_at?: string | null
-          society_id?: string | null
-          sound_custom_url?: string | null
-          sound_key?: string
-          target_id?: string | null
-          target_type?: string
-          title?: string
-          type?: string
+          member_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "notifications_society_id_fkey"
-            columns: ["society_id"]
+            foreignKeyName: "member_documents_member_id_fkey"
+            columns: ["member_id"]
             isOneToOne: false
-            referencedRelation: "societies"
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      members: {
+        Row: {
+          age: number | null
+          created_at: string
+          date_joining: string | null
+          date_leave: string | null
+          flat_id: string
+          gender: string | null
+          household_group: string
+          id: string
+          id_photo_back: string | null
+          id_photo_front: string | null
+          is_primary: boolean | null
+          name: string
+          phone: string | null
+          photo: string | null
+          police_verification: string | null
+          relation: string | null
+          spouse_name: string | null
+          whatsapp_phone: string | null
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          date_joining?: string | null
+          date_leave?: string | null
+          flat_id: string
+          gender?: string | null
+          household_group?: string
+          id?: string
+          id_photo_back?: string | null
+          id_photo_front?: string | null
+          is_primary?: boolean | null
+          name: string
+          phone?: string | null
+          photo?: string | null
+          police_verification?: string | null
+          relation?: string | null
+          spouse_name?: string | null
+          whatsapp_phone?: string | null
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          date_joining?: string | null
+          date_leave?: string | null
+          flat_id?: string
+          gender?: string | null
+          household_group?: string
+          id?: string
+          id_photo_back?: string | null
+          id_photo_front?: string | null
+          is_primary?: boolean | null
+          name?: string
+          phone?: string | null
+          photo?: string | null
+          police_verification?: string | null
+          relation?: string | null
+          spouse_name?: string | null
+          whatsapp_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
             referencedColumns: ["id"]
           },
         ]
@@ -1847,10 +1890,79 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "notification_comments_author_resident_id_fkey"
+            columns: ["author_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notification_comments_notification_id_fkey"
             columns: ["notification_id"]
             isOneToOne: false
             referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delivery_batch_id: string | null
+          id: string
+          is_read: boolean
+          media_items: Json
+          message: string
+          read_at: string | null
+          society_id: string | null
+          sound_custom_url: string | null
+          sound_key: string
+          target_id: string | null
+          target_type: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delivery_batch_id?: string | null
+          id?: string
+          is_read?: boolean
+          media_items?: Json
+          message: string
+          read_at?: string | null
+          society_id?: string | null
+          sound_custom_url?: string | null
+          sound_key?: string
+          target_id?: string | null
+          target_type?: string
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delivery_batch_id?: string | null
+          id?: string
+          is_read?: boolean
+          media_items?: Json
+          message?: string
+          read_at?: string | null
+          society_id?: string | null
+          sound_custom_url?: string | null
+          sound_key?: string
+          target_id?: string | null
+          target_type?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
             referencedColumns: ["id"]
           },
         ]
@@ -1979,7 +2091,7 @@ export type Database = {
           flat_number: string | null
           id: string
           poll_id: string
-          rankings: unknown
+          rankings: Json
           voter_id: string
         }
         Insert: {
@@ -1988,7 +2100,7 @@ export type Database = {
           flat_number?: string | null
           id?: string
           poll_id: string
-          rankings?: unknown
+          rankings?: Json
           voter_id: string
         }
         Update: {
@@ -1997,10 +2109,17 @@ export type Database = {
           flat_number?: string | null
           id?: string
           poll_id?: string
-          rankings?: unknown
+          rankings?: Json
           voter_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "poll_election_ballots_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "poll_election_ballots_poll_id_fkey"
             columns: ["poll_id"]
@@ -2097,7 +2216,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           election_committee_seats: number
-          election_results: unknown
+          election_results: Json | null
           end_date: string | null
           id: string
           is_active: boolean
@@ -2111,7 +2230,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           election_committee_seats?: number
-          election_results?: unknown
+          election_results?: Json | null
           end_date?: string | null
           id?: string
           is_active?: boolean
@@ -2125,7 +2244,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           election_committee_seats?: number
-          election_results?: unknown
+          election_results?: Json | null
           end_date?: string | null
           id?: string
           is_active?: boolean
@@ -2278,6 +2397,7 @@ export type Database = {
           name: string
           photo_urls: string[]
           pincode: string | null
+          referral_code: string | null
           resident_self_id_upload_enabled: boolean
           state: string | null
           terrace_accessible: boolean | null
@@ -2304,6 +2424,7 @@ export type Database = {
           name: string
           photo_urls?: string[]
           pincode?: string | null
+          referral_code?: string | null
           resident_self_id_upload_enabled?: boolean
           state?: string | null
           terrace_accessible?: boolean | null
@@ -2330,6 +2451,7 @@ export type Database = {
           name?: string
           photo_urls?: string[]
           pincode?: string | null
+          referral_code?: string | null
           resident_self_id_upload_enabled?: boolean
           state?: string | null
           terrace_accessible?: boolean | null
@@ -2337,6 +2459,155 @@ export type Database = {
           total_floors?: number | null
         }
         Relationships: []
+      }
+      society_dashboard_banners: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          is_active: boolean
+          society_id: string
+          sort_order: number
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          is_active?: boolean
+          society_id: string
+          sort_order?: number
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          society_id?: string
+          sort_order?: number
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "society_dashboard_banners_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      society_orders: {
+        Row: {
+          amount_inr: number
+          callback_payload: Json
+          callback_verified: boolean
+          created_at: string
+          currency: string
+          id: string
+          merchant_transaction_id: string
+          phonepe_transaction_id: string | null
+          provider: string
+          redirect_url: string | null
+          signup_id: string
+          status: string
+        }
+        Insert: {
+          amount_inr: number
+          callback_payload?: Json
+          callback_verified?: boolean
+          created_at?: string
+          currency?: string
+          id?: string
+          merchant_transaction_id: string
+          phonepe_transaction_id?: string | null
+          provider?: string
+          redirect_url?: string | null
+          signup_id: string
+          status?: string
+        }
+        Update: {
+          amount_inr?: number
+          callback_payload?: Json
+          callback_verified?: boolean
+          created_at?: string
+          currency?: string
+          id?: string
+          merchant_transaction_id?: string
+          phonepe_transaction_id?: string | null
+          provider?: string
+          redirect_url?: string | null
+          signup_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "society_orders_signup_id_fkey"
+            columns: ["signup_id"]
+            isOneToOne: false
+            referencedRelation: "society_signups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      society_referrals: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          referral_code_used: string
+          referred_reward_inr: number
+          referred_society_id: string | null
+          referrer_reward_inr: number
+          referrer_society_id: string
+          reward_percent: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          referral_code_used: string
+          referred_reward_inr?: number
+          referred_society_id?: string | null
+          referrer_reward_inr?: number
+          referrer_society_id: string
+          reward_percent?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          referral_code_used?: string
+          referred_reward_inr?: number
+          referred_society_id?: string | null
+          referrer_reward_inr?: number
+          referrer_society_id?: string
+          reward_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "society_referrals_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "society_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "society_referrals_referred_society_id_fkey"
+            columns: ["referred_society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "society_referrals_referrer_society_id_fkey"
+            columns: ["referrer_society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       society_roles: {
         Row: {
@@ -2373,104 +2644,128 @@ export type Database = {
           },
         ]
       }
-      support_tickets: {
+      society_signups: {
         Row: {
-          audio_url: string | null
+          address: string | null
+          admin_id: string | null
+          admin_password: string | null
+          base_price_inr: number
+          block_names: string[] | null
+          city: string | null
+          client_token: string | null
+          contact_email: string | null
+          contact_person: string | null
+          contact_phone: string | null
           created_at: string
-          flat_number: string
+          discount_percent: number
+          final_price_inr: number
+          flat_series_end: string | null
+          flat_series_start: string | null
+          flats_per_floor: number | null
           id: string
-          media_items: unknown
-          message: string
-          replied_at: string | null
-          replied_by_superadmin_id: string | null
-          society_id: string | null
-          society_name: string | null
+          notes: string | null
+          pincode: string | null
+          referral_code_used: string | null
+          society_name: string
+          state: string | null
           status: string
-          submitter_kind: string
-          submitter_name: string
-          submitter_resident_id: string
-          superadmin_reply: string | null
-          ticket_number: number
+          total_floors: number | null
         }
         Insert: {
-          audio_url?: string | null
+          address?: string | null
+          admin_id?: string | null
+          admin_password?: string | null
+          base_price_inr?: number
+          block_names?: string[] | null
+          city?: string | null
+          client_token?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
           created_at?: string
-          flat_number: string
+          discount_percent?: number
+          final_price_inr?: number
+          flat_series_end?: string | null
+          flat_series_start?: string | null
+          flats_per_floor?: number | null
           id?: string
-          media_items?: unknown
-          message?: string
-          replied_at?: string | null
-          replied_by_superadmin_id?: string | null
-          society_id?: string | null
-          society_name?: string | null
+          notes?: string | null
+          pincode?: string | null
+          referral_code_used?: string | null
+          society_name: string
+          state?: string | null
           status?: string
-          submitter_kind?: string
-          submitter_name: string
-          submitter_resident_id: string
-          superadmin_reply?: string | null
+          total_floors?: number | null
         }
         Update: {
-          audio_url?: string | null
+          address?: string | null
+          admin_id?: string | null
+          admin_password?: string | null
+          base_price_inr?: number
+          block_names?: string[] | null
+          city?: string | null
+          client_token?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
           created_at?: string
-          flat_number?: string
+          discount_percent?: number
+          final_price_inr?: number
+          flat_series_end?: string | null
+          flat_series_start?: string | null
+          flats_per_floor?: number | null
           id?: string
-          media_items?: unknown
-          message?: string
-          replied_at?: string | null
-          replied_by_superadmin_id?: string | null
-          society_id?: string | null
-          society_name?: string | null
+          notes?: string | null
+          pincode?: string | null
+          referral_code_used?: string | null
+          society_name?: string
+          state?: string | null
           status?: string
-          submitter_kind?: string
-          submitter_name?: string
-          submitter_resident_id?: string
-          superadmin_reply?: string | null
+          total_floors?: number | null
+        }
+        Relationships: []
+      }
+      society_wallet_ledger: {
+        Row: {
+          amount_inr: number
+          created_at: string
+          entry_type: string
+          id: string
+          notes: string | null
+          society_id: string
+          source_order_id: string | null
+        }
+        Insert: {
+          amount_inr: number
+          created_at?: string
+          entry_type: string
+          id?: string
+          notes?: string | null
+          society_id: string
+          source_order_id?: string | null
+        }
+        Update: {
+          amount_inr?: number
+          created_at?: string
+          entry_type?: string
+          id?: string
+          notes?: string | null
+          society_id?: string
+          source_order_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "support_tickets_replied_by_superadmin_id_fkey"
-            columns: ["replied_by_superadmin_id"]
-            isOneToOne: false
-            referencedRelation: "super_admins"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "support_tickets_society_id_fkey"
+            foreignKeyName: "society_wallet_ledger_society_id_fkey"
             columns: ["society_id"]
             isOneToOne: false
             referencedRelation: "societies"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      superadmin_recovery_challenges: {
-        Row: {
-          code: string
-          created_at: string
-          expires_at: string
-          id: string
-          super_admin_id: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          expires_at: string
-          id?: string
-          super_admin_id: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          expires_at?: string
-          id?: string
-          super_admin_id?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "superadmin_recovery_challenges_super_admin_id_fkey"
-            columns: ["super_admin_id"]
+            foreignKeyName: "society_wallet_ledger_source_order_id_fkey"
+            columns: ["source_order_id"]
             isOneToOne: false
-            referencedRelation: "super_admins"
+            referencedRelation: "society_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -2507,6 +2802,110 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      superadmin_recovery_challenges: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          super_admin_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          super_admin_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          super_admin_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "superadmin_recovery_challenges_super_admin_id_fkey"
+            columns: ["super_admin_id"]
+            isOneToOne: false
+            referencedRelation: "super_admins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          flat_number: string
+          id: string
+          media_items: Json
+          message: string
+          replied_at: string | null
+          replied_by_superadmin_id: string | null
+          society_id: string | null
+          society_name: string | null
+          status: string
+          submitter_kind: string
+          submitter_name: string
+          submitter_resident_id: string
+          superadmin_reply: string | null
+          ticket_number: number
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          flat_number: string
+          id?: string
+          media_items?: Json
+          message?: string
+          replied_at?: string | null
+          replied_by_superadmin_id?: string | null
+          society_id?: string | null
+          society_name?: string | null
+          status?: string
+          submitter_kind?: string
+          submitter_name: string
+          submitter_resident_id: string
+          superadmin_reply?: string | null
+          ticket_number?: never
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          flat_number?: string
+          id?: string
+          media_items?: Json
+          message?: string
+          replied_at?: string | null
+          replied_by_superadmin_id?: string | null
+          society_id?: string | null
+          society_name?: string | null
+          status?: string
+          submitter_kind?: string
+          submitter_name?: string
+          submitter_resident_id?: string
+          superadmin_reply?: string | null
+          ticket_number?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_replied_by_superadmin_id_fkey"
+            columns: ["replied_by_superadmin_id"]
+            isOneToOne: false
+            referencedRelation: "super_admins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       visitor_passes: {
         Row: {
@@ -2790,6 +3189,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
