@@ -13,7 +13,8 @@ import BiometricSetup from '@/components/BiometricSetup';
 import NotificationCenter from '@/components/NotificationCenter';
 import EmergencyAlertPanel from '@/components/EmergencyAlertPanel';
 import PollManager from '@/components/PollManager';
-import { ElectionResultsBanner } from '@/components/ElectionResultsBanner';
+import { isMemberOnCommitteeRoster } from '@/lib/committeeProtection';
+import type { CommitteeMemberRow } from '@/lib/committeeMember';
 import MeetingManager from '@/components/MeetingManager';
 import CommitteeManager from '@/components/CommitteeManager';
 import { auditLogout } from '@/lib/auditLogger';
@@ -235,6 +236,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
   // Family & servicemen state
   const [myMembers, setMyMembers] = useState<any[]>([]);
+  const [committeeRoster, setCommitteeRoster] = useState<CommitteeMemberRow[]>([]);
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
   type MemberDocumentKind = 'photo_id' | 'tenant_doc' | 'service_doc';
@@ -424,7 +426,35 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     return () => { cancelled = true; };
   }, [residentSelfIdUploadEnabled, myMemberRecord?.id]);
 
-  useEffect(() => { loadRequests(); loadPasses(); loadMyPayments(); loadResidentCharges(); loadFlatmates(); loadMyMembers(); loadMyVehicles(); loadDirectory(); }, []);
+  const loadCommitteeRoster = async () => {
+    if (!societyId) {
+      setCommitteeRoster([]);
+      return;
+    }
+    const { data } = await supabase
+      .from('committee_members')
+      .select('*')
+      .eq('society_id', societyId)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+    setCommitteeRoster((data ?? []) as CommitteeMemberRow[]);
+  };
+
+  useEffect(() => {
+    loadRequests();
+    loadPasses();
+    loadMyPayments();
+    loadResidentCharges();
+    loadFlatmates();
+    loadMyMembers();
+    loadMyVehicles();
+    loadDirectory();
+    void loadCommitteeRoster();
+  }, []);
+
+  useEffect(() => {
+    void loadCommitteeRoster();
+  }, [societyId]);
 
   useEffect(() => {
     if (!societyId) return;
@@ -707,6 +737,10 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   });
 
   const handleAddMember = async () => {
+    if (editingMember && isMemberOnCommitteeRoster({ ...editingMember, flat_id: resident.flatId }, committeeRoster)) {
+      toast.error('This member is on the committee roster. Contact the admin to change their committee details.');
+      return;
+    }
     if (!memberForm.name) { toast.error('Name is required'); return; }
     if (memberForm.isServiceman) {
       if (!memberForm.serviceType) { toast.error('Please select a service type'); return; }
@@ -837,6 +871,10 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
   const handleDeleteMember = async (member: any) => {
     if (member.is_primary) { toast.error('Cannot delete primary member'); return; }
+    if (isMemberOnCommitteeRoster({ ...member, flat_id: resident.flatId }, committeeRoster)) {
+      toast.error('Committee members cannot be removed here. Contact the society admin.');
+      return;
+    }
     const confirmed = await confirmAction('Delete member?', `Remove ${member.name}?`, 'Yes', 'No');
     if (!confirmed) return;
     await supabase.from('resident_vehicles').delete().eq('member_id', member.id);
@@ -850,6 +888,10 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   };
 
   const startEditMember = async (m: any) => {
+    if (isMemberOnCommitteeRoster({ ...m, flat_id: resident.flatId }, committeeRoster)) {
+      toast.error('This member appears on the committee roster. Only the admin can change those details.');
+      return;
+    }
     const isService = SERVICE_TYPES.map(s => s.toLowerCase()).includes(m.relation?.toLowerCase());
     const relLower = (m.relation || '').toLowerCase();
     const relationCap = RELATION_TYPES.find((r) => r.toLowerCase() === relLower) || 'Spouse';
@@ -1264,7 +1306,6 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         {/* ========== APPROVALS TAB ========== */}
         {tab === 'approvals' && (
           <div className="flex flex-col gap-3">
-            <ElectionResultsBanner societyId={societyId} />
             {pendingRequests.length > 0 && (
               <div className="card-section border-warning/30">
                 <p className="text-sm font-semibold text-warning mb-3">🔔 {t('resident.pendingApprovals')}</p>
@@ -1728,7 +1769,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                         {m.phone ? ` · 📱${m.phone}` : ''}
                       </p>
                     </div>
-                    {!m.is_primary && (
+                    {!m.is_primary && !isMemberOnCommitteeRoster({ ...m, flat_id: resident.flatId }, committeeRoster) && (
                       <div className="flex gap-1 flex-shrink-0">
                         <button onClick={() => startEditMember(m)} className="p-1.5 text-muted-foreground hover:text-primary">
                           <Edit2 className="w-3.5 h-3.5" />
@@ -1737,6 +1778,9 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
+                    )}
+                    {isMemberOnCommitteeRoster({ ...m, flat_id: resident.flatId }, committeeRoster) && (
+                      <span className="text-[9px] text-muted-foreground shrink-0">Committee · admin only</span>
                     )}
                   </div>
                 );
@@ -1894,7 +1938,15 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         )}
 
         {tab === 'polls' && (
-          <PollManager isResident voterId={resident.id} flatNumber={resident.flatNumber} flatId={resident.flatId} />
+          <PollManager
+            isResident
+            voterId={resident.id}
+            voterPhone={resident.phone}
+            memberId={myMemberRecord?.id}
+            memberName={myMemberRecord?.name ?? resident.name}
+            flatNumber={resident.flatNumber}
+            flatId={resident.flatId}
+          />
         )}
 
         {tab === 'meetings' && <MeetingManager isResident />}
@@ -2048,6 +2100,10 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 <div>
                   <p className="font-semibold text-foreground">{resident.name}</p>
                   <p className="text-xs text-muted-foreground">Flat {resident.flatNumber} · 📱 {resident.phone}</p>
+                  {myMemberRecord &&
+                    isMemberOnCommitteeRoster({ ...myMemberRecord, flat_id: resident.flatId }, committeeRoster) && (
+                      <p className="text-[10px] text-primary mt-1">You are listed on the committee roster — name/post changes are admin-only.</p>
+                    )}
                 </div>
               </div>
               {flatmates.length > 1 && (

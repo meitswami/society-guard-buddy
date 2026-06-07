@@ -21,6 +21,7 @@ function ResultsBlock({ results }: { results: ElectionResultsPayload }) {
   return (
     <div className="space-y-0.5 mt-1">
       {line('President', results.president)}
+      {line('Vice-President', results.vice_president)}
       {line('Secretary', results.secretary)}
       {line('Treasurer', results.treasurer)}
       {results.committee.length > 0 && (
@@ -40,12 +41,18 @@ function ResultsBlock({ results }: { results: ElectionResultsPayload }) {
   );
 }
 
-/** Latest closed society elections with tallied winners — show on home/overview. */
-export function ElectionResultsBanner({ societyId }: { societyId: string | null }) {
+/** Latest closed society elections — admin portal only until published to committee. */
+export function ElectionResultsBanner({
+  societyId,
+  adminOnly = false,
+}: {
+  societyId: string | null;
+  adminOnly?: boolean;
+}) {
   const [rows, setRows] = useState<{ id: string; question: string; election_results: unknown }[]>([]);
 
   useEffect(() => {
-    if (!societyId) {
+    if (!societyId || !adminOnly) {
       setRows([]);
       return;
     }
@@ -53,28 +60,28 @@ export function ElectionResultsBanner({ societyId }: { societyId: string | null 
     void (async () => {
       const { data } = await supabase
         .from('polls')
-        .select('id, question, election_results')
+        .select('id, question, election_results, election_phase, election_applied_at')
         .eq('society_id', societyId)
         .eq('poll_kind', 'election')
-        .eq('is_active', false)
+        .in('election_phase', ['closed', 'applied'])
         .not('election_results', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(2);
+        .limit(3);
       if (!cancelled) setRows((data ?? []) as { id: string; question: string; election_results: unknown }[]);
     })();
     return () => {
       cancelled = true;
     };
-  }, [societyId]);
+  }, [societyId, adminOnly]);
 
   const valid = rows.filter((r) => isResultsPayload(r.election_results));
-  if (valid.length === 0) return null;
+  if (!adminOnly || valid.length === 0) return null;
 
   return (
     <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 p-3 space-y-3">
       <div className="flex items-center gap-2">
         <Award className="w-5 h-5 text-primary shrink-0" />
-        <p className="text-sm font-semibold">Society election — elected members</p>
+        <p className="text-sm font-semibold">Election results (admin only)</p>
       </div>
       {valid.map((r) => (
         <div key={r.id} className="rounded-lg bg-card/80 border border-border p-3">
@@ -83,7 +90,7 @@ export function ElectionResultsBanner({ societyId }: { societyId: string | null 
           <ResultsBlock results={r.election_results as ElectionResultsPayload} />
         </div>
       ))}
-      <p className="text-[10px] text-muted-foreground">Open Polls &amp; Voting for full history and new ballots.</p>
+      <p className="text-[10px] text-muted-foreground">Publish winners to the Committee module when ready. Residents see the roster only after publish.</p>
     </div>
   );
 }

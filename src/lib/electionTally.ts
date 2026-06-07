@@ -1,17 +1,21 @@
-export type ElectionPost = 'president' | 'secretary' | 'treasurer' | 'committee';
+export type ElectionPost = 'president' | 'vice_president' | 'secretary' | 'treasurer' | 'committee';
 
 export type PollOptionRow = {
   id: string;
   poll_id: string | null;
   option_text: string;
   election_post: string | null;
+  member_id?: string | null;
+  flat_id?: string | null;
+  flat_number?: string | null;
+  nominated_by?: string | null;
 };
 
 export type BallotRow = {
   rankings: Record<string, Record<string, number>> | null;
 };
 
-const EXEC_POSTS: ElectionPost[] = ['president', 'secretary', 'treasurer'];
+const EXEC_POSTS: ElectionPost[] = ['president', 'vice_president', 'secretary', 'treasurer'];
 
 /** Borda-style points: rank 1 gets m points, rank m gets 1 point. */
 function pointsForRank(rank: number, m: number): number {
@@ -53,6 +57,7 @@ export type ElectedWinner = { option_id: string; name: string; score: number };
 
 export type ElectionResultsPayload = {
   president: ElectedWinner | null;
+  vice_president: ElectedWinner | null;
   secretary: ElectedWinner | null;
   treasurer: ElectedWinner | null;
   committee: ElectedWinner[];
@@ -110,6 +115,7 @@ export function tallyElection(
 
   return {
     president: pickWinner('president'),
+    vice_president: pickWinner('vice_president'),
     secretary: pickWinner('secretary'),
     treasurer: pickWinner('treasurer'),
     committee,

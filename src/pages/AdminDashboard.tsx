@@ -424,7 +424,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'donations', label: 'Donations', icon: Heart, group: 'finance' },
     // Community — events + food catering splits (one module)
     { id: 'events', label: 'Events & food', icon: Calendar, group: 'community' },
-    { id: 'polls', label: 'Polls', icon: Vote, group: 'community' },
+    { id: 'polls', label: 'Polls & Elections', icon: Vote, group: 'community' },
     { id: 'notifications', label: 'Notify', icon: Bell, group: 'community' },
     { id: 'parking', label: 'Parking', icon: ParkingSquare, group: 'community' },
     // Operations
@@ -558,7 +558,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               <LogOut className="w-5 h-5" />
             </button>
           </div>
-          <ElectionResultsBanner societyId={admin.societyId} />
+          <ElectionResultsBanner societyId={admin.societyId} adminOnly />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <DescriptiveStatCard
               {...ADMIN_HOME_METRICS.meetingsHeld}

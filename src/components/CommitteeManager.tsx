@@ -392,7 +392,7 @@ const CommitteeManager = ({ isResident = false }: Props) => {
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {isResident
-              ? 'Office-bearers and committee members of your society'
+              ? 'Office-bearers and committee members of your society. Roster changes are admin-only; you may edit your personal profile details elsewhere.'
               : 'Flat-linked roster with tenure and elected / nominated status'}
           </p>
         </div>
