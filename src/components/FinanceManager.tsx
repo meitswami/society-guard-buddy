@@ -31,6 +31,8 @@ import {
   FINANCE_TOTALS_METRICS,
 } from '@/lib/descriptiveMetricCopy';
 import ExpenseSplitter from '@/components/ExpenseSplitter';
+import HeadFundReconciliation from '@/components/HeadFundReconciliation';
+import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
 import { financeExpenseHeadFromLedgerEntry, isEventFoodLedgerEntry } from '@/lib/financeExpenseHead';
 
 export type FinanceSubTab =
@@ -208,6 +210,8 @@ const FinanceManager = ({
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [subTab, setSubTab] = useState<FinanceSubTab>('maintenance');
+  const [headReconciliationKey, setHeadReconciliationKey] = useState(0);
+  const bumpHeadReconciliation = useCallback(() => setHeadReconciliationKey((k) => k + 1), []);
   const [expenseCategoryById, setExpenseCategoryById] = useState<Map<string, string>>(new Map());
   const [charges, setCharges] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -1124,6 +1128,7 @@ const FinanceManager = ({
       (recordedCount > 1 ? `Recorded ${recordedCount} flat lines` : 'Finance entry recorded') + notifySuffix,
     );
     await loadAll();
+    bumpHeadReconciliation();
   };
 
   const verifyPayment = async (id: string) => {
@@ -3051,7 +3056,17 @@ const FinanceManager = ({
             <span className="text-foreground font-medium">Record receipt</span> for inflows. Event food/catering →{' '}
             <span className="text-foreground font-medium">Events &amp; food</span>.
           </p>
-          <ExpenseSplitter adminName={adminName} paymentOnly embedded />
+          <HeadFundReconciliation
+            adminName={adminName}
+            refreshKey={headReconciliationKey}
+            onOpenRecordReceipt={() => setSubTab('payments')}
+          />
+          <ExpenseSplitter
+            adminName={adminName}
+            paymentOnly
+            embedded
+            onRecordsChanged={bumpHeadReconciliation}
+          />
         </div>
       )}
 
@@ -4100,6 +4115,18 @@ const FinanceManager = ({
 
       {subTab === 'totals' && (
         <div>
+          <MonthlyOperatingFundPanel
+            societyId={societyId}
+            totalsMonth={totalsMonth}
+            ledgerEntries={ledgerEntries}
+            societyLedgerEntries={societyLedgerEntries}
+            payments={payments}
+            charges={charges}
+            expenseCategoryById={expenseCategoryById}
+            adminName={adminName}
+            onRefresh={() => void loadAll()}
+          />
+
           <div className="card-section p-4 mb-4 flex flex-wrap items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Wallet className="w-5 h-5 text-primary" />

@@ -153,6 +153,16 @@ export function isEventFoodLedgerTitle(title?: string | null): boolean {
   return /^event food\s*[—–-]/i.test((title ?? '').trim());
 }
 
+/** Flat contribution receipts — reconciled in Events & food, not Finance → Transactions. */
+export function isEventContributionLedgerTitle(title?: string | null): boolean {
+  return /^event contribution\s*[—–-]/i.test((title ?? '').trim());
+}
+
+export function isHeadScopedLedgerTitle(title?: string | null): boolean {
+  const t = (title ?? '').trim();
+  return /^head contribution\s*[—–-]/i.test(t) || /^head adjustment\s*[—–-]/i.test(t);
+}
+
 export function isEventFoodLedgerEntry(
   entry: { expense_id?: string | null; title?: string | null },
   expenseCategoryById: Map<string, string>,
@@ -160,7 +170,11 @@ export function isEventFoodLedgerEntry(
   if (entry.expense_id) {
     return isEventFoodExpenseCategory(expenseCategoryById.get(entry.expense_id));
   }
-  return isEventFoodLedgerTitle(entry.title);
+  return (
+    isEventFoodLedgerTitle(entry.title) ||
+    isEventContributionLedgerTitle(entry.title) ||
+    isHeadScopedLedgerTitle(entry.title)
+  );
 }
 
 export { joinNoteLines };
