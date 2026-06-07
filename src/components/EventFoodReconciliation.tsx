@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { Receipt, TrendingDown, TrendingUp, Paperclip, Scale } from 'lucide-react';
@@ -31,20 +31,18 @@ type FoodExpenseRow = {
 
 interface Props {
   adminName?: string;
+  /** Increment to reload after new receipts are recorded below. */
+  refreshKey?: number;
 }
 
-const EventFoodReconciliation = ({ adminName: _adminName = 'Admin' }: Props) => {
+const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey = 0 }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [contributions, setContributions] = useState<ContribRow[]>([]);
   const [foodExpenses, setFoodExpenses] = useState<FoodExpenseRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    void loadAll();
-  }, [societyId]);
-
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     if (!societyId) {
       setEvents([]);
       setContributions([]);
@@ -62,52 +60,68 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin' }: Props) => 
       setEvents((evRows ?? []) as EventRow[]);
       const eventIds = (evRows ?? []).map((e) => e.id);
 
-      const [contribRes, groupRes] = await Promise.all([
+      const { data: allGroups } = await supabase
+        .from('expense_groups')
+        .select('id, name, event_id, group_kind')
+        .eq('society_id', societyId);
+
+      const groups = (allGroups ?? []) as { id: string; name: string; event_id: string | null; group_kind: string | null }[];
+      const groupById = new Map(groups.map((g) => [g.id, g]));
+      const groupIds = groups.map((g) => g.id);
+
+      const [contribRes, expRes, ledgerRes] = await Promise.all([
         eventIds.length
-          ? supabase.from('event_contributions').select('*').in('event_id', eventIds)
+          ? supabase.from('event_contributions').select('*').in('event_id', eventIds).order('verified_at', { ascending: false })
           : Promise.resolve({ data: [] as ContribRow[] }),
+        groupIds.length
+          ? supabase
+              .from('expenses')
+              .select(
+                'id, title, total_amount, expense_date, payment_method, bill_screenshot_url, attachment_urls, group_id',
+              )
+              .in('group_id', groupIds)
+              .eq('expense_category', 'food')
+              .eq('record_status', 'active')
+              .order('expense_date', { ascending: false })
+          : Promise.resolve({ data: [] as Omit<FoodExpenseRow, 'group_name' | 'event_id'>[] }),
         supabase
-          .from('expense_groups')
-          .select('id, name, event_id')
+          .from('finance_entries')
+          .select('expense_id, screenshot_url')
           .eq('society_id', societyId)
-          .eq('group_kind', 'event'),
+          .not('expense_id', 'is', null),
       ]);
 
       setContributions((contribRes.data ?? []) as ContribRow[]);
-      const groups = (groupRes.data ?? []) as { id: string; name: string; event_id: string | null }[];
-      const groupIds = groups.map((g) => g.id);
-      const groupById = new Map(groups.map((g) => [g.id, g]));
 
-      if (groupIds.length === 0) {
-        setFoodExpenses([]);
-        return;
+      const ledgerShotByExpense = new Map<string, string>();
+      for (const row of ledgerRes.data ?? []) {
+        if (row.expense_id && row.screenshot_url) {
+          ledgerShotByExpense.set(String(row.expense_id), String(row.screenshot_url));
+        }
       }
 
-      const { data: expRows } = await supabase
-        .from('expenses')
-        .select(
-          'id, title, total_amount, expense_date, payment_method, bill_screenshot_url, attachment_urls, group_id',
-        )
-        .in('group_id', groupIds)
-        .eq('expense_category', 'food')
-        .eq('record_status', 'active')
-        .order('expense_date', { ascending: false });
-
       setFoodExpenses(
-        (expRows ?? []).map((ex) => {
+        (expRes.data ?? []).map((ex) => {
           const g = groupById.get(ex.group_id as string);
+          const attachment_urls = Array.isArray(ex.attachment_urls) ? ex.attachment_urls : null;
+          const billFromLedger = ledgerShotByExpense.get(String(ex.id));
           return {
             ...(ex as Omit<FoodExpenseRow, 'group_name' | 'event_id'>),
             group_name: g?.name ?? 'Food group',
             event_id: g?.event_id ?? null,
-            attachment_urls: Array.isArray(ex.attachment_urls) ? ex.attachment_urls : null,
+            bill_screenshot_url: ex.bill_screenshot_url || billFromLedger || null,
+            attachment_urls,
           };
         }),
       );
     } finally {
       setLoading(false);
     }
-  };
+  }, [societyId]);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll, refreshKey]);
 
   const totals = useMemo(() => {
     const contribIn = contributions.reduce((s, c) => s + Number(c.amount || 0), 0);
@@ -152,7 +166,9 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin' }: Props) => 
       }
     }
 
-    const rows = [...byEvent.values()].filter((r) => r.contribIn > 0 || r.foodOut > 0 || r.contribs.length || r.expenses.length);
+    const rows = [...byEvent.values()].filter(
+      (r) => r.contribIn > 0 || r.foodOut > 0 || r.contribs.length > 0 || r.expenses.length > 0,
+    );
     if (unlinked.foodOut > 0 || unlinked.expenses.length) rows.push(unlinked);
     rows.sort((a, b) => (b.event.event_date || '').localeCompare(a.event.event_date || ''));
     return rows;
@@ -184,14 +200,16 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin' }: Props) => 
           </>
         }
         description="Event contribution receipts (in) vs food/catering bills (out). Reconcile here — not under Finance → Transactions."
-        howCalculated="Sums event_contributions and active food expenses (expense_category = food) linked to event groups."
+        howCalculated="Sums event_contributions and active food expenses (expense_category = food) for this society."
       />
 
       {eventRows.length === 0 ? (
         <div className="card-section p-6 text-center">
           <Scale className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-          <p className="text-sm text-muted-foreground">No event contributions or food bills yet.</p>
-          <p className="text-xs text-muted-foreground mt-1">Record contributions on an event card and food bills in the section below.</p>
+          <p className="text-sm text-muted-foreground">No event receipts recorded yet.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Use <span className="font-medium text-foreground">Record contribution receipt</span> on an event above, or add a food bill with attachment in Food expenses above.
+          </p>
         </div>
       ) : (
         eventRows.map(({ event, contribIn, foodOut, contribs, expenses }) => {
@@ -225,16 +243,20 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin' }: Props) => 
                   </p>
                   <div className="space-y-1">
                     {contribs.map((c) => (
-                      <div key={c.id} className="flex flex-wrap justify-between gap-1 text-xs bg-muted/40 rounded p-2">
-                        <span>
-                          Flat {c.flat_number}
-                          {c.resident_name ? ` · ${c.resident_name}` : ''} · {c.payment_method}
-                        </span>
-                        <span className="font-semibold">₹{Number(c.amount).toLocaleString('en-IN')}</span>
-                        {c.screenshot_url && (
-                          <a href={c.screenshot_url} target="_blank" rel="noreferrer" className="text-primary underline w-full text-[10px]">
+                      <div key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/40 rounded p-2">
+                        <div className="flex justify-between gap-2">
+                          <span>
+                            Flat {c.flat_number}
+                            {c.resident_name ? ` · ${c.resident_name}` : ''} · {c.payment_method}
+                          </span>
+                          <span className="font-semibold shrink-0">₹{Number(c.amount).toLocaleString('en-IN')}</span>
+                        </div>
+                        {c.screenshot_url ? (
+                          <a href={c.screenshot_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">
                             View payment proof
                           </a>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">No attachment</span>
                         )}
                       </div>
                     ))}
@@ -248,30 +270,37 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin' }: Props) => 
                     <Paperclip className="w-3 h-3" /> Food bill receipts
                   </p>
                   <div className="space-y-1">
-                    {expenses.map((ex) => (
-                      <div key={ex.id} className="text-xs bg-muted/40 rounded p-2">
-                        <div className="flex justify-between gap-2">
-                          <span className="font-medium">{ex.title}</span>
-                          <span className="font-semibold shrink-0">₹{Number(ex.total_amount).toLocaleString('en-IN')}</span>
+                    {expenses.map((ex) => {
+                      const links = receiptLinks(ex);
+                      return (
+                        <div key={ex.id} className="text-xs bg-muted/40 rounded p-2">
+                          <div className="flex justify-between gap-2">
+                            <span className="font-medium">{ex.title}</span>
+                            <span className="font-semibold shrink-0">₹{Number(ex.total_amount).toLocaleString('en-IN')}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {ex.group_name} · {ex.payment_method} · {fmtIsoDateToDisplay(String(ex.expense_date))}
+                          </p>
+                          {links.length > 0 ? (
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {links.map((link) => (
+                                <a
+                                  key={link.url}
+                                  href={link.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[10px] text-primary underline"
+                                >
+                                  {link.label}
+                                </a>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">No bill attached</span>
+                          )}
                         </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          {ex.group_name} · {ex.payment_method} · {fmtIsoDateToDisplay(String(ex.expense_date))}
-                        </p>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {receiptLinks(ex).map((link) => (
-                            <a
-                              key={link.url}
-                              href={link.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[10px] text-primary underline"
-                            >
-                              {link.label}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

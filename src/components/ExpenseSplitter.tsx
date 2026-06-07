@@ -29,6 +29,8 @@ interface Props {
   paymentOnly?: boolean;
   embedded?: boolean;
   onOpenFinance?: () => void;
+  /** Called after a food/payment expense receipt is saved. */
+  onRecordsChanged?: () => void;
 }
 
 function ledgerCounterpartyPrefix(foodOnly: boolean, paymentOnly: boolean): string {
@@ -82,6 +84,7 @@ const ExpenseSplitter = ({
   paymentOnly = false,
   embedded = false,
   onOpenFinance,
+  onRecordsChanged,
 }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [groups, setGroups] = useState<ExpenseGroupRow[]>([]);
@@ -209,9 +212,25 @@ const ExpenseSplitter = ({
       groupQuery = groupQuery.eq('group_kind', 'general');
     }
     const { data: g } = await groupQuery.order('created_at', { ascending: false });
-    if (g) setGroups(g);
 
-    const groupIds = (g ?? []).map((x) => x.id);
+    let mergedGroups = (g ?? []) as ExpenseGroupRow[];
+    if (foodOnly) {
+      const { data: foodGroupIds } = await supabase
+        .from('expenses')
+        .select('group_id')
+        .eq('expense_category', 'food')
+        .eq('record_status', 'active');
+      const extraIds = [...new Set((foodGroupIds ?? []).map((r) => r.group_id).filter(Boolean))] as string[];
+      const known = new Set(mergedGroups.map((x) => x.id));
+      const missing = extraIds.filter((id) => !known.has(id));
+      if (missing.length > 0) {
+        const { data: extra } = await supabase.from('expense_groups').select('*').in('id', missing).eq('society_id', societyId);
+        if (extra?.length) mergedGroups = [...mergedGroups, ...(extra as ExpenseGroupRow[])];
+      }
+    }
+    setGroups(mergedGroups);
+
+    const groupIds = mergedGroups.map((x) => x.id);
     if (groupIds.length === 0) {
       setExpenses([]);
       setSplits([]);
@@ -479,6 +498,7 @@ const ExpenseSplitter = ({
       }
       toast.success('Society expense recorded (no split to flats)' + suffix);
       loadAll();
+      onRecordsChanged?.();
       return;
     }
 
@@ -697,6 +717,7 @@ const ExpenseSplitter = ({
           : 'Expense added & split';
     toast.success(splitMsg + suffix);
     loadAll();
+    onRecordsChanged?.();
   };
 
   const settleUp = async (splitId: string) => {
@@ -892,6 +913,7 @@ const ExpenseSplitter = ({
     setExpenseEdit(null);
     setEditAttachmentFiles([]);
     loadAll();
+    onRecordsChanged?.();
   };
 
   const updateExpenseRecordStatus = async (expenseId: string, record_status: string) => {

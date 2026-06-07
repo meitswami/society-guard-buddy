@@ -12,9 +12,23 @@ interface Props {
   adminName?: string;
   /** When true, omit page title (used inside EventsModule). */
   embedded?: boolean;
+  /** Called after a contribution receipt is saved. */
+  onRecordsChanged?: () => void;
 }
 
-const EventManager = ({ adminName = 'Admin', embedded = false }: Props) => {
+async function uploadContributionReceipt(file: File): Promise<string | null> {
+  const safe = file.name.replace(/[^\w.-]/g, '_');
+  const path = `event-contributions/${crypto.randomUUID()}_${safe}`;
+  const { error } = await supabase.storage.from('notification-media').upload(path, file, { cacheControl: '3600', upsert: false });
+  if (error) {
+    toast.error(error.message);
+    return null;
+  }
+  const { data } = supabase.storage.from('notification-media').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [events, setEvents] = useState<any[]>([]);
   const [rsvps, setRsvps] = useState<any[]>([]);
@@ -31,6 +45,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false }: Props) => {
     payment_method: 'cash',
     screenshot_url: '',
   });
+  const [receiptUploading, setReceiptUploading] = useState(false);
 
   useEffect(() => { loadAll(); }, [societyId]);
   const loadAll = async () => {
@@ -88,6 +103,26 @@ const EventManager = ({ adminName = 'Admin', embedded = false }: Props) => {
     if (cf.selected_flats.length === 0 || !cf.amount) return;
     const amount = Number(cf.amount);
     const verifiedAt = new Date().toISOString();
+
+    let screenshotUrl = cf.screenshot_url.trim() || null;
+    const fileInput = document.getElementById(`event-contrib-receipt-${eventId}`) as HTMLInputElement | null;
+    const file = fileInput?.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+        toast.error('Receipt: use image or PDF');
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        toast.error('Receipt file must be 8MB or smaller');
+        return;
+      }
+      setReceiptUploading(true);
+      screenshotUrl = await uploadContributionReceipt(file);
+      setReceiptUploading(false);
+      if (!screenshotUrl) return;
+      if (fileInput) fileInput.value = '';
+    }
+
     const rows = cf.selected_flats.map(flat_number => {
       const flat = flats.find(f => f.flat_number === flat_number);
       return {
@@ -97,7 +132,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false }: Props) => {
         resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
         amount,
         payment_method: cf.payment_method,
-        screenshot_url: cf.screenshot_url || null,
+        screenshot_url: screenshotUrl,
         verified_by: adminName,
         verified_at: verifiedAt,
       };
@@ -111,7 +146,8 @@ const EventManager = ({ adminName = 'Admin', embedded = false }: Props) => {
     });
     setShowContrib(null);
     toast.success(rows.length > 1 ? `Contributions recorded for ${rows.length} flats` : 'Contribution recorded');
-    loadAll();
+    await loadAll();
+    onRecordsChanged?.();
   };
 
   const targetFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
@@ -201,23 +237,28 @@ const EventManager = ({ adminName = 'Admin', embedded = false }: Props) => {
               {ev.contribution_amount > 0 && <span>₹{totalCollected} / ₹{ev.contribution_amount * targetFlats.length}</span>}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowContrib(showContrib === ev.id ? null : ev.id)}
+                className="flex-1 min-w-[140px] py-1.5 bg-primary/10 text-primary rounded-lg text-xs flex items-center justify-center gap-1"
+              >
+                <Upload className="w-3 h-3" /> Record contribution receipt
+              </button>
               {ev.contribution_amount > 0 && (
-                <>
-                  <button onClick={() => setShowContrib(showContrib === ev.id ? null : ev.id)}
-                    className="flex-1 py-1.5 bg-primary/10 text-primary rounded-lg text-xs flex items-center justify-center gap-1">
-                    <Upload className="w-3 h-3" /> Record Payment
-                  </button>
-                  <button onClick={() => sendContribReminders(ev)}
-                    className="flex-1 py-1.5 bg-amber-500/10 text-amber-600 rounded-lg text-xs">
-                    🔔 Send Reminders
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={() => sendContribReminders(ev)}
+                  className="flex-1 min-w-[140px] py-1.5 bg-amber-500/10 text-amber-600 rounded-lg text-xs"
+                >
+                  🔔 Send Reminders
+                </button>
               )}
             </div>
 
             {showContrib === ev.id && (
               <div className="mt-3 flex flex-col gap-2 pt-3 border-t border-border">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase">Contribution receipt</p>
                 <FlatMultiSelect
                   compact
                   flats={flatOptionsWithPrimaryLabel(flats, primaryByFlatId)}
@@ -225,30 +266,57 @@ const EventManager = ({ adminName = 'Admin', embedded = false }: Props) => {
                   onChange={nums => setCf({ ...cf, selected_flats: nums })}
                   label="Flats"
                 />
-                <input className="input-field text-sm" placeholder="Amount (₹)" type="number" value={cf.amount} onChange={e => setCf({...cf, amount: e.target.value})} />
-                <select className="input-field text-sm" value={cf.payment_method} onChange={e => setCf({...cf, payment_method: e.target.value})}>
-                  <option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank Transfer</option>
+                <input
+                  className="input-field text-sm"
+                  placeholder={ev.contribution_amount > 0 ? `Amount (₹) — suggested ₹${ev.contribution_amount}` : 'Amount (₹)'}
+                  type="number"
+                  value={cf.amount}
+                  onChange={e => setCf({ ...cf, amount: e.target.value })}
+                />
+                <select className="input-field text-sm" value={cf.payment_method} onChange={e => setCf({ ...cf, payment_method: e.target.value })}>
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI</option>
+                  <option value="bank_transfer">Bank Transfer</option>
                 </select>
+                <label className="text-[10px] font-medium text-muted-foreground">Upload payment proof (image / PDF)</label>
+                <input id={`event-contrib-receipt-${ev.id}`} type="file" accept="image/*,application/pdf" className="text-xs" />
                 {cf.payment_method !== 'cash' && (
-                  <input className="input-field text-sm" placeholder="Screenshot URL" value={cf.screenshot_url} onChange={e => setCf({...cf, screenshot_url: e.target.value})} />
+                  <input
+                    className="input-field text-sm"
+                    placeholder="Or paste screenshot URL"
+                    value={cf.screenshot_url}
+                    onChange={e => setCf({ ...cf, screenshot_url: e.target.value })}
+                  />
                 )}
-                <button onClick={() => recordContribution(ev.id)} className="btn-primary text-sm">Record</button>
+                <button
+                  type="button"
+                  onClick={() => void recordContribution(ev.id)}
+                  className="btn-primary text-sm"
+                  disabled={receiptUploading}
+                >
+                  {receiptUploading ? 'Uploading…' : 'Save contribution receipt'}
+                </button>
               </div>
             )}
 
             {evContribs.length > 0 && (
               <div className="mt-3 space-y-1">
-                {evContribs.slice(0, 5).map(c => (
-                  <div key={c.id} className="flex justify-between text-xs bg-muted/50 rounded p-2">
-                    <span>
-                      {c.flat_number}{c.resident_name ? ` · ${c.resident_name}` : ''}
-                      {c.payment_method ? ` · ${c.payment_method}` : ''}
-                    </span>
-                    <span className="font-bold">₹{c.amount}</span>
-                    {c.screenshot_url && (
-                      <a href={c.screenshot_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline w-full">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Recorded receipts</p>
+                {evContribs.map(c => (
+                  <div key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/50 rounded p-2">
+                    <div className="flex justify-between gap-2">
+                      <span>
+                        {c.flat_number}{c.resident_name ? ` · ${c.resident_name}` : ''}
+                        {c.payment_method ? ` · ${c.payment_method}` : ''}
+                      </span>
+                      <span className="font-bold shrink-0">₹{c.amount}</span>
+                    </div>
+                    {c.screenshot_url ? (
+                      <a href={c.screenshot_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">
                         View receipt
                       </a>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">No attachment</span>
                     )}
                   </div>
                 ))}
