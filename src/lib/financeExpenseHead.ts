@@ -144,4 +144,23 @@ export function financeExpenseHeadFromLedgerEntry(
   return financeExpenseHeadFromLedgerTitle(rawTitle);
 }
 
+/** Event / catering bills — reconciled in Events & food, not Finance → Transactions. */
+export function isEventFoodExpenseCategory(category?: string | null): boolean {
+  return category === 'food';
+}
+
+export function isEventFoodLedgerTitle(title?: string | null): boolean {
+  return /^event food\s*[—–-]/i.test((title ?? '').trim());
+}
+
+export function isEventFoodLedgerEntry(
+  entry: { expense_id?: string | null; title?: string | null },
+  expenseCategoryById: Map<string, string>,
+): boolean {
+  if (entry.expense_id) {
+    return isEventFoodExpenseCategory(expenseCategoryById.get(entry.expense_id));
+  }
+  return isEventFoodLedgerTitle(entry.title);
+}
+
 export { joinNoteLines };

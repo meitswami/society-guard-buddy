@@ -240,8 +240,16 @@ const EventManager = ({ adminName = 'Admin', embedded = false }: Props) => {
               <div className="mt-3 space-y-1">
                 {evContribs.slice(0, 5).map(c => (
                   <div key={c.id} className="flex justify-between text-xs bg-muted/50 rounded p-2">
-                    <span>{c.flat_number}{c.resident_name ? ` · ${c.resident_name}` : ''}</span>
+                    <span>
+                      {c.flat_number}{c.resident_name ? ` · ${c.resident_name}` : ''}
+                      {c.payment_method ? ` · ${c.payment_method}` : ''}
+                    </span>
                     <span className="font-bold">₹{c.amount}</span>
+                    {c.screenshot_url && (
+                      <a href={c.screenshot_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline w-full">
+                        View receipt
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>

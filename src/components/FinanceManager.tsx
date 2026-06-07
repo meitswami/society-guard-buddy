@@ -31,7 +31,7 @@ import {
   FINANCE_TOTALS_METRICS,
 } from '@/lib/descriptiveMetricCopy';
 import ExpenseSplitter from '@/components/ExpenseSplitter';
-import { financeExpenseHeadFromLedgerEntry } from '@/lib/financeExpenseHead';
+import { financeExpenseHeadFromLedgerEntry, isEventFoodLedgerEntry } from '@/lib/financeExpenseHead';
 
 export type FinanceSubTab =
   | 'maintenance'
@@ -152,7 +152,7 @@ const transactionFilterHint = (filter: string): string => {
     case 'all_receipts':
       return 'Society collections — flat owners, outsiders, monthly/one-time charges; pooled until you distribute to flats.';
     case 'all':
-      return 'Everything in this period: society receipts and society-payment ledger rows.';
+      return 'Society receipts and society-payment rows. Event food bills and contribution receipts are in Events & food only.';
     case 'society_pool_pending':
       return 'Receipts recorded in the society pool that are not yet split equally across flats.';
     default:
@@ -226,6 +226,17 @@ const FinanceManager = ({
       return cat !== 'food';
     },
     [expenseCategoryById],
+  );
+
+  const isEventFoodLedger = useCallback(
+    (e: FinanceLedgerRow) => isEventFoodLedgerEntry(e, expenseCategoryById),
+    [expenseCategoryById],
+  );
+
+  /** Finance module ledger — excludes event food (reconciled under Events & food). */
+  const societyLedgerEntries = useMemo(
+    () => ledgerEntries.filter((e) => !isEventFoodLedger(e)),
+    [ledgerEntries, isEventFoodLedger],
   );
 
   const ledgerEntryKindLabel = useCallback(
@@ -1659,14 +1670,14 @@ const FinanceManager = ({
       if (!value) continue;
       if (!uniq.has(value)) uniq.set(value, paymentMonthLabel(p));
     }
-    for (const e of ledgerEntries) {
+    for (const e of societyLedgerEntries) {
       const value = ledgerMonthValue(e);
       const d = new Date(`${value}-15T12:00:00`);
       const label = Number.isNaN(d.getTime()) ? value : fmtIsoMonthToDisplay(value);
       if (!uniq.has(value)) uniq.set(value, label);
     }
     return [{ value: 'all', label: 'All months' }, ...[...uniq.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([value, label]) => ({ value, label }))];
-  }, [payments, ledgerEntries]);
+  }, [payments, societyLedgerEntries]);
 
   const selectedFlatDateBadges = useMemo(() => {
     const out: Record<string, string> = {};
@@ -1732,7 +1743,7 @@ const FinanceManager = ({
   });
 
   const scopedLedgerOnly = useMemo(() => {
-    return ledgerEntries.filter((e) => {
+    return societyLedgerEntries.filter((e) => {
       const societyPayment = isSocietyPaymentLedgerEntry(e);
       if (paymentTypeFilter === 'all_payments' && !societyPayment) return false;
       if (
@@ -1795,7 +1806,7 @@ const FinanceManager = ({
       return parts.includes(q);
     });
   }, [
-    ledgerEntries,
+    societyLedgerEntries,
     financeEntryIdsWithPayments,
     receiptModeFilter,
     paymentMonthFilter,
@@ -1908,7 +1919,7 @@ const FinanceManager = ({
 
   const totalsOutflowBreakdown = useMemo(() => {
     const map = new Map<string, { total: number; flatUnits: number; entries: number; method: string }>();
-    for (const e of ledgerEntries) {
+    for (const e of societyLedgerEntries) {
       const m = ledgerMonthValue(e);
       if (m !== totalsMonth) continue;
       if (e.destination !== 'separate_entry') continue;
@@ -1923,7 +1934,7 @@ const FinanceManager = ({
     return [...map.entries()]
       .map(([head, v]) => ({ head, ...v }))
       .sort((a, b) => a.head.localeCompare(b.head));
-  }, [ledgerEntries, totalsMonth, expenseCategoryById]);
+  }, [societyLedgerEntries, totalsMonth, expenseCategoryById]);
 
   const totalsMonthOutflow = useMemo(
     () => totalsOutflowBreakdown.reduce((s, r) => s + r.total, 0),
@@ -2106,7 +2117,7 @@ const FinanceManager = ({
       openingReceipt[ch] += amt;
     }
 
-    for (const e of ledgerEntries) {
+    for (const e of societyLedgerEntries) {
       const ledgerDate = ledgerTransactionDate(e);
       const t = new Date(ledgerDate).getTime();
       if (Number.isNaN(t)) continue;
@@ -2145,7 +2156,7 @@ const FinanceManager = ({
     const expenseByHead = new Map<string, { cash: number; bank: number; other: number; total: number }>();
 
     let extraLedgerReceipt = 0;
-    for (const e of ledgerEntries) {
+    for (const e of societyLedgerEntries) {
       const ledgerDate = ledgerTransactionDate(e);
       if (!ledgerDate || !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
       const amt = Number(e.total_amount || 0);
@@ -2202,7 +2213,7 @@ const FinanceManager = ({
       closingOther,
       closingBalance,
     };
-  }, [periodFrom, periodTo, payments, ledgerEntries, expenseCategoryById]);
+  }, [periodFrom, periodTo, payments, societyLedgerEntries, expenseCategoryById]);
 
   const collectReportAudienceIds = (): string[] => {
     if (reportAudience === 'all') return residentUsers.map((r) => r.id);
@@ -3046,6 +3057,10 @@ const FinanceManager = ({
 
       {subTab === 'receipts' && (
         <div>
+          <p className="text-[11px] text-muted-foreground mb-3 leading-snug rounded-lg border border-border/80 bg-card/40 p-2.5">
+            Maintenance and society-payment receipts only. Event contribution proofs and food/catering bills are under{' '}
+            <span className="font-medium text-foreground">Events &amp; food → Receipts &amp; reconciliation</span>.
+          </p>
           <input
             className="input-field mb-3"
             type="search"
@@ -3771,7 +3786,8 @@ const FinanceManager = ({
                 <h3 className="text-sm font-semibold">Finance period report</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   Collections from flat owners and outsiders (verified maintenance receipts), plus ledger-only inflows.
-                  Expenses are ledger entries marked <span className="font-medium">separate entry</span>, split by payment channel and head.
+                  Expenses are society payments (<span className="font-medium">separate entry</span>) — not event food bills.
+                  Event food and contribution receipts reconcile under <span className="font-medium">Events &amp; food</span>.
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

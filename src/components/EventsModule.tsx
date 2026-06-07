@@ -1,6 +1,7 @@
-import { Calendar, UtensilsCrossed } from 'lucide-react';
+import { Calendar, UtensilsCrossed, Scale } from 'lucide-react';
 import EventManager from '@/components/EventManager';
 import ExpenseSplitter from '@/components/ExpenseSplitter';
+import EventFoodReconciliation from '@/components/EventFoodReconciliation';
 import type { AdminTab } from '@/lib/adminPermissions';
 import type { FinanceSubTab } from '@/components/FinanceManager';
 
@@ -32,7 +33,7 @@ const EventsModule = ({ adminName = 'Admin', onNavigateTab }: Props) => {
       <div className="card-section p-3 mb-4 border-primary/20 bg-primary/5">
         <p className="text-xs text-foreground leading-relaxed">
           <UtensilsCrossed className="w-3.5 h-3.5 inline mr-1 text-primary align-text-bottom" />
-          Record food and catering for an event below. For electricity,
+          Record food and catering for an event below. Contribution receipts and food bills reconcile in this module — not under Finance → Transactions. For electricity,
           vendors, repairs, salaries, or other society payments, use{' '}
           {onNavigateTab ? (
             <button
@@ -48,6 +49,17 @@ const EventsModule = ({ adminName = 'Admin', onNavigateTab }: Props) => {
           .
         </p>
       </div>
+
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+          <Scale className="w-4 h-4 text-emerald-600" />
+          Receipts &amp; reconciliation
+        </h2>
+        <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
+          Compare contribution payments received vs food/catering bills per event. All event-related receipts live here for easier reconciliation.
+        </p>
+        <EventFoodReconciliation adminName={adminName} />
+      </section>
 
       <section className="mb-6">
         <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
