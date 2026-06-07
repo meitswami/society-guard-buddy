@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { Guard, Visitor, ResidentVehicle, BlacklistEntry, Flat, Member } from '@/types';
 import { clearPersistedSession, writePersistedSession } from '@/lib/appSession';
+import { readEntryCapsMode, writeEntryCapsMode } from '@/lib/entryCaps';
 
 interface AppState {
   // Auth
@@ -49,6 +50,10 @@ interface AppState {
   // Theme
   theme: 'dark' | 'light' | 'system';
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
+
+  // Data entry — auto CAPS (default on)
+  entryCapsMode: boolean;
+  setEntryCapsMode: (on: boolean) => void;
 }
 
 export const useStore = create<AppState>()((set, get) => ({
@@ -62,6 +67,7 @@ export const useStore = create<AppState>()((set, get) => ({
   flats: [],
   members: [],
   theme: (localStorage.getItem('gate-theme') as 'dark' | 'light' | 'system') || 'system',
+  entryCapsMode: readEntryCapsMode(),
 
   setSocietyId: (id) => {
     // Avoid wiping cached society data when the id did not change (e.g. AdminDashboard
@@ -396,5 +402,10 @@ export const useStore = create<AppState>()((set, get) => ({
   setTheme: (theme) => {
     localStorage.setItem('gate-theme', theme);
     set({ theme });
+  },
+
+  setEntryCapsMode: (on) => {
+    writeEntryCapsMode(on);
+    set({ entryCapsMode: on });
   },
 }));

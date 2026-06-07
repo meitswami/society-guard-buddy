@@ -121,6 +121,65 @@ export function DescriptiveStatCard({
   );
 }
 
+/** Clickable calculated value (amount, count) — one tap shows what it means and how it is derived. */
+export function DescriptiveValueButton({
+  title,
+  value,
+  description,
+  howCalculated,
+  className,
+  valueClassName,
+}: {
+  title: string;
+  value: ReactNode;
+  description: string;
+  howCalculated?: string;
+  className?: string;
+  valueClassName?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-md border border-transparent hover:border-border hover:bg-muted/30 px-1.5 py-0.5 transition-colors text-left',
+          className,
+        )}
+        aria-label={`${title}: view description`}
+      >
+        <span className={cn('font-bold tabular-nums', valueClassName)}>{value}</span>
+        <Info className="w-3 h-3 text-muted-foreground shrink-0" aria-hidden />
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground pt-1">
+                <p className="text-foreground font-semibold text-base tabular-nums">{value}</p>
+                <p>{description}</p>
+                {howCalculated ? (
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
+                    <p className="text-[10px] font-medium uppercase text-foreground">How this is calculated</p>
+                    <p className="text-xs leading-relaxed">{howCalculated}</p>
+                  </div>
+                ) : null}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button type="button" className="btn-secondary w-full sm:w-auto" onClick={() => setOpen(false)}>
+              Close
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 /** Inline summary line (counts · totals) — tap opens the same descriptive dialog. */
 export function DescriptiveStatSummary({
   label,

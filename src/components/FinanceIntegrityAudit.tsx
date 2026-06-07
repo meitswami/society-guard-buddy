@@ -12,18 +12,28 @@ import {
   XCircle,
   IndianRupee,
   ArrowRight,
+  MapPin,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fmtIsoMonthToDisplay } from '@/lib/dateFormat';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import {
   analyzeLedgerOvercountByMonth,
+  analyzeRecordingMismatchByMonth,
+  buildChannelTransactions,
   findDuplicatePaymentGroups,
+  formatChannelBalanceFaultTrace,
+  formatRecordingMismatchFaultTrace,
   normalizePaymentChannel,
+  traceChannelBalanceDeficit,
   type AuditLedgerRow,
   type AuditPaymentRow,
+  type ChannelBalanceTrace,
   type LedgerOvercountMonth,
+  type RecordingMismatchMonth,
 } from '@/lib/financeAuditDetection';
+import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
+import { ledgerTransactionDate } from '@/lib/financeDates';
 
 /* ─── Types ─── */
 
@@ -43,9 +53,12 @@ interface AuditFinding {
   description: string;
   reason: string;
   rectification: string;
+  faultTrace?: string;
   kind?: FindingKind;
   data?: Record<string, unknown>;
   ledgerIssues?: LedgerOvercountMonth[];
+  channelTrace?: ChannelBalanceTrace;
+  recordingMismatchMonths?: RecordingMismatchMonth[];
 }
 
 interface AuditResult {
@@ -155,14 +168,34 @@ const FinanceIntegrityAudit = () => {
       const cashBalance = receiptByChannel.cash - expenseByChannel.cash;
       const bankBalance = receiptByChannel.bank - expenseByChannel.bank;
 
+      const channelTransactions = buildChannelTransactions(verifiedPayments, allLedger, linkedFeIds);
+      const cashTrace = traceChannelBalanceDeficit(channelTransactions, 'cash');
+      const bankTrace = traceChannelBalanceDeficit(channelTransactions, 'bank');
+
       if (cashBalance < 0) {
+        const faultDate = cashTrace?.firstNegativeDate;
+        const faultMonth = cashTrace?.firstNegativeMonth;
+        const faultDesc = faultDate
+          ? `Negative cash first appears on ${fmtIsoDateToDisplay(faultDate)}${faultMonth ? ` (${fmtIsoMonthToDisplay(faultMonth)})` : ''}.`
+          : 'Cash outflow exceeds cash inflow across all recorded dates.';
         addFinding({
           severity: 'critical',
           title: `Negative Cash Balance: ₹${Math.abs(cashBalance).toLocaleString('en-IN')}`,
-          description: `Cash outflow (₹${expenseByChannel.cash.toLocaleString('en-IN')}) exceeds cash inflow (₹${receiptByChannel.cash.toLocaleString('en-IN')}).`,
-          reason: 'This typically happens when: (1) An expense was recorded as "cash" but the corresponding receipt was recorded as "bank/UPI", (2) A cash receipt was accidentally deleted or rejected, (3) Expenses were double-recorded under cash, or (4) A payment method was incorrectly tagged.',
-          rectification: '1. Go to Finance → Period Report and filter by cash method to identify mismatched entries.\n2. Check if any expense marked "cash" should actually be "bank/UPI".\n3. Verify all cash receipts are in "verified" status.\n4. Look for duplicate expense entries under cash channel.\n5. Correct the payment_method on the wrongly tagged entry from the Payments or Receipts tab.',
-          data: { cashReceipts: receiptByChannel.cash, cashExpenses: expenseByChannel.cash, deficit: cashBalance },
+          description: `${faultDesc} Cash outflow (₹${expenseByChannel.cash.toLocaleString('en-IN')}) exceeds cash inflow (₹${receiptByChannel.cash.toLocaleString('en-IN')}).`,
+          reason:
+            'Usually caused by a cash expense on the fault date without a matching cash receipt, or a receipt tagged as bank/UPI instead of cash.',
+          faultTrace: cashTrace ? formatChannelBalanceFaultTrace(cashTrace) : undefined,
+          rectification: faultDate
+            ? `1. Open Finance → Period Report, set month to ${faultMonth ? fmtIsoMonthToDisplay(faultMonth) : faultDate.slice(0, 7)} and filter payment method to Cash.\n2. Review the entries listed under "Trace to fault" — correct payment_method or delete duplicate expenses.\n3. If a receipt exists under bank/UPI for the same payment, retag it as cash or change the expense to bank.\n4. Re-run this audit after fixing.`
+            : '1. Go to Finance → Period Report and filter by cash method to identify mismatched entries.\n2. Check if any expense marked "cash" should actually be "bank/UPI".\n3. Verify all cash receipts are in "verified" status.\n4. Look for duplicate expense entries under cash channel.\n5. Correct the payment_method on the wrongly tagged entry from the Payments or Receipts tab.',
+          data: {
+            cashReceipts: receiptByChannel.cash,
+            cashExpenses: expenseByChannel.cash,
+            deficit: cashBalance,
+            faultDate: faultDate ?? null,
+            faultMonth: faultMonth ?? null,
+          },
+          channelTrace: cashTrace ?? undefined,
         });
       } else {
         addFinding({
@@ -175,13 +208,29 @@ const FinanceIntegrityAudit = () => {
       }
 
       if (bankBalance < 0) {
+        const faultDate = bankTrace?.firstNegativeDate;
+        const faultMonth = bankTrace?.firstNegativeMonth;
+        const faultDesc = faultDate
+          ? `Negative bank balance first appears on ${fmtIsoDateToDisplay(faultDate)}${faultMonth ? ` (${fmtIsoMonthToDisplay(faultMonth)})` : ''}.`
+          : 'Bank outflow exceeds bank inflow across all recorded dates.';
         addFinding({
           severity: 'critical',
           title: `Negative Bank Balance: ₹${Math.abs(bankBalance).toLocaleString('en-IN')}`,
-          description: `Bank outflow (₹${expenseByChannel.bank.toLocaleString('en-IN')}) exceeds bank inflow (₹${receiptByChannel.bank.toLocaleString('en-IN')}).`,
-          reason: 'This typically happens when: (1) A bank expense was recorded but the receipt was tagged as "cash", (2) A UPI/bank receipt was rejected or deleted, (3) Duplicate bank expenses exist, or (4) An outsider payment allocated to bank was not linked correctly.',
-          rectification: '1. Go to Finance → Period Report and review bank-channel entries.\n2. Check if any receipt marked "cash" should be "UPI/bank".\n3. Verify no bank receipts are stuck in "pending" or "rejected" status.\n4. Look for duplicate expense entries under bank channel.\n5. Correct the payment_method on mismatched entries.',
-          data: { bankReceipts: receiptByChannel.bank, bankExpenses: expenseByChannel.bank, deficit: bankBalance },
+          description: `${faultDesc} Bank outflow (₹${expenseByChannel.bank.toLocaleString('en-IN')}) exceeds bank inflow (₹${receiptByChannel.bank.toLocaleString('en-IN')}).`,
+          reason:
+            'Usually caused by a bank/UPI expense on the fault date without a matching bank receipt, or a receipt incorrectly tagged as cash.',
+          faultTrace: bankTrace ? formatChannelBalanceFaultTrace(bankTrace) : undefined,
+          rectification: faultDate
+            ? `1. Open Finance → Period Report, set month to ${faultMonth ? fmtIsoMonthToDisplay(faultMonth) : faultDate.slice(0, 7)} and filter to Bank/UPI.\n2. Review entries under "Trace to fault" — correct payment_method or remove duplicate bank expenses.\n3. If the receipt was recorded as cash, retag it as UPI/bank or change the expense channel.\n4. Re-run this audit after fixing.`
+            : '1. Go to Finance → Period Report and review bank-channel entries.\n2. Check if any receipt marked "cash" should be "UPI/bank".\n3. Verify no bank receipts are stuck in "pending" or "rejected" status.\n4. Look for duplicate expense entries under bank channel.\n5. Correct the payment_method on mismatched entries.',
+          data: {
+            bankReceipts: receiptByChannel.bank,
+            bankExpenses: expenseByChannel.bank,
+            deficit: bankBalance,
+            faultDate: faultDate ?? null,
+            faultMonth: faultMonth ?? null,
+          },
+          channelTrace: bankTrace ?? undefined,
         });
       } else {
         addFinding({
@@ -199,16 +248,33 @@ const FinanceIntegrityAudit = () => {
       });
 
       if (duplicateGroups.length > 0) {
+        const monthSummary = [...new Set(duplicateGroups.map((g) => g.month))]
+          .sort()
+          .reverse()
+          .slice(0, 5)
+          .map((m) => fmtIsoMonthToDisplay(m))
+          .join(', ');
+        const sampleGroups = duplicateGroups
+          .slice(0, 4)
+          .map(
+            (g) =>
+              `  • ${fmtIsoMonthToDisplay(g.month)}: Flat ${g.flat_number}, ${g.charge_title} (${g.payment_method}) — ${g.count} rows, ₹${g.total_amount.toLocaleString('en-IN')}`,
+          )
+          .join('\n');
         addFinding({
           severity: 'critical',
           kind: 'duplicate_payments',
           title: `${duplicateGroups.length} Duplicate Payment Group${duplicateGroups.length > 1 ? 's' : ''} Found`,
-          description: `Same flat + monthly charge + month + channel has multiple maintenance_payments rows.`,
+          description: `Duplicate rows in month(s): ${monthSummary}. Same flat + monthly charge + month + channel has multiple maintenance_payments rows.`,
           reason:
             'Two or more payment rows exist for the same flat and month. This is different from ledger double-count (an extra finance_entries receipt without duplicate payments).',
+          faultTrace: `Affected months: ${monthSummary}\nDuplicate groups:\n${sampleGroups}`,
           rectification:
-            'Scroll to "Duplicate maintenance payment rows" above, expand the group, and delete or edit the extra payment. Keep one verified row per flat per month.',
-          data: { duplicateGroups: duplicateGroups.length },
+            'Scroll to "Duplicate maintenance payment rows" above, expand the group for the month listed, and delete or edit the extra payment. Keep one verified row per flat per month.',
+          data: {
+            duplicateGroups: duplicateGroups.length,
+            months: [...new Set(duplicateGroups.map((g) => g.month))],
+          },
         });
       } else {
         addFinding({
@@ -229,17 +295,31 @@ const FinanceIntegrityAudit = () => {
         .reduce((s, e) => s + Number(e.total_amount || 0), 0);
 
       const discrepancy = Math.abs(mpTotal - feFlatsOnlyTotal);
+      const recordingMismatchMonths = analyzeRecordingMismatchByMonth(verifiedPayments, allLedger);
       if (discrepancy > 1) {
+        const earliestMonth = recordingMismatchMonths.length > 0
+          ? [...recordingMismatchMonths].sort((a, b) => a.month.localeCompare(b.month))[0].month
+          : null;
+        const monthHint = earliestMonth
+          ? `Mismatch traceable from ${fmtIsoMonthToDisplay(earliestMonth)} onward.`
+          : '';
         addFinding({
           severity: 'warning',
           kind: 'recording_mismatch',
           title: `Recording vs Ledger Discrepancy: ₹${discrepancy.toLocaleString('en-IN')}`,
-          description: `Sum of verified maintenance_payments (₹${mpTotal.toLocaleString('en-IN')}) does not match sum of finance_entries[flats_only] (₹${feFlatsOnlyTotal.toLocaleString('en-IN')}).`,
+          description: `Sum of verified maintenance_payments (₹${mpTotal.toLocaleString('en-IN')}) does not match sum of finance_entries[flats_only] (₹${feFlatsOnlyTotal.toLocaleString('en-IN')}). ${monthHint}`,
           reason:
-            'Lifetime totals differ — often orphaned payments (no finance_entry_id), deleted ledger rows, or amount edits in only one table. This is not the same as period-report double-count.',
+            'Lifetime totals differ — often orphaned payments (no finance_entry_id), deleted ledger rows, or amount edits in only one table. Expand "Trace to fault" to see which month and entries caused the gap.',
+          faultTrace: formatRecordingMismatchFaultTrace(recordingMismatchMonths),
           rectification:
-            '1. Review orphaned payments below if flagged.\n2. Use Finance → Payments / Receipts to align amounts.\n3. For month-specific inflation, use "Ledger double-count" fixes above.',
-          data: { maintenancePaymentsTotal: mpTotal, financeEntriesTotal: feFlatsOnlyTotal, difference: discrepancy },
+            '1. Start with the earliest month in "Trace to fault" — open Finance → Period Report for that month.\n2. Fix orphan payments or orphan ledger rows listed for that month.\n3. If amounts differ on linked pairs, align in Payments / Receipts tabs.\n4. Re-run audit; repeat for the next affected month if needed.',
+          data: {
+            maintenancePaymentsTotal: mpTotal,
+            financeEntriesTotal: feFlatsOnlyTotal,
+            difference: discrepancy,
+            affectedMonths: recordingMismatchMonths.map((m) => m.month),
+          },
+          recordingMismatchMonths,
         });
       } else {
         addFinding({
@@ -257,15 +337,37 @@ const FinanceIntegrityAudit = () => {
       if (ledgerOvercountIssues.length > 0) {
         const totalExcess = ledgerOvercountIssues.reduce((s, m) => s + m.excess, 0);
         const orphanCount = ledgerOvercountIssues.reduce((s, m) => s + m.unlinkedLedger.length, 0);
+        const earliestMonth = [...ledgerOvercountIssues].sort((a, b) => a.month.localeCompare(b.month))[0]?.month;
+        const faultTraceLines = ledgerOvercountIssues.slice(0, 6).map((issue) => {
+          const orphanLines = issue.unlinkedLedger
+            .slice(0, 2)
+            .map((e) => `${ledgerTransactionDate(e)} orphan "${e.title || 'Entry'}" ₹${e.total_amount.toLocaleString('en-IN')}`)
+            .join('; ');
+          const boundaryLines = issue.dateBoundary
+            .slice(0, 2)
+            .map(
+              (b) =>
+                `Flat ${b.payment.flat_number}: payment month ${fmtIsoMonthToDisplay(b.paymentMonth)} vs ledger ${fmtIsoMonthToDisplay(b.entryMonth)}`,
+            )
+            .join('; ');
+          const parts = [orphanLines, boundaryLines].filter(Boolean).join(' | ');
+          return `  • ${fmtIsoMonthToDisplay(issue.month)} (+₹${issue.excess.toLocaleString('en-IN')})${parts ? `: ${parts}` : ''}`;
+        });
         addFinding({
           severity: 'critical',
           kind: 'ledger_overcount',
           title: `Ledger Double-Count in Reports: ₹${totalExcess.toLocaleString('en-IN')} across ${ledgerOvercountIssues.length} month(s)`,
-          description: `Period reports count extra receipt(s) beyond verified payments — usually ${orphanCount} unlinked finance_entries row(s). Months: ${ledgerOvercountIssues.map((m) => `${fmtIsoMonthToDisplay(m.month)} (+₹${m.excess.toLocaleString('en-IN')})`).join(', ')}.`,
+          description: `Period reports count extra receipt(s) beyond verified payments — usually ${orphanCount} unlinked finance_entries row(s).${earliestMonth ? ` Earliest anomaly: ${fmtIsoMonthToDisplay(earliestMonth)}.` : ''} Months: ${ledgerOvercountIssues.map((m) => `${fmtIsoMonthToDisplay(m.month)} (+₹${m.excess.toLocaleString('en-IN')})`).join(', ')}.`,
           reason:
             'An extra finance ledger receipt exists without linked maintenance_payments (or payment/ledger months disagree). This inflates period reports but does NOT appear in "duplicate payment rows" — there may still be only one payment per flat.',
+          faultTrace: [
+            earliestMonth ? `Earliest affected month: ${fmtIsoMonthToDisplay(earliestMonth)}` : '',
+            faultTraceLines.length > 0 ? `Month → entry trail:\n${faultTraceLines.join('\n')}` : '',
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
           rectification:
-            'Use the "Ledger double-count (period reports)" panel above: delete orphan ledger entries, or align payment due_date with ledger entry_month. Then re-run this audit.',
+            'Use the "Ledger double-count (period reports)" panel above: start with the earliest month in the trace, delete orphan ledger entries, or align payment due_date with ledger entry_month. Then re-run this audit.',
           data: {
             months: ledgerOvercountIssues.map((m) => ({
               month: m.month,
@@ -290,14 +392,35 @@ const FinanceIntegrityAudit = () => {
       const orphanedPayments = verifiedPayments.filter((p) => !p.finance_entry_id);
       if (orphanedPayments.length > 0) {
         const orphanTotal = orphanedPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+        const orphansByMonth = new Map<string, AuditPaymentRow[]>();
+        for (const p of orphanedPayments) {
+          const d = p.due_date || p.payment_date || p.created_at || '';
+          const m = d ? format(new Date(d), 'yyyy-MM') : 'unknown';
+          if (!orphansByMonth.has(m)) orphansByMonth.set(m, []);
+          orphansByMonth.get(m)!.push(p);
+        }
+        const monthLines = [...orphansByMonth.entries()]
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .slice(0, 6)
+          .map(([m, rows]) => {
+            const total = rows.reduce((s, p) => s + Number(p.amount || 0), 0);
+            const samples = rows
+              .slice(0, 2)
+              .map((p) => `${p.due_date || p.payment_date || 'no date'} Flat ${p.flat_number} ₹${Number(p.amount || 0).toLocaleString('en-IN')}`)
+              .join('; ');
+            return `  • ${m === 'unknown' ? 'Unknown month' : fmtIsoMonthToDisplay(m)}: ${rows.length} orphan(s), ₹${total.toLocaleString('en-IN')} — ${samples}`;
+          })
+          .join('\n');
+        const earliestOrphanMonth = [...orphansByMonth.keys()].filter((m) => m !== 'unknown').sort()[0];
         addFinding({
           severity: 'warning',
           kind: 'orphaned_payments',
           title: `${orphanedPayments.length} Orphaned Payment${orphanedPayments.length > 1 ? 's' : ''} (₹${orphanTotal.toLocaleString('en-IN')})`,
-          description: 'These verified payments have no linked finance_entry record.',
+          description: `These verified payments have no linked finance_entry record.${earliestOrphanMonth ? ` Earliest: ${fmtIsoMonthToDisplay(earliestOrphanMonth)}.` : ''}`,
           reason: 'Likely recorded before the ledger system was introduced, or the finance_entry was deleted while the payment remained.',
+          faultTrace: monthLines ? `Orphans by month:\n${monthLines}` : undefined,
           rectification:
-            'Finance → Payments: re-record with ledger, or delete orphan payment rows if they are mistakes. Sample rows are listed when you expand this finding.',
+            'Start with the earliest month in the trace. Finance → Payments: re-record with ledger, or delete orphan payment rows if they are mistakes.',
           data: {
             count: orphanedPayments.length,
             total: orphanTotal,
@@ -537,6 +660,14 @@ const FinanceIntegrityAudit = () => {
                           <TrendingDown className="w-3 h-3" /> Why This Happens
                         </p>
                         <p className="text-xs text-foreground mt-1 whitespace-pre-line">{f.reason}</p>
+                      </div>
+                    )}
+                    {f.faultTrace && (
+                      <div className="rounded-lg border border-primary/30 bg-primary/5 p-2">
+                        <p className="text-[10px] font-semibold text-primary uppercase tracking-wider flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> Trace to Fault
+                        </p>
+                        <p className="text-xs text-foreground mt-1 whitespace-pre-line font-mono">{f.faultTrace}</p>
                       </div>
                     )}
                     {f.rectification && (

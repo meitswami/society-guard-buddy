@@ -135,6 +135,46 @@ export const FINANCE_PERIOD_METRICS = {
     description: 'Total funds carry-forward after the period.',
     howCalculated: 'Opening balance + period net.',
   },
+  extraLedgerReceipt: {
+    title: 'Ledger-only inflows added',
+    description:
+      'Extra receipt amount from finance_entries in the period that are not backed by linked maintenance_payments — can inflate period totals.',
+    howCalculated:
+      'Sum of unlinked finance_entries (maintenance/corpus destinations) whose transaction month falls in the selected period range.',
+  },
+} as const;
+
+export const FINANCE_LEDGER_GROUP_METRICS = {
+  inflowGroup: {
+    title: 'Ledger inflow group total',
+    description: 'Sum posted under this recording mode and destination for the selected month.',
+    howCalculated:
+      'Adds total_amount from finance_entries in totalsMonth matching this record_mode + destination (maintenance/corpus inflows).',
+  },
+  outflowHead: {
+    title: 'Expense head total',
+    description: 'Money recorded as paid out under this expense title in the selected month.',
+    howCalculated:
+      'Sums finance_entries with destination separate_entry for this expense head and payment method in totalsMonth.',
+  },
+} as const;
+
+export const REPORT_MAINTENANCE_METRICS = {
+  maintenanceStatus: {
+    title: 'Maintenance payments by status',
+    description: 'Verified maintenance_payments grouped by payment_status for the report month.',
+    howCalculated: 'Count and sum of maintenance_payments where billing month matches reportMonth.',
+  },
+  maintenanceLinked: {
+    title: 'Linked to ledger',
+    description: 'Maintenance payments that have a finance_entry_id — included in both Payments and Receipts tabs.',
+    howCalculated: 'Verified payments in month where finance_entry_id is set.',
+  },
+  maintenanceUnlinked: {
+    title: 'Not linked to ledger',
+    description: 'Verified payments without a finance_entry — may cause recording vs reporting mismatch.',
+    howCalculated: 'Verified payments in month where finance_entry_id is null.',
+  },
 } as const;
 
 export const FINANCE_TOTALS_METRICS = {
@@ -268,6 +308,11 @@ export const MANUAL_AUDIT_METRICS = {
     title: 'Difference',
     description: 'Gap between system total and your expected amount.',
     howCalculated: 'computedTotal − expectedTotal. Positive = system shows more than expected.',
+  },
+  match: {
+    title: 'Figures match',
+    description: 'The system total equals your expected amount for this month and source.',
+    howCalculated: 'No discrepancy when the absolute gap between computed and expected totals is under ₹1.',
   },
 } as const;
 

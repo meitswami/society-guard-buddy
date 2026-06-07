@@ -4,6 +4,7 @@ import type { BlacklistEntry } from '@/types';
 import { ShieldAlert, Plus, Trash2, Search, User, Car } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { confirmAction, showSuccess } from '@/lib/swal';
+import { capsFieldChange } from '@/lib/entryCaps';
 
 const BlacklistPage = () => {
   const { blacklist, addToBlacklist, removeFromBlacklist, currentGuard } = useStore();
@@ -72,14 +73,14 @@ const BlacklistPage = () => {
           </div>
           {form.type === 'visitor' && (
             <>
-              <input className="input-field" placeholder={t('common.name')} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              <input className="input-field" placeholder={t('common.name')} value={form.name} onChange={capsFieldChange(setForm, 'name')} />
               <input className="input-field font-mono" placeholder={`${t('common.phone')} *`} type="tel" maxLength={10} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))} />
             </>
           )}
           {form.type === 'vehicle' && (
-            <input className="input-field font-mono uppercase" placeholder={`${t('visitor.vehicleNumber')} *`} value={form.vehicleNumber} onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value.toUpperCase() }))} />
+            <input className="input-field font-mono uppercase" placeholder={`${t('visitor.vehicleNumber')} *`} value={form.vehicleNumber} onChange={capsFieldChange(setForm, 'vehicleNumber')} />
           )}
-          <input className="input-field" placeholder={`${t('blacklist.reason')} *`} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} />
+          <input className="input-field" placeholder={`${t('blacklist.reason')} *`} value={form.reason} onChange={capsFieldChange(setForm, 'reason')} />
           <div className="flex gap-2">
             <button type="submit" className="btn-primary flex-1 text-xs">{t('blacklist.addToBlacklist')}</button>
             <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1 text-xs">{t('common.cancel')}</button>

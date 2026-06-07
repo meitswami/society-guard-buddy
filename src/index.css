@@ -142,6 +142,10 @@
     @apply bg-input border border-border rounded-lg px-3 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm w-full;
   }
 
+  body[data-entry-caps='on'] .input-field:not([data-caps='off']):not([type='password']):not([type='email']):not([type='tel']):not([type='number']):not([type='date']):not([type='month']):not([type='time']):not([type='url']):not([type='search']) {
+    text-transform: uppercase;
+  }
+
   .btn-primary {
     @apply bg-primary text-primary-foreground font-semibold rounded-lg px-4 py-3 text-sm active:scale-[0.98] transition-all;
   }

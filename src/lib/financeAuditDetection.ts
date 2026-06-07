@@ -235,3 +235,327 @@ export function analyzeLedgerOvercountByMonth(
   issues.sort((a, b) => b.month.localeCompare(a.month));
   return issues;
 }
+
+/* ─── Channel balance tracing (negative cash / bank) ─── */
+
+export type BalanceTransaction = {
+  date: string;
+  type: 'receipt' | 'expense';
+  amount: number;
+  channel: PaymentChannel;
+  source: 'payment' | 'ledger';
+  id: string;
+  label: string;
+};
+
+export type ChannelBalanceCulprit = {
+  date: string;
+  label: string;
+  amount: number;
+  type: 'receipt' | 'expense';
+  balanceAfter: number;
+};
+
+export type ChannelMonthlyBalance = {
+  month: string;
+  receipts: number;
+  expenses: number;
+  netChange: number;
+  closingBalance: number;
+};
+
+export type ChannelBalanceTrace = {
+  channel: PaymentChannel;
+  finalBalance: number;
+  firstNegativeDate: string | null;
+  firstNegativeMonth: string | null;
+  balanceBeforeFault: number;
+  culprits: ChannelBalanceCulprit[];
+  monthlyBreakdown: ChannelMonthlyBalance[];
+};
+
+const paymentTransactionDate = (p: AuditPaymentRow): string =>
+  paymentBillingDate(p) || (p.payment_date || '').slice(0, 10) || (p.created_at || '').slice(0, 10);
+
+const ledgerMonthKey = (e: AuditLedgerRow): string => {
+  if (e.entry_month) return e.entry_month.slice(0, 7);
+  const d = ledgerTransactionDate(e);
+  return d ? format(new Date(d), 'yyyy-MM') : '';
+};
+
+export function buildChannelTransactions(
+  verifiedPayments: AuditPaymentRow[],
+  allLedger: AuditLedgerRow[],
+  linkedFeIds: Set<string>,
+): BalanceTransaction[] {
+  const txns: BalanceTransaction[] = [];
+
+  for (const p of verifiedPayments) {
+    const date = paymentTransactionDate(p);
+    if (!date) continue;
+    txns.push({
+      date,
+      type: 'receipt',
+      amount: Number(p.amount || 0),
+      channel: normalizePaymentChannel(p.payment_method),
+      source: 'payment',
+      id: p.id,
+      label: `Flat ${p.flat_number} maintenance receipt`,
+    });
+  }
+
+  for (const e of allLedger) {
+    const date = ledgerTransactionDate(e);
+    if (!date) continue;
+    const ch = normalizePaymentChannel(e.payment_method);
+    const amt = Number(e.total_amount || 0);
+    if (e.destination === 'separate_entry') {
+      txns.push({
+        date,
+        type: 'expense',
+        amount: amt,
+        channel: ch,
+        source: 'ledger',
+        id: e.id,
+        label: e.title || 'Expense entry',
+      });
+    } else if (!linkedFeIds.has(e.id)) {
+      txns.push({
+        date,
+        type: 'receipt',
+        amount: amt,
+        channel: ch,
+        source: 'ledger',
+        id: e.id,
+        label: e.title || 'Ledger receipt (no linked payments)',
+      });
+    }
+  }
+
+  return txns;
+}
+
+export function traceChannelBalanceDeficit(
+  transactions: BalanceTransaction[],
+  channel: PaymentChannel,
+): ChannelBalanceTrace | null {
+  const channelTxns = transactions
+    .filter((t) => t.channel === channel)
+    .sort((a, b) => {
+      const cmp = a.date.localeCompare(b.date);
+      if (cmp !== 0) return cmp;
+      return a.type === 'receipt' ? -1 : 1;
+    });
+
+  if (channelTxns.length === 0) return null;
+
+  let balance = 0;
+  let firstNegativeDate: string | null = null;
+  let firstNegativeMonth: string | null = null;
+  let balanceBeforeFault = 0;
+  const culprits: ChannelBalanceCulprit[] = [];
+
+  const monthlyMap = new Map<string, { receipts: number; expenses: number }>();
+
+  for (const t of channelTxns) {
+    const month = t.date.slice(0, 7);
+    if (!monthlyMap.has(month)) monthlyMap.set(month, { receipts: 0, expenses: 0 });
+    const m = monthlyMap.get(month)!;
+    if (t.type === 'receipt') m.receipts += t.amount;
+    else m.expenses += t.amount;
+
+    const prevBalance = balance;
+    balance += t.type === 'receipt' ? t.amount : -t.amount;
+
+    if (firstNegativeDate === null && prevBalance >= 0 && balance < 0) {
+      firstNegativeDate = t.date;
+      firstNegativeMonth = month;
+      balanceBeforeFault = prevBalance;
+      culprits.push({
+        date: t.date,
+        label: t.label,
+        amount: t.amount,
+        type: t.type,
+        balanceAfter: balance,
+      });
+    } else if (firstNegativeDate === t.date) {
+      culprits.push({
+        date: t.date,
+        label: t.label,
+        amount: t.amount,
+        type: t.type,
+        balanceAfter: balance,
+      });
+    }
+  }
+
+  const monthlyBreakdown: ChannelMonthlyBalance[] = [];
+  let runningBalance = 0;
+  const sortedMonths = [...monthlyMap.keys()].sort();
+  for (const month of sortedMonths) {
+    const { receipts, expenses } = monthlyMap.get(month)!;
+    const netChange = receipts - expenses;
+    runningBalance += netChange;
+    monthlyBreakdown.push({ month, receipts, expenses, netChange, closingBalance: runningBalance });
+  }
+
+  return {
+    channel,
+    finalBalance: balance,
+    firstNegativeDate,
+    firstNegativeMonth,
+    balanceBeforeFault,
+    culprits,
+    monthlyBreakdown,
+  };
+}
+
+/* ─── Recording vs reporting mismatch by month ─── */
+
+export type RecordingMismatchSource = {
+  kind: 'orphan_payment' | 'orphan_ledger' | 'amount_diff';
+  id: string;
+  date: string;
+  label: string;
+  amount: number;
+};
+
+export type RecordingMismatchMonth = {
+  month: string;
+  paymentsTotal: number;
+  ledgerTotal: number;
+  difference: number;
+  sources: RecordingMismatchSource[];
+};
+
+export function analyzeRecordingMismatchByMonth(
+  verifiedPayments: AuditPaymentRow[],
+  allLedger: AuditLedgerRow[],
+): RecordingMismatchMonth[] {
+  const linkedFeIds = new Set<string>();
+  for (const p of verifiedPayments) {
+    if (p.finance_entry_id) linkedFeIds.add(p.finance_entry_id);
+  }
+
+  const months = new Set<string>();
+  for (const p of verifiedPayments) {
+    const d = paymentTransactionDate(p);
+    if (d) months.add(d.slice(0, 7));
+  }
+  for (const e of allLedger) {
+    if (e.record_mode !== 'flats_only' || e.payment_status !== 'verified') continue;
+    const m = ledgerMonthKey(e);
+    if (m) months.add(m);
+  }
+
+  const issues: RecordingMismatchMonth[] = [];
+
+  for (const month of months) {
+    let paymentsTotal = 0;
+    const monthPayments: AuditPaymentRow[] = [];
+    for (const p of verifiedPayments) {
+      const d = paymentTransactionDate(p);
+      if (!d || d.slice(0, 7) !== month) continue;
+      paymentsTotal += Number(p.amount || 0);
+      monthPayments.push(p);
+    }
+
+    let ledgerTotal = 0;
+    const monthLedger: AuditLedgerRow[] = [];
+    for (const e of allLedger) {
+      if (e.record_mode !== 'flats_only' || e.payment_status !== 'verified') continue;
+      if (ledgerMonthKey(e) !== month) continue;
+      ledgerTotal += Number(e.total_amount || 0);
+      monthLedger.push(e);
+    }
+
+    const difference = paymentsTotal - ledgerTotal;
+    if (Math.abs(difference) <= 1) continue;
+
+    const sources: RecordingMismatchSource[] = [];
+
+    for (const p of monthPayments) {
+      if (!p.finance_entry_id) {
+        sources.push({
+          kind: 'orphan_payment',
+          id: p.id,
+          date: paymentTransactionDate(p),
+          label: `Flat ${p.flat_number} — no ledger link`,
+          amount: Number(p.amount || 0),
+        });
+      }
+    }
+
+    for (const e of monthLedger) {
+      const linked = monthPayments.some((p) => p.finance_entry_id === e.id);
+      if (!linked) {
+        sources.push({
+          kind: 'orphan_ledger',
+          id: e.id,
+          date: ledgerTransactionDate(e),
+          label: e.title || 'Ledger entry — no linked payments',
+          amount: Number(e.total_amount || 0),
+        });
+      }
+    }
+
+    issues.push({ month, paymentsTotal, ledgerTotal, difference, sources });
+  }
+
+  issues.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+  return issues;
+}
+
+export function formatChannelBalanceFaultTrace(trace: ChannelBalanceTrace): string {
+  if (!trace.firstNegativeDate) {
+    return 'Could not pinpoint the exact date — review channel entries in Finance → Period Report.';
+  }
+
+  const monthLabel = trace.firstNegativeMonth ?? trace.firstNegativeDate.slice(0, 7);
+  const culpritLines = trace.culprits
+    .slice(0, 4)
+    .map(
+      (c) =>
+        `  • ${c.date}: ${c.type === 'expense' ? 'Expense' : 'Receipt'} "${c.label}" ₹${c.amount.toLocaleString('en-IN')} → balance ₹${c.balanceAfter.toLocaleString('en-IN')}`,
+    )
+    .join('\n');
+
+  const monthLines = trace.monthlyBreakdown
+    .filter((m) => m.closingBalance < 0 || m.month >= (trace.firstNegativeMonth ?? ''))
+    .slice(0, 6)
+    .map(
+      (m) =>
+        `  • ${m.month}: receipts ₹${m.receipts.toLocaleString('en-IN')} − expenses ₹${m.expenses.toLocaleString('en-IN')} → closing ₹${m.closingBalance.toLocaleString('en-IN')}`,
+    )
+    .join('\n');
+
+  return [
+    `Fault origin: ${trace.firstNegativeDate} (${monthLabel}) — balance was ₹${trace.balanceBeforeFault.toLocaleString('en-IN')} before this date.`,
+    culpritLines ? `Entries on fault date:\n${culpritLines}` : '',
+    monthLines ? `Month-wise trail from fault:\n${monthLines}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+export function formatRecordingMismatchFaultTrace(issues: RecordingMismatchMonth[]): string {
+  if (issues.length === 0) return '';
+
+  const lines = issues.slice(0, 6).map((m) => {
+    const dir = m.difference > 0 ? 'payments exceed ledger' : 'ledger exceeds payments';
+    const sourceHint =
+      m.sources.length > 0
+        ? ` — likely from: ${m.sources
+            .slice(0, 3)
+            .map((s) => `${s.date} ${s.label} (₹${s.amount.toLocaleString('en-IN')})`)
+            .join('; ')}`
+        : '';
+    return `  • ${m.month}: ₹${Math.abs(m.difference).toLocaleString('en-IN')} (${dir})${sourceHint}`;
+  });
+
+  const earliest = [...issues].sort((a, b) => a.month.localeCompare(b.month))[0];
+  return [
+    `Earliest affected month: ${earliest.month}`,
+    `Months with mismatch (largest first):\n${lines.join('\n')}`,
+  ].join('\n\n');
+}

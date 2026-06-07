@@ -10,7 +10,7 @@ import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { ADMIN_HOME_METRICS } from '@/lib/descriptiveMetricCopy';
 
 const SettingsPage = () => {
-  const { visitors, flats, members, residentVehicles, blacklist, societyId } = useStore();
+  const { visitors, flats, members, residentVehicles, blacklist, societyId, entryCapsMode, setEntryCapsMode } = useStore();
   const { t } = useLanguage();
   const [banners, setBanners] = useState<any[]>([]);
   const [adding, setAdding] = useState(false);
@@ -126,6 +126,23 @@ const SettingsPage = () => {
         <div className="flex items-center justify-between mt-3">
           <span className="text-xs text-muted-foreground">Language</span>
           <LanguageToggle />
+        </div>
+        <div className="flex items-center justify-between mt-3">
+          <div>
+            <span className="text-xs text-muted-foreground">Auto CAPS for entries</span>
+            <p className="text-[10px] text-muted-foreground/80 mt-0.5">Names, titles, notes — phone &amp; passwords stay as typed</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={entryCapsMode}
+            onClick={() => setEntryCapsMode(!entryCapsMode)}
+            className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${entryCapsMode ? 'bg-primary' : 'bg-secondary'}`}
+          >
+            <span
+              className={`absolute top-1 w-4 h-4 rounded-full bg-foreground transition-all ${entryCapsMode ? 'left-6' : 'left-1'}`}
+            />
+          </button>
         </div>
       </div>
 

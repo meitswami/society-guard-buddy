@@ -13,7 +13,8 @@ import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/a
 import { DateInput } from '@/components/DateInput';
 import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DescriptiveStatCard, DescriptiveStatSummary } from '@/components/DescriptiveStatCard';
+import { DescriptiveStatCard, DescriptiveStatSummary, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
+import { capsFieldChange } from '@/lib/entryCaps';
 import { RecordingDateBanner } from '@/components/RecordingDateBanner';
 import {
   billingMonthFromDate,
@@ -25,6 +26,7 @@ import {
 } from '@/lib/financeDates';
 import {
   FINANCE_FLAT_REPORT_METRICS,
+  FINANCE_LEDGER_GROUP_METRICS,
   FINANCE_PERIOD_METRICS,
   FINANCE_TOTALS_METRICS,
 } from '@/lib/descriptiveMetricCopy';
@@ -2590,7 +2592,7 @@ const FinanceManager = ({
           {showForm && (
             <div className="card-section p-4 mb-4 flex flex-col gap-3">
               <p className="text-xs font-medium text-muted-foreground">{editingChargeId ? 'Edit receipt type' : 'New receipt type'}</p>
-              <input className="input-field" placeholder="Title (e.g. Monthly Maintenance)" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+              <input className="input-field" placeholder="Title (e.g. Monthly Maintenance)" value={form.title} onChange={capsFieldChange(setForm, 'title')} />
               <input className="input-field" placeholder="Amount (₹)" type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} />
               <select className="input-field" value={form.frequency} onChange={e => setForm({...form, frequency: e.target.value})}>
                 <option value="monthly">Monthly</option>
@@ -2946,7 +2948,7 @@ const FinanceManager = ({
                   ))}
                 </div>
               )}
-              <textarea className="input-field" placeholder="Notes" value={payForm.notes} onChange={e => setPayForm({...payForm, notes: e.target.value})} />
+              <textarea className="input-field" placeholder="Notes" value={payForm.notes} onChange={capsFieldChange(setPayForm, 'notes')} />
 
               <div className="rounded-lg border border-border p-3 space-y-2 bg-muted/30">
                 <p className="text-xs font-medium text-foreground">Notify residents</p>
@@ -3910,9 +3912,15 @@ const FinanceManager = ({
 
           <div className="card-section p-4 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collection receipts (verified)</p>
-            <p className="text-[11px] text-muted-foreground">
-              {financePeriodReport.verifiedPaymentCount} maintenance receipt row(s) in range; ledger-only inflows added: ₹
-              {financePeriodReport.extraLedgerReceipt.toLocaleString('en-IN')}
+            <p className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-1">
+              <span>
+                {financePeriodReport.verifiedPaymentCount} maintenance receipt row(s) in range; ledger-only inflows added:
+              </span>
+              <DescriptiveValueButton
+                {...FINANCE_PERIOD_METRICS.extraLedgerReceipt}
+                value={`₹${financePeriodReport.extraLedgerReceipt.toLocaleString('en-IN')}`}
+                valueClassName="text-[11px] font-mono font-semibold"
+              />
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs border border-border rounded-md overflow-hidden">
@@ -4131,7 +4139,13 @@ const FinanceManager = ({
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="font-bold">₹{row.total.toLocaleString('en-IN')}</p>
+                    <DescriptiveValueButton
+                      {...FINANCE_LEDGER_GROUP_METRICS.inflowGroup}
+                      title={`${row.mode.replace(/_/g, ' ')} · ${row.destination.replace(/_/g, ' ')}`}
+                      description={`${FINANCE_LEDGER_GROUP_METRICS.inflowGroup.description} Mode: ${row.mode.replace(/_/g, ' ')}; destination: ${row.destination.replace(/_/g, ' ')}.`}
+                      howCalculated={`${FINANCE_LEDGER_GROUP_METRICS.inflowGroup.howCalculated} This group: ${row.entries} entr${row.entries === 1 ? 'y' : 'ies'}, ${row.flatUnits} flat units.`}
+                      value={`₹${row.total.toLocaleString('en-IN')}`}
+                    />
                     <p className="text-[10px] text-muted-foreground">{row.flatUnits} flat units</p>
                   </div>
                 </div>
@@ -4180,7 +4194,14 @@ const FinanceManager = ({
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-bold text-red-600">₹{row.total.toLocaleString('en-IN')}</p>
+                      <DescriptiveValueButton
+                        {...FINANCE_LEDGER_GROUP_METRICS.outflowHead}
+                        title={row.head}
+                        description={`${FINANCE_LEDGER_GROUP_METRICS.outflowHead.description} Head: ${row.head}; method: ${row.method.replace(/_/g, ' ')}.`}
+                        howCalculated={`${FINANCE_LEDGER_GROUP_METRICS.outflowHead.howCalculated} This head: ${row.entries} entr${row.entries === 1 ? 'y' : 'ies'}.`}
+                        value={`₹${row.total.toLocaleString('en-IN')}`}
+                        valueClassName="text-red-600"
+                      />
                       <p className="text-[10px] text-muted-foreground">{row.flatUnits} flat units</p>
                     </div>
                   </div>

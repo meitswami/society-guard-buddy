@@ -5,6 +5,7 @@ import { Truck, Camera } from 'lucide-react';
 import PhotoCapture from '@/components/PhotoCapture';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { showSuccess } from '@/lib/swal';
+import { normalizeEntryValue } from '@/lib/entryCaps';
 
 const COMPANIES = ['Amazon', 'Flipkart', 'Swiggy', 'Zomato', 'BigBasket', 'Blinkit', 'Dunzo', 'Other'];
 const SERVICE_TYPES = ['Housekeeping', 'Electrician', 'Plumber', 'Carpenter', 'Painter', 'AC Service', 'Other'];
@@ -18,7 +19,10 @@ const DeliveryEntryPage = ({ onDone }: Props) => {
   const [form, setForm] = useState({ name: '', phone: '', company: 'Amazon', flatNumber: '', vehicleNumber: '' });
   const [personPhotos, setPersonPhotos] = useState<string[]>([]);
 
-  const update = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }));
+  const update = (field: string, value: string) => {
+    const v = normalizeEntryValue(value, { field });
+    setForm((f) => ({ ...f, [field]: v }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +93,7 @@ const DeliveryEntryPage = ({ onDone }: Props) => {
         </div>
         <div>
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('delivery.vehicleOptional')}</label>
-          <input className="input-field font-mono uppercase" placeholder="e.g. MH02AB1234" value={form.vehicleNumber} onChange={e => update('vehicleNumber', e.target.value.toUpperCase())} />
+          <input className="input-field font-mono uppercase" placeholder="e.g. MH02AB1234" value={form.vehicleNumber} onChange={e => update('vehicleNumber', e.target.value)} />
         </div>
         <PhotoCapture photos={personPhotos} onChange={setPersonPhotos} maxPhotos={2} label={t('delivery.personPhoto')} />
         <button type="submit" className="btn-primary flex items-center justify-center gap-2 mt-2">

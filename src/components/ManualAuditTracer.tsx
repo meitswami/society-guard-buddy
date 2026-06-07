@@ -467,10 +467,13 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
               className={`!p-2.5 ${Math.abs(result.difference) < 1 ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}
             />
             {Math.abs(result.difference) < 1 ? (
-              <div className="stat-card flex flex-col items-center justify-center gap-1 border-green-500/30 bg-green-500/5">
-                <CheckCircle2 className="w-6 h-6 text-green-500" />
-                <p className="text-[10px] text-muted-foreground">Match</p>
-              </div>
+              <DescriptiveStatCard
+                {...MANUAL_AUDIT_METRICS.match}
+                caption="Match"
+                value={<CheckCircle2 className="w-6 h-6 text-green-500 mx-auto" />}
+                className="!p-2.5 border-green-500/30 bg-green-500/5 items-center text-center"
+                contentAlign="center"
+              />
             ) : (
               <DescriptiveStatCard
                 {...MANUAL_AUDIT_METRICS.difference}

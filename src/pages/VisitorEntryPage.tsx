@@ -8,6 +8,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { showSuccess } from '@/lib/swal';
 import ApprovalRequestModal from '@/components/ApprovalRequestModal';
 import OTPVerifyModal from '@/components/OTPVerifyModal';
+import { normalizeEntryValue } from '@/lib/entryCaps';
 
 const DOC_TYPES = [
   { value: 'aadhaar', label: 'Aadhaar' },
@@ -37,7 +38,8 @@ const VisitorEntryPage = ({ onDone }: Props) => {
   });
 
   const update = (field: string, value: string) => {
-    setForm(f => ({ ...f, [field]: value }));
+    const v = normalizeEntryValue(value, { field });
+    setForm(f => ({ ...f, [field]: v }));
     if (field === 'phone' && value.length >= 10) {
       if (isBlacklisted(value)) { setBlacklistAlert(true); } else { setBlacklistAlert(false); }
       const today = format(new Date(), 'yyyy-MM-dd');
@@ -220,7 +222,7 @@ const VisitorEntryPage = ({ onDone }: Props) => {
         {hasVehicle && (
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">{t('visitor.vehicleNumber')}</label>
-            <input className="input-field font-mono uppercase" placeholder="e.g. MH02AB1234" value={form.vehicleNumber} onChange={e => update('vehicleNumber', e.target.value.toUpperCase())} />
+            <input className="input-field font-mono uppercase" placeholder="e.g. MH02AB1234" value={form.vehicleNumber} onChange={e => update('vehicleNumber', e.target.value)} />
           </div>
         )}
 

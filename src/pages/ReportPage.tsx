@@ -6,8 +6,8 @@ import { format, parse, endOfMonth } from 'date-fns';
 import { fmtDate, fmtDateTime } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
-import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
-import { REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
+import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
+import { REPORT_MAINTENANCE_METRICS, REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
 
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }
 
@@ -653,21 +653,44 @@ const ReportPage = () => {
                 <>
                   <div className="space-y-2">
                     {maintenanceStatuses.map((s) => (
-                      <div key={s.payment_status} className="flex items-center justify-between text-xs">
+                      <div key={s.payment_status} className="flex items-center justify-between text-xs gap-2">
                         <span className="capitalize">{s.payment_status}</span>
-                        <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
+                        <DescriptiveValueButton
+                          {...REPORT_MAINTENANCE_METRICS.maintenanceStatus}
+                          title={`Maintenance — ${s.payment_status}`}
+                          description={`${REPORT_MAINTENANCE_METRICS.maintenanceStatus.description} Status: ${s.payment_status}.`}
+                          howCalculated={`${REPORT_MAINTENANCE_METRICS.maintenanceStatus.howCalculated} This row: ${s.count} payment(s).`}
+                          value={<span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>}
+                          valueClassName="font-mono text-xs font-semibold"
+                        />
                       </div>
                     ))}
                   </div>
                   {maintenanceLinkSummary && (
                     <div className="mt-3 pt-2 border-t border-border/60 text-[10px] text-muted-foreground space-y-1 font-mono">
-                      <div className="flex justify-between gap-2">
+                      <div className="flex justify-between gap-2 items-center">
                         <span>{t('report.maintenanceLinkedToLedger')}</span>
-                        <span>{maintenanceLinkSummary.linked.count} · ₹{maintenanceLinkSummary.linked.total.toLocaleString('en-IN')}</span>
+                        <DescriptiveValueButton
+                          {...REPORT_MAINTENANCE_METRICS.maintenanceLinked}
+                          value={
+                            <span>
+                              {maintenanceLinkSummary.linked.count} · ₹{maintenanceLinkSummary.linked.total.toLocaleString('en-IN')}
+                            </span>
+                          }
+                          valueClassName="font-mono text-[10px] font-semibold"
+                        />
                       </div>
-                      <div className="flex justify-between gap-2">
+                      <div className="flex justify-between gap-2 items-center">
                         <span>{t('report.maintenanceNotLinkedToLedger')}</span>
-                        <span>{maintenanceLinkSummary.unlinked.count} · ₹{maintenanceLinkSummary.unlinked.total.toLocaleString('en-IN')}</span>
+                        <DescriptiveValueButton
+                          {...REPORT_MAINTENANCE_METRICS.maintenanceUnlinked}
+                          value={
+                            <span>
+                              {maintenanceLinkSummary.unlinked.count} · ₹{maintenanceLinkSummary.unlinked.total.toLocaleString('en-IN')}
+                            </span>
+                          }
+                          valueClassName="font-mono text-[10px] font-semibold"
+                        />
                       </div>
                     </div>
                   )}

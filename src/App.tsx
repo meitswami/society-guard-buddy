@@ -13,6 +13,7 @@ import DeleteAccountPage from "./pages/DeleteAccountPage";
 import NewSocietySignupPage from "./pages/NewSocietySignupPage";
 import SocietySignupStatusPage from "./pages/SocietySignupStatusPage";
 import AboutPage from "./pages/AboutPage";
+import { EntryCapsBodySync } from "./components/EntryCapsBodySync";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <LanguageProvider>
+        <EntryCapsBodySync />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/society-signup" element={<NewSocietySignupPage />} />
