@@ -92,7 +92,7 @@ const EventsModule = ({ adminName = 'Admin', onNavigateTab }: Props) => {
           Receipts &amp; reconciliation
         </h2>
         <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
-          Summary of all contribution and food receipts recorded above — tap <span className="font-medium text-foreground">Edit</span> on any row to update amount, payment method, or attachment.
+          Summary of contribution and food receipts. Use <span className="font-medium text-foreground">Cover</span> when food bills exceed contributions, or <span className="font-medium text-foreground">To pool</span> to move excess to the society pool account.
         </p>
         <EventFoodReconciliation adminName={adminName} refreshKey={receiptRefreshKey} onRecordsChanged={bumpReceipts} />
       </section>
