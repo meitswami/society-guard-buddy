@@ -10,47 +10,75 @@ when version tags are published.
 
 ### Added
 
-- **Emergency / Alert mode** — Guards get a dedicated **Alert** tab; residents get an **Emergency or Alert** button on the Alerts tab. Both can attach photos and broadcast to all resident portals, FCM push, and saved WhatsApp numbers (member/resident `whatsapp_phone` or fallback `phone`, plus flat owner phone) via `send-emergency-alert` edge function. Migration `20260524140000_emergency_alert_whatsapp.sql`; optional WhatsApp via `WHATSAPP_ACCESS_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` secrets.
-- **Society meetings** — Admin meetings flow with scheduling, attendees, decisions, documents, minutes/discussion, optional audio; database tables `meetings`, `meeting_attendees`, `meeting_decisions`, `meeting_documents`, plus executives-present migration.
-- **Finance — period report** — Sub-tab under Finance with default range (financial year from 1 April to today), verified collections by payment channel, head-wise separate-entry expenses, and balance summary cards.
-- **Finance — period PDF** — Client-side PDF export via jsPDF (`src/lib/financePeriodReportPdf.ts`).
-- **Finance — send to members** — Upload period PDF to `notification-media`, insert per-resident `notifications` rows with shared `delivery_batch_id`, optional invoke of `send-push-notification` with `target_type: user`; audience modes: all residents, selected flats, or individually picked residents.
-- **Finance — read receipts** — Admin dialog listing recipients for the last batch, using `is_read` / `read_at` from `notifications`.
-- **Meetings — attachments** — Single **Browse files** control with `multiple` selection for many images and/or PDFs from the device file manager; **Take photo** for one camera capture; **`sort_order`** on `meeting_documents` with up/down controls to reorder the list.
-- **Meetings — attendance** — Checkbox multi-select, **Select all** / **Clear**, bulk **Mark present** / **Mark absent** / **Remove selected** (each with SweetAlert2 confirmation where destructive or broad).
-- **Meetings — confirmations** — SweetAlert2 (`confirmAction`) on status change, publish toggle, publish-to-all, flat present/remove, remove attendee/decision, single present toggle, replace audio upload, save/overwrite signature, delete meeting, and bulk attendance actions; routine text fields rely on auto-save instead of save dialogs.
-- **Meetings — auto-save** — Debounced (~1s) persist for title/schedule/venue, discussion, minutes, executives, and decision lines; banner + “Save all fields now”; drafts only rehydrate from the server when switching meetings so refetch does not wipe typing; publish flushes pending decision and meeting text first.
-- **Notifications schema** — Columns `delivery_batch_id` (uuid) and `read_at` (timestamptz) on `public.notifications` for batched delivery and read tracking.
-- **Resident read tracking** — `NotificationCenter` updates `read_at` together with `is_read` when a user opens or marks notifications read (resident and generic bulk paths).
-- **RBAC — Finance** — `NEW_CUSTOM_ROLE_PERMISSIONS` includes `finance: true` for newly defined custom roles; migration `20260512100000_enable_finance_on_society_roles.sql` backfills `permissions.finance` to true on existing `society_roles` where it was not already true.
-- **Meetings — `meeting_kind`** — GBM / AGM / executive committee / other; list filters and print helpers; migration `20260515120000_meetings_meeting_kind.sql`.
-- **Meetings — attendee table picker** — Modal grid to bulk-add flat members to attendance.
-- **Meetings — documents** — Extra multi-file control under Documents & signatures.
-- **Polls — society elections** — Ranked-choice MC voting, `poll_election_ballots`, results JSON, banners on admin/resident home and Polls; migration `20260515140000_poll_elections.sql`.
-- **Donations — campaign title presets** — Occasion/receipt-type dropdown + custom title (`DonationManager`).
-- **Admin home** — Expanded stats (maintenance, Splitwise, visitor/vehicle splits, flats/members), usage-sorted quick access, A–Z bottom nav (`AdminDashboard`).
+- **Emergency / Alert mode** — Guards get a dedicated **Alert** tab; residents get an **Emergency or Alert** button. Photos, FCM push, and WhatsApp broadcast via `send-emergency-alert`. Migration `20260524140000`.
+- **Committee module** — MC roster (`committee_members`): position, flat, tenure, elected/nominated, election trace. Migration `20260524130000`, `20260606150000`.
+- **Audit & financial integrity** — Duplicate maintenance alarms with inline edit/delete; self-audit engine (10 checks); manual audit tracer; ledger overcount panel; society governance guide; public About page.
+- **Events & food** (replaces Splitwise tab) — Event-linked groups, food vs payment category, headcount splits, EventFoodReconciliation panel. Migrations `20260602110000`–`20260602120000`, `20260606122832`, `20260607110651`.
+- **Head fund reconciliation** — Per expense-head inflow/outflow/adjustments. Migration `20260607111313`.
+- **Reserve / operating fund** — Surplus/deficit tracking and reserve transfers. Migration `20260607111507`.
+- **Society pool receipts** — Record to pool, distribute to flats later. Migration `20260602100000`.
+- **Finance — transaction_date** — Accurate period report dating. Migration `20260602130000`.
+- **Finance — recording_date** — Separate recording vs billing date on payments/expenses. Migration `20260530110000`.
+- **Chart of accounts** — `major_head` on expense groups. Migration `20260606140000`.
+- **Election governance** — Nomination/voting/closed/applied phases, VP post. Migration `20260607120000`.
+- **Guard worker photos & documents** — Profile photo, Photo ID, unlimited attachments. Migration `20260524120000`.
+- **Society meetings** — Full admin workflow: schedule, attendees, decisions, documents, signatures, audio, publish + notify.
+- **Finance — period report** — FY-style range, verified collections by channel, balance cards.
+- **Finance — period PDF** — Client-side jsPDF export.
+- **Finance — send to members** — Batched notifications with `delivery_batch_id` and optional push.
+- **Finance — read receipts** — Admin dialog using `read_at` / `is_read`.
+- **Meetings — attachments, attendance, auto-save, meeting_kind, table picker.**
+- **Notifications schema** — `delivery_batch_id`, `read_at` on `notifications`.
+- **Polls — society elections** — Ranked ballots, `poll_election_ballots`, election results banners.
+- **Donations — campaign title presets.**
+- **Admin home** — Expanded KPIs, usage-sorted quick access, A–Z bottom nav.
+- **Architecture docs** — `docs/architecture/OVERVIEW.md`, `FINANCIAL-DATA-FLOW.md`, `USER-ROLE-MATRIX.md`.
 
 ### Changed
 
-- **README** — Restructured with **Version 2** summary; links to **`docs/VERSION-2-RELEASE.md`** for expanded V2 notes (avoids `readme.md` / `README.md` clash on case-insensitive filesystems).
-- **`docs/VERSION-2-RELEASE.md`** — **Version 2 release notes** (shipped features + migration table).
-- **Finance — Receipts tab** — UI label renamed to **Transactions** (internal key still `receipts`).
-- **Admin dashboard** — Passes `adminId` into `FinanceManager` alongside `adminName` for consistency with other admin modules.
-- **Admin session restore** — On app load, re-fetch `admins` + `society_roles` and recompute `permissions` instead of trusting only `localStorage`, so RBAC updates (e.g. Finance) appear after refresh without a full logout.
-- **Zustand `setSocietyId`** — Skip clearing society-scoped lists when the society id is unchanged (admin portal stability).
+- **README** — System objectives, architecture table, security model, 10-check self-audit, Events & food naming, full migration reference, env/deployment guidance.
+- **`docs/VERSION-2-RELEASE.md`** — Extended through `20260607120000`; audit, committee, emergency, head/reserve fund sections; breaking changes table.
+- **`docs/PRODUCT-V2.md`** — Clarified shipped vs future scope.
+- **Finance — Receipts tab** — UI label renamed to **Transactions** (internal id still `receipts`).
+- **REPORTS** — Replaced legacy "Daily Reports" with `ReportPage.tsx` (Financial, Visitor, Vehicle, All Modules).
+- **Backend docs** — Lovable Cloud → Supabase; FCM primary + OneSignal fallback.
+- **Admin session restore** — Re-fetch `admins` + `society_roles` on load for fresh RBAC.
+- **Zustand `setSocietyId`** — Skip clearing lists when society UUID unchanged.
+- **Splitwise → Events & food** — Admin tab and KPI naming aligned in UI copy.
 
 ### Migration notes
 
-Apply pending SQL under `supabase/migrations/` to your Supabase project. Relevant files include:
+Apply **all pending** SQL under `supabase/migrations/` in timestamp order.
 
 | File prefix | Summary |
 |-------------|---------|
-| `20260503100000` | Finance ledger (`finance_entries`, allocations, counterparties) |
 | `20260502154500` | `finance_reminder_settings` |
+| `20260503100000` | Finance ledger (`finance_entries`, allocations, counterparties) |
 | `20260510180000`, `20260510200000` | Meetings + executives present |
-| `20260511120000` | `notifications.delivery_batch_id`, `notifications.read_at` |
+| `20260511120000` | `notifications.delivery_batch_id`, `read_at` |
 | `20260512100000` | Enable `finance` in `society_roles.permissions` |
+| `20260513120000` | `meeting_documents.sort_order` |
 | `20260515120000` | `meetings.meeting_kind` |
-| `20260515140000` | Poll elections (`poll_kind`, `election_*`, `poll_election_ballots`) |
+| `20260515140000` | Poll elections |
+| `20260524120000` | Guard photos + `guard_attachments` |
+| `20260524130000` | `committee_members` |
+| `20260524140000` | Emergency alerts + WhatsApp |
+| `20260530110000` | `recording_date` columns |
+| `20260602100000` | Society pool record mode |
+| `20260602110000` | Event groups + headcount splits |
+| `20260602120000` | Food vs payment expense category |
+| `20260602130000` | `finance_entries.transaction_date` |
+| `20260602140000` | Ledger titles from expense heads |
+| `20260606122832` | Migrate non-food out of Events |
+| `20260606140000` | `major_head` chart of accounts |
+| `20260606150000` | Committee flat + tenure |
+| `20260607110651` | Event food ↔ finance correlation |
+| `20260607111313` | Head fund reconciliation |
+| `20260607111507` | Reserve fund transfers |
+| `20260607120000` | Election governance phases |
 
-Ensure Storage bucket **`notification-media`** exists and policies allow the app to upload finance report PDFs where used.
+Ensure Storage buckets **`notification-media`** and **`guard-documents`** exist with upload policies.
+
+### Rollback considerations
+
+No automated down-migrations. Restore Supabase backup before applying on production if uncertain. Schema and frontend deploy together — partial rollback requires matching git tag to migration state.

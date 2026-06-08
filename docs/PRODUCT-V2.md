@@ -1,6 +1,10 @@
-# Kutumbika / Society Guard Buddy — V2 Roadmap (PRODUCT-V2)
+# Kutumbika / Society Guard Buddy — Future Roadmap (PRODUCT-V2)
 
-This document captures a **planned V2** direction: deeper **RBAC**, **guard-centric accessibility**, and **voice / AI-assisted workflows**. It is a living product spec—not a commitment to ship order or dates until prioritized with stakeholders.
+> **Scope notice:** This document describes **planned future work** (V2.1–V3). For **what is already shipped**, see **[VERSION-2-RELEASE.md](./VERSION-2-RELEASE.md)** and **[README.md](../README.md)**.
+>
+> **Already shipped in V2.0** (not repeated here): meetings module, finance ledger + period report + Transactions tab, self-audit engine, RBAC tab-level permissions, MC elections, events & food expenses, committee roster, emergency alerts, head/reserve funds, guard photos, notification batching + read receipts, and related migrations through `20260607120000`.
+
+This document captures **next-phase** direction: deeper **RBAC editor**, **guard-centric accessibility**, and **voice / AI-assisted workflows**. It is a living product spec—not a commitment to ship order or dates until prioritized with stakeholders.
 
 ---
 
