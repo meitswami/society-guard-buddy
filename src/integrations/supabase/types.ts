@@ -1431,6 +1431,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           due_day: number
+          expense_group_id: string | null
           frequency: string
           id: string
           is_active: boolean
@@ -1442,6 +1443,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           due_day?: number
+          expense_group_id?: string | null
           frequency?: string
           id?: string
           is_active?: boolean
@@ -1453,6 +1455,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           due_day?: number
+          expense_group_id?: string | null
           frequency?: string
           id?: string
           is_active?: boolean

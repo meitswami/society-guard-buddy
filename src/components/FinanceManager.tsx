@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed } from 'lucide-react';
+import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed, Scale } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
@@ -35,7 +35,14 @@ import HeadFundReconciliation from '@/components/HeadFundReconciliation';
 import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
 import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
 import { sumByChannel, addToChannel, type ChannelTotals } from '@/lib/cashBankChannel';
-import { financeExpenseHeadFromLedgerEntry, isEventFoodLedgerEntry } from '@/lib/financeExpenseHead';
+import {
+  financeExpenseHeadFromLedgerEntry,
+  isEventFoodLedgerEntry,
+  SOCIETY_PAYMENT_MAJOR_HEADS,
+  inferMajorHeadFromGroupName,
+  resolveGroupMajorHead,
+  type SocietyPaymentMajorHead,
+} from '@/lib/financeExpenseHead';
 
 export type FinanceSubTab =
   | 'maintenance'
@@ -250,6 +257,7 @@ const FinanceManager = ({
   const societyId = useStore((s) => s.societyId);
   const [subTab, setSubTab] = useState<FinanceSubTab>('maintenance');
   const [headReconciliationKey, setHeadReconciliationKey] = useState(0);
+  const [showHeadFundRecon, setShowHeadFundRecon] = useState(false);
   const bumpHeadReconciliation = useCallback(() => setHeadReconciliationKey((k) => k + 1), []);
   const [expenseCategoryById, setExpenseCategoryById] = useState<Map<string, string>>(new Map());
   const [charges, setCharges] = useState<any[]>([]);
@@ -299,7 +307,18 @@ const FinanceManager = ({
   const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [form, setForm] = useState({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
+  const [form, setForm] = useState({
+    title: '',
+    amount: '',
+    frequency: 'monthly',
+    due_day: '1',
+    major_head: '' as SocietyPaymentMajorHead | '',
+    expense_group_id: '',
+    new_sub_head: '',
+  });
+  const [paymentExpenseGroups, setPaymentExpenseGroups] = useState<
+    { id: string; name: string; major_head: string | null }[]
+  >([]);
   const [distributingPoolEntryId, setDistributingPoolEntryId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({
     recordMode: 'society_pool' as 'society_pool' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only',
@@ -484,6 +503,14 @@ const FinanceManager = ({
 
     setCharges(chargeRows);
 
+    const { data: pGroups } = await supabase
+      .from('expense_groups')
+      .select('id, name, major_head')
+      .eq('society_id', societyId)
+      .eq('group_kind', 'general')
+      .order('name');
+    setPaymentExpenseGroups((pGroups ?? []) as { id: string; name: string; major_head: string | null }[]);
+
     const chargeIds = chargeRows.map((x) => x.id);
     let payRows: any[] = [];
     if (chargeIds.length > 0) {
@@ -665,12 +692,90 @@ const FinanceManager = ({
     }));
   }, [showPaymentForm, payForm.charge_id, charges]);
 
+  const paymentGroupById = useMemo(
+    () => new Map(paymentExpenseGroups.map((g) => [g.id, g])),
+    [paymentExpenseGroups],
+  );
+
+  const majorHeadForCharge = useCallback(
+    (c: { title: string; expense_group_id?: string | null }) => {
+      const g = c.expense_group_id ? paymentGroupById.get(String(c.expense_group_id)) : undefined;
+      if (g) return resolveGroupMajorHead(g);
+      return inferMajorHeadFromGroupName(c.title);
+    },
+    [paymentGroupById],
+  );
+
+  const chargesByMajorHead = useMemo(() => {
+    const map = new Map<string, typeof charges>();
+    for (const head of SOCIETY_PAYMENT_MAJOR_HEADS) map.set(head, []);
+    map.set('Uncategorized', []);
+    for (const c of charges) {
+      const major = majorHeadForCharge(c as { title: string; expense_group_id?: string | null });
+      const bucket = map.get(major) ?? map.get('Uncategorized')!;
+      bucket.push(c);
+    }
+    return map;
+  }, [charges, majorHeadForCharge]);
+
+  const subHeadsForFormMajor = useMemo(() => {
+    if (!form.major_head) return [];
+    return paymentExpenseGroups.filter((g) => resolveGroupMajorHead(g) === form.major_head);
+  }, [paymentExpenseGroups, form.major_head]);
+
+  const renderGroupedChargeOptions = () =>
+    [...SOCIETY_PAYMENT_MAJOR_HEADS, 'Uncategorized' as const].map((major) => {
+      const list = chargesByMajorHead.get(major) ?? [];
+      if (list.length === 0) return null;
+      return (
+        <optgroup key={major} label={major}>
+          {list.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.title} — ₹{Number(c.amount).toLocaleString('en-IN')}
+            </option>
+          ))}
+        </optgroup>
+      );
+    });
+
   const addCharge = async () => {
     if (!societyId) {
       toast.error('No society selected');
       return;
     }
     if (!form.title || !form.amount) return;
+
+    let expenseGroupId: string | null =
+      form.expense_group_id && form.expense_group_id !== '__new__' ? form.expense_group_id : null;
+
+    if (form.expense_group_id === '__new__') {
+      if (!form.major_head) {
+        toast.error('Choose a major head for the new payment sub-head');
+        return;
+      }
+      const subName = form.new_sub_head.trim() || form.title.trim();
+      if (!subName) {
+        toast.error('Enter sub-head name or use receipt title');
+        return;
+      }
+      const { data: newGroup, error: gErr } = await supabase
+        .from('expense_groups')
+        .insert({
+          society_id: societyId,
+          name: subName,
+          major_head: form.major_head,
+          group_kind: 'general',
+          created_by: adminName,
+        })
+        .select('id')
+        .single();
+      if (gErr || !newGroup) {
+        toast.error(gErr?.message ?? 'Could not create payment sub-head');
+        return;
+      }
+      expenseGroupId = newGroup.id;
+    }
+
     if (editingChargeId) {
       const { error } = await supabase
         .from('maintenance_charges')
@@ -679,6 +784,7 @@ const FinanceManager = ({
           amount: Number(form.amount),
           frequency: form.frequency,
           due_day: Number(form.due_day),
+          expense_group_id: expenseGroupId,
         })
         .eq('id', editingChargeId)
         .eq('society_id', societyId);
@@ -697,6 +803,7 @@ const FinanceManager = ({
           due_day: Number(form.due_day),
           created_by: adminName,
           society_id: societyId,
+          expense_group_id: expenseGroupId,
         },
       ]);
       if (error) {
@@ -705,18 +812,38 @@ const FinanceManager = ({
       }
       toast.success('Receipt type added');
     }
-    setForm({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
+    setForm({
+      title: '',
+      amount: '',
+      frequency: 'monthly',
+      due_day: '1',
+      major_head: '',
+      expense_group_id: '',
+      new_sub_head: '',
+    });
     setShowForm(false);
     await loadAll();
   };
 
-  const startEditCharge = (charge: any) => {
+  const startEditCharge = (charge: {
+    id: string;
+    title: string;
+    amount: number;
+    frequency?: string | null;
+    due_day?: number | null;
+    expense_group_id?: string | null;
+  }) => {
+    const g = charge.expense_group_id ? paymentGroupById.get(charge.expense_group_id) : undefined;
+    const major = g ? resolveGroupMajorHead(g) : inferMajorHeadFromGroupName(charge.title);
     setEditingChargeId(charge.id);
     setForm({
       title: charge.title,
       amount: String(charge.amount),
       frequency: charge.frequency || 'monthly',
       due_day: String(charge.due_day ?? 1),
+      major_head: major,
+      expense_group_id: charge.expense_group_id ?? '',
+      new_sub_head: '',
     });
     setShowForm(true);
   };
@@ -739,7 +866,15 @@ const FinanceManager = ({
     toast.success('Receipt type deleted');
     if (editingChargeId === id) {
       setEditingChargeId(null);
-      setForm({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
+      setForm({
+      title: '',
+      amount: '',
+      frequency: 'monthly',
+      due_day: '1',
+      major_head: '',
+      expense_group_id: '',
+      new_sub_head: '',
+    });
       setShowForm(false);
     }
     await loadAll();
@@ -2755,7 +2890,15 @@ const FinanceManager = ({
                 return;
               }
               setEditingChargeId(null);
-              setForm({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
+              setForm({
+      title: '',
+      amount: '',
+      frequency: 'monthly',
+      due_day: '1',
+      major_head: '',
+      expense_group_id: '',
+      new_sub_head: '',
+    });
               setShowForm(true);
             }}
             className="btn-primary w-full mb-4 flex items-center justify-center gap-2"
@@ -2774,6 +2917,53 @@ const FinanceManager = ({
                 <option value="one-time">One-time</option>
               </select>
               <input className="input-field" placeholder="Due Day (1-28)" type="number" min="1" max="28" value={form.due_day} onChange={e => setForm({...form, due_day: e.target.value})} />
+              <select
+                className="input-field"
+                value={form.major_head}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    major_head: e.target.value as SocietyPaymentMajorHead | '',
+                    expense_group_id: '',
+                    new_sub_head: '',
+                  })
+                }
+              >
+                <option value="">Major head (category)</option>
+                {SOCIETY_PAYMENT_MAJOR_HEADS.map((h) => (
+                  <option key={h} value={h}>
+                    {h}
+                  </option>
+                ))}
+              </select>
+              {form.major_head && (
+                <>
+                  <select
+                    className="input-field"
+                    value={form.expense_group_id}
+                    onChange={(e) => setForm({ ...form, expense_group_id: e.target.value, new_sub_head: '' })}
+                  >
+                    <option value="">Payment sub-head (optional link)</option>
+                    {subHeadsForFormMajor.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                    <option value="__new__">+ Create new sub-head under {form.major_head}</option>
+                  </select>
+                  {form.expense_group_id === '__new__' && (
+                    <input
+                      className="input-field"
+                      placeholder="New sub-head name (defaults to receipt title)"
+                      value={form.new_sub_head}
+                      onChange={(e) => setForm({ ...form, new_sub_head: e.target.value })}
+                    />
+                  )}
+                </>
+              )}
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Each receipt type is grouped under one major head for head-fund reconciliation and payment recording.
+              </p>
               <div className="flex gap-2">
                 <button type="button" onClick={addCharge} className="btn-primary flex-1">
                   {editingChargeId ? 'Update receipt type' : 'Save receipt type'}
@@ -2784,7 +2974,15 @@ const FinanceManager = ({
                     className="btn-secondary flex-1"
                     onClick={() => {
                       setEditingChargeId(null);
-                      setForm({ title: '', amount: '', frequency: 'monthly', due_day: '1' });
+                      setForm({
+      title: '',
+      amount: '',
+      frequency: 'monthly',
+      due_day: '1',
+      major_head: '',
+      expense_group_id: '',
+      new_sub_head: '',
+    });
                     }}
                   >
                     Cancel edit
@@ -2793,16 +2991,31 @@ const FinanceManager = ({
               </div>
             </div>
           )}
-          {charges.map(c => (
+          {[...SOCIETY_PAYMENT_MAJOR_HEADS, 'Uncategorized' as const].map((major) => {
+            const list = chargesByMajorHead.get(major) ?? [];
+            if (list.length === 0) return null;
+            return (
+              <div key={major} className="mb-4">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 border-b border-border/60 pb-1">
+                  {major}
+                </h3>
+                {list.map((c) => (
             <div key={c.id} className="card-section p-3 mb-2">
               <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">{c.title}</p>
                   <p className="text-xs text-muted-foreground">{c.frequency} · Due on {c.due_day}th</p>
+                  {(c as { expense_group_id?: string | null }).expense_group_id && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Sub-head:{' '}
+                      {paymentGroupById.get(String((c as { expense_group_id?: string | null }).expense_group_id))?.name ??
+                        'Linked'}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <p className="text-lg font-bold text-green-600">₹{c.amount}</p>
-                  <button type="button" className="p-1.5 text-muted-foreground hover:text-primary" title="Edit" onClick={() => startEditCharge(c)}>
+                  <button type="button" className="p-1.5 text-muted-foreground hover:text-primary" title="Edit" onClick={() => startEditCharge(c as Parameters<typeof startEditCharge>[0])}>
                     <Pencil className="w-4 h-4" />
                   </button>
                   {!chargeIdsWithDependents.has(c.id) ? (
@@ -2822,7 +3035,10 @@ const FinanceManager = ({
                 </div>
               </div>
             </div>
-          ))}
+                ))}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -2993,11 +3209,7 @@ const FinanceManager = ({
                   }}
                 >
                   <option value="">Select Receipt Type</option>
-                  {charges.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.title} - ₹{c.amount}
-                    </option>
-                  ))}
+                  {renderGroupedChargeOptions()}
                 </select>
               )}
               {payForm.recordMode !== 'society_pool' && (
@@ -3213,17 +3425,31 @@ const FinanceManager = ({
             <span className="text-foreground font-medium">Record receipt</span> for inflows. Event food/catering →{' '}
             <span className="text-foreground font-medium">Events &amp; food</span>.
           </p>
-          <HeadFundReconciliation
-            adminName={adminName}
-            refreshKey={headReconciliationKey}
-            onOpenRecordReceipt={() => setSubTab('payments')}
-          />
           <ExpenseSplitter
             adminName={adminName}
             paymentOnly
             embedded
             onRecordsChanged={bumpHeadReconciliation}
           />
+          <div className="mt-4 pt-3 border-t border-border/60">
+            <button
+              type="button"
+              className="btn-secondary w-full flex items-center justify-center gap-2"
+              onClick={() => setShowHeadFundRecon((v) => !v)}
+            >
+              <Scale className="w-4 h-4" />
+              {showHeadFundRecon ? 'Hide head fund reconciliation' : 'Head fund reconciliation'}
+            </button>
+            {showHeadFundRecon && (
+              <div className="mt-3">
+                <HeadFundReconciliation
+                  adminName={adminName}
+                  refreshKey={headReconciliationKey}
+                  onOpenRecordReceipt={() => setSubTab('payments')}
+                />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -3790,11 +4016,7 @@ const FinanceManager = ({
                       onChange={(e) => setPaymentEdit({ ...paymentEdit, charge_id: e.target.value })}
                     >
                       <option value="">Select receipt type</option>
-                      {charges.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.title}
-                        </option>
-                      ))}
+                      {renderGroupedChargeOptions()}
                     </select>
                     <input
                       className="input-field"

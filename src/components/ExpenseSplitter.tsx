@@ -20,6 +20,7 @@ import {
   SOCIETY_PAYMENT_MAJOR_HEADS,
   groupMatchesPaymentHeadSearch,
   paymentGroupsByMajorHead,
+  resolveGroupMajorHead,
   type SocietyPaymentMajorHead,
 } from '@/lib/financeExpenseHead';
 
@@ -1082,6 +1083,8 @@ const ExpenseSplitter = ({
         </p>
       )}
 
+      {!(paymentOnly && embedded) && (
+        <>
       <div className="flex items-stretch gap-2 mb-4">
         <DescriptiveStatCard
           {...EVENT_EXPENSE_METRICS.eligibleFlatsPool}
@@ -1123,6 +1126,8 @@ const ExpenseSplitter = ({
           {Object.values(balances).every((v) => v === 0) && <p className="text-xs text-muted-foreground">All settled! 🎉</p>}
         </div>
       </DescriptiveStatCard>
+        </>
+      )}
 
       {paymentOnly && (
         <div className="relative mb-4">
@@ -1338,6 +1343,11 @@ const ExpenseSplitter = ({
             <div className="flex justify-between items-start gap-2 mb-1">
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{g.name}</p>
+                {paymentOnly && g.major_head && (
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
+                    {resolveGroupMajorHead(g)}
+                  </p>
+                )}
                 {g.event_id && (
                   <p className="text-[10px] text-primary mt-0.5">
                     Linked event: {events.find((ev) => ev.id === g.event_id)?.title ?? 'Calendar event'}
