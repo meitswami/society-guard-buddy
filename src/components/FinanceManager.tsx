@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users } from 'lucide-react';
+import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
@@ -137,6 +137,43 @@ type FinanceLedgerRow = {
   finance_entry_allocations: { flat_number: string; amount: number; flat_id: string | null }[] | null;
 };
 
+type EventContribRefRow = {
+  id: string;
+  event_id: string;
+  flat_number: string | null;
+  amount: number;
+  payment_method: string;
+  verified_at: string | null;
+  resident_name: string | null;
+  receipt_basis: string | null;
+  batch_label: string | null;
+  outsider_name: string | null;
+  split_mode: string | null;
+  screenshot_url: string | null;
+  event_title?: string;
+};
+
+type EventFoodRefRow = {
+  id: string;
+  title: string;
+  total_amount: number;
+  expense_date: string;
+  payment_method: string;
+  bill_screenshot_url: string | null;
+  group_name: string;
+  event_title: string | null;
+};
+
+const eventContribRefLabel = (c: EventContribRefRow): string => {
+  if (c.receipt_basis === 'non_flat' || !c.flat_number) {
+    return c.batch_label || c.outsider_name || c.resident_name || 'Receipt (no flat)';
+  }
+  const parts = [`Flat ${c.flat_number}`];
+  if (c.resident_name) parts.push(c.resident_name);
+  if (c.split_mode === 'headcount') parts.push('headcount');
+  return parts.join(' · ');
+};
+
 const isGroupExpenseLedgerEntry = (e: FinanceLedgerRow) => Boolean(e.expense_id);
 
 const isLedgerInSocietyPool = (e: FinanceLedgerRow) => {
@@ -154,7 +191,7 @@ const transactionFilterHint = (filter: string): string => {
     case 'all_receipts':
       return 'Society collections — flat owners, outsiders, monthly/one-time charges; pooled until you distribute to flats.';
     case 'all':
-      return 'Society receipts and society-payment rows. Event food bills and contribution receipts are in Events & food only.';
+      return 'Society receipts and society-payment rows. Event contribution and food bills appear below as reference only (not in the society ledger).';
     case 'society_pool_pending':
       return 'Receipts recorded in the society pool that are not yet split equally across flats.';
     default:
@@ -347,6 +384,9 @@ const FinanceManager = ({
   const [flatReportExpenses, setFlatReportExpenses] = useState<any[]>([]);
   const [flatReportSplits, setFlatReportSplits] = useState<any[]>([]);
   const [flatReportLoading, setFlatReportLoading] = useState(false);
+  const [eventContribRef, setEventContribRef] = useState<EventContribRefRow[]>([]);
+  const [eventFoodRef, setEventFoodRef] = useState<EventFoodRefRow[]>([]);
+  const [eventRefLoading, setEventRefLoading] = useState(false);
   useEffect(() => {
     void loadAll();
   }, [societyId]);
@@ -525,6 +565,82 @@ const FinanceManager = ({
   useEffect(() => {
     if (subTab === 'flat_report') {
       void loadFlatReportData();
+    }
+  }, [subTab, societyId]);
+
+  const loadEventFoodReference = async () => {
+    if (!societyId) {
+      setEventContribRef([]);
+      setEventFoodRef([]);
+      return;
+    }
+    setEventRefLoading(true);
+    try {
+      const { data: events } = await supabase
+        .from('events')
+        .select('id, title')
+        .eq('society_id', societyId)
+        .order('event_date', { ascending: false })
+        .limit(100);
+      const eventIds = (events ?? []).map((e) => e.id);
+      const eventTitleById = new Map((events ?? []).map((e) => [String(e.id), String(e.title)]));
+
+      const { data: groups } = await supabase
+        .from('expense_groups')
+        .select('id, name, event_id')
+        .eq('society_id', societyId)
+        .eq('group_kind', 'event');
+      const groupIds = (groups ?? []).map((g) => g.id);
+      const groupById = new Map((groups ?? []).map((g) => [String(g.id), g]));
+
+      const [contribRes, expRes] = await Promise.all([
+        eventIds.length
+          ? supabase
+              .from('event_contributions')
+              .select('*')
+              .in('event_id', eventIds)
+              .order('verified_at', { ascending: false })
+              .limit(150)
+          : Promise.resolve({ data: [] as EventContribRefRow[] }),
+        groupIds.length
+          ? supabase
+              .from('expenses')
+              .select('id, title, total_amount, expense_date, payment_method, bill_screenshot_url, group_id')
+              .in('group_id', groupIds)
+              .eq('expense_category', 'food')
+              .eq('record_status', 'active')
+              .order('expense_date', { ascending: false })
+              .limit(150)
+          : Promise.resolve({ data: [] as Omit<EventFoodRefRow, 'group_name' | 'event_title'>[] }),
+      ]);
+
+      setEventContribRef(
+        (contribRes.data ?? []).map((c) => ({
+          ...(c as EventContribRefRow),
+          event_title: eventTitleById.get(String(c.event_id)) ?? 'Event',
+        })),
+      );
+
+      setEventFoodRef(
+        (expRes.data ?? []).map((ex) => {
+          const g = groupById.get(String(ex.group_id));
+          return {
+            ...(ex as Omit<EventFoodRefRow, 'group_name' | 'event_title'>),
+            group_name: g?.name ?? 'Food group',
+            event_title: g?.event_id ? eventTitleById.get(String(g.event_id)) ?? null : null,
+          };
+        }),
+      );
+    } catch (err) {
+      console.error('Event food reference load error:', err);
+    } finally {
+      setEventRefLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (subTab === 'receipts') {
+      void loadEventFoodReference();
     }
   }, [subTab, societyId]);
 
@@ -3073,8 +3189,9 @@ const FinanceManager = ({
       {subTab === 'receipts' && (
         <div>
           <p className="text-[11px] text-muted-foreground mb-3 leading-snug rounded-lg border border-border/80 bg-card/40 p-2.5">
-            Maintenance and society-payment receipts only. Event contribution proofs and food/catering bills are under{' '}
-            <span className="font-medium text-foreground">Events &amp; food → Receipts &amp; reconciliation</span>.
+            Maintenance and society-payment receipts below. Event contribution and food bills are listed at the bottom for
+            reference only — they are recorded under{' '}
+            <span className="font-medium text-foreground">Events &amp; food</span> and do not affect the society ledger.
           </p>
           <input
             className="input-field mb-3"
@@ -3787,6 +3904,102 @@ const FinanceManager = ({
               )}
             </>
           )}
+
+          <div className="mt-8 pt-6 border-t border-border space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold flex items-center gap-2 mb-1">
+                <Calendar className="w-4 h-4 text-blue-500" />
+                Events &amp; food — reference only
+              </h3>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Read-only view of contribution receipts and food bills. Edit or add these under Events &amp; food — not linked to
+                finance_entries.
+              </p>
+            </div>
+
+            {eventRefLoading ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">Loading event receipts…</p>
+            ) : (
+              <>
+                <div>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase mb-2">Contribution receipts</p>
+                  {eventContribRef.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-3 text-center border border-dashed border-border rounded-lg">
+                      No event contribution receipts yet
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {eventContribRef.map((c) => (
+                        <div key={c.id} className="card-section p-3 flex items-start justify-between gap-3 opacity-90">
+                          <div className="min-w-0">
+                            <p className="text-[10px] text-muted-foreground">{c.event_title}</p>
+                            <p className="text-sm font-medium truncate">{eventContribRefLabel(c)}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {c.receipt_basis === 'non_flat' ? 'Without flat' : 'Flat-wise'}
+                              {c.split_mode ? ` · ${c.split_mode.replace(/_/g, ' ')}` : ''}
+                              {' · '}
+                              {c.payment_method}
+                              {c.verified_at ? ` · ${fmtDate(c.verified_at)}` : ''}
+                            </p>
+                            {c.screenshot_url && (
+                              <a
+                                href={c.screenshot_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-primary underline"
+                              >
+                                View proof
+                              </a>
+                            )}
+                          </div>
+                          <p className="font-bold shrink-0">₹{Number(c.amount).toLocaleString('en-IN')}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase mb-2 flex items-center gap-1">
+                    <UtensilsCrossed className="w-3 h-3" />
+                    Food / catering bills
+                  </p>
+                  {eventFoodRef.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-3 text-center border border-dashed border-border rounded-lg">
+                      No food expense bills yet
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {eventFoodRef.map((ex) => (
+                        <div key={ex.id} className="card-section p-3 flex items-start justify-between gap-3 opacity-90">
+                          <div className="min-w-0">
+                            <p className="text-[10px] text-muted-foreground">
+                              {ex.event_title ? ex.event_title : ex.group_name}
+                            </p>
+                            <p className="text-sm font-medium truncate">{ex.title}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {fmtIsoDateToDisplay(ex.expense_date)} · {ex.payment_method}
+                            </p>
+                            {ex.bill_screenshot_url && (
+                              <a
+                                href={ex.bill_screenshot_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-primary underline"
+                              >
+                                View bill
+                              </a>
+                            )}
+                          </div>
+                          <p className="font-bold shrink-0">₹{Number(ex.total_amount).toLocaleString('en-IN')}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

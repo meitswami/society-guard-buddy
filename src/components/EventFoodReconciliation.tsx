@@ -20,11 +20,13 @@ type ContribRow = {
   adult_count?: number | null;
   kid_count?: number | null;
   split_mode?: string | null;
+  receipt_basis?: string | null;
+  batch_label?: string | null;
 };
 
 function contribReceiptLabel(c: ContribRow): string {
-  if (c.contributor_type === 'outsider' || c.flat_number === 'OUTSIDER') {
-    return `Outsider · ${c.outsider_name || c.resident_name || 'Guest'}`;
+  if (c.receipt_basis === 'non_flat' || !c.flat_number) {
+    return `No flat · ${c.batch_label || c.outsider_name || c.resident_name || 'Receipt'}`;
   }
   const parts = [`Flat ${c.flat_number}`];
   if (c.resident_name) parts.push(c.resident_name);
@@ -89,7 +91,7 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
       const groupById = new Map(groups.map((g) => [g.id, g]));
       const groupIds = groups.map((g) => g.id);
 
-      const [contribRes, expRes, ledgerRes] = await Promise.all([
+      const [contribRes, expRes] = await Promise.all([
         eventIds.length
           ? supabase.from('event_contributions').select('*').in('event_id', eventIds).order('verified_at', { ascending: false })
           : Promise.resolve({ data: [] as ContribRow[] }),
@@ -104,32 +106,21 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
               .eq('record_status', 'active')
               .order('expense_date', { ascending: false })
           : Promise.resolve({ data: [] as Omit<FoodExpenseRow, 'group_name' | 'event_id'>[] }),
-        supabase
-          .from('finance_entries')
-          .select('expense_id, screenshot_url')
-          .eq('society_id', societyId)
-          .not('expense_id', 'is', null),
       ]);
 
       setContributions((contribRes.data ?? []) as ContribRow[]);
 
-      const ledgerShotByExpense = new Map<string, string>();
-      for (const row of ledgerRes.data ?? []) {
-        if (row.expense_id && row.screenshot_url) {
-          ledgerShotByExpense.set(String(row.expense_id), String(row.screenshot_url));
-        }
-      }
-
       setFoodExpenses(
         (expRes.data ?? []).map((ex) => {
           const g = groupById.get(ex.group_id as string);
-          const attachment_urls = Array.isArray(ex.attachment_urls) ? ex.attachment_urls : null;
-          const billFromLedger = ledgerShotByExpense.get(String(ex.id));
+          const attachment_urls = Array.isArray(ex.attachment_urls)
+            ? (ex.attachment_urls as unknown[]).filter((u): u is string => typeof u === 'string')
+            : null;
           return {
             ...(ex as Omit<FoodExpenseRow, 'group_name' | 'event_id'>),
             group_name: g?.name ?? 'Food group',
             event_id: g?.event_id ?? null,
-            bill_screenshot_url: ex.bill_screenshot_url || billFromLedger || null,
+            bill_screenshot_url: ex.bill_screenshot_url || null,
             attachment_urls,
           };
         }),

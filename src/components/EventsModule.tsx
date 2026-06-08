@@ -59,9 +59,9 @@ const EventsModule = ({ adminName = 'Admin', onNavigateTab }: Props) => {
           Events — record contribution receipts
         </h2>
         <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
-          Open an event and tap <span className="font-medium text-foreground">Record contribution receipt</span> — money{' '}
-          <span className="font-medium text-foreground">received</span> from flat owners or outsiders. Choose per-flat amount,
-          adults/kids headcount split, lump sum, or outsider sponsor. Payment proof optional.
+          Open an event and tap <span className="font-medium text-foreground">Record contribution receipt</span>. Choose{' '}
+          <span className="font-medium text-foreground">flat-wise</span> (per flat, headcount, or lump split) or{' '}
+          <span className="font-medium text-foreground">without flat</span> (single outsider or collective receipt). Payment proof optional.
         </p>
         <EventManager adminName={adminName} embedded onRecordsChanged={bumpReceipts} />
       </section>

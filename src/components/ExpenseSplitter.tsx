@@ -436,7 +436,8 @@ const ExpenseSplitter = ({
         return;
       }
 
-      const ledgerRes = await insertFinanceLedgerForGroupExpense(supabase, {
+      if (!foodOnly) {
+        const ledgerRes = await insertFinanceLedgerForGroupExpense(supabase, {
         societyId: societyId!,
         adminName,
         groupName,
@@ -455,10 +456,11 @@ const ExpenseSplitter = ({
         expenseCategory: ledgerExpenseCategory(),
         eventTitle: eventTitleForGroup(groupId),
       });
-      if (ledgerRes.error) {
-        toast.error(ledgerRes.error);
-        await supabase.from('expenses').delete().eq('id', socExpense.id);
-        return;
+        if (ledgerRes.error) {
+          toast.error(ledgerRes.error);
+          await supabase.from('expenses').delete().eq('id', socExpense.id);
+          return;
+        }
       }
 
       const notifyAudience = expenseNotifyAudience;
@@ -636,7 +638,8 @@ const ExpenseSplitter = ({
     }
 
     const groupName = groups.find((x) => x.id === groupId)?.name ?? 'Expense group';
-    const ledgerRes = await insertFinanceLedgerForGroupExpense(supabase, {
+    if (!foodOnly) {
+      const ledgerRes = await insertFinanceLedgerForGroupExpense(supabase, {
       societyId: societyId!,
       adminName,
       groupName,
@@ -655,11 +658,12 @@ const ExpenseSplitter = ({
       expenseCategory: ledgerExpenseCategory(),
       eventTitle: eventTitleForGroup(groupId),
     });
-    if (ledgerRes.error) {
-      toast.error(ledgerRes.error);
-      await supabase.from('expense_splits').delete().eq('expense_id', expense.id);
-      await supabase.from('expenses').delete().eq('id', expense.id);
-      return;
+      if (ledgerRes.error) {
+        toast.error(ledgerRes.error);
+        await supabase.from('expense_splits').delete().eq('expense_id', expense.id);
+        await supabase.from('expenses').delete().eq('id', expense.id);
+        return;
+      }
     }
 
     const notifyAudience = expenseNotifyAudience;
@@ -890,7 +894,9 @@ const ExpenseSplitter = ({
           ? `Advanced by flat(s): ${paidBy.join(', ')}`
           : 'Event / function expense';
 
-    const syncRes = await syncFinanceLedgerFromGroupExpenseEdit(supabase, {
+    const syncRes = editCategory === 'food'
+      ? { error: null }
+      : await syncFinanceLedgerFromGroupExpenseEdit(supabase, {
       adminName,
       groupName,
       expenseId: expenseEdit.id,

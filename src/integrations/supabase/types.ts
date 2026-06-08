@@ -531,15 +531,18 @@ export type Database = {
         Row: {
           adult_count: number | null
           amount: number
+          batch_id: string | null
+          batch_label: string | null
           contributor_type: string
           created_at: string
           event_id: string | null
           flat_id: string | null
-          flat_number: string
+          flat_number: string | null
           id: string
           kid_count: number | null
           outsider_name: string | null
           payment_method: string
+          receipt_basis: string
           resident_name: string | null
           screenshot_url: string | null
           split_mode: string | null
@@ -550,15 +553,18 @@ export type Database = {
         Insert: {
           adult_count?: number | null
           amount: number
+          batch_id?: string | null
+          batch_label?: string | null
           contributor_type?: string
           created_at?: string
           event_id?: string | null
           flat_id?: string | null
-          flat_number: string
+          flat_number?: string | null
           id?: string
           kid_count?: number | null
           outsider_name?: string | null
           payment_method?: string
+          receipt_basis?: string
           resident_name?: string | null
           screenshot_url?: string | null
           split_mode?: string | null
@@ -569,15 +575,18 @@ export type Database = {
         Update: {
           adult_count?: number | null
           amount?: number
+          batch_id?: string | null
+          batch_label?: string | null
           contributor_type?: string
           created_at?: string
           event_id?: string | null
           flat_id?: string | null
-          flat_number?: string
+          flat_number?: string | null
           id?: string
           kid_count?: number | null
           outsider_name?: string | null
           payment_method?: string
+          receipt_basis?: string
           resident_name?: string | null
           screenshot_url?: string | null
           split_mode?: string | null

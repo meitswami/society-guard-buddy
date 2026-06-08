@@ -15,8 +15,8 @@ interface Props {
   onRecordsChanged?: () => void;
 }
 
-type ContributorSource = 'flat_owners' | 'outsider';
-type FlatOwnerCollectMode = 'individual' | 'headcount' | 'lump_equal' | 'same_per_flat';
+type ReceiptBasis = 'flat' | 'non_flat';
+type FlatCollectMode = 'individual' | 'headcount' | 'lump_equal' | 'same_per_flat';
 
 async function uploadContributionReceipt(file: File): Promise<string | null> {
   const safe = file.name.replace(/[^\w.-]/g, '_');
@@ -42,8 +42,8 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
   const [showForm, setShowForm] = useState(false);
   const [showContrib, setShowContrib] = useState<string | null>(null);
   const [ef, setEf] = useState({ title: '', description: '', event_date: '', event_time: '', location: '', contribution_amount: '' });
-  const [contribSource, setContribSource] = useState<ContributorSource>('flat_owners');
-  const [flatOwnerMode, setFlatOwnerMode] = useState<FlatOwnerCollectMode>('same_per_flat');
+  const [receiptBasis, setReceiptBasis] = useState<ReceiptBasis>('flat');
+  const [flatCollectMode, setFlatCollectMode] = useState<FlatCollectMode>('same_per_flat');
   const [cf, setCf] = useState({
     selected_flats: [] as string[],
     amount: '',
@@ -53,7 +53,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
   const [perFlatAmounts, setPerFlatAmounts] = useState<Record<string, string>>({});
   const [headcountTotal, setHeadcountTotal] = useState('');
   const [lumpTotal, setLumpTotal] = useState('');
-  const [outsiderName, setOutsiderName] = useState('');
+  const [nonFlatLabel, setNonFlatLabel] = useState('');
   const [adultWeight, setAdultWeight] = useState('1');
   const [childWeight, setChildWeight] = useState('0.5');
   const [receiptUploading, setReceiptUploading] = useState(false);
@@ -137,12 +137,12 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
 
   const resetContribForm = () => {
     setCf({ selected_flats: [], amount: '', payment_method: 'cash', screenshot_url: '' });
-    setContribSource('flat_owners');
-    setFlatOwnerMode('same_per_flat');
+    setReceiptBasis('flat');
+    setFlatCollectMode('same_per_flat');
     setPerFlatAmounts({});
     setHeadcountTotal('');
     setLumpTotal('');
-    setOutsiderName('');
+    setNonFlatLabel('');
   };
 
   const uploadReceiptForEvent = async (eventId: string): Promise<string | null> => {
@@ -172,29 +172,39 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
     screenshotUrl: string | null,
     verifiedAt: string,
   ): Array<Record<string, unknown>> => {
+    const batchId = crypto.randomUUID();
     const base = {
       event_id: eventId,
       payment_method: cf.payment_method,
       screenshot_url: screenshotUrl,
       verified_by: adminName,
       verified_at: verifiedAt,
+      batch_id: batchId,
     };
 
-    if (contribSource === 'outsider') {
+    if (receiptBasis === 'non_flat') {
       const amount = Number(cf.amount);
-      if (!outsiderName.trim() || !amount || amount <= 0) {
-        toast.error('Enter outsider name and amount');
+      const label = nonFlatLabel.trim();
+      if (!label) {
+        toast.error('Enter payer name or description (outsider or collective receipt)');
         return [];
       }
+      if (!amount || amount <= 0) {
+        toast.error('Enter receipt amount');
+        return [];
+      }
+      const isOutsider = /outsider|sponsor|vendor|guest/i.test(label) || label.toLowerCase().includes('outsider');
       return [{
         ...base,
-        contributor_type: 'outsider',
-        outsider_name: outsiderName.trim(),
-        flat_number: 'OUTSIDER',
+        receipt_basis: 'non_flat',
+        contributor_type: isOutsider ? 'outsider' : 'flat_owner',
+        outsider_name: isOutsider ? label : null,
+        batch_label: label,
+        flat_number: null,
         flat_id: null,
-        resident_name: outsiderName.trim(),
+        resident_name: label,
         amount,
-        split_mode: null,
+        split_mode: 'non_flat',
         adult_count: null,
         kid_count: null,
       }];
@@ -205,7 +215,15 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
       return [];
     }
 
-    if (flatOwnerMode === 'individual') {
+    const flatRowBase = {
+      ...base,
+      receipt_basis: 'flat',
+      contributor_type: 'flat_owner',
+      outsider_name: null,
+      batch_label: null,
+    };
+
+    if (flatCollectMode === 'individual') {
       const entries = contribTargetFlats
         .map((num) => [num, Number(perFlatAmounts[num] || 0)] as const)
         .filter(([, amt]) => amt > 0);
@@ -217,8 +235,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
         const flat = flats.find((f) => f.flat_number === flat_number);
         const hc = headcountForFlat(flat_number, flat?.id ?? null, flatMembers, 1, 0.5);
         return {
-          ...base,
-          contributor_type: 'flat_owner',
+          ...flatRowBase,
           flat_number,
           flat_id: flat?.id ?? null,
           resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
@@ -226,12 +243,11 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
           split_mode: 'individual',
           adult_count: hc.adults,
           kid_count: hc.kids,
-          outsider_name: null,
         };
       });
     }
 
-    if (flatOwnerMode === 'headcount') {
+    if (flatCollectMode === 'headcount') {
       const total = Number(headcountTotal);
       if (!total || total <= 0) {
         toast.error('Enter total amount to distribute by adults & kids');
@@ -245,8 +261,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
       return amounts.map(({ flat_number, amount, adults, kids }) => {
         const flat = flats.find((f) => f.flat_number === flat_number);
         return {
-          ...base,
-          contributor_type: 'flat_owner',
+          ...flatRowBase,
           flat_number,
           flat_id: flat?.id ?? null,
           resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
@@ -254,15 +269,14 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
           split_mode: 'headcount',
           adult_count: adults,
           kid_count: kids,
-          outsider_name: null,
         };
       });
     }
 
-    if (flatOwnerMode === 'lump_equal') {
+    if (flatCollectMode === 'lump_equal') {
       const total = Number(lumpTotal);
       if (!total || total <= 0) {
-        toast.error('Enter lump sum total to split equally');
+        toast.error('Enter lump sum total to split equally across flats');
         return [];
       }
       const share = Number((total / contribTargetFlats.length).toFixed(2));
@@ -274,8 +288,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
         allocated += amount;
         const hc = headcountForFlat(flat_number, flat?.id ?? null, flatMembers, 1, 0.5);
         return {
-          ...base,
-          contributor_type: 'flat_owner',
+          ...flatRowBase,
           flat_number,
           flat_id: flat?.id ?? null,
           resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
@@ -283,23 +296,25 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
           split_mode: 'lump_equal',
           adult_count: hc.adults,
           kid_count: hc.kids,
-          outsider_name: null,
         };
       });
     }
 
-    // same_per_flat — one amount applied to each selected flat
     const amount = Number(cf.amount);
     if (!amount || amount <= 0) {
       toast.error('Enter amount per flat');
       return [];
     }
-    return cf.selected_flats.map((flat_number) => {
+    const targets = cf.selected_flats.length > 0 ? cf.selected_flats : [];
+    if (targets.length === 0) {
+      toast.error('Select at least one flat for same-amount receipt');
+      return [];
+    }
+    return targets.map((flat_number) => {
       const flat = flats.find((f) => f.flat_number === flat_number);
       const hc = headcountForFlat(flat_number, flat?.id ?? null, flatMembers, 1, 0.5);
       return {
-        ...base,
-        contributor_type: 'flat_owner',
+        ...flatRowBase,
         flat_number,
         flat_id: flat?.id ?? null,
         resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
@@ -307,13 +322,12 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
         split_mode: 'same_per_flat',
         adult_count: hc.adults,
         kid_count: hc.kids,
-        outsider_name: null,
       };
     });
   };
 
   const recordContribution = async (eventId: string) => {
-    if (contribSource === 'flat_owners' && flatOwnerMode === 'same_per_flat' && cf.selected_flats.length === 0) {
+    if (receiptBasis === 'flat' && flatCollectMode === 'same_per_flat' && cf.selected_flats.length === 0) {
       toast.error('Select at least one flat');
       return;
     }
@@ -341,7 +355,9 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
   };
 
   const sendContribReminders = async (event: any) => {
-    const paidFlats = contributions.filter(c => c.event_id === event.id && c.contributor_type !== 'outsider' && c.flat_number !== 'OUTSIDER').map(c => c.flat_number);
+    const paidFlats = contributions
+      .filter((c) => c.event_id === event.id && c.receipt_basis !== 'non_flat' && c.flat_number)
+      .map((c) => c.flat_number as string);
     const unpaid = targetFlats.filter(f => !paidFlats.includes(f.flat_number));
     for (const flat of unpaid) {
       await supabase.from('notifications').insert([{
@@ -354,8 +370,8 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
   };
 
   const contribLabel = (c: any) => {
-    if (c.contributor_type === 'outsider' || c.flat_number === 'OUTSIDER') {
-      return `Outsider · ${c.outsider_name || c.resident_name || 'Guest'}`;
+    if (c.receipt_basis === 'non_flat' || !c.flat_number) {
+      return `No flat · ${c.batch_label || c.outsider_name || c.resident_name || 'Receipt'}`;
     }
     const parts = [`Flat ${c.flat_number}`];
     if (c.resident_name) parts.push(c.resident_name);
@@ -474,52 +490,55 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
                 <p className="text-[10px] font-medium text-muted-foreground uppercase">Contribution receipt (money in)</p>
 
                 <div className="rounded-lg border border-border bg-muted/20 p-2 space-y-2">
-                  <p className="text-xs font-medium">Contributor</p>
+                  <p className="text-xs font-medium">Receipt basis</p>
                   <label className="flex items-center gap-2 text-xs">
                     <input
                       type="radio"
-                      name={`contrib-src-${ev.id}`}
-                      checked={contribSource === 'flat_owners'}
-                      onChange={() => setContribSource('flat_owners')}
+                      name={`receipt-basis-${ev.id}`}
+                      checked={receiptBasis === 'flat'}
+                      onChange={() => setReceiptBasis('flat')}
                     />
-                    Flat owners
+                    Flat-wise — attribute to one or more flats
                   </label>
                   <label className="flex items-center gap-2 text-xs">
                     <input
                       type="radio"
-                      name={`contrib-src-${ev.id}`}
-                      checked={contribSource === 'outsider'}
-                      onChange={() => setContribSource('outsider')}
+                      name={`receipt-basis-${ev.id}`}
+                      checked={receiptBasis === 'non_flat'}
+                      onChange={() => setReceiptBasis('non_flat')}
                     />
-                    Outsider (sponsor, vendor, guest)
+                    Without flat — single receipt (outsider or collective lump, no flat breakdown)
                   </label>
                 </div>
 
-                {contribSource === 'outsider' ? (
+                {receiptBasis === 'non_flat' ? (
                   <>
                     <input
                       className="input-field text-sm"
-                      placeholder="Outsider name (sponsor / vendor / guest)"
-                      value={outsiderName}
-                      onChange={(e) => setOutsiderName(e.target.value)}
+                      placeholder="Payer / description (e.g. ABC Sponsor, Collective collection)"
+                      value={nonFlatLabel}
+                      onChange={(e) => setNonFlatLabel(e.target.value)}
                     />
                     <input
                       className="input-field text-sm"
-                      placeholder="Amount (₹)"
+                      placeholder="Total receipt amount (₹)"
                       type="number"
                       value={cf.amount}
                       onChange={(e) => setCf({ ...cf, amount: e.target.value })}
                     />
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      One receipt row — not split to flats. Use flat-wise basis when each flat pays separately.
+                    </p>
                   </>
                 ) : (
                   <>
                     <div className="rounded-lg border border-border bg-muted/20 p-2 space-y-2">
-                      <p className="text-xs font-medium">Flat owner collection mode</p>
+                      <p className="text-xs font-medium">Flat-wise collection mode</p>
                       <select
                         className="input-field text-sm"
-                        value={flatOwnerMode}
+                        value={flatCollectMode}
                         onChange={(e) => {
-                          setFlatOwnerMode(e.target.value as FlatOwnerCollectMode);
+                          setFlatCollectMode(e.target.value as FlatCollectMode);
                           setPerFlatAmounts({});
                         }}
                       >
@@ -545,14 +564,14 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
                         });
                       }}
                       label={
-                        flatOwnerMode === 'same_per_flat'
+                        flatCollectMode === 'same_per_flat'
                           ? 'Select flats (required)'
                           : 'Select flats (empty = all eligible flats)'
                       }
                       emptyHint="Pick specific flats or leave empty for all occupied flats."
                     />
 
-                    {flatOwnerMode === 'same_per_flat' && (
+                    {flatCollectMode === 'same_per_flat' && (
                       <input
                         className="input-field text-sm"
                         placeholder={ev.contribution_amount > 0 ? `Amount per flat (₹) — suggested ₹${ev.contribution_amount}` : 'Amount per flat (₹)'}
@@ -562,7 +581,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
                       />
                     )}
 
-                    {flatOwnerMode === 'individual' && (
+                    {flatCollectMode === 'individual' && (
                       <div className="rounded-lg border border-border p-2.5 space-y-1.5 max-h-52 overflow-y-auto">
                         <p className="text-[10px] text-muted-foreground">Enter amount for each flat individually.</p>
                         {contribTargetFlats.map((num) => {
@@ -587,7 +606,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
                       </div>
                     )}
 
-                    {flatOwnerMode === 'headcount' && (
+                    {flatCollectMode === 'headcount' && (
                       <>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -620,7 +639,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
                       </>
                     )}
 
-                    {flatOwnerMode === 'lump_equal' && (
+                    {flatCollectMode === 'lump_equal' && (
                       <>
                         <input
                           className="input-field text-sm"
