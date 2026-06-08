@@ -15,7 +15,27 @@ type ContribRow = {
   payment_method: string;
   screenshot_url: string | null;
   verified_at: string | null;
+  contributor_type?: string | null;
+  outsider_name?: string | null;
+  adult_count?: number | null;
+  kid_count?: number | null;
+  split_mode?: string | null;
 };
+
+function contribReceiptLabel(c: ContribRow): string {
+  if (c.contributor_type === 'outsider' || c.flat_number === 'OUTSIDER') {
+    return `Outsider · ${c.outsider_name || c.resident_name || 'Guest'}`;
+  }
+  const parts = [`Flat ${c.flat_number}`];
+  if (c.resident_name) parts.push(c.resident_name);
+  if (c.adult_count != null || c.kid_count != null) {
+    parts.push(`${c.adult_count ?? 0}A/${c.kid_count ?? 0}K`);
+  }
+  if (c.split_mode === 'headcount') parts.push('headcount');
+  if (c.split_mode === 'lump_equal') parts.push('lump ÷');
+  if (c.split_mode === 'individual') parts.push('individual');
+  return parts.join(' · ');
+}
 type FoodExpenseRow = {
   id: string;
   title: string;
@@ -246,8 +266,7 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
                       <div key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/40 rounded p-2">
                         <div className="flex justify-between gap-2">
                           <span>
-                            Flat {c.flat_number}
-                            {c.resident_name ? ` · ${c.resident_name}` : ''} · {c.payment_method}
+                            {contribReceiptLabel(c)} · {c.payment_method}
                           </span>
                           <span className="font-semibold shrink-0">₹{Number(c.amount).toLocaleString('en-IN')}</span>
                         </div>

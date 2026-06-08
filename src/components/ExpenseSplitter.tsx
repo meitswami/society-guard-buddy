@@ -39,7 +39,7 @@ function ledgerCounterpartyPrefix(foodOnly: boolean, paymentOnly: boolean): stri
   return 'Event expense';
 }
 
-type FundingSource = 'residents' | 'society_fund';
+type FundingSource = 'residents' | 'society_fund' | 'outsider';
 type SplitMode = 'even' | 'by_headcount' | 'custom';
 
 type ExpenseGroupRow = {
@@ -96,6 +96,7 @@ const ExpenseSplitter = ({
   const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
   const [fundingSource, setFundingSource] = useState<FundingSource>('residents');
+  const [outsiderName, setOutsiderName] = useState('');
   const [splitMode, setSplitMode] = useState<SplitMode>('by_headcount');
   const [splitFlats, setSplitFlats] = useState<string[]>([]);
   const [paidByFlats, setPaidByFlats] = useState<string[]>([]);
@@ -272,6 +273,7 @@ const ExpenseSplitter = ({
     setPaidByFlats([]);
     setCustomSplits({});
     setFundingSource('residents');
+    setOutsiderName('');
     setExpenseNotifyAudience('none');
     setShowExpenseForm(null);
   };

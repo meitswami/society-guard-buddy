@@ -529,43 +529,58 @@ export type Database = {
       }
       event_contributions: {
         Row: {
+          adult_count: number | null
           amount: number
+          contributor_type: string
           created_at: string
           event_id: string | null
           flat_id: string | null
           flat_number: string
           id: string
+          kid_count: number | null
+          outsider_name: string | null
           payment_method: string
           resident_name: string | null
           screenshot_url: string | null
+          split_mode: string | null
           transaction_id: string | null
           verified_at: string | null
           verified_by: string | null
         }
         Insert: {
+          adult_count?: number | null
           amount: number
+          contributor_type?: string
           created_at?: string
           event_id?: string | null
           flat_id?: string | null
           flat_number: string
           id?: string
+          kid_count?: number | null
+          outsider_name?: string | null
           payment_method?: string
           resident_name?: string | null
           screenshot_url?: string | null
+          split_mode?: string | null
           transaction_id?: string | null
           verified_at?: string | null
           verified_by?: string | null
         }
         Update: {
+          adult_count?: number | null
           amount?: number
+          contributor_type?: string
           created_at?: string
           event_id?: string | null
           flat_id?: string | null
           flat_number?: string
           id?: string
+          kid_count?: number | null
+          outsider_name?: string | null
           payment_method?: string
           resident_name?: string | null
           screenshot_url?: string | null
+          split_mode?: string | null
           transaction_id?: string | null
           verified_at?: string | null
           verified_by?: string | null

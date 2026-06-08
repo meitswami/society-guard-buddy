@@ -1,20 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { Calendar, Plus, Users, Upload } from 'lucide-react';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
+import { computeHeadcountAmounts, headcountForFlat, type FlatMemberRow } from '@/lib/flatHeadcountSplit';
 import { toast } from 'sonner';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { DateInput } from '@/components/DateInput';
 
 interface Props {
   adminName?: string;
-  /** When true, omit page title (used inside EventsModule). */
   embedded?: boolean;
-  /** Called after a contribution receipt is saved. */
   onRecordsChanged?: () => void;
 }
+
+type ContributorSource = 'flat_owners' | 'outsider';
+type FlatOwnerCollectMode = 'individual' | 'headcount' | 'lump_equal' | 'same_per_flat';
 
 async function uploadContributionReceipt(file: File): Promise<string | null> {
   const safe = file.name.replace(/[^\w.-]/g, '_');
@@ -34,26 +36,37 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
   const [rsvps, setRsvps] = useState<any[]>([]);
   const [contributions, setContributions] = useState<any[]>([]);
   const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null; is_occupied: boolean | null }[]>([]);
+  const [flatMembers, setFlatMembers] = useState<FlatMemberRow[]>([]);
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
   const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [showForm, setShowForm] = useState(false);
   const [showContrib, setShowContrib] = useState<string | null>(null);
   const [ef, setEf] = useState({ title: '', description: '', event_date: '', event_time: '', location: '', contribution_amount: '' });
+  const [contribSource, setContribSource] = useState<ContributorSource>('flat_owners');
+  const [flatOwnerMode, setFlatOwnerMode] = useState<FlatOwnerCollectMode>('same_per_flat');
   const [cf, setCf] = useState({
     selected_flats: [] as string[],
     amount: '',
     payment_method: 'cash',
     screenshot_url: '',
   });
+  const [perFlatAmounts, setPerFlatAmounts] = useState<Record<string, string>>({});
+  const [headcountTotal, setHeadcountTotal] = useState('');
+  const [lumpTotal, setLumpTotal] = useState('');
+  const [outsiderName, setOutsiderName] = useState('');
+  const [adultWeight, setAdultWeight] = useState('1');
+  const [childWeight, setChildWeight] = useState('0.5');
   const [receiptUploading, setReceiptUploading] = useState(false);
 
   useEffect(() => { loadAll(); }, [societyId]);
+
   const loadAll = async () => {
     if (!societyId) {
       setEvents([]);
       setRsvps([]);
       setContributions([]);
       setFlats([]);
+      setFlatMembers([]);
       setPrimaryByFlatId(new Map());
       return;
     }
@@ -65,15 +78,19 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
     if (f.data) setFlats(f.data);
     const eventIds = (e.data ?? []).map((x) => x.id);
     const flatIds = (f.data ?? []).map((x) => x.id);
-    const [r, c, m] = await Promise.all([
+    const [r, c, m, membersRes] = await Promise.all([
       eventIds.length ? supabase.from('event_rsvps').select('*').in('event_id', eventIds) : Promise.resolve({ data: [] as any[] }),
       eventIds.length ? supabase.from('event_contributions').select('*').in('event_id', eventIds) : Promise.resolve({ data: [] as any[] }),
       flatIds.length
         ? supabase.from('members').select('flat_id, name').eq('is_primary', true).in('flat_id', flatIds)
         : Promise.resolve({ data: [] as { flat_id: string; name: string }[] }),
+      flatIds.length
+        ? supabase.from('members').select('id, flat_id, name, age, relation').in('flat_id', flatIds)
+        : Promise.resolve({ data: [] as FlatMemberRow[] }),
     ]);
     setRsvps(r.data ?? []);
     setContributions(c.data ?? []);
+    setFlatMembers((membersRes.data as FlatMemberRow[]) ?? []);
     const map = new Map<string, string>();
     for (const row of m.data ?? []) {
       if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
@@ -91,7 +108,6 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
     setEf({ title: '', description: '', event_date: '', event_time: '', location: '', contribution_amount: '' });
     setShowForm(false); toast.success('Event created'); loadAll();
 
-    // Notify all residents
     await supabase.from('notifications').insert([{
       title: `New Event: ${ef.title}`,
       message: `${ef.title} on ${fmtIsoDateToDisplay(ef.event_date)}${ef.location ? ' at ' + ef.location : ''}. ${ef.contribution_amount ? 'Contribution: ₹' + ef.contribution_amount : ''}`,
@@ -99,61 +115,233 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
     }]);
   };
 
-  const recordContribution = async (eventId: string) => {
-    if (cf.selected_flats.length === 0 || !cf.amount) return;
-    const amount = Number(cf.amount);
-    const verifiedAt = new Date().toISOString();
+  const targetFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
+  const flatOptions = flatOptionsWithPrimaryLabel(flats, primaryByFlatId);
 
+  const contribTargetFlats = useMemo(() => {
+    if (cf.selected_flats.length > 0) return cf.selected_flats;
+    return targetFlats.map((f) => f.flat_number);
+  }, [cf.selected_flats, targetFlats]);
+
+  const headcountPreview = useMemo(() => {
+    const adult = Number(adultWeight) || 1;
+    const child = Number(childWeight) || 0.5;
+    const rows = contribTargetFlats.map((num) => {
+      const flat = flats.find((f) => f.flat_number === num);
+      return headcountForFlat(num, flat?.id ?? null, flatMembers, adult, child);
+    });
+    const total = Number(headcountTotal) || 0;
+    const amounts = total > 0 ? computeHeadcountAmounts(total, rows) : [];
+    return { rows, amounts, adult, child };
+  }, [contribTargetFlats, flats, flatMembers, adultWeight, childWeight, headcountTotal]);
+
+  const resetContribForm = () => {
+    setCf({ selected_flats: [], amount: '', payment_method: 'cash', screenshot_url: '' });
+    setContribSource('flat_owners');
+    setFlatOwnerMode('same_per_flat');
+    setPerFlatAmounts({});
+    setHeadcountTotal('');
+    setLumpTotal('');
+    setOutsiderName('');
+  };
+
+  const uploadReceiptForEvent = async (eventId: string): Promise<string | null> => {
     let screenshotUrl = cf.screenshot_url.trim() || null;
     const fileInput = document.getElementById(`event-contrib-receipt-${eventId}`) as HTMLInputElement | null;
     const file = fileInput?.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
         toast.error('Receipt: use image or PDF');
-        return;
+        return null;
       }
       if (file.size > 8 * 1024 * 1024) {
         toast.error('Receipt file must be 8MB or smaller');
-        return;
+        return null;
       }
       setReceiptUploading(true);
       screenshotUrl = await uploadContributionReceipt(file);
       setReceiptUploading(false);
-      if (!screenshotUrl) return;
+      if (!screenshotUrl) return null;
       if (fileInput) fileInput.value = '';
     }
+    return screenshotUrl;
+  };
 
-    const rows = cf.selected_flats.map(flat_number => {
-      const flat = flats.find(f => f.flat_number === flat_number);
+  const buildContributionRows = (
+    eventId: string,
+    screenshotUrl: string | null,
+    verifiedAt: string,
+  ): Array<Record<string, unknown>> => {
+    const base = {
+      event_id: eventId,
+      payment_method: cf.payment_method,
+      screenshot_url: screenshotUrl,
+      verified_by: adminName,
+      verified_at: verifiedAt,
+    };
+
+    if (contribSource === 'outsider') {
+      const amount = Number(cf.amount);
+      if (!outsiderName.trim() || !amount || amount <= 0) {
+        toast.error('Enter outsider name and amount');
+        return [];
+      }
+      return [{
+        ...base,
+        contributor_type: 'outsider',
+        outsider_name: outsiderName.trim(),
+        flat_number: 'OUTSIDER',
+        flat_id: null,
+        resident_name: outsiderName.trim(),
+        amount,
+        split_mode: null,
+        adult_count: null,
+        kid_count: null,
+      }];
+    }
+
+    if (contribTargetFlats.length === 0) {
+      toast.error('Select at least one flat');
+      return [];
+    }
+
+    if (flatOwnerMode === 'individual') {
+      const entries = contribTargetFlats
+        .map((num) => [num, Number(perFlatAmounts[num] || 0)] as const)
+        .filter(([, amt]) => amt > 0);
+      if (entries.length === 0) {
+        toast.error('Enter amount for at least one flat');
+        return [];
+      }
+      return entries.map(([flat_number, amount]) => {
+        const flat = flats.find((f) => f.flat_number === flat_number);
+        const hc = headcountForFlat(flat_number, flat?.id ?? null, flatMembers, 1, 0.5);
+        return {
+          ...base,
+          contributor_type: 'flat_owner',
+          flat_number,
+          flat_id: flat?.id ?? null,
+          resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
+          amount,
+          split_mode: 'individual',
+          adult_count: hc.adults,
+          kid_count: hc.kids,
+          outsider_name: null,
+        };
+      });
+    }
+
+    if (flatOwnerMode === 'headcount') {
+      const total = Number(headcountTotal);
+      if (!total || total <= 0) {
+        toast.error('Enter total amount to distribute by adults & kids');
+        return [];
+      }
+      const { rows, amounts } = headcountPreview;
+      if (rows.reduce((s, r) => s + r.units, 0) <= 0) {
+        toast.error('No headcount units — add members (age/relation) per flat in Residents');
+        return [];
+      }
+      return amounts.map(({ flat_number, amount, adults, kids }) => {
+        const flat = flats.find((f) => f.flat_number === flat_number);
+        return {
+          ...base,
+          contributor_type: 'flat_owner',
+          flat_number,
+          flat_id: flat?.id ?? null,
+          resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
+          amount,
+          split_mode: 'headcount',
+          adult_count: adults,
+          kid_count: kids,
+          outsider_name: null,
+        };
+      });
+    }
+
+    if (flatOwnerMode === 'lump_equal') {
+      const total = Number(lumpTotal);
+      if (!total || total <= 0) {
+        toast.error('Enter lump sum total to split equally');
+        return [];
+      }
+      const share = Number((total / contribTargetFlats.length).toFixed(2));
+      let allocated = 0;
+      return contribTargetFlats.map((flat_number, i) => {
+        const flat = flats.find((f) => f.flat_number === flat_number);
+        const isLast = i === contribTargetFlats.length - 1;
+        const amount = isLast ? Number((total - allocated).toFixed(2)) : share;
+        allocated += amount;
+        const hc = headcountForFlat(flat_number, flat?.id ?? null, flatMembers, 1, 0.5);
+        return {
+          ...base,
+          contributor_type: 'flat_owner',
+          flat_number,
+          flat_id: flat?.id ?? null,
+          resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
+          amount,
+          split_mode: 'lump_equal',
+          adult_count: hc.adults,
+          kid_count: hc.kids,
+          outsider_name: null,
+        };
+      });
+    }
+
+    // same_per_flat — one amount applied to each selected flat
+    const amount = Number(cf.amount);
+    if (!amount || amount <= 0) {
+      toast.error('Enter amount per flat');
+      return [];
+    }
+    return cf.selected_flats.map((flat_number) => {
+      const flat = flats.find((f) => f.flat_number === flat_number);
+      const hc = headcountForFlat(flat_number, flat?.id ?? null, flatMembers, 1, 0.5);
       return {
-        event_id: eventId,
-        flat_id: flat?.id || null,
+        ...base,
+        contributor_type: 'flat_owner',
         flat_number,
+        flat_id: flat?.id ?? null,
         resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
         amount,
-        payment_method: cf.payment_method,
-        screenshot_url: screenshotUrl,
-        verified_by: adminName,
-        verified_at: verifiedAt,
+        split_mode: 'same_per_flat',
+        adult_count: hc.adults,
+        kid_count: hc.kids,
+        outsider_name: null,
       };
     });
-    await supabase.from('event_contributions').insert(rows);
-    setCf({
-      selected_flats: [],
-      amount: '',
-      payment_method: 'cash',
-      screenshot_url: '',
-    });
+  };
+
+  const recordContribution = async (eventId: string) => {
+    if (contribSource === 'flat_owners' && flatOwnerMode === 'same_per_flat' && cf.selected_flats.length === 0) {
+      toast.error('Select at least one flat');
+      return;
+    }
+
+    const screenshotUrl = await uploadReceiptForEvent(eventId);
+    if (screenshotUrl === null && document.getElementById(`event-contrib-receipt-${eventId}`)?.files?.length) {
+      return;
+    }
+
+    const verifiedAt = new Date().toISOString();
+    const rows = buildContributionRows(eventId, screenshotUrl, verifiedAt);
+    if (rows.length === 0) return;
+
+    const { error } = await supabase.from('event_contributions').insert(rows);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    resetContribForm();
     setShowContrib(null);
-    toast.success(rows.length > 1 ? `Contributions recorded for ${rows.length} flats` : 'Contribution recorded');
+    toast.success(rows.length > 1 ? `Contributions recorded (${rows.length} rows)` : 'Contribution recorded');
     await loadAll();
     onRecordsChanged?.();
   };
 
-  const targetFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
-
   const sendContribReminders = async (event: any) => {
-    const paidFlats = contributions.filter(c => c.event_id === event.id).map(c => c.flat_number);
+    const paidFlats = contributions.filter(c => c.event_id === event.id && c.contributor_type !== 'outsider' && c.flat_number !== 'OUTSIDER').map(c => c.flat_number);
     const unpaid = targetFlats.filter(f => !paidFlats.includes(f.flat_number));
     for (const flat of unpaid) {
       await supabase.from('notifications').insert([{
@@ -163,6 +351,20 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
       }]);
     }
     toast.success(`Reminders sent to ${unpaid.length} flats`);
+  };
+
+  const contribLabel = (c: any) => {
+    if (c.contributor_type === 'outsider' || c.flat_number === 'OUTSIDER') {
+      return `Outsider · ${c.outsider_name || c.resident_name || 'Guest'}`;
+    }
+    const parts = [`Flat ${c.flat_number}`];
+    if (c.resident_name) parts.push(c.resident_name);
+    if (c.adult_count != null || c.kid_count != null) {
+      parts.push(`${c.adult_count ?? 0}A/${c.kid_count ?? 0}K`);
+    }
+    if (c.split_mode === 'headcount') parts.push('headcount');
+    if (c.split_mode === 'lump_equal') parts.push('lump ÷');
+    return parts.join(' · ');
   };
 
   return (
@@ -209,7 +411,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
             <input className="input-field" type="time" value={ef.event_time} onChange={e => setEf({...ef, event_time: e.target.value})} />
           </div>
           <input className="input-field" placeholder="Location" value={ef.location} onChange={e => setEf({...ef, location: e.target.value})} />
-          <input className="input-field" placeholder="Contribution Amount (₹)" type="number" value={ef.contribution_amount} onChange={e => setEf({...ef, contribution_amount: e.target.value})} />
+          <input className="input-field" placeholder="Suggested contribution per flat (₹)" type="number" value={ef.contribution_amount} onChange={e => setEf({...ef, contribution_amount: e.target.value})} />
           <button onClick={addEvent} className="btn-primary">Create Event</button>
         </div>
       )}
@@ -234,13 +436,24 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
 
             <div className="flex gap-3 text-xs text-muted-foreground mb-2">
               <span><Users className="w-3 h-3 inline" /> {evRsvps.length} RSVPs</span>
-              {ev.contribution_amount > 0 && <span>₹{totalCollected} / ₹{ev.contribution_amount * targetFlats.length}</span>}
+              <span>₹{totalCollected.toLocaleString('en-IN')} collected</span>
+              {ev.contribution_amount > 0 && (
+                <span>Suggested ₹{ev.contribution_amount}/flat</span>
+              )}
             </div>
 
             <div className="flex gap-2 flex-wrap">
               <button
                 type="button"
-                onClick={() => setShowContrib(showContrib === ev.id ? null : ev.id)}
+                onClick={() => {
+                  if (showContrib === ev.id) {
+                    resetContribForm();
+                    setShowContrib(null);
+                  } else {
+                    resetContribForm();
+                    setShowContrib(ev.id);
+                  }
+                }}
                 className="flex-1 min-w-[140px] py-1.5 bg-primary/10 text-primary rounded-lg text-xs flex items-center justify-center gap-1"
               >
                 <Upload className="w-3 h-3" /> Record contribution receipt
@@ -258,21 +471,175 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
 
             {showContrib === ev.id && (
               <div className="mt-3 flex flex-col gap-2 pt-3 border-t border-border">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase">Contribution receipt</p>
-                <FlatMultiSelect
-                  compact
-                  flats={flatOptionsWithPrimaryLabel(flats, primaryByFlatId)}
-                  selected={cf.selected_flats}
-                  onChange={nums => setCf({ ...cf, selected_flats: nums })}
-                  label="Flats"
-                />
-                <input
-                  className="input-field text-sm"
-                  placeholder={ev.contribution_amount > 0 ? `Amount (₹) — suggested ₹${ev.contribution_amount}` : 'Amount (₹)'}
-                  type="number"
-                  value={cf.amount}
-                  onChange={e => setCf({ ...cf, amount: e.target.value })}
-                />
+                <p className="text-[10px] font-medium text-muted-foreground uppercase">Contribution receipt (money in)</p>
+
+                <div className="rounded-lg border border-border bg-muted/20 p-2 space-y-2">
+                  <p className="text-xs font-medium">Contributor</p>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="radio"
+                      name={`contrib-src-${ev.id}`}
+                      checked={contribSource === 'flat_owners'}
+                      onChange={() => setContribSource('flat_owners')}
+                    />
+                    Flat owners
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="radio"
+                      name={`contrib-src-${ev.id}`}
+                      checked={contribSource === 'outsider'}
+                      onChange={() => setContribSource('outsider')}
+                    />
+                    Outsider (sponsor, vendor, guest)
+                  </label>
+                </div>
+
+                {contribSource === 'outsider' ? (
+                  <>
+                    <input
+                      className="input-field text-sm"
+                      placeholder="Outsider name (sponsor / vendor / guest)"
+                      value={outsiderName}
+                      onChange={(e) => setOutsiderName(e.target.value)}
+                    />
+                    <input
+                      className="input-field text-sm"
+                      placeholder="Amount (₹)"
+                      type="number"
+                      value={cf.amount}
+                      onChange={(e) => setCf({ ...cf, amount: e.target.value })}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-lg border border-border bg-muted/20 p-2 space-y-2">
+                      <p className="text-xs font-medium">Flat owner collection mode</p>
+                      <select
+                        className="input-field text-sm"
+                        value={flatOwnerMode}
+                        onChange={(e) => {
+                          setFlatOwnerMode(e.target.value as FlatOwnerCollectMode);
+                          setPerFlatAmounts({});
+                        }}
+                      >
+                        <option value="same_per_flat">Same amount per selected flat</option>
+                        <option value="individual">Individual flat — custom amount each</option>
+                        <option value="headcount">By adults &amp; kids per flat (from Residents)</option>
+                        <option value="lump_equal">Lump sum — split equally across flats</option>
+                      </select>
+                    </div>
+
+                    <FlatMultiSelect
+                      compact
+                      flats={flatOptions}
+                      selected={cf.selected_flats}
+                      onChange={(nums) => {
+                        setCf({ ...cf, selected_flats: nums });
+                        setPerFlatAmounts((prev) => {
+                          const next: Record<string, string> = {};
+                          for (const n of nums) {
+                            if (prev[n] !== undefined) next[n] = prev[n];
+                          }
+                          return next;
+                        });
+                      }}
+                      label={
+                        flatOwnerMode === 'same_per_flat'
+                          ? 'Select flats (required)'
+                          : 'Select flats (empty = all eligible flats)'
+                      }
+                      emptyHint="Pick specific flats or leave empty for all occupied flats."
+                    />
+
+                    {flatOwnerMode === 'same_per_flat' && (
+                      <input
+                        className="input-field text-sm"
+                        placeholder={ev.contribution_amount > 0 ? `Amount per flat (₹) — suggested ₹${ev.contribution_amount}` : 'Amount per flat (₹)'}
+                        type="number"
+                        value={cf.amount}
+                        onChange={(e) => setCf({ ...cf, amount: e.target.value })}
+                      />
+                    )}
+
+                    {flatOwnerMode === 'individual' && (
+                      <div className="rounded-lg border border-border p-2.5 space-y-1.5 max-h-52 overflow-y-auto">
+                        <p className="text-[10px] text-muted-foreground">Enter amount for each flat individually.</p>
+                        {contribTargetFlats.map((num) => {
+                          const flat = flats.find((f) => f.flat_number === num);
+                          const hc = headcountForFlat(num, flat?.id ?? null, flatMembers, 1, 0.5);
+                          return (
+                            <div key={num} className="flex items-center gap-2">
+                              <span className="text-xs w-24 shrink-0">
+                                Flat {num}
+                                <span className="block text-[9px] text-muted-foreground">{hc.adults}A {hc.kids}K</span>
+                              </span>
+                              <input
+                                className="input-field text-xs flex-1"
+                                placeholder="₹"
+                                type="number"
+                                value={perFlatAmounts[num] ?? ''}
+                                onChange={(e) => setPerFlatAmounts((p) => ({ ...p, [num]: e.target.value }))}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {flatOwnerMode === 'headcount' && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase">Adult weight</label>
+                            <input className="input-field text-sm" type="number" step="0.1" min="0.1" value={adultWeight} onChange={(e) => setAdultWeight(e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase">Child weight</label>
+                            <input className="input-field text-sm" type="number" step="0.1" min="0" value={childWeight} onChange={(e) => setChildWeight(e.target.value)} />
+                          </div>
+                        </div>
+                        <input
+                          className="input-field text-sm"
+                          placeholder="Total lump sum to distribute by headcount (₹)"
+                          type="number"
+                          value={headcountTotal}
+                          onChange={(e) => setHeadcountTotal(e.target.value)}
+                        />
+                        <div className="rounded-lg border border-border p-2.5 space-y-1 max-h-40 overflow-y-auto">
+                          {headcountPreview.amounts.map(({ flat_number, amount, adults, kids }) => (
+                            <div key={flat_number} className="flex justify-between text-xs gap-2">
+                              <span>Flat {flat_number}: {adults} adult{adults !== 1 ? 's' : ''}, {kids} kid{kids !== 1 ? 's' : ''}</span>
+                              <span className="font-mono shrink-0">₹{amount}</span>
+                            </div>
+                          ))}
+                          {headcountPreview.rows.length === 0 && (
+                            <p className="text-xs text-muted-foreground">Select flats or leave empty for all.</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {flatOwnerMode === 'lump_equal' && (
+                      <>
+                        <input
+                          className="input-field text-sm"
+                          placeholder="Total lump sum from flat owners (₹)"
+                          type="number"
+                          value={lumpTotal}
+                          onChange={(e) => setLumpTotal(e.target.value)}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          ₹{lumpTotal && contribTargetFlats.length
+                            ? (Number(lumpTotal) / contribTargetFlats.length).toFixed(2)
+                            : '…'}{' '}
+                          per flat (÷ {contribTargetFlats.length || targetFlats.length} flats)
+                        </p>
+                      </>
+                    )}
+                  </>
+                )}
+
                 <select className="input-field text-sm" value={cf.payment_method} onChange={e => setCf({ ...cf, payment_method: e.target.value })}>
                   <option value="cash">Cash</option>
                   <option value="upi">UPI</option>
@@ -306,10 +673,10 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
                   <div key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/50 rounded p-2">
                     <div className="flex justify-between gap-2">
                       <span>
-                        {c.flat_number}{c.resident_name ? ` · ${c.resident_name}` : ''}
+                        {contribLabel(c)}
                         {c.payment_method ? ` · ${c.payment_method}` : ''}
                       </span>
-                      <span className="font-bold shrink-0">₹{c.amount}</span>
+                      <span className="font-bold shrink-0">₹{Number(c.amount).toLocaleString('en-IN')}</span>
                     </div>
                     {c.screenshot_url ? (
                       <a href={c.screenshot_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">
