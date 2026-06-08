@@ -1,18 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
-import { Calendar, Plus, Users, Upload } from 'lucide-react';
+import { Calendar, Plus, Users, Upload, Pencil } from 'lucide-react';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 import { computeHeadcountAmounts, headcountForFlat, type FlatMemberRow } from '@/lib/flatHeadcountSplit';
 import { toast } from 'sonner';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { DateInput } from '@/components/DateInput';
+import EventContributionEditModal from '@/components/EventContributionEditModal';
 
 interface Props {
   adminName?: string;
   embedded?: boolean;
   onRecordsChanged?: () => void;
+  refreshKey?: number;
 }
 
 type ReceiptBasis = 'flat' | 'non_flat';
@@ -30,7 +32,7 @@ async function uploadContributionReceipt(file: File): Promise<string | null> {
   return data.publicUrl;
 }
 
-const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged }: Props) => {
+const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged, refreshKey = 0 }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [events, setEvents] = useState<any[]>([]);
   const [rsvps, setRsvps] = useState<any[]>([]);
@@ -57,8 +59,9 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
   const [adultWeight, setAdultWeight] = useState('1');
   const [childWeight, setChildWeight] = useState('0.5');
   const [receiptUploading, setReceiptUploading] = useState(false);
+  const [editingContribId, setEditingContribId] = useState<string | null>(null);
 
-  useEffect(() => { loadAll(); }, [societyId]);
+  useEffect(() => { loadAll(); }, [societyId, refreshKey]);
 
   const loadAll = async () => {
     if (!societyId) {
@@ -690,12 +693,21 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase">Recorded receipts</p>
                 {evContribs.map(c => (
                   <div key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/50 rounded p-2">
-                    <div className="flex justify-between gap-2">
+                    <div className="flex justify-between gap-2 items-start">
                       <span>
                         {contribLabel(c)}
                         {c.payment_method ? ` · ${c.payment_method}` : ''}
                       </span>
-                      <span className="font-bold shrink-0">₹{Number(c.amount).toLocaleString('en-IN')}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-bold">₹{Number(c.amount).toLocaleString('en-IN')}</span>
+                        <button
+                          type="button"
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary inline-flex items-center gap-0.5"
+                          onClick={() => setEditingContribId(c.id)}
+                        >
+                          <Pencil className="w-3 h-3" /> Edit
+                        </button>
+                      </div>
                     </div>
                     {c.screenshot_url ? (
                       <a href={c.screenshot_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">
@@ -711,6 +723,16 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged 
           </div>
         );
       })}
+
+      <EventContributionEditModal
+        contributionId={editingContribId}
+        adminName={adminName}
+        onClose={() => setEditingContribId(null)}
+        onSaved={() => {
+          void loadAll();
+          onRecordsChanged?.();
+        }}
+      />
     </div>
   );
 };

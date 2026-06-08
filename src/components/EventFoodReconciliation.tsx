@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
-import { Receipt, TrendingDown, TrendingUp, Paperclip, Scale } from 'lucide-react';
+import { Receipt, TrendingDown, TrendingUp, Paperclip, Scale, Pencil } from 'lucide-react';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { DescriptiveStatSummary } from '@/components/DescriptiveStatCard';
+import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
+import EventContributionEditModal from '@/components/EventContributionEditModal';
+import FoodExpenseEditModal from '@/components/FoodExpenseEditModal';
+import { sumByChannel, netChannels, addToChannel, type ChannelTotals } from '@/lib/cashBankChannel';
 
 type EventRow = { id: string; title: string; event_date: string; contribution_amount: number };
 type ContribRow = {
   id: string;
   event_id: string;
-  flat_number: string;
+  flat_number: string | null;
   resident_name: string | null;
   amount: number;
   payment_method: string;
@@ -55,14 +59,18 @@ interface Props {
   adminName?: string;
   /** Increment to reload after new receipts are recorded below. */
   refreshKey?: number;
+  /** Called after edit/delete so parent sections can refresh. */
+  onRecordsChanged?: () => void;
 }
 
-const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey = 0 }: Props) => {
+const EventFoodReconciliation = ({ adminName = 'Admin', refreshKey = 0, onRecordsChanged }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [contributions, setContributions] = useState<ContribRow[]>([]);
   const [foodExpenses, setFoodExpenses] = useState<FoodExpenseRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingContribId, setEditingContribId] = useState<string | null>(null);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     if (!societyId) {
@@ -137,17 +145,42 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
   const totals = useMemo(() => {
     const contribIn = contributions.reduce((s, c) => s + Number(c.amount || 0), 0);
     const foodOut = foodExpenses.reduce((s, e) => s + Number(e.total_amount || 0), 0);
-    return { contribIn, foodOut, net: contribIn - foodOut };
+    const receiptChannels = sumByChannel(contributions, (c) => Number(c.amount || 0), (c) => c.payment_method);
+    const paymentChannels = sumByChannel(foodExpenses, (e) => Number(e.total_amount || 0), (e) => e.payment_method);
+    return {
+      contribIn,
+      foodOut,
+      net: contribIn - foodOut,
+      receiptChannels,
+      paymentChannels,
+      netChannels: netChannels(receiptChannels, paymentChannels),
+    };
   }, [contributions, foodExpenses]);
 
   const eventRows = useMemo(() => {
     const byEvent = new Map<
       string,
-      { event: EventRow; contribIn: number; foodOut: number; contribs: ContribRow[]; expenses: FoodExpenseRow[] }
+      {
+        event: EventRow;
+        contribIn: number;
+        foodOut: number;
+        contribs: ContribRow[];
+        expenses: FoodExpenseRow[];
+        receiptChannels: ChannelTotals;
+        paymentChannels: ChannelTotals;
+      }
     >();
 
     for (const ev of events) {
-      byEvent.set(ev.id, { event: ev, contribIn: 0, foodOut: 0, contribs: [], expenses: [] });
+      byEvent.set(ev.id, {
+        event: ev,
+        contribIn: 0,
+        foodOut: 0,
+        contribs: [],
+        expenses: [],
+        receiptChannels: { cash: 0, bank: 0, other: 0 },
+        paymentChannels: { cash: 0, bank: 0, other: 0 },
+      });
     }
 
     const unlinkedKey = '__unlinked__';
@@ -157,6 +190,8 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
       foodOut: 0,
       contribs: [] as ContribRow[],
       expenses: [] as FoodExpenseRow[],
+      receiptChannels: { cash: 0, bank: 0, other: 0 } as ChannelTotals,
+      paymentChannels: { cash: 0, bank: 0, other: 0 } as ChannelTotals,
     };
 
     for (const c of contributions) {
@@ -164,6 +199,7 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
       if (!row) continue;
       row.contribIn += Number(c.amount || 0);
       row.contribs.push(c);
+      addToChannel(row.receiptChannels, c.payment_method, Number(c.amount || 0));
     }
 
     for (const ex of foodExpenses) {
@@ -171,9 +207,11 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
         const row = byEvent.get(ex.event_id)!;
         row.foodOut += Number(ex.total_amount || 0);
         row.expenses.push(ex);
+        addToChannel(row.paymentChannels, ex.payment_method, Number(ex.total_amount || 0));
       } else {
         unlinked.foodOut += Number(ex.total_amount || 0);
         unlinked.expenses.push(ex);
+        addToChannel(unlinked.paymentChannels, ex.payment_method, Number(ex.total_amount || 0));
       }
     }
 
@@ -184,6 +222,11 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
     rows.sort((a, b) => (b.event.event_date || '').localeCompare(a.event.event_date || ''));
     return rows;
   }, [events, contributions, foodExpenses]);
+
+  const handleSaved = () => {
+    void loadAll();
+    onRecordsChanged?.();
+  };
 
   const receiptLinks = (ex: FoodExpenseRow) => {
     const urls: { label: string; url: string }[] = [];
@@ -210,8 +253,16 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
             Net ₹{totals.net.toLocaleString('en-IN')}
           </>
         }
-        description="Event contribution receipts (in) vs food/catering bills (out). Reconcile here — not under Finance → Transactions."
-        howCalculated="Sums event_contributions and active food expenses (expense_category = food) for this society."
+        description="Event contribution receipts (in) vs food/catering bills (out). Cash and bank shown separately at society and per-event level."
+        howCalculated="Sums event_contributions and active food expenses (expense_category = food). Cash vs bank from payment_method on each row."
+      />
+
+      <CashBankBreakdown
+        className="mb-2"
+        receipts={totals.receiptChannels}
+        payments={totals.paymentChannels}
+        receiptLabel="Contribution receipts"
+        paymentLabel="Food bills"
       />
 
       {eventRows.length === 0 ? (
@@ -223,7 +274,7 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
           </p>
         </div>
       ) : (
-        eventRows.map(({ event, contribIn, foodOut, contribs, expenses }) => {
+        eventRows.map(({ event, contribIn, foodOut, contribs, expenses, receiptChannels, paymentChannels }) => {
           const net = contribIn - foodOut;
           return (
             <div key={event.id} className="card-section p-4 space-y-3">
@@ -247,6 +298,16 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
                 </div>
               </div>
 
+              {(contribIn > 0 || foodOut > 0) && (
+                <CashBankBreakdown
+                  variant="compact"
+                  receipts={receiptChannels}
+                  payments={paymentChannels}
+                  receiptLabel="Contributions"
+                  paymentLabel="Food bills"
+                />
+              )}
+
               {contribs.length > 0 && (
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1 flex items-center gap-1">
@@ -255,11 +316,21 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
                   <div className="space-y-1">
                     {contribs.map((c) => (
                       <div key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/40 rounded p-2">
-                        <div className="flex justify-between gap-2">
-                          <span>
-                            {contribReceiptLabel(c)} · {c.payment_method}
+                        <div className="flex justify-between gap-2 items-start">
+                          <span className="flex items-center gap-1.5 flex-wrap">
+                            {contribReceiptLabel(c)}
+                            <ChannelBadge method={c.payment_method} />
                           </span>
-                          <span className="font-semibold shrink-0">₹{Number(c.amount).toLocaleString('en-IN')}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="font-semibold">₹{Number(c.amount).toLocaleString('en-IN')}</span>
+                            <button
+                              type="button"
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary inline-flex items-center gap-0.5"
+                              onClick={() => setEditingContribId(c.id)}
+                            >
+                              <Pencil className="w-3 h-3" /> Edit
+                            </button>
+                          </div>
                         </div>
                         {c.screenshot_url ? (
                           <a href={c.screenshot_url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">
@@ -284,9 +355,21 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
                       const links = receiptLinks(ex);
                       return (
                         <div key={ex.id} className="text-xs bg-muted/40 rounded p-2">
-                          <div className="flex justify-between gap-2">
-                            <span className="font-medium">{ex.title}</span>
-                            <span className="font-semibold shrink-0">₹{Number(ex.total_amount).toLocaleString('en-IN')}</span>
+                          <div className="flex justify-between gap-2 items-start">
+                            <span className="font-medium flex items-center gap-1.5 flex-wrap">
+                              {ex.title}
+                              <ChannelBadge method={ex.payment_method} />
+                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="font-semibold">₹{Number(ex.total_amount).toLocaleString('en-IN')}</span>
+                              <button
+                                type="button"
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary inline-flex items-center gap-0.5"
+                                onClick={() => setEditingExpenseId(ex.id)}
+                              >
+                                <Pencil className="w-3 h-3" /> Edit
+                              </button>
+                            </div>
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {ex.group_name} · {ex.payment_method} · {fmtIsoDateToDisplay(String(ex.expense_date))}
@@ -318,6 +401,18 @@ const EventFoodReconciliation = ({ adminName: _adminName = 'Admin', refreshKey =
           );
         })
       )}
+
+      <EventContributionEditModal
+        contributionId={editingContribId}
+        adminName={adminName}
+        onClose={() => setEditingContribId(null)}
+        onSaved={handleSaved}
+      />
+      <FoodExpenseEditModal
+        expenseId={editingExpenseId}
+        onClose={() => setEditingExpenseId(null)}
+        onSaved={handleSaved}
+      />
     </div>
   );
 };

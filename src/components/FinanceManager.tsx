@@ -33,6 +33,8 @@ import {
 import ExpenseSplitter from '@/components/ExpenseSplitter';
 import HeadFundReconciliation from '@/components/HeadFundReconciliation';
 import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
+import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
+import { sumByChannel, addToChannel, type ChannelTotals } from '@/lib/cashBankChannel';
 import { financeExpenseHeadFromLedgerEntry, isEventFoodLedgerEntry } from '@/lib/financeExpenseHead';
 
 export type FinanceSubTab =
@@ -2013,16 +2015,18 @@ const FinanceManager = ({
     monthOptionsForReceipts.find((o) => o.value === paymentMonthFilter)?.label ?? 'All months';
 
   const totalsBreakdown = useMemo(() => {
-    const map = new Map<string, { total: number; flatUnits: number; entries: number }>();
+    const map = new Map<string, { total: number; flatUnits: number; entries: number; byChannel: ChannelTotals }>();
     for (const e of ledgerEntries) {
       const m = ledgerMonthValue(e);
       if (m !== totalsMonth) continue;
       if (e.destination === 'separate_entry') continue;
       const k = `${e.record_mode}||${e.destination}`;
-      const cur = map.get(k) ?? { total: 0, flatUnits: 0, entries: 0 };
-      cur.total += Number(e.total_amount || 0);
+      const cur = map.get(k) ?? { total: 0, flatUnits: 0, entries: 0, byChannel: { cash: 0, bank: 0, other: 0 } };
+      const amt = Number(e.total_amount || 0);
+      cur.total += amt;
       cur.flatUnits += Number(e.aggregate_flat_count || 0);
       cur.entries += 1;
+      addToChannel(cur.byChannel, e.payment_method, amt);
       map.set(k, cur);
     }
     return [...map.entries()]
@@ -2033,23 +2037,38 @@ const FinanceManager = ({
       .sort((a, b) => `${a.mode}${a.destination}`.localeCompare(`${b.mode}${b.destination}`));
   }, [ledgerEntries, totalsMonth]);
 
+  const totalsMonthReceiptChannels = useMemo(
+    () =>
+      totalsBreakdown.reduce(
+        (acc, r) => {
+          acc.cash += r.byChannel.cash;
+          acc.bank += r.byChannel.bank;
+          acc.other += r.byChannel.other;
+          return acc;
+        },
+        { cash: 0, bank: 0, other: 0 } as ChannelTotals,
+      ),
+    [totalsBreakdown],
+  );
+
   const totalsMonthNet = useMemo(
     () => totalsBreakdown.reduce((s, r) => s + r.total, 0),
     [totalsBreakdown],
   );
 
   const totalsOutflowBreakdown = useMemo(() => {
-    const map = new Map<string, { total: number; flatUnits: number; entries: number; method: string }>();
+    const map = new Map<string, { total: number; flatUnits: number; entries: number; byChannel: ChannelTotals }>();
     for (const e of societyLedgerEntries) {
       const m = ledgerMonthValue(e);
       if (m !== totalsMonth) continue;
       if (e.destination !== 'separate_entry') continue;
       const head = financeExpenseHeadFromLedgerEntry(e.title, e.expense_id ? expenseCategoryById.get(e.expense_id) : null);
-      const cur = map.get(head) ?? { total: 0, flatUnits: 0, entries: 0, method: '' };
-      cur.total += Number(e.total_amount || 0);
+      const cur = map.get(head) ?? { total: 0, flatUnits: 0, entries: 0, byChannel: { cash: 0, bank: 0, other: 0 } };
+      const amt = Number(e.total_amount || 0);
+      cur.total += amt;
       cur.flatUnits += Number(e.aggregate_flat_count || 0);
       cur.entries += 1;
-      cur.method = e.payment_method;
+      addToChannel(cur.byChannel, e.payment_method, amt);
       map.set(head, cur);
     }
     return [...map.entries()]
@@ -2057,9 +2076,31 @@ const FinanceManager = ({
       .sort((a, b) => a.head.localeCompare(b.head));
   }, [societyLedgerEntries, totalsMonth, expenseCategoryById]);
 
+  const totalsMonthPaymentChannels = useMemo(
+    () =>
+      totalsOutflowBreakdown.reduce(
+        (acc, r) => {
+          acc.cash += r.byChannel.cash;
+          acc.bank += r.byChannel.bank;
+          acc.other += r.byChannel.other;
+          return acc;
+        },
+        { cash: 0, bank: 0, other: 0 } as ChannelTotals,
+      ),
+    [totalsOutflowBreakdown],
+  );
+
   const totalsMonthOutflow = useMemo(
     () => totalsOutflowBreakdown.reduce((s, r) => s + r.total, 0),
     [totalsOutflowBreakdown],
+  );
+
+  const eventRefChannelTotals = useMemo(
+    () => ({
+      receiptChannels: sumByChannel(eventContribRef, (c) => Number(c.amount || 0), (c) => c.payment_method),
+      paymentChannels: sumByChannel(eventFoodRef, (ex) => Number(ex.total_amount || 0), (ex) => ex.payment_method),
+    }),
+    [eventContribRef, eventFoodRef],
   );
 
   type FlatReportRow = {
@@ -3921,6 +3962,14 @@ const FinanceManager = ({
               <p className="text-xs text-muted-foreground py-4 text-center">Loading event receipts…</p>
             ) : (
               <>
+                {(eventContribRef.length > 0 || eventFoodRef.length > 0) && (
+                  <CashBankBreakdown
+                    receipts={eventRefChannelTotals.receiptChannels}
+                    payments={eventRefChannelTotals.paymentChannels}
+                    receiptLabel="Event contributions"
+                    paymentLabel="Food bills"
+                  />
+                )}
                 <div>
                   <p className="text-[11px] font-medium text-muted-foreground uppercase mb-2">Contribution receipts</p>
                   {eventContribRef.length === 0 ? (
@@ -3934,11 +3983,10 @@ const FinanceManager = ({
                           <div className="min-w-0">
                             <p className="text-[10px] text-muted-foreground">{c.event_title}</p>
                             <p className="text-sm font-medium truncate">{eventContribRefLabel(c)}</p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-[10px] text-muted-foreground flex items-center gap-1 flex-wrap">
                               {c.receipt_basis === 'non_flat' ? 'Without flat' : 'Flat-wise'}
                               {c.split_mode ? ` · ${c.split_mode.replace(/_/g, ' ')}` : ''}
-                              {' · '}
-                              {c.payment_method}
+                              <ChannelBadge method={c.payment_method} />
                               {c.verified_at ? ` · ${fmtDate(c.verified_at)}` : ''}
                             </p>
                             {c.screenshot_url && (
@@ -3977,8 +4025,9 @@ const FinanceManager = ({
                               {ex.event_title ? ex.event_title : ex.group_name}
                             </p>
                             <p className="text-sm font-medium truncate">{ex.title}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {fmtIsoDateToDisplay(ex.expense_date)} · {ex.payment_method}
+                            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              {fmtIsoDateToDisplay(ex.expense_date)}
+                              <ChannelBadge method={ex.payment_method} />
                             </p>
                             {ex.bill_screenshot_url && (
                               <a
@@ -4355,6 +4404,14 @@ const FinanceManager = ({
             </div>
           </div>
 
+          <CashBankBreakdown
+            className="mb-4"
+            receipts={totalsMonthReceiptChannels}
+            payments={totalsMonthPaymentChannels}
+            receiptLabel={`Ledger inflows (${totalsMonth})`}
+            paymentLabel={`Ledger outflows (${totalsMonth})`}
+          />
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
             <DescriptiveStatCard
               {...FINANCE_TOTALS_METRICS.inflow}
@@ -4392,6 +4449,10 @@ const FinanceManager = ({
                     <p className="text-[10px] text-muted-foreground capitalize">
                       {row.destination.replace(/_/g, ' ')} · {row.entries} entr
                       {row.entries === 1 ? 'y' : 'ies'}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Cash ₹{row.byChannel.cash.toLocaleString('en-IN')} · Bank ₹{row.byChannel.bank.toLocaleString('en-IN')}
+                      {row.byChannel.other > 0 ? ` · Other ₹${row.byChannel.other.toLocaleString('en-IN')}` : ''}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
@@ -4446,14 +4507,18 @@ const FinanceManager = ({
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">{row.head}</p>
                       <p className="text-[10px] text-muted-foreground capitalize">
-                        {row.method.replace(/_/g, ' ')} · {row.entries} entr{row.entries === 1 ? 'y' : 'ies'}
+                        {row.entries} entr{row.entries === 1 ? 'y' : 'ies'}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Cash ₹{row.byChannel.cash.toLocaleString('en-IN')} · Bank ₹{row.byChannel.bank.toLocaleString('en-IN')}
+                        {row.byChannel.other > 0 ? ` · Other ₹${row.byChannel.other.toLocaleString('en-IN')}` : ''}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
                       <DescriptiveValueButton
                         {...FINANCE_LEDGER_GROUP_METRICS.outflowHead}
                         title={row.head}
-                        description={`${FINANCE_LEDGER_GROUP_METRICS.outflowHead.description} Head: ${row.head}; method: ${row.method.replace(/_/g, ' ')}.`}
+                        description={`${FINANCE_LEDGER_GROUP_METRICS.outflowHead.description} Head: ${row.head}.`}
                         howCalculated={`${FINANCE_LEDGER_GROUP_METRICS.outflowHead.howCalculated} This head: ${row.entries} entr${row.entries === 1 ? 'y' : 'ies'}.`}
                         value={`₹${row.total.toLocaleString('en-IN')}`}
                         valueClassName="text-red-600"

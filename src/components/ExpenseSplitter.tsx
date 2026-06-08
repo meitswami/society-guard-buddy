@@ -31,6 +31,7 @@ interface Props {
   onOpenFinance?: () => void;
   /** Called after a food/payment expense receipt is saved. */
   onRecordsChanged?: () => void;
+  refreshKey?: number;
 }
 
 function ledgerCounterpartyPrefix(foodOnly: boolean, paymentOnly: boolean): string {
@@ -85,6 +86,7 @@ const ExpenseSplitter = ({
   embedded = false,
   onOpenFinance,
   onRecordsChanged,
+  refreshKey = 0,
 }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [groups, setGroups] = useState<ExpenseGroupRow[]>([]);
@@ -256,7 +258,7 @@ const ExpenseSplitter = ({
 
   useEffect(() => {
     void loadAll();
-  }, [loadAll]);
+  }, [loadAll, refreshKey]);
 
   const resetExpenseForm = () => {
     setEf({

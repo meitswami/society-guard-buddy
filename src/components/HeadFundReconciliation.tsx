@@ -4,6 +4,8 @@ import { useStore } from '@/store/useStore';
 import { Scale, TrendingDown, TrendingUp, Receipt, AlertTriangle, Plus } from 'lucide-react';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { DescriptiveStatSummary } from '@/components/DescriptiveStatCard';
+import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
+import { sumByChannel, type ChannelTotals } from '@/lib/cashBankChannel';
 import {
   expenseMatchesHead,
   HEAD_ADJUSTMENT_SOURCE_LABELS,
@@ -219,6 +221,8 @@ const HeadFundReconciliation = ({
       expenseOut: number;
       net: number;
       shortfall: number;
+      receiptChannels: ChannelTotals;
+      paymentChannels: ChannelTotals;
     }[] = [];
 
     const candidateGroups = groups.filter(
@@ -245,6 +249,8 @@ const HeadFundReconciliation = ({
       const expenseOut = matchedExpenses.reduce((s, e) => s + Number(e.total_amount || 0), 0);
       const net = contribIn + adjustIn - expenseOut;
       const shortfall = Math.max(0, expenseOut - contribIn - adjustIn);
+      const receiptChannels = sumByChannel(contribs, (c) => Number(c.amount || 0), (c) => c.payment_method);
+      const paymentChannels = sumByChannel(matchedExpenses, (e) => Number(e.total_amount || 0), (e) => e.payment_method);
 
       if (contribIn > 0 || adjustIn > 0 || expenseOut > 0 || chargeByGroup.has(group.id)) {
         rows.push({
@@ -258,6 +264,8 @@ const HeadFundReconciliation = ({
           expenseOut,
           net,
           shortfall,
+          receiptChannels,
+          paymentChannels,
         });
       }
     }
@@ -265,6 +273,12 @@ const HeadFundReconciliation = ({
     rows.sort((a, b) => a.group.name.localeCompare(b.group.name));
     return rows;
   }, [groups, charges, contributions, expenses, adjustments]);
+
+  const societyChannelTotals = useMemo(() => {
+    const receiptChannels = sumByChannel(contributions, (c) => Number(c.amount || 0), (c) => c.payment_method);
+    const paymentChannels = sumByChannel(expenses, (e) => Number(e.total_amount || 0), (e) => e.payment_method);
+    return { receiptChannels, paymentChannels };
+  }, [contributions, expenses]);
 
   const recordAdjustment = async (groupId: string, shortfall: number) => {
     if (!societyId) return;
@@ -335,8 +349,16 @@ const HeadFundReconciliation = ({
     <div className="space-y-4 mb-6">
       <DescriptiveStatSummary
         label="Head fund reconciliation"
-        description="Contributions collected (receipt type linked to head) vs expenses incurred under the same head. Shortfall can be covered by member advance, maintenance pool, or corpus."
-        howCalculated="Contributions = maintenance_payments on linked charges. Expenses = payment expenses in the head group + correlated items. Adjustments = head_fund_adjustments."
+        description="Contributions collected (receipt type linked to head) vs expenses incurred under the same head. Cash and bank shown separately."
+        howCalculated="Contributions = maintenance_payments on linked charges. Expenses = payment expenses in the head group + correlated items. Channel from payment_method."
+      />
+
+      <CashBankBreakdown
+        className="mb-2"
+        receipts={societyChannelTotals.receiptChannels}
+        payments={societyChannelTotals.paymentChannels}
+        receiptLabel="Head contributions (receipts)"
+        paymentLabel="Head expenses (payments)"
       />
 
       {headRows.map(
@@ -351,6 +373,8 @@ const HeadFundReconciliation = ({
           expenseOut,
           net,
           shortfall,
+          receiptChannels,
+          paymentChannels,
         }) => (
           <div key={group.id} className="card-section p-4 space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -382,6 +406,16 @@ const HeadFundReconciliation = ({
                 </p>
               </div>
             </div>
+
+            {(contribIn > 0 || expenseOut > 0) && (
+              <CashBankBreakdown
+                variant="compact"
+                receipts={receiptChannels}
+                payments={paymentChannels}
+                receiptLabel="Contributions"
+                paymentLabel="Expenses"
+              />
+            )}
 
             {shortfall > 0 && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 flex gap-2 items-start">
@@ -486,9 +520,10 @@ const HeadFundReconciliation = ({
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {contribs.map((c) => (
                     <div key={c.id} className="flex justify-between gap-2 text-xs bg-muted/40 rounded p-2">
-                      <span>
+                      <span className="flex items-center gap-1.5 flex-wrap">
                         Flat {c.flat_number}
-                        {c.resident_name ? ` · ${c.resident_name}` : ''} · {c.payment_method}
+                        {c.resident_name ? ` · ${c.resident_name}` : ''}
+                        <ChannelBadge method={c.payment_method} />
                       </span>
                       <span className="font-semibold shrink-0">₹{Number(c.amount).toLocaleString('en-IN')}</span>
                     </div>
@@ -504,10 +539,11 @@ const HeadFundReconciliation = ({
                   {headExpenses.map((ex) => (
                     <div key={ex.id} className="text-xs bg-muted/40 rounded p-2">
                       <div className="flex justify-between gap-2">
-                        <span className="font-medium">
+                        <span className="font-medium flex items-center gap-1.5 flex-wrap">
                           {ex.title}
+                          <ChannelBadge method={ex.payment_method} />
                           {ex.correlated && (
-                            <span className="text-[10px] text-muted-foreground font-normal"> (linked)</span>
+                            <span className="text-[10px] text-muted-foreground font-normal">(linked)</span>
                           )}
                         </span>
                         <span className="font-semibold shrink-0">₹{Number(ex.total_amount).toLocaleString('en-IN')}</span>
