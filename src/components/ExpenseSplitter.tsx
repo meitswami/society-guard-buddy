@@ -140,6 +140,7 @@ const ExpenseSplitter = ({
     name: string;
     description: string;
     event_id: string;
+    major_head: SocietyPaymentMajorHead | '';
     adult_weight: string;
     child_weight: string;
   } | null>(null);
@@ -771,15 +772,27 @@ const ExpenseSplitter = ({
       toast.error('Group name is required');
       return;
     }
+    if (paymentOnly && !editingGroup.major_head) {
+      toast.error('Select a major head (e.g. Operation & maintenance)');
+      return;
+    }
+    const updatePayload = paymentOnly
+      ? {
+          name,
+          description: editingGroup.description.trim() || null,
+          major_head: editingGroup.major_head,
+          event_id: null,
+        }
+      : {
+          name,
+          description: editingGroup.description.trim() || null,
+          event_id: editingGroup.event_id || null,
+          adult_weight: Number(editingGroup.adult_weight) || 1,
+          child_weight: Number(editingGroup.child_weight) || 0.5,
+        };
     const { error } = await supabase
       .from('expense_groups')
-      .update({
-        name,
-        description: editingGroup.description.trim() || null,
-        event_id: editingGroup.event_id || null,
-        adult_weight: Number(editingGroup.adult_weight) || 1,
-        child_weight: Number(editingGroup.child_weight) || 0.5,
-      })
+      .update(updatePayload)
       .eq('id', editingGroup.id)
       .eq('society_id', societyId);
     if (error) {
@@ -1371,6 +1384,7 @@ const ExpenseSplitter = ({
                       name: g.name,
                       description: g.description || '',
                       event_id: g.event_id ?? '',
+                      major_head: paymentOnly ? resolveGroupMajorHead(g) : '',
                       adult_weight: String(g.adult_weight ?? 1),
                       child_weight: String(g.child_weight ?? 0.5),
                     })
@@ -1808,12 +1822,34 @@ const ExpenseSplitter = ({
       {editingGroup && (
         <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
           <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3 max-h-[90vh] overflow-auto">
-            <p className="text-sm font-semibold">Edit expense group</p>
+            <p className="text-sm font-semibold">
+              {paymentOnly ? 'Edit expense head' : 'Edit expense group'}
+            </p>
+            {paymentOnly ? (
+              <>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">Major head</label>
+                <select
+                  className="input-field"
+                  value={editingGroup.major_head}
+                  onChange={(e) =>
+                    setEditingGroup({ ...editingGroup, major_head: e.target.value as SocietyPaymentMajorHead | '' })
+                  }
+                >
+                  <option value="">Choose major head…</option>
+                  {SOCIETY_PAYMENT_MAJOR_HEADS.map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                </select>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">Sub-head name</label>
+              </>
+            ) : null}
             <input
               className="input-field"
               value={editingGroup.name}
               onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
-              placeholder="Group name"
+              placeholder={paymentOnly ? 'e.g. Electricity bill, Lift AMC' : 'Group name'}
             />
             <textarea
               className="input-field"
@@ -1821,36 +1857,51 @@ const ExpenseSplitter = ({
               onChange={(e) => setEditingGroup({ ...editingGroup, description: e.target.value })}
               placeholder="Description (optional)"
             />
-            <select
-              className="input-field"
-              value={editingGroup.event_id}
-              onChange={(e) => setEditingGroup({ ...editingGroup, event_id: e.target.value })}
-            >
-              <option value="">No linked event</option>
-              {events.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  {ev.title} ({ev.event_date})
-                </option>
-              ))}
-            </select>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                className="input-field"
-                type="number"
-                step="0.1"
-                value={editingGroup.adult_weight}
-                onChange={(e) => setEditingGroup({ ...editingGroup, adult_weight: e.target.value })}
-                placeholder="Adult weight"
-              />
-              <input
-                className="input-field"
-                type="number"
-                step="0.1"
-                value={editingGroup.child_weight}
-                onChange={(e) => setEditingGroup({ ...editingGroup, child_weight: e.target.value })}
-                placeholder="Child weight"
-              />
-            </div>
+            {!paymentOnly && (
+              <>
+                <select
+                  className="input-field"
+                  value={editingGroup.event_id}
+                  onChange={(e) => setEditingGroup({ ...editingGroup, event_id: e.target.value })}
+                >
+                  <option value="">No linked event</option>
+                  {events.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.title} ({ev.event_date})
+                    </option>
+                  ))}
+                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Adult weight</label>
+                    <input
+                      className="input-field"
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      value={editingGroup.adult_weight}
+                      onChange={(e) => setEditingGroup({ ...editingGroup, adult_weight: e.target.value })}
+                      placeholder="Adult weight"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Child weight</label>
+                    <input
+                      className="input-field"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={editingGroup.child_weight}
+                      onChange={(e) => setEditingGroup({ ...editingGroup, child_weight: e.target.value })}
+                      placeholder="Child weight"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  Adult and child weights apply per person for event-linked splits (e.g. adult 1, child 0.5).
+                </p>
+              </>
+            )}
             <div className="flex gap-2">
               <button type="button" className="btn-primary flex-1" onClick={() => void saveGroupEdit()}>
                 Save
