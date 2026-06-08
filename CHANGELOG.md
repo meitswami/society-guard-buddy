@@ -14,6 +14,10 @@ when version tags are published.
 - **Committee module** — MC roster (`committee_members`): position, flat, tenure, elected/nominated, election trace. Migration `20260524130000`, `20260606150000`.
 - **Audit & financial integrity** — Duplicate maintenance alarms with inline edit/delete; self-audit engine (10 checks); manual audit tracer; ledger overcount panel; society governance guide; public About page.
 - **Events & food** (replaces Splitwise tab) — Event-linked groups, food vs payment category, headcount splits, EventFoodReconciliation panel. Migrations `20260602110000`–`20260602120000`, `20260606122832`, `20260607110651`.
+- **Events & food — contribution receipts** — Flat owners or outsiders; individual, headcount, lump, or same-per-flat collection; flat-wise or non-flat receipt lines with batch grouping. Migrations `20260608120000`, `20260608130000`.
+- **Events & food — receipt edit/delete** — Shared modals across Events, Food expenses, and Reconciliation with cross-section refresh.
+- **Events & food — cash/bank breakdown** — Channel totals at reconciliation and event levels.
+- **Events & food — fund adjustments** — Shortfall cover (member advance, maintenance pool, corpus) or surplus transfer to society pool. Migration `20260608140000`.
 - **Head fund reconciliation** — Per expense-head inflow/outflow/adjustments. Migration `20260607111313`.
 - **Reserve / operating fund** — Surplus/deficit tracking and reserve transfers. Migration `20260607111507`.
 - **Society pool receipts** — Record to pool, distribute to flats later. Migration `20260602100000`.
@@ -37,7 +41,7 @@ when version tags are published.
 ### Changed
 
 - **README** — System objectives, architecture table, security model, 10-check self-audit, Events & food naming, full migration reference, env/deployment guidance.
-- **`docs/VERSION-2-RELEASE.md`** — Extended through `20260607120000`; audit, committee, emergency, head/reserve fund sections; breaking changes table.
+- **`docs/VERSION-2-RELEASE.md`** — Extended through `20260608140000`; audit, committee, emergency, head/reserve fund, events/food receipt & adjustment sections; breaking changes table.
 - **`docs/PRODUCT-V2.md`** — Clarified shipped vs future scope.
 - **Finance — Receipts tab** — UI label renamed to **Transactions** (internal id still `receipts`).
 - **REPORTS** — Replaced legacy "Daily Reports" with `ReportPage.tsx` (Financial, Visitor, Vehicle, All Modules).
@@ -76,6 +80,9 @@ Apply **all pending** SQL under `supabase/migrations/` in timestamp order.
 | `20260607111313` | Head fund reconciliation |
 | `20260607111507` | Reserve fund transfers |
 | `20260607120000` | Election governance phases |
+| `20260608120000` | Event contributions: contributor type, headcount, split mode |
+| `20260608130000` | Receipt basis (flat / non_flat), batch grouping |
+| `20260608140000` | Event food fund adjustments |
 
 Ensure Storage buckets **`notification-media`** and **`guard-documents`** exist with upload policies.
 

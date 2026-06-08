@@ -29,7 +29,7 @@ Kutumbika is built to deliver:
 | **Meetings** | `meeting_kind` (GBM / AGM / EC / other), filters & print, table picker for attendees, bulk attendance, multi-file docs + reorder, auto-save, publish + notify. |
 | **Finance** | Period report, PDF, send to members + read receipts; **Transactions** tab; society pool; head fund reconciliation; reserve/operating fund; flat report. |
 | **Audit & Governance** | Duplicate maintenance alarms; **Self-Audit** engine (10 checks); **Manual Audit Tracer**; **Society Governance Framework**; public **About** page. |
-| **Events & food** | Event-linked expense groups; food vs payment split; headcount-based splits; **EventFoodReconciliation** (contributions vs bills). |
+| **Events & food** | Event-linked expense groups; food vs payment split; flat/outsider contribution receipts (flat-wise or without flat); edit/delete; cash/bank breakdown; shortfall/surplus pool adjustments; **EventFoodReconciliation**. |
 | **Committee** | MC roster with flat, tenure, elected/nominated; election results apply to committee. |
 | **Emergency alerts** | Guard/resident broadcast with photos; FCM push + WhatsApp (`emergency_alerts`). |
 | **Polls** | Standard polls + **MC elections** (ranked ballots, phases, 2 ballots/fl max, `election_results`, home banners). |
@@ -38,7 +38,7 @@ Kutumbika is built to deliver:
 | **Guards (admin)** | Worker **profile photo** (camera + gallery); double-tap enlarge; **multiple documents** per guard (images + PDF). |
 | **Store** | `setSocietyId` skips wiping data when society id unchanged. |
 
-Apply SQL in `supabase/migrations/` (full table through **`20260607120000`**: **[docs/VERSION-2-RELEASE.md](./docs/VERSION-2-RELEASE.md)**).
+Apply SQL in `supabase/migrations/` (full table through **`20260608140000`**: **[docs/VERSION-2-RELEASE.md](./docs/VERSION-2-RELEASE.md)**).
 
 ---
 

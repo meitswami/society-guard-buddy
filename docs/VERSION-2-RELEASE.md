@@ -37,6 +37,11 @@
 - Non-food society expenses migrated to Finance → Record payment / Transactions (`20260606122832`).
 - **EventFoodReconciliation** — event contributions (in) vs food/catering bills (out); separate from Finance → Transactions.
 - Chart of accounts: `expense_groups.major_head`.
+- **Contribution receipts** — flat owners or outsiders; per-flat, headcount (adults/kids), lump equal, or same-per-flat modes (`event_contributions.contributor_type`, `split_mode`, `adult_count`, `kid_count`).
+- **Receipt structure** — flat-wise lines or **without flat** (single payer/description); batch grouping via `batch_id` / `batch_label`; `receipt_basis` flat | non_flat.
+- **Edit & delete** — contribution receipts and food bills from Events, Food expenses, or Reconciliation; sections refresh together.
+- **Cash / bank breakdown** — channel totals at event, reconciliation, and summary levels.
+- **Shortfall / surplus adjustments** — `event_food_fund_adjustments`: cover food shortfall from member advance, maintenance pool, corpus, or transfer excess to society pool.
 
 ### Audit & financial integrity
 
@@ -146,6 +151,9 @@ Apply **all pending** files under `supabase/migrations/` in timestamp order.
 | `20260607111313` | Head fund reconciliation + `head_fund_adjustments` |
 | `20260607111507` | Reserve fund transfers |
 | `20260607120000` | Election governance phases + VP post |
+| `20260608120000` | Event contributions: contributor type, headcount, split mode |
+| `20260608130000` | Receipt basis (flat / non_flat), batch grouping; optional flat_number |
+| `20260608140000` | Event food fund adjustments (shortfall cover / surplus to pool) |
 
 Ensure Storage buckets **`notification-media`** and **`guard-documents`** exist with upload policies.
 
@@ -181,4 +189,4 @@ See README **Getting started** for `VITE_*` variables and Edge Function secrets.
 
 ---
 
-*Document version: aligned with repo through `20260607120000` (meetings, finance, audit, events/food, committee, emergency, head/reserve funds, election governance).*
+*Document version: aligned with repo through `20260608140000` (meetings, finance, audit, events/food receipts & adjustments, committee, emergency, head/reserve funds, election governance).*
