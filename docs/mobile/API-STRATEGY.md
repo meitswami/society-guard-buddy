@@ -8,7 +8,7 @@
 |----------|-------------|--------------|----------------|
 | **PostgREST** (table CRUD) | ✅ 50+ tables | ✅ Primary | ✅ via `supabase_flutter` |
 | **Edge Functions** | ✅ 13 functions | ✅ Partial | ✅ via `functions.invoke` |
-| **Storage** | ✅ 3 buckets | ✅ | ✅ |
+| **Storage** | ✅ 4 buckets | ✅ | ✅ |
 | **Realtime** | ✅ | ✅ Notifications, approvals | ✅ |
 | **GraphQL** | ⚠️ Enabled in DB | ❌ Not used | Optional |
 | **Dedicated REST/BFF** | ❌ | — | Would need to be built |
@@ -20,6 +20,7 @@
 
 - Auth: `guards`, `resident_users`, `admins`, `super_admins`, `society_roles`
 - Society: `societies`, `flats`, `members`
+- Branding: `platform_branding` (Flutter logo + colors; Superadmin Settings)
 - Gate: `visitors`, `approval_requests`, `visitor_passes`, `blacklist`
 - Finance: `maintenance_payments`, `finance_entries`, `expense_groups`
 - Governance: `meetings`, `polls`, `committee_members`, `notifications`
@@ -72,7 +73,7 @@
 
 ### Port order (recommended)
 
-1. **Theme + resident home** ✅ started in `mobile/`
+1. **Theme + resident home** ✅ dynamic branding from `platform_branding` + society logos
 2. Society gate + session (`societiesLogin.ts`, `appSession.ts`)
 3. Resident login (phone/password + Firebase OTP)
 4. Notifications, visitors, maintenance modules

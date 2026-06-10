@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/kutumbika_brand_theme.dart';
 import '../../../core/theme/kutumbika_colors.dart';
 import '../models/announcement.dart';
 
@@ -19,6 +20,7 @@ class RecentAnnouncements extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final brand = KutumbikaBrandTheme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,10 +37,10 @@ class RecentAnnouncements extends StatelessWidget {
             ),
             TextButton(
               onPressed: onViewAll,
-              child: const Text(
+              child: Text(
                 'View All',
                 style: TextStyle(
-                  color: KutumbikaColors.primary,
+                  color: brand.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),

@@ -3,7 +3,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield, Pencil, X, Sparkles, Headphones, CreditCard } from 'lucide-react';
+import { Crown, Building2, Users, Tag, LogOut, Plus, Trash2, Mail, Phone, User, Image, Download, AlertTriangle, Database, Shield, Pencil, X, Sparkles, Headphones, CreditCard, Smartphone } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import BiometricSetup from '@/components/BiometricSetup';
@@ -117,6 +117,54 @@ function societyToForm(s: Society): SocietyFormState {
   };
 }
 
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+async function uploadSocietyLogo(societyId: string, file: File): Promise<string | null> {
+  if (!file.type.startsWith('image/')) {
+    toast.error(`Not an image: ${file.name}`);
+    return null;
+  }
+  if (file.size > MAX_LOGO_BYTES) {
+    toast.error(`Logo too large (max 2 MB): ${file.name}`);
+    return null;
+  }
+  const safe = file.name.replace(/[^\w.-]/g, '_');
+  const path = `${societyId}/logo_${crypto.randomUUID()}_${safe}`;
+  const { error } = await supabase.storage.from('society-photos').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) {
+    toast.error(`Logo upload failed: ${file.name}`);
+    return null;
+  }
+  const { data } = supabase.storage.from('society-photos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function uploadPlatformLogo(file: File): Promise<string | null> {
+  if (!file.type.startsWith('image/')) {
+    toast.error(`Not an image: ${file.name}`);
+    return null;
+  }
+  if (file.size > MAX_LOGO_BYTES) {
+    toast.error(`Logo too large (max 2 MB): ${file.name}`);
+    return null;
+  }
+  const safe = file.name.replace(/[^\w.-]/g, '_');
+  const path = `logo/${crypto.randomUUID()}_${safe}`;
+  const { error } = await supabase.storage.from('platform-assets').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) {
+    toast.error(`Logo upload failed: ${file.name}`);
+    return null;
+  }
+  const { data } = supabase.storage.from('platform-assets').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 async function uploadSocietyPhotos(societyId: string, files: File[]): Promise<string[]> {
   const urls: string[] = [];
   for (const file of files) {
@@ -171,6 +219,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const [editingSocietyId, setEditingSocietyId] = useState<string | null>(null);
   const [sf, setSf] = useState<SocietyFormState>(() => emptySocietyForm());
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
   const [societySaving, setSocietySaving] = useState(false);
   const [flatsResetting, setFlatsResetting] = useState(false);
 
@@ -183,6 +232,17 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [totpConfigured, setTotpConfigured] = useState(false);
   const [totpSaving, setTotpSaving] = useState(false);
+
+  const [platformBranding, setPlatformBranding] = useState({
+    app_name: 'Kutumbika',
+    tagline: '— parivaar jaisi society —',
+    logo_url: '',
+    primary_color: '#F58220',
+    primary_dark_color: '#E08E10',
+    background_color: '#F8F7F4',
+  });
+  const [pendingPlatformLogo, setPendingPlatformLogo] = useState<File | null>(null);
+  const [brandingSaving, setBrandingSaving] = useState(false);
 
   const [onboardingRows, setOnboardingRows] = useState<any[]>([]);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
@@ -200,6 +260,23 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
         setRecoveryEmail(data?.recovery_email?.trim() ?? '');
         setTotpEnabled(!!data?.totp_enabled);
         setTotpConfigured(!!data?.totp_secret);
+      });
+    void supabase
+      .from('platform_branding')
+      .select('app_name, tagline, logo_url, primary_color, primary_dark_color, background_color')
+      .eq('id', 'default')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setPlatformBranding({
+          app_name: data.app_name ?? 'Kutumbika',
+          tagline: data.tagline ?? '— parivaar jaisi society —',
+          logo_url: data.logo_url ?? '',
+          primary_color: data.primary_color ?? '#F58220',
+          primary_dark_color: data.primary_dark_color ?? '#E08E10',
+          background_color: data.background_color ?? '#F8F7F4',
+        });
+        setPendingPlatformLogo(null);
       });
   }, [tab, superadmin.id]);
 
@@ -250,12 +327,14 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     setEditingSocietyId(null);
     setSf(emptySocietyForm());
     setPendingPhotoFiles([]);
+    setPendingLogoFile(null);
   };
 
   const openNewSocietyForm = () => {
     setEditingSocietyId(null);
     setSf(emptySocietyForm());
     setPendingPhotoFiles([]);
+    setPendingLogoFile(null);
     setShowSocietyForm(true);
   };
 
@@ -263,6 +342,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     setEditingSocietyId(s.id);
     setSf(societyToForm(s));
     setPendingPhotoFiles([]);
+    setPendingLogoFile(null);
     setShowSocietyForm(true);
   };
 
@@ -281,6 +361,8 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     };
 
     const hasBasement = sf.basement === 'yes';
+    let logo_url = sf.logo_url.trim() || null;
+
     const baseRow = {
       name: sf.name.trim(),
       address: sf.address.trim() || null,
@@ -290,7 +372,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
       contact_person: sf.contact_person.trim() || null,
       contact_email: sf.contact_email.trim() || null,
       contact_phone: sf.contact_phone.trim() || null,
-      logo_url: sf.logo_url.trim() || null,
+      logo_url,
       total_flats: parseIntOrNull(sf.total_flats),
       total_floors: parseIntOrNull(sf.total_floors),
       block_names,
@@ -314,6 +396,10 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
 
       if (editingSocietyId) {
         societyIdForTrim = editingSocietyId;
+        if (pendingLogoFile) {
+          const uploadedLogo = await uploadSocietyLogo(editingSocietyId, pendingLogoFile);
+          if (uploadedLogo) logo_url = uploadedLogo;
+        }
         let photo_urls = [...sf.existingPhotoUrls];
         if (pendingPhotoFiles.length) {
           const uploaded = await uploadSocietyPhotos(editingSocietyId, pendingPhotoFiles);
@@ -321,7 +407,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
         }
         const { error } = await supabase
           .from('societies')
-          .update({ ...baseRow, photo_urls })
+          .update({ ...baseRow, logo_url, photo_urls })
           .eq('id', editingSocietyId);
         if (error) throw error;
         toast.success(t('superadmin.societyUpdated'));
@@ -333,13 +419,20 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
           .single();
         if (error) throw error;
         societyIdForTrim = data.id;
+        if (pendingLogoFile) {
+          const uploadedLogo = await uploadSocietyLogo(societyIdForTrim, pendingLogoFile);
+          if (uploadedLogo) logo_url = uploadedLogo;
+        }
         let photo_urls = [...sf.existingPhotoUrls];
         if (pendingPhotoFiles.length) {
           const uploaded = await uploadSocietyPhotos(societyIdForTrim, pendingPhotoFiles);
           photo_urls = [...photo_urls, ...uploaded];
         }
-        if (photo_urls.length) {
-          const { error: uerr } = await supabase.from('societies').update({ photo_urls }).eq('id', societyIdForTrim);
+        const patch: { photo_urls?: string[]; logo_url?: string | null } = {};
+        if (photo_urls.length) patch.photo_urls = photo_urls;
+        if (logo_url) patch.logo_url = logo_url;
+        if (Object.keys(patch).length) {
+          const { error: uerr } = await supabase.from('societies').update(patch).eq('id', societyIdForTrim);
           if (uerr) throw uerr;
         }
         toast.success(t('superadmin.societyAdded'));
@@ -852,9 +945,34 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                       <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
                       <input className="input-field" placeholder={t('superadmin.contactPhone')} value={sf.contact_phone} onChange={e => setSf({ ...sf, contact_phone: e.target.value })} />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Image className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <input className="input-field" placeholder={t('superadmin.logoUrl')} value={sf.logo_url} onChange={e => setSf({ ...sf, logo_url: e.target.value })} />
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        {(sf.logo_url || pendingLogoFile) && (
+                          <img
+                            src={pendingLogoFile ? URL.createObjectURL(pendingLogoFile) : sf.logo_url}
+                            alt=""
+                            className="w-10 h-10 rounded-lg object-cover shrink-0 border border-border"
+                          />
+                        )}
+                        <input className="input-field flex-1" placeholder={t('superadmin.logoUrl')} value={sf.logo_url} onChange={e => setSf({ ...sf, logo_url: e.target.value })} />
+                      </div>
+                      <label className="btn-secondary inline-flex items-center justify-center gap-2 cursor-pointer text-sm py-2 px-3 w-fit">
+                        <Image className="w-4 h-4" />
+                        {t('superadmin.uploadLogo')}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            setPendingLogoFile(file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                      {pendingLogoFile && (
+                        <p className="text-[10px] text-muted-foreground">{pendingLogoFile.name} — {t('superadmin.logoUploadOnSave')}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1217,6 +1335,113 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
               </button>
             </div>
             <BiometricSetup userType="superadmin" userId={superadmin.id} userName={superadmin.name} />
+
+            <div className="card-section p-4 space-y-3">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-primary" /> {t('superadmin.mobileBranding')}
+              </h3>
+              <p className="text-xs text-muted-foreground">{t('superadmin.mobileBrandingHelp')}</p>
+              <div className="flex items-center gap-3">
+                {(platformBranding.logo_url || pendingPlatformLogo) && (
+                  <img
+                    src={pendingPlatformLogo ? URL.createObjectURL(pendingPlatformLogo) : platformBranding.logo_url}
+                    alt=""
+                    className="w-14 h-14 rounded-xl object-contain border border-border bg-card p-1"
+                  />
+                )}
+                <label className="btn-secondary inline-flex items-center justify-center gap-2 cursor-pointer text-sm py-2 px-3">
+                  <Image className="w-4 h-4" />
+                  {t('superadmin.uploadAppLogo')}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      setPendingPlatformLogo(e.target.files?.[0] ?? null);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              </div>
+              <input
+                className="input-field"
+                placeholder={t('superadmin.appName')}
+                value={platformBranding.app_name}
+                onChange={(e) => setPlatformBranding((b) => ({ ...b, app_name: e.target.value }))}
+              />
+              <input
+                className="input-field"
+                placeholder={t('superadmin.appTagline')}
+                value={platformBranding.tagline}
+                onChange={(e) => setPlatformBranding((b) => ({ ...b, tagline: e.target.value }))}
+              />
+              <div className="grid grid-cols-3 gap-2">
+                <label className="text-xs text-muted-foreground">
+                  {t('superadmin.primaryColor')}
+                  <input
+                    type="color"
+                    className="input-field h-10 w-full p-1 cursor-pointer"
+                    value={platformBranding.primary_color}
+                    onChange={(e) => setPlatformBranding((b) => ({ ...b, primary_color: e.target.value }))}
+                  />
+                </label>
+                <label className="text-xs text-muted-foreground">
+                  {t('superadmin.primaryDarkColor')}
+                  <input
+                    type="color"
+                    className="input-field h-10 w-full p-1 cursor-pointer"
+                    value={platformBranding.primary_dark_color}
+                    onChange={(e) => setPlatformBranding((b) => ({ ...b, primary_dark_color: e.target.value }))}
+                  />
+                </label>
+                <label className="text-xs text-muted-foreground">
+                  {t('superadmin.backgroundColor')}
+                  <input
+                    type="color"
+                    className="input-field h-10 w-full p-1 cursor-pointer"
+                    value={platformBranding.background_color}
+                    onChange={(e) => setPlatformBranding((b) => ({ ...b, background_color: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                className="btn-primary w-full"
+                disabled={brandingSaving}
+                onClick={async () => {
+                  setBrandingSaving(true);
+                  try {
+                    let logo_url = platformBranding.logo_url.trim() || null;
+                    if (pendingPlatformLogo) {
+                      const uploaded = await uploadPlatformLogo(pendingPlatformLogo);
+                      if (uploaded) logo_url = uploaded;
+                    }
+                    const row = {
+                      app_name: platformBranding.app_name.trim() || 'Kutumbika',
+                      tagline: platformBranding.tagline.trim() || null,
+                      logo_url,
+                      primary_color: platformBranding.primary_color,
+                      primary_dark_color: platformBranding.primary_dark_color,
+                      background_color: platformBranding.background_color,
+                      updated_at: new Date().toISOString(),
+                    };
+                    const { error } = await supabase
+                      .from('platform_branding')
+                      .upsert({ id: 'default', ...row });
+                    if (error) throw error;
+                    setPlatformBranding((b) => ({ ...b, logo_url: logo_url ?? '' }));
+                    setPendingPlatformLogo(null);
+                    toast.success(t('superadmin.mobileBrandingSaved'));
+                  } catch {
+                    toast.error(t('superadmin.mobileBrandingSaveFailed'));
+                  } finally {
+                    setBrandingSaving(false);
+                  }
+                }}
+              >
+                {brandingSaving ? '…' : t('superadmin.saveMobileBranding')}
+              </button>
+            </div>
           </div>
         )}
 

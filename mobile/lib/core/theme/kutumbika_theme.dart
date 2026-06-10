@@ -1,40 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../models/platform_branding.dart';
+import 'kutumbika_brand_theme.dart';
 import 'kutumbika_colors.dart';
 
 abstract final class KutumbikaTheme {
-  static ThemeData light() {
+  static ThemeData light([PlatformBranding? branding]) {
+    final brand = branding ?? PlatformBranding.defaults();
+    final primary = brand.primaryColor;
+    final background = brand.backgroundColor;
+
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: KutumbikaColors.primary,
-        primary: KutumbikaColors.primary,
+        seedColor: primary,
+        primary: primary,
         onPrimary: Colors.white,
         surface: KutumbikaColors.surface,
         onSurface: KutumbikaColors.textPrimary,
       ),
-      scaffoldBackgroundColor: KutumbikaColors.background,
+      scaffoldBackgroundColor: background,
       cardTheme: CardThemeData(
         color: KutumbikaColors.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: KutumbikaColors.primary,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: primary,
         foregroundColor: Colors.white,
         elevation: 4,
-        shape: CircleBorder(),
+        shape: const CircleBorder(),
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: KutumbikaColors.background,
+      appBarTheme: AppBarTheme(
+        backgroundColor: background,
         foregroundColor: KutumbikaColors.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
       ),
+      extensions: [
+        KutumbikaBrandTheme(branding: brand),
+      ],
     );
 
     final textTheme = GoogleFonts.interTextTheme(base.textTheme).apply(

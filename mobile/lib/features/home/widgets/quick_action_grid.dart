@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/kutumbika_brand_theme.dart';
 import '../../../core/theme/kutumbika_colors.dart';
 import '../models/quick_action.dart';
 
@@ -45,6 +46,7 @@ class _QuickActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final brand = KutumbikaBrandTheme.of(context);
 
     return Material(
       color: KutumbikaColors.surface,
@@ -72,12 +74,12 @@ class _QuickActionCard extends StatelessWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Icon(action.icon, color: KutumbikaColors.primary, size: 28),
+                  Icon(action.icon, color: brand.primary, size: 28),
                   if (action.badgeCount != null && action.badgeCount! > 0)
                     Positioned(
                       right: -10,
                       top: -8,
-                      child: _Badge(count: action.badgeCount!),
+                      child: _Badge(count: action.badgeCount!, color: brand.primary),
                     ),
                 ],
               ),
@@ -111,16 +113,17 @@ class _QuickActionCard extends StatelessWidget {
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge({required this.count});
+  const _Badge({required this.count, required this.color});
 
   final int count;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: KutumbikaColors.badge,
+        color: color,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(

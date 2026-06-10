@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/kutumbika_brand_theme.dart';
 import '../../../core/theme/kutumbika_colors.dart';
 
 enum HomeNavTab { home, directory, bookings, more }
@@ -18,6 +19,8 @@ class KutumbikaBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = KutumbikaBrandTheme.of(context);
+
     return SizedBox(
       height: 72,
       child: Stack(
@@ -42,12 +45,14 @@ class KutumbikaBottomNav extends StatelessWidget {
                   label: 'Home',
                   icon: Icons.home_rounded,
                   selected: selected == HomeNavTab.home,
+                  activeColor: brand.primary,
                   onTap: () => onSelected(HomeNavTab.home),
                 ),
                 _NavItem(
                   label: 'Directory',
                   icon: Icons.people_outline_rounded,
                   selected: selected == HomeNavTab.directory,
+                  activeColor: brand.primary,
                   onTap: () => onSelected(HomeNavTab.directory),
                 ),
                 const Expanded(child: SizedBox()),
@@ -55,12 +60,14 @@ class KutumbikaBottomNav extends StatelessWidget {
                   label: 'Bookings',
                   icon: Icons.calendar_month_outlined,
                   selected: selected == HomeNavTab.bookings,
+                  activeColor: brand.primary,
                   onTap: () => onSelected(HomeNavTab.bookings),
                 ),
                 _NavItem(
                   label: 'More',
                   icon: Icons.more_horiz_rounded,
                   selected: selected == HomeNavTab.more,
+                  activeColor: brand.primary,
                   onTap: () => onSelected(HomeNavTab.more),
                 ),
               ],
@@ -71,6 +78,8 @@ class KutumbikaBottomNav extends StatelessWidget {
             child: FloatingActionButton(
               onPressed: onCenterTap,
               elevation: 4,
+              backgroundColor: brand.primary,
+              foregroundColor: Colors.white,
               child: const Icon(Icons.add, size: 30),
             ),
           ),
@@ -85,17 +94,19 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.selected,
+    required this.activeColor,
     required this.onTap,
   });
 
   final String label;
   final IconData icon;
   final bool selected;
+  final Color activeColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? KutumbikaColors.primary : KutumbikaColors.navInactive;
+    final color = selected ? activeColor : KutumbikaColors.navInactive;
 
     return Expanded(
       child: InkWell(

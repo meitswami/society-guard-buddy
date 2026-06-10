@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/kutumbika_brand_theme.dart';
 import '../../core/theme/kutumbika_colors.dart';
+import '../shared/widgets/branded_background.dart';
 import '../../services/notification_service.dart';
 import 'models/announcement.dart';
 import 'models/quick_action.dart';
@@ -106,36 +108,38 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brand = KutumbikaBrandTheme.of(context);
+
     return Scaffold(
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadFeed,
-          color: KutumbikaColors.primary,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-            children: [
-              HomeHeader(
-                residentName: widget.residentName,
-                societyName: widget.societyName,
-                notificationCount: _notificationCount,
-              ),
-              const SizedBox(height: 24),
-              QuickActionGrid(actions: _quickActions),
-              const SizedBox(height: 28),
-              if (_loading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: CircularProgressIndicator(
-                      color: KutumbikaColors.primary,
+      body: BrandedBackground(
+        child: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: _loadFeed,
+            color: brand.primary,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+              children: [
+                HomeHeader(
+                  residentName: widget.residentName,
+                  societyName: widget.societyName,
+                  notificationCount: _notificationCount,
+                ),
+                const SizedBox(height: 24),
+                QuickActionGrid(actions: _quickActions),
+                const SizedBox(height: 28),
+                if (_loading)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: CircularProgressIndicator(color: brand.primary),
                     ),
-                  ),
-                )
-              else
-                RecentAnnouncements(items: _announcements),
-              const SizedBox(height: 24),
-              const PromoBanner(),
-            ],
+                  )
+                else
+                  RecentAnnouncements(items: _announcements),
+                const SizedBox(height: 24),
+                const PromoBanner(),
+              ],
+            ),
           ),
         ),
       ),

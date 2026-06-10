@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/kutumbika_brand_theme.dart';
 import '../../../core/theme/kutumbika_colors.dart';
 
 class PromoBanner extends StatelessWidget {
@@ -8,14 +9,15 @@ class PromoBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final brand = KutumbikaBrandTheme.of(context);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: KutumbikaColors.primaryLight,
+        color: brand.primaryLight,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: KutumbikaColors.primary.withValues(alpha: 0.25)),
+        border: Border.all(color: brand.primary.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -23,12 +25,12 @@ class PromoBanner extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: KutumbikaColors.primary.withValues(alpha: 0.15),
+              color: brand.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.verified_user_outlined,
-              color: KutumbikaColors.primary,
+              color: brand.primary,
             ),
           ),
           const SizedBox(width: 12),

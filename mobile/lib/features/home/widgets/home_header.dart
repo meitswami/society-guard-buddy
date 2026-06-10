@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/kutumbika_brand_theme.dart';
 import '../../../core/theme/kutumbika_colors.dart';
+import '../../shared/widgets/branding_logo.dart';
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({
@@ -31,27 +33,28 @@ class HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final brand = KutumbikaBrandTheme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            _LogoMark(),
+            const BrandingLogo(),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Kutumbika',
+                    brand.appName,
                     style: theme.textTheme.titleLarge?.copyWith(
-                      color: KutumbikaColors.primary,
+                      color: brand.primary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
-                    '— parivaar jaisi society —',
+                    brand.tagline,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: KutumbikaColors.textMuted,
                       fontStyle: FontStyle.italic,
@@ -73,8 +76,8 @@ class HomeHeader extends StatelessWidget {
                       child: Container(
                         width: 10,
                         height: 10,
-                        decoration: const BoxDecoration(
-                          color: KutumbikaColors.primary,
+                        decoration: BoxDecoration(
+                          color: brand.primary,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -110,27 +113,6 @@ class HomeHeader extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _LogoMark extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: KutumbikaColors.primaryLight,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Center(
-        child: Icon(
-          Icons.home_rounded,
-          color: KutumbikaColors.primary,
-          size: 26,
-        ),
-      ),
     );
   }
 }
