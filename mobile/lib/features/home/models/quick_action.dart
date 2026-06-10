@@ -7,6 +7,7 @@ enum QuickActionKind {
   maintenance,
   complaints,
   events,
+  emergency,
 }
 
 class QuickActionItem {

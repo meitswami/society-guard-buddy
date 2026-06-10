@@ -28,7 +28,9 @@ class NotificationService {
       );
     }).take(limit);
 
-    return filtered.map(_mapRow).toList();
+    return filtered
+        .map((row) => _mapRow(row as Map<String, dynamic>))
+        .toList();
   }
 
   Future<int> countUnreadForResident({

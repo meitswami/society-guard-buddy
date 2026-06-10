@@ -1,0 +1,300 @@
+import '../core/config/env.dart';
+import '../core/supabase/supabase_bootstrap.dart';
+import '../models/poll_models.dart';
+import '../utils/election_tally.dart';
+
+class ElectionBundle {
+  const ElectionBundle({
+    required this.elections,
+    required this.options,
+    required this.ballots,
+  });
+
+  final List<SocietyPoll> elections;
+  final List<Map<String, dynamic>> options;
+  final List<Map<String, dynamic>> ballots;
+}
+
+class ElectionService {
+  Future<ElectionBundle> fetchForSociety(String societyId) async {
+    if (!Env.isConfigured) {
+      return const ElectionBundle(elections: [], options: [], ballots: []);
+    }
+
+    final pollRows = await SupabaseBootstrap.client
+        .from('polls')
+        .select('*')
+        .eq('society_id', societyId)
+        .eq('poll_kind', 'election')
+        .order('created_at', ascending: false);
+
+    final elections = (pollRows as List)
+        .map((r) => SocietyPoll.fromRow(Map<String, dynamic>.from(r as Map)))
+        .toList();
+
+    if (elections.isEmpty) {
+      return const ElectionBundle(elections: [], options: [], ballots: []);
+    }
+
+    final ids = elections.map((e) => e.id).toList();
+    final optionRows = await SupabaseBootstrap.client
+        .from('poll_options')
+        .select('*')
+        .inFilter('poll_id', ids);
+    final ballotRows = await SupabaseBootstrap.client
+        .from('poll_election_ballots')
+        .select('*')
+        .inFilter('poll_id', ids);
+
+    return ElectionBundle(
+      elections: elections,
+      options: (optionRows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList(),
+      ballots: (ballotRows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList(),
+    );
+  }
+
+  Future<Map<String, dynamic>?> fetchPollRaw(String pollId) async {
+    final row = await SupabaseBootstrap.client.from('polls').select('*').eq('id', pollId).maybeSingle();
+    if (row == null) return null;
+    return Map<String, dynamic>.from(row);
+  }
+
+  Future<void> submitBallot({
+    required String pollId,
+    required String voterId,
+    required String flatId,
+    required String flatNumber,
+    required String voterPhone,
+    required Map<String, Map<String, int>> rankings,
+    required List<Map<String, dynamic>> existingBallots,
+  }) async {
+    if (!Env.isConfigured) return;
+
+    final phone = voterPhone.replaceAll(RegExp(r'\D'), '');
+    final existing = existingBallots.where((b) => b['poll_id'] == pollId && b['voter_id'] == voterId).toList();
+
+    if (existing.isEmpty && phone.isNotEmpty) {
+      final phoneVote = existingBallots.where((b) {
+        if (b['poll_id'] != pollId) return false;
+        final p = (b['voter_phone'] as String?)?.replaceAll(RegExp(r'\D'), '') ?? '';
+        return p == phone;
+      });
+      if (phoneVote.isNotEmpty) {
+        throw StateError('You have already voted on this election');
+      }
+    }
+
+    final flatBallots = existingBallots.where((b) => b['poll_id'] == pollId && b['flat_id'] == flatId);
+    final distinctOthers = flatBallots.where((b) => b['voter_id'] != voterId).map((b) => b['voter_id']).toSet();
+    if (existing.isEmpty && distinctOthers.length >= 2) {
+      throw StateError('This flat already has two ballots');
+    }
+
+    await SupabaseBootstrap.client.from('poll_election_ballots').upsert({
+      'poll_id': pollId,
+      'voter_id': voterId,
+      'flat_id': flatId,
+      'flat_number': flatNumber,
+      'voter_phone': phone.isEmpty ? null : phone,
+      'rankings': rankings,
+    }, onConflict: 'poll_id,voter_id');
+  }
+
+  Future<void> selfNominate({
+    required String pollId,
+    required String post,
+    required String memberId,
+    required String memberName,
+    required String flatId,
+    required String flatNumber,
+    required String nominatedBy,
+    required List<Map<String, dynamic>> existingOptions,
+  }) async {
+    if (!Env.isConfigured) return;
+
+    final dup = existingOptions.any(
+      (o) => o['poll_id'] == pollId && o['election_post'] == post && o['member_id'] == memberId,
+    );
+    if (dup) throw StateError('Already nominated for this post');
+
+    await SupabaseBootstrap.client.from('poll_options').insert({
+      'poll_id': pollId,
+      'option_text': memberName.trim(),
+      'election_post': post,
+      'votes_count': 0,
+      'member_id': memberId,
+      'flat_id': flatId,
+      'flat_number': flatNumber,
+      'nominated_by': nominatedBy,
+    });
+  }
+
+  Future<String> createElection({
+    required String societyId,
+    required String adminName,
+    required String question,
+    String? description,
+    int committeeSeats = 5,
+    DateTime? votingStarts,
+    DateTime? votingEnds,
+    String? termFrom,
+    String? termTo,
+    Map<String, bool>? openPosts,
+  }) async {
+    if (!Env.isConfigured) throw StateError('Not configured');
+
+    final seats = committeeSeats.clamp(5, 20);
+    final row = await SupabaseBootstrap.client
+        .from('polls')
+        .insert({
+          'question': question.trim(),
+          'description': description?.trim().isEmpty == true ? null : description?.trim(),
+          'created_by': adminName,
+          'society_id': societyId,
+          'poll_kind': 'election',
+          'election_committee_seats': seats,
+          'election_phase': 'nomination',
+          'is_active': true,
+          'voting_starts_at': votingStarts?.toIso8601String(),
+          'voting_ends_at': votingEnds?.toIso8601String(),
+          'election_term_from': termFrom,
+          'election_term_to': termTo,
+          'open_posts': openPosts ??
+              {
+                'president': true,
+                'vice_president': true,
+                'secretary': true,
+                'treasurer': true,
+                'committee': true,
+              },
+        })
+        .select('id')
+        .single();
+
+    final pollId = row['id'] as String;
+
+    await SupabaseBootstrap.client.from('notifications').insert({
+      'title': 'Society election — nomination open',
+      'message': 'Propose yourself for posts: ${question.trim()}',
+      'type': 'poll',
+      'target_type': 'all',
+      'created_by': adminName,
+      'society_id': societyId,
+    });
+
+    return pollId;
+  }
+
+  Future<void> startVoting(String pollId) async {
+    if (!Env.isConfigured) return;
+    await SupabaseBootstrap.client.from('polls').update({
+      'election_phase': 'voting',
+      'is_active': true,
+    }).eq('id', pollId);
+  }
+
+  Future<ElectionResultsPayload> closeAndTally({
+    required String pollId,
+    required List<Map<String, dynamic>> options,
+    required List<Map<String, dynamic>> ballots,
+    required int committeeSeats,
+  }) async {
+    if (!Env.isConfigured) throw StateError('Not configured');
+
+    final pollBallots = ballots.where((b) => b['poll_id'] == pollId).toList();
+    final pollOpts = options.where((o) => o['poll_id'] == pollId).toList();
+    final results = tallyElection(
+      options: pollOpts,
+      ballots: pollBallots,
+      committeeSeats: committeeSeats,
+    );
+
+    await SupabaseBootstrap.client.from('polls').update({
+      'is_active': false,
+      'election_phase': 'closed',
+      'election_results': results.toJson(),
+    }).eq('id', pollId);
+
+    return results;
+  }
+
+  Future<void> publishToCommittee({
+    required String societyId,
+    required String pollId,
+    required ElectionResultsPayload results,
+    required List<Map<String, dynamic>> options,
+    String? termFrom,
+    String? termTo,
+  }) async {
+    if (!Env.isConfigured) return;
+
+    final optById = {for (final o in options) o['id'] as String: o};
+    final termFromVal = termFrom ?? DateTime.now().toIso8601String().substring(0, 10);
+    final inserts = <Map<String, dynamic>>[];
+    var sort = 0;
+
+    const execOrder = ['president', 'vice_president', 'secretary', 'treasurer'];
+    const postToPosition = {
+      'president': 'President',
+      'vice_president': 'Vice-President',
+      'secretary': 'Secretary',
+      'treasurer': 'Treasurer',
+    };
+
+    ElectedWinner? winnerFor(String post) => switch (post) {
+          'president' => results.president,
+          'vice_president' => results.vicePresident,
+          'secretary' => results.secretary,
+          'treasurer' => results.treasurer,
+          _ => null,
+        };
+
+    for (final post in execOrder) {
+      final w = winnerFor(post);
+      if (w == null) continue;
+      final opt = optById[w.optionId];
+      inserts.add({
+        'society_id': societyId,
+        'flat_id': opt?['flat_id'],
+        'flat_number': opt?['flat_number'],
+        'flat_owner_name': opt?['option_text'] ?? w.name,
+        'name': w.name,
+        'position': postToPosition[post] ?? post,
+        'selection_type': 'elected',
+        'term_from': termFromVal,
+        'term_to': termTo,
+        'sort_order': sort++,
+        'is_active': true,
+        'source_poll_id': pollId,
+        'source_option_id': w.optionId,
+      });
+    }
+
+    for (final w in results.committee) {
+      final opt = optById[w.optionId];
+      inserts.add({
+        'society_id': societyId,
+        'flat_id': opt?['flat_id'],
+        'flat_number': opt?['flat_number'],
+        'flat_owner_name': opt?['option_text'] ?? w.name,
+        'name': w.name,
+        'position': 'Committee Member',
+        'selection_type': 'elected',
+        'term_from': termFromVal,
+        'term_to': termTo,
+        'sort_order': sort++,
+        'is_active': true,
+        'source_poll_id': pollId,
+        'source_option_id': w.optionId,
+      });
+    }
+
+    if (inserts.isEmpty) throw StateError('No winners to publish');
+
+    await SupabaseBootstrap.client.from('committee_members').insert(inserts);
+    await SupabaseBootstrap.client.from('polls').update({
+      'election_phase': 'applied',
+      'election_applied_at': DateTime.now().toIso8601String(),
+    }).eq('id', pollId);
+  }
+}
