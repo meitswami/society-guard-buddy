@@ -29,9 +29,9 @@ class KutumbikaBottomNav extends StatelessWidget {
         children: [
           Container(
             height: 64,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: KutumbikaColors.surface,
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
                   color: Color(0x14000000),
                   blurRadius: 12,
