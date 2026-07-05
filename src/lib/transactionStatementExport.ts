@@ -1,6 +1,6 @@
 import { fmtDate, fmtDateTimeFull } from '@/lib/dateFormat';
 import {
-  buildFinancePeriodReportPdfBlob,
+  buildFinancePeriodReportPdf,
   buildTransactionStatementPdfBlob,
   buildFinancePeriodReportCsv,
   buildFinancePeriodReportExcel,
@@ -162,7 +162,7 @@ export function downloadFinancePeriodReport(
 
   switch (format) {
     case 'pdf':
-      blob = buildFinancePeriodReportPdfBlob(input);
+      blob = buildFinancePeriodReportPdf(input);
       ext = 'pdf';
       break;
     case 'excel':

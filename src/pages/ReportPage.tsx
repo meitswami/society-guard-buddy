@@ -518,7 +518,7 @@ const ReportPage = () => {
             <p className="text-xs text-muted-foreground">{t('report.subtitle')}</p>
           </div>
         </div>
-        <ExportFormatMenu label={t('report.export')} onExport={exportReport} />
+        <ExportFormatMenu label="Export" onExport={exportReport} />
       </div>
 
       {/* Month Selector */}
