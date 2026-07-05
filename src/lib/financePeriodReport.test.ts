@@ -8,7 +8,8 @@ describe('finance opening balance anchors', () => {
       { as_on_date: '2026-02-28', cash_amount: null, bank_amount: 18145, other_amount: null },
     ];
     expect(findApplicableOpeningAnchor(anchors, '2026-03-01')?.as_on_date).toBe('2026-02-28');
-    expect(findApplicableOpeningAnchor(anchors, '2026-02-28')).toBeNull();
+    expect(findApplicableOpeningAnchor(anchors, '2026-02-28')?.as_on_date).toBe('2026-01-31');
+    expect(findApplicableOpeningAnchor(anchors, '2026-01-31')).toBeNull();
   });
 
   it('uses manual bank anchor for period starting after anchor date', () => {
