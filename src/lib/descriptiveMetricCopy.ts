@@ -78,12 +78,13 @@ export const FINANCE_PERIOD_METRICS = {
     title: 'Opening cash in hand',
     description: 'Physical cash balance at the start of the selected period.',
     howCalculated:
-      'Verified receipts in cash before period start minus cash expenses (separate-entry) before period start.',
+      'Uses a manual “as on” anchor when set (e.g. ₹0 cash on 28 Feb 2026), plus verified cash receipts/expenses after that date and before the period. Otherwise all verified cash-channel entries before period start.',
   },
   openingBank: {
     title: 'Opening cash in bank',
     description: 'Bank / UPI / online balance at period start.',
-    howCalculated: 'Same as opening cash, for non-cash channels (UPI, transfer, Razorpay, etc.).',
+    howCalculated:
+      'Uses a manual “as on” anchor when set (e.g. verified bank balance on a cut-off date), plus verified bank receipts/expenses after that date and before the period. Otherwise all verified bank-channel entries before period start.',
   },
   openingOther: {
     title: 'Opening other',

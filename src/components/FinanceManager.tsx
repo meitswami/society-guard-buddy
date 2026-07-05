@@ -43,7 +43,8 @@ import HeadFundReconciliation from '@/components/HeadFundReconciliation';
 import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
 import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
 import { sumByChannel, addToChannel, type ChannelTotals } from '@/lib/cashBankChannel';
-import { computeFinancePeriodReport, filterSocietyLedgerEntries } from '@/lib/financePeriodReport';
+import { computeFinancePeriodReport, createDefaultOpeningAnchorForm, filterSocietyLedgerEntries, openingAnchorRowToForm, parseOptionalAnchorAmount } from '@/lib/financePeriodReport';
+import { useSocietyOpeningBalanceAnchors } from '@/hooks/useSocietyOpeningBalanceAnchors';
 import {
   financeExpenseHeadFromLedgerEntry,
   SOCIETY_PAYMENT_MAJOR_HEADS,
@@ -411,6 +412,9 @@ const FinanceManager = ({
   const [eventContribRef, setEventContribRef] = useState<EventContribRefRow[]>([]);
   const [eventFoodRef, setEventFoodRef] = useState<EventFoodRefRow[]>([]);
   const [eventRefLoading, setEventRefLoading] = useState(false);
+  const { anchors: openingBalanceAnchors, saveAnchor, deleteAnchor } = useSocietyOpeningBalanceAnchors(societyId);
+  const [anchorForm, setAnchorForm] = useState(createDefaultOpeningAnchorForm);
+  const [savingOpeningAnchor, setSavingOpeningAnchor] = useState(false);
   useEffect(() => {
     void loadAll();
   }, [societyId]);
@@ -2399,9 +2403,50 @@ const FinanceManager = ({
         payments,
         ledgerEntries: societyLedgerEntries,
         expenseCategoryById,
+        openingBalanceAnchors,
       }),
-    [periodFrom, periodTo, payments, societyLedgerEntries, expenseCategoryById],
+    [periodFrom, periodTo, payments, societyLedgerEntries, expenseCategoryById, openingBalanceAnchors],
   );
+
+  const parseOptionalAmount = parseOptionalAnchorAmount;
+
+  const saveOpeningBalanceAnchor = async () => {
+    if (!societyId) return;
+    setSavingOpeningAnchor(true);
+    try {
+      await saveAnchor({
+        id: anchorForm.id || undefined,
+        as_on_date: anchorForm.as_on_date,
+        cash_amount: parseOptionalAmount(anchorForm.cash_amount),
+        bank_amount: parseOptionalAmount(anchorForm.bank_amount),
+        other_amount: parseOptionalAmount(anchorForm.other_amount),
+        notes: anchorForm.notes,
+      });
+      toast.success('Opening balance anchor saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save opening balance');
+    } finally {
+      setSavingOpeningAnchor(false);
+    }
+  };
+
+  const editOpeningBalanceAnchor = (row: (typeof openingBalanceAnchors)[number]) => {
+    setAnchorForm(openingAnchorRowToForm(row));
+  };
+
+  const resetOpeningBalanceAnchorForm = () => {
+    setAnchorForm(createDefaultOpeningAnchorForm());
+  };
+
+  const applyCashZeroFeb2026Preset = () => {
+    setAnchorForm((f) => ({
+      ...createDefaultOpeningAnchorForm(),
+      id: f.id,
+      bank_amount: f.bank_amount,
+      other_amount: f.other_amount,
+      notes: f.notes,
+    }));
+  };
 
   const collectReportAudienceIds = (): string[] => {
     if (reportAudience === 'all') return residentUsers.map((r) => r.id);
@@ -4410,6 +4455,142 @@ const FinanceManager = ({
             </div>
           </div>
 
+          <div className="card-section p-4 space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold">Manual opening balances</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Set verified balances as on a cut-off date (default 28 Feb 2026). Period opening uses the anchor plus
+                verified receipts/expenses after that date. Cash defaults to ₹0 — edit any field; leave blank to use
+                transaction totals for that channel.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <label className="text-xs flex flex-col gap-1">
+                <span className="text-muted-foreground">As on date</span>
+                <DateInput
+                  className="input-field"
+                  value={anchorForm.as_on_date}
+                  onChange={(e) => setAnchorForm((f) => ({ ...f, as_on_date: e.target.value }))}
+                />
+              </label>
+              <label className="text-xs flex flex-col gap-1">
+                <span className="text-muted-foreground">Cash in hand (₹)</span>
+                <input
+                  className="input-field"
+                  type="number"
+                  step="0.01"
+                  placeholder="0 = no cash"
+                  value={anchorForm.cash_amount}
+                  onChange={(e) => setAnchorForm((f) => ({ ...f, cash_amount: e.target.value }))}
+                />
+              </label>
+              <label className="text-xs flex flex-col gap-1">
+                <span className="text-muted-foreground">Bank / UPI balance (₹)</span>
+                <input
+                  className="input-field"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 18145"
+                  value={anchorForm.bank_amount}
+                  onChange={(e) => setAnchorForm((f) => ({ ...f, bank_amount: e.target.value }))}
+                />
+              </label>
+              <label className="text-xs flex flex-col gap-1">
+                <span className="text-muted-foreground">Other channels (₹)</span>
+                <input
+                  className="input-field"
+                  type="number"
+                  step="0.01"
+                  placeholder="Leave blank for auto"
+                  value={anchorForm.other_amount}
+                  onChange={(e) => setAnchorForm((f) => ({ ...f, other_amount: e.target.value }))}
+                />
+              </label>
+            </div>
+            <input
+              className="input-field text-xs"
+              placeholder="Notes (optional)"
+              value={anchorForm.notes}
+              onChange={(e) => setAnchorForm((f) => ({ ...f, notes: e.target.value }))}
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn-primary text-xs px-3 py-2"
+                disabled={savingOpeningAnchor || !societyId}
+                onClick={() => void saveOpeningBalanceAnchor()}
+              >
+                {savingOpeningAnchor ? 'Saving…' : anchorForm.id ? 'Update anchor' : 'Save anchor'}
+              </button>
+              <button type="button" className="btn-secondary text-xs px-3 py-2" onClick={resetOpeningBalanceAnchorForm}>
+                Reset form
+              </button>
+              <button
+                type="button"
+                className="btn-secondary text-xs px-3 py-2"
+                onClick={applyCashZeroFeb2026Preset}
+              >
+                Cash ₹0 · 28 Feb 2026
+              </button>
+            </div>
+            {openingBalanceAnchors.length > 0 && (
+              <div className="overflow-x-auto border border-border rounded-md">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/40 text-left">
+                      <th className="p-2">As on</th>
+                      <th className="p-2 text-right">Bank</th>
+                      <th className="p-2 text-right">Cash</th>
+                      <th className="p-2 text-right">Other</th>
+                      <th className="p-2">Notes</th>
+                      <th className="p-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {openingBalanceAnchors.map((row) => (
+                      <tr key={row.id} className="border-t border-border/60">
+                        <td className="p-2 font-mono">{fmtIsoDateToDisplay(row.as_on_date)}</td>
+                        <td className="p-2 text-right font-mono">
+                          {row.bank_amount == null ? '—' : `₹${row.bank_amount.toLocaleString('en-IN')}`}
+                        </td>
+                        <td className="p-2 text-right font-mono">
+                          {row.cash_amount == null ? '—' : `₹${row.cash_amount.toLocaleString('en-IN')}`}
+                        </td>
+                        <td className="p-2 text-right font-mono">
+                          {row.other_amount == null ? '—' : `₹${row.other_amount.toLocaleString('en-IN')}`}
+                        </td>
+                        <td className="p-2 text-muted-foreground max-w-[140px] truncate">{row.notes || '—'}</td>
+                        <td className="p-2 whitespace-nowrap">
+                          <button type="button" className="text-primary text-[10px] mr-2" onClick={() => editOpeningBalanceAnchor(row)}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="text-destructive text-[10px]"
+                            onClick={() => void deleteAnchor(row.id).then(() => toast.success('Anchor removed'))}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {financePeriodReport.appliedOpeningAnchor && (
+              <p className="text-[10px] text-muted-foreground">
+                This period uses anchor dated{' '}
+                <span className="font-medium text-foreground">
+                  {fmtIsoDateToDisplay(financePeriodReport.appliedOpeningAnchor.as_on_date)}
+                </span>
+                {financePeriodReport.openingCashFromManualAnchor ? ' · cash from manual anchor' : ''}
+                {financePeriodReport.openingBankFromManualAnchor ? ' · bank from manual anchor' : ''}
+                {financePeriodReport.openingOtherFromManualAnchor ? ' · other from manual anchor' : ''}
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <PeriodMetric
               metricKey="openingCash"
@@ -4435,6 +4616,22 @@ const FinanceManager = ({
               value={`₹${financePeriodReport.openingBalance.toLocaleString('en-IN')}`}
               valueClassName={`text-xl ${financePeriodReport.openingBalance >= 0 ? 'text-blue-700' : 'text-destructive'}`}
             />
+            {financePeriodReport.openingBankFromManualAnchor && (
+              <p className="sm:col-span-2 lg:col-span-4 text-[10px] text-primary -mt-1">
+                Bank opening includes manual anchor
+                {financePeriodReport.appliedOpeningAnchor
+                  ? ` (${fmtIsoDateToDisplay(financePeriodReport.appliedOpeningAnchor.as_on_date)})`
+                  : ''}
+              </p>
+            )}
+            {financePeriodReport.openingCashFromManualAnchor && (
+              <p className="sm:col-span-2 lg:col-span-4 text-[10px] text-primary -mt-1">
+                Cash opening includes manual anchor
+                {financePeriodReport.appliedOpeningAnchor
+                  ? ` (${fmtIsoDateToDisplay(financePeriodReport.appliedOpeningAnchor.as_on_date)} · ₹${Number(financePeriodReport.appliedOpeningAnchor.cash_amount ?? 0).toLocaleString('en-IN')} base)`
+                  : ''}
+              </p>
+            )}
           </div>
 
           <p className="text-[10px] text-muted-foreground uppercase font-medium mt-3">Period movement (receipts − expenses)</p>

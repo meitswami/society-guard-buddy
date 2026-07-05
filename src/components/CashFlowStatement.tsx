@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Banknote, Building2, ChevronRight, TrendingUp } from 'lucide-react';
 import { fmtDate, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
-import type { FinancePeriodLedgerEntry, FinancePeriodPayment, FinancePeriodReserveTransfer } from '@/lib/financePeriodReport';
+import type { FinancePeriodLedgerEntry, FinancePeriodPayment, FinancePeriodReserveTransfer, FinanceOpeningBalanceAnchor } from '@/lib/financePeriodReport';
 import {
   computeCashFlowStatement,
   filterStatementByChannel,
@@ -21,6 +21,7 @@ interface Props {
   societyLedgerEntries: FinancePeriodLedgerEntry[];
   expenseCategoryById: Map<string, string>;
   reserveTransfers: FinancePeriodReserveTransfer[];
+  openingBalanceAnchors?: FinanceOpeningBalanceAnchor[];
 }
 
 type ModalLayer = {
@@ -46,6 +47,7 @@ const CashFlowStatement = ({
   societyLedgerEntries,
   expenseCategoryById,
   reserveTransfers,
+  openingBalanceAnchors = [],
 }: Props) => {
   const displayPeriod = periodLabel ?? `${fmtIsoDateToDisplay(periodFrom)} – ${fmtIsoDateToDisplay(periodTo)}`;
   const invalidRange = periodFrom > periodTo;
@@ -63,8 +65,9 @@ const CashFlowStatement = ({
             societyLedgerEntries,
             reserveTransfers,
             expenseCategoryById,
+            openingBalanceAnchors,
           ),
-    [periodFrom, periodTo, payments, societyLedgerEntries, reserveTransfers, expenseCategoryById, invalidRange],
+    [periodFrom, periodTo, payments, societyLedgerEntries, reserveTransfers, expenseCategoryById, openingBalanceAnchors, invalidRange],
   );
 
   const pushModal = useCallback((layer: ModalLayer) => {

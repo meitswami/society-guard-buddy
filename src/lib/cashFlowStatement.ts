@@ -7,6 +7,7 @@ import {
   type FinancePeriodLedgerEntry,
   type FinancePeriodPayment,
   type FinancePeriodReserveTransfer,
+  type FinanceOpeningBalanceAnchor,
 } from '@/lib/financePeriodReport';
 
 export type { FinancePeriodPayment, FinancePeriodLedgerEntry, FinancePeriodReserveTransfer };
@@ -186,6 +187,7 @@ export function computeCashFlowStatement(
   ledgerEntries: FinancePeriodLedgerEntry[],
   reserveTransfers: ReserveTransferForCfs[],
   expenseCategoryById: Map<string, string> = new Map(),
+  openingBalanceAnchors: FinanceOpeningBalanceAnchor[] = [],
 ): CashFlowResult {
   const periodReport = computeFinancePeriodReport({
     periodFrom: period.from,
@@ -193,6 +195,7 @@ export function computeCashFlowStatement(
     payments,
     ledgerEntries,
     expenseCategoryById,
+    openingBalanceAnchors,
   });
 
   const periodReserve = reserveTransfers.filter((r) =>

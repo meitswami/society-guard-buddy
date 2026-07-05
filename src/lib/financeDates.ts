@@ -1,4 +1,4 @@
-import { format, isValid, parse } from 'date-fns';
+import { addDays, format, isValid, parse } from 'date-fns';
 
 /** Date the row was entered in the system (always “today” when saving). Not used in period/month reports. */
 export function todayRecordingDate(): string {
@@ -48,4 +48,10 @@ export function isDateBefore(iso: string, beforeYmd: string): boolean {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return false;
   return t < new Date(`${beforeYmd}T00:00:00`).getTime();
+}
+
+export function addDaysYmd(ymd: string, days: number): string {
+  const d = parse(ymd.slice(0, 10), 'yyyy-MM-dd', new Date());
+  if (!isValid(d)) return ymd.slice(0, 10);
+  return format(addDays(d, days), 'yyyy-MM-dd');
 }
