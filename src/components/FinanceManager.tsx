@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed, Scale } from 'lucide-react';
+import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed, Scale, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
@@ -21,6 +21,7 @@ import {
 import { toFinancePeriodReportExportInput } from '@/lib/financePeriodReportExport';
 import type { ExportFormat } from '@/lib/reportExportUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
 import { DescriptiveStatCard, DescriptiveStatSummary, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
 import { capsFieldChange } from '@/lib/entryCaps';
 import { RecordingDateBanner } from '@/components/RecordingDateBanner';
@@ -233,6 +234,14 @@ function transactionHeadSummaryRows(map: Map<string, TransactionHeadSummaryRow>)
   return [...map.values()].sort((a, b) => b.total - a.total || a.head.localeCompare(b.head));
 }
 
+type TransactionHeadModalLayer = {
+  title: string;
+  subtitle?: string;
+  total?: number;
+  rows: ReportDetailRow[];
+  drillable: boolean;
+};
+
 const transactionFilterHint = (filter: string): string => {
   switch (filter) {
     case 'all_payments':
@@ -405,6 +414,8 @@ const FinanceManager = ({
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [selectedLedger, setSelectedLedger] = useState<FinanceLedgerRow | null>(null);
+  const [headSummaryModalOpen, setHeadSummaryModalOpen] = useState(false);
+  const [headSummaryModalStack, setHeadSummaryModalStack] = useState<TransactionHeadModalLayer[]>([]);
   const [selectedReceiptKeys, setSelectedReceiptKeys] = useState<Set<string>>(new Set());
   const [paymentEdit, setPaymentEdit] = useState<{
     id: string;
@@ -2237,6 +2248,184 @@ const FinanceManager = ({
     [transactionPaymentHeadSummary],
   );
 
+  const pushHeadSummaryModal = useCallback((layer: TransactionHeadModalLayer) => {
+    setHeadSummaryModalStack((s) => [...s, layer]);
+    setHeadSummaryModalOpen(true);
+  }, []);
+
+  const closeHeadSummaryModal = useCallback(() => {
+    setHeadSummaryModalOpen(false);
+    setHeadSummaryModalStack([]);
+  }, []);
+
+  const headSummaryModalBack = useCallback(() => {
+    setHeadSummaryModalStack((s) => {
+      const next = s.slice(0, -1);
+      if (next.length === 0) setHeadSummaryModalOpen(false);
+      return next;
+    });
+  }, []);
+
+  const buildReceiptHeadEntryRows = useCallback(
+    (head: string): ReportDetailRow[] => {
+      const items: { t: string; row: ReportDetailRow }[] = [];
+      for (const p of filteredPayments) {
+        const ch = chargeById.get(p.charge_id);
+        const h = ch ? majorHeadForCharge(ch) : 'Uncategorized';
+        if (h !== head) continue;
+        items.push({
+          t: p.created_at ?? '',
+          row: {
+            id: `mp-${p.id}`,
+            label: `Flat ${p.flat_number}`,
+            sublabel: `${chargeById.get(p.charge_id)?.title || 'Unknown charge'} · ${p.resident_name || '—'}`,
+            amount: Number(p.amount || 0),
+            date: fmtDate(p.created_at),
+            status: p.payment_status,
+            extra: String(p.payment_method || '').toUpperCase() || undefined,
+            meta: { kind: 'mp', payment: p },
+          },
+        });
+      }
+      for (const e of scopedLedgerOnly) {
+        if (isSocietyPaymentLedgerEntry(e)) continue;
+        if (ledgerReceiptHead(e) !== head) continue;
+        items.push({
+          t: e.created_at ?? '',
+          row: {
+            id: `ledger-${e.id}`,
+            label: e.title || 'Finance entry',
+            sublabel: `${e.record_mode.replace(/_/g, ' ')} · ${e.destination.replace(/_/g, ' ')}`,
+            amount: Number(e.total_amount || 0),
+            date: fmtDate(e.created_at),
+            status: e.payment_status,
+            extra: String(e.payment_method || '').toUpperCase() || undefined,
+            meta: { kind: 'ledger', entry: e },
+          },
+        });
+      }
+      items.sort((a, b) => (a.t < b.t ? 1 : -1));
+      return items.map((i) => i.row);
+    },
+    [
+      filteredPayments,
+      scopedLedgerOnly,
+      chargeById,
+      majorHeadForCharge,
+      isSocietyPaymentLedgerEntry,
+      ledgerReceiptHead,
+    ],
+  );
+
+  const buildPaymentHeadEntryRows = useCallback(
+    (head: string): ReportDetailRow[] => {
+      const items: { t: string; row: ReportDetailRow }[] = [];
+      for (const e of scopedLedgerOnly) {
+        if (!isSocietyPaymentLedgerEntry(e)) continue;
+        const h = financeExpenseHeadFromLedgerEntry(
+          e.title,
+          e.expense_id ? expenseCategoryById.get(e.expense_id) : null,
+        );
+        if (h !== head) continue;
+        items.push({
+          t: e.created_at ?? '',
+          row: {
+            id: `ledger-${e.id}`,
+            label: e.title || 'Society payment',
+            sublabel: `${e.record_mode.replace(/_/g, ' ')} · ${e.destination.replace(/_/g, ' ')}`,
+            amount: Number(e.total_amount || 0),
+            date: fmtDate(e.created_at),
+            status: e.payment_status,
+            extra: String(e.payment_method || '').toUpperCase() || undefined,
+            meta: { kind: 'ledger', entry: e },
+          },
+        });
+      }
+      items.sort((a, b) => (a.t < b.t ? 1 : -1));
+      return items.map((i) => i.row);
+    },
+    [scopedLedgerOnly, isSocietyPaymentLedgerEntry, expenseCategoryById],
+  );
+
+  const openHeadSummaryEntryDetail = useCallback(
+    (row: ReportDetailRow) => {
+      const kind = row.meta?.kind;
+      if (kind === 'mp') {
+        const p = row.meta?.payment as Record<string, unknown> | undefined;
+        if (!p) return;
+        const charge = chargeById.get(p.charge_id as string);
+        pushHeadSummaryModal({
+          title: 'Receipt detail',
+          subtitle: `Flat ${p.flat_number}`,
+          total: Number(p.amount || 0),
+          drillable: false,
+          rows: [
+            { id: 'd-charge', label: 'Charge', sublabel: charge?.title || 'Unknown charge' },
+            { id: 'd-flat', label: 'Flat', sublabel: String(p.flat_number ?? '—') },
+            { id: 'd-resident', label: 'Resident', sublabel: String(p.resident_name || '—') },
+            { id: 'd-amt', label: 'Amount', amount: Number(p.amount || 0) },
+            { id: 'd-type', label: 'Type', sublabel: charge?.frequency || '—' },
+            { id: 'd-method', label: 'Payment method', sublabel: String(p.payment_method || '—') },
+            { id: 'd-status', label: 'Status', sublabel: String(p.payment_status || '—') },
+            { id: 'd-month', label: 'Payment month', sublabel: paymentMonthLabel(p) },
+            {
+              id: 'd-due',
+              label: 'Due date',
+              sublabel: p.due_date ? fmtIsoDateToDisplay(String(p.due_date)) : '—',
+            },
+            { id: 'd-txn', label: 'Transaction ID', sublabel: String(p.transaction_id || '—') },
+            { id: 'd-notes', label: 'Notes', sublabel: String(p.notes || '—') },
+          ],
+        });
+        return;
+      }
+      if (kind === 'ledger') {
+        const e = row.meta?.entry as FinanceLedgerRow | undefined;
+        if (!e) return;
+        const rawCp = e.finance_entry_counterparties;
+        const cp = Array.isArray(rawCp) ? rawCp[0] : rawCp;
+        const detailRows: ReportDetailRow[] = [
+          { id: 'd-title', label: 'Title', sublabel: e.title || '—' },
+          { id: 'd-mode', label: 'Record mode', sublabel: e.record_mode.replace(/_/g, ' ') },
+          { id: 'd-dest', label: 'Destination', sublabel: e.destination.replace(/_/g, ' ') },
+          { id: 'd-amt', label: 'Amount', amount: Number(e.total_amount || 0) },
+          { id: 'd-month', label: 'Entry month', sublabel: ledgerMonthDisplay(e) },
+          { id: 'd-flats', label: 'Flats in entry', sublabel: String(e.aggregate_flat_count) },
+          { id: 'd-method', label: 'Payment method', sublabel: e.payment_method || '—' },
+          { id: 'd-txn', label: 'Transaction ID', sublabel: e.transaction_id || '—' },
+          { id: 'd-status', label: 'Status', sublabel: e.payment_status },
+          { id: 'd-notes', label: 'Notes', sublabel: e.notes || '—' },
+        ];
+        if (cp) {
+          detailRows.splice(4, 0, {
+            id: 'd-from',
+            label: 'From',
+            sublabel: `${(cp as { name?: string }).name ?? '—'}${
+              (cp as { relation_to_society?: string | null }).relation_to_society
+                ? ` · ${(cp as { relation_to_society?: string | null }).relation_to_society}`
+                : ''
+            }`,
+          });
+        }
+        for (const a of e.finance_entry_allocations ?? []) {
+          detailRows.push({
+            id: `d-alloc-${a.flat_number}`,
+            label: `Flat ${a.flat_number}`,
+            amount: Number(a.amount || 0),
+          });
+        }
+        pushHeadSummaryModal({
+          title: 'Entry detail',
+          subtitle: e.title || ledgerEntryKindLabel(e),
+          total: Number(e.total_amount || 0),
+          drillable: false,
+          rows: detailRows,
+        });
+      }
+    },
+    [pushHeadSummaryModal, chargeById, ledgerEntryKindLabel],
+  );
+
   const receiptLineItems = useMemo(() => {
     if (filterStatus === 'unpaid') return [] as { kind: 'mp' | 'ledger'; t: string; p?: any; e?: FinanceLedgerRow }[];
     const items: { kind: 'mp' | 'ledger'; t: string; p?: any; e?: FinanceLedgerRow }[] = [
@@ -2264,6 +2453,44 @@ const FinanceManager = ({
     paymentTypeOptions.find((o) => o.value === paymentTypeFilter)?.label ?? '--All--';
   const selectedReceiptMonthLabel =
     monthOptionsForReceipts.find((o) => o.value === paymentMonthFilter)?.label ?? 'All months';
+
+  const openReceiptHeadSummary = useCallback(
+    (head: string, total: number) => {
+      pushHeadSummaryModal({
+        title: head,
+        subtitle: `${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
+        total,
+        rows: buildReceiptHeadEntryRows(head),
+        drillable: true,
+      });
+    },
+    [
+      pushHeadSummaryModal,
+      buildReceiptHeadEntryRows,
+      selectedReceiptTypeLabel,
+      selectedReceiptMonthLabel,
+    ],
+  );
+
+  const openPaymentHeadSummary = useCallback(
+    (head: string, total: number) => {
+      pushHeadSummaryModal({
+        title: head,
+        subtitle: `Society payment · ${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
+        total,
+        rows: buildPaymentHeadEntryRows(head),
+        drillable: true,
+      });
+    },
+    [
+      pushHeadSummaryModal,
+      buildPaymentHeadEntryRows,
+      selectedReceiptTypeLabel,
+      selectedReceiptMonthLabel,
+    ],
+  );
+
+  const currentHeadSummaryModal = headSummaryModalStack[headSummaryModalStack.length - 1];
 
   const totalsBreakdown = useMemo(() => {
     const map = new Map<string, { total: number; flatUnits: number; entries: number; byChannel: ChannelTotals }>();
@@ -3611,6 +3838,7 @@ const FinanceManager = ({
                     </p>
                     <p className="text-[10px] text-muted-foreground leading-snug">
                       Grouped by major head from receipt type. Respects current status, type, month, and mode filters.
+                      Tap a row to view entries.
                     </p>
                     <div className="overflow-x-auto">
                       <table className="w-full text-[10px] border border-border rounded-md overflow-hidden">
@@ -3622,11 +3850,16 @@ const FinanceManager = ({
                             <th className="p-1.5 border-b border-border text-right">Bank / UPI</th>
                             <th className="p-1.5 border-b border-border text-right">Other</th>
                             <th className="p-1.5 border-b border-border text-right font-semibold">Total</th>
+                            <th className="p-1.5 border-b border-border w-8" aria-label="View entries" />
                           </tr>
                         </thead>
                         <tbody>
                           {transactionReceiptHeadSummary.map((row) => (
-                            <tr key={row.head}>
+                            <tr
+                              key={row.head}
+                              className="hover:bg-muted/30 cursor-pointer"
+                              onClick={() => openReceiptHeadSummary(row.head, row.total)}
+                            >
                               <td className="p-1.5 border-b border-border/80 max-w-[160px] truncate" title={row.head}>
                                 {row.head}
                               </td>
@@ -3642,6 +3875,19 @@ const FinanceManager = ({
                               </td>
                               <td className="p-1.5 border-b border-border/80 text-right font-mono font-semibold text-green-700">
                                 ₹{row.total.toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right">
+                                <button
+                                  type="button"
+                                  className="p-1 rounded hover:bg-muted inline-flex"
+                                  aria-label={`View ${row.head} entries`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openReceiptHeadSummary(row.head, row.total);
+                                  }}
+                                >
+                                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -3664,6 +3910,7 @@ const FinanceManager = ({
                             <td className="p-1.5 text-right font-mono text-green-700">
                               ₹{transactionReceiptHeadSummary.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}
                             </td>
+                            <td className="p-1.5" />
                           </tr>
                         </tfoot>
                       </table>
@@ -3678,6 +3925,7 @@ const FinanceManager = ({
                     </p>
                     <p className="text-[10px] text-muted-foreground leading-snug">
                       Grouped by expense head from Record payment. Respects current status, type, month, and mode filters.
+                      Tap a row to view entries.
                     </p>
                     <div className="overflow-x-auto">
                       <table className="w-full text-[10px] border border-border rounded-md overflow-hidden">
@@ -3689,11 +3937,16 @@ const FinanceManager = ({
                             <th className="p-1.5 border-b border-border text-right">Bank / UPI</th>
                             <th className="p-1.5 border-b border-border text-right">Other</th>
                             <th className="p-1.5 border-b border-border text-right font-semibold">Total</th>
+                            <th className="p-1.5 border-b border-border w-8" aria-label="View entries" />
                           </tr>
                         </thead>
                         <tbody>
                           {transactionPaymentHeadSummary.map((row) => (
-                            <tr key={row.head}>
+                            <tr
+                              key={row.head}
+                              className="hover:bg-muted/30 cursor-pointer"
+                              onClick={() => openPaymentHeadSummary(row.head, row.total)}
+                            >
                               <td className="p-1.5 border-b border-border/80 max-w-[160px] truncate" title={row.head}>
                                 {row.head}
                               </td>
@@ -3709,6 +3962,19 @@ const FinanceManager = ({
                               </td>
                               <td className="p-1.5 border-b border-border/80 text-right font-mono font-semibold text-orange-700">
                                 ₹{row.total.toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right">
+                                <button
+                                  type="button"
+                                  className="p-1 rounded hover:bg-muted inline-flex"
+                                  aria-label={`View ${row.head} entries`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openPaymentHeadSummary(row.head, row.total);
+                                  }}
+                                >
+                                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -3731,6 +3997,7 @@ const FinanceManager = ({
                             <td className="p-1.5 text-right font-mono text-orange-700">
                               ₹{transactionPaymentHeadSummary.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}
                             </td>
+                            <td className="p-1.5" />
                           </tr>
                         </tfoot>
                       </table>
