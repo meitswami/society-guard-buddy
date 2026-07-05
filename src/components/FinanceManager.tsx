@@ -22,7 +22,7 @@ import { toFinancePeriodReportExportInput } from '@/lib/financePeriodReportExpor
 import type { ExportFormat } from '@/lib/reportExportUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
-import { DescriptiveStatCard, DescriptiveStatSummary, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
+import { DescriptiveStatCard, DescriptiveStatSummary, DescriptiveValueButton, TableSumInsight } from '@/components/DescriptiveStatCard';
 import { capsFieldChange } from '@/lib/entryCaps';
 import { RecordingDateBanner } from '@/components/RecordingDateBanner';
 import {
@@ -38,6 +38,7 @@ import {
   FINANCE_LEDGER_GROUP_METRICS,
   FINANCE_PERIOD_METRICS,
   FINANCE_TOTALS_METRICS,
+  SUM_INSIGHT_METRICS,
 } from '@/lib/descriptiveMetricCopy';
 import ExpenseSplitter from '@/components/ExpenseSplitter';
 import HeadFundReconciliation from '@/components/HeadFundReconciliation';
@@ -3891,8 +3892,14 @@ const FinanceManager = ({
               <DescriptiveStatSummary
                 label={
                   <>
-                    {receiptSummary.count} entries · ₹{receiptSummary.sum.toLocaleString('en-IN')} total ·{' '}
-                    {receiptSummary.flatCount} flat(s) · Type: {selectedReceiptTypeLabel} · Mode:{' '}
+                    {receiptSummary.count} entries ·{' '}
+                    <TableSumInsight
+                      as="span"
+                      {...SUM_INSIGHT_METRICS.transactionListTotal}
+                      value={`₹${receiptSummary.sum.toLocaleString('en-IN')}`}
+                      valueClassName="text-[10px] font-mono font-semibold"
+                    />{' '}
+                    total · {receiptSummary.flatCount} flat(s) · Type: {selectedReceiptTypeLabel} · Mode:{' '}
                     {receiptModeFilter === 'all' ? 'All' : receiptModeFilter.replace(/_/g, ' ')} · Month:{' '}
                     {selectedReceiptMonthLabel}
                   </>
@@ -3944,18 +3951,36 @@ const FinanceManager = ({
                                 {row.head}
                               </td>
                               <td className="p-1.5 border-b border-border/80 text-right">{row.entries}</td>
-                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
-                                ₹{row.byChannel.cash.toLocaleString('en-IN')}
-                              </td>
-                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
-                                ₹{row.byChannel.bank.toLocaleString('en-IN')}
-                              </td>
-                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
-                                ₹{row.byChannel.other.toLocaleString('en-IN')}
-                              </td>
-                              <td className="p-1.5 border-b border-border/80 text-right font-mono font-semibold text-green-700">
-                                ₹{row.total.toLocaleString('en-IN')}
-                              </td>
+                              <TableSumInsight
+                                {...SUM_INSIGHT_METRICS.channelCash}
+                                title={`${row.head} — cash`}
+                                value={`₹${row.byChannel.cash.toLocaleString('en-IN')}`}
+                                valueClassName="text-[10px] font-mono"
+                                cellClassName="p-1.5 border-b border-border/80"
+                              />
+                              <TableSumInsight
+                                {...SUM_INSIGHT_METRICS.channelBank}
+                                title={`${row.head} — bank / UPI`}
+                                value={`₹${row.byChannel.bank.toLocaleString('en-IN')}`}
+                                valueClassName="text-[10px] font-mono"
+                                cellClassName="p-1.5 border-b border-border/80"
+                              />
+                              <TableSumInsight
+                                {...SUM_INSIGHT_METRICS.channelOther}
+                                title={`${row.head} — other`}
+                                value={`₹${row.byChannel.other.toLocaleString('en-IN')}`}
+                                valueClassName="text-[10px] font-mono"
+                                cellClassName="p-1.5 border-b border-border/80"
+                              />
+                              <TableSumInsight
+                                {...SUM_INSIGHT_METRICS.rowTotal}
+                                title={`${row.head} — total`}
+                                description={`Receipt total for head “${row.head}” under current filters.`}
+                                howCalculated={`${SUM_INSIGHT_METRICS.rowTotal.howCalculated} Head: ${row.head}; ${row.entries} entr${row.entries === 1 ? 'y' : 'ies'}.`}
+                                value={`₹${row.total.toLocaleString('en-IN')}`}
+                                valueClassName="text-[10px] font-mono font-semibold text-green-700"
+                                cellClassName="p-1.5 border-b border-border/80"
+                              />
                               <td className="p-1.5 border-b border-border/80 text-right">
                                 <button
                                   type="button"
@@ -3978,18 +4003,33 @@ const FinanceManager = ({
                             <td className="p-1.5 text-right">
                               {transactionReceiptHeadSummary.reduce((s, r) => s + r.entries, 0)}
                             </td>
-                            <td className="p-1.5 text-right font-mono">
-                              ₹{transactionReceiptChannelTotals.cash.toLocaleString('en-IN')}
-                            </td>
-                            <td className="p-1.5 text-right font-mono">
-                              ₹{transactionReceiptChannelTotals.bank.toLocaleString('en-IN')}
-                            </td>
-                            <td className="p-1.5 text-right font-mono">
-                              ₹{transactionReceiptChannelTotals.other.toLocaleString('en-IN')}
-                            </td>
-                            <td className="p-1.5 text-right font-mono text-green-700">
-                              ₹{transactionReceiptHeadSummary.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}
-                            </td>
+                            <TableSumInsight
+                              {...SUM_INSIGHT_METRICS.channelCash}
+                              title="All receipt heads — cash"
+                              value={`₹${transactionReceiptChannelTotals.cash.toLocaleString('en-IN')}`}
+                              valueClassName="text-[10px] font-mono font-semibold"
+                              cellClassName="p-1.5"
+                            />
+                            <TableSumInsight
+                              {...SUM_INSIGHT_METRICS.channelBank}
+                              title="All receipt heads — bank / UPI"
+                              value={`₹${transactionReceiptChannelTotals.bank.toLocaleString('en-IN')}`}
+                              valueClassName="text-[10px] font-mono font-semibold"
+                              cellClassName="p-1.5"
+                            />
+                            <TableSumInsight
+                              {...SUM_INSIGHT_METRICS.channelOther}
+                              title="All receipt heads — other"
+                              value={`₹${transactionReceiptChannelTotals.other.toLocaleString('en-IN')}`}
+                              valueClassName="text-[10px] font-mono font-semibold"
+                              cellClassName="p-1.5"
+                            />
+                            <TableSumInsight
+                              {...SUM_INSIGHT_METRICS.transactionReceiptHeadGrandTotal}
+                              value={`₹${transactionReceiptHeadSummary.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}`}
+                              valueClassName="text-[10px] font-mono font-semibold text-green-700"
+                              cellClassName="p-1.5"
+                            />
                             <td className="p-1.5" />
                           </tr>
                         </tfoot>
@@ -4031,18 +4071,36 @@ const FinanceManager = ({
                                 {row.head}
                               </td>
                               <td className="p-1.5 border-b border-border/80 text-right">{row.entries}</td>
-                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
-                                ₹{row.byChannel.cash.toLocaleString('en-IN')}
-                              </td>
-                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
-                                ₹{row.byChannel.bank.toLocaleString('en-IN')}
-                              </td>
-                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
-                                ₹{row.byChannel.other.toLocaleString('en-IN')}
-                              </td>
-                              <td className="p-1.5 border-b border-border/80 text-right font-mono font-semibold text-orange-700">
-                                ₹{row.total.toLocaleString('en-IN')}
-                              </td>
+                              <TableSumInsight
+                                {...SUM_INSIGHT_METRICS.channelCash}
+                                title={`${row.head} — cash`}
+                                value={`₹${row.byChannel.cash.toLocaleString('en-IN')}`}
+                                valueClassName="text-[10px] font-mono"
+                                cellClassName="p-1.5 border-b border-border/80"
+                              />
+                              <TableSumInsight
+                                {...SUM_INSIGHT_METRICS.channelBank}
+                                title={`${row.head} — bank / UPI`}
+                                value={`₹${row.byChannel.bank.toLocaleString('en-IN')}`}
+                                valueClassName="text-[10px] font-mono"
+                                cellClassName="p-1.5 border-b border-border/80"
+                              />
+                              <TableSumInsight
+                                {...SUM_INSIGHT_METRICS.channelOther}
+                                title={`${row.head} — other`}
+                                value={`₹${row.byChannel.other.toLocaleString('en-IN')}`}
+                                valueClassName="text-[10px] font-mono"
+                                cellClassName="p-1.5 border-b border-border/80"
+                              />
+                              <TableSumInsight
+                                {...SUM_INSIGHT_METRICS.periodExpenseHead}
+                                title={row.head}
+                                description={`${SUM_INSIGHT_METRICS.periodExpenseHead.description} Head: ${row.head}.`}
+                                howCalculated={`${SUM_INSIGHT_METRICS.periodExpenseHead.howCalculated} ${row.entries} entr${row.entries === 1 ? 'y' : 'ies'}.`}
+                                value={`₹${row.total.toLocaleString('en-IN')}`}
+                                valueClassName="text-[10px] font-mono font-semibold text-orange-700"
+                                cellClassName="p-1.5 border-b border-border/80"
+                              />
                               <td className="p-1.5 border-b border-border/80 text-right">
                                 <button
                                   type="button"
@@ -4065,18 +4123,33 @@ const FinanceManager = ({
                             <td className="p-1.5 text-right">
                               {transactionPaymentHeadSummary.reduce((s, r) => s + r.entries, 0)}
                             </td>
-                            <td className="p-1.5 text-right font-mono">
-                              ₹{transactionPaymentChannelTotals.cash.toLocaleString('en-IN')}
-                            </td>
-                            <td className="p-1.5 text-right font-mono">
-                              ₹{transactionPaymentChannelTotals.bank.toLocaleString('en-IN')}
-                            </td>
-                            <td className="p-1.5 text-right font-mono">
-                              ₹{transactionPaymentChannelTotals.other.toLocaleString('en-IN')}
-                            </td>
-                            <td className="p-1.5 text-right font-mono text-orange-700">
-                              ₹{transactionPaymentHeadSummary.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}
-                            </td>
+                            <TableSumInsight
+                              {...SUM_INSIGHT_METRICS.channelCash}
+                              title="All payment heads — cash"
+                              value={`₹${transactionPaymentChannelTotals.cash.toLocaleString('en-IN')}`}
+                              valueClassName="text-[10px] font-mono font-semibold"
+                              cellClassName="p-1.5"
+                            />
+                            <TableSumInsight
+                              {...SUM_INSIGHT_METRICS.channelBank}
+                              title="All payment heads — bank / UPI"
+                              value={`₹${transactionPaymentChannelTotals.bank.toLocaleString('en-IN')}`}
+                              valueClassName="text-[10px] font-mono font-semibold"
+                              cellClassName="p-1.5"
+                            />
+                            <TableSumInsight
+                              {...SUM_INSIGHT_METRICS.channelOther}
+                              title="All payment heads — other"
+                              value={`₹${transactionPaymentChannelTotals.other.toLocaleString('en-IN')}`}
+                              valueClassName="text-[10px] font-mono font-semibold"
+                              cellClassName="p-1.5"
+                            />
+                            <TableSumInsight
+                              {...SUM_INSIGHT_METRICS.transactionPaymentHeadGrandTotal}
+                              value={`₹${transactionPaymentHeadSummary.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}`}
+                              valueClassName="text-[10px] font-mono font-semibold text-orange-700"
+                              cellClassName="p-1.5"
+                            />
                             <td className="p-1.5" />
                           </tr>
                         </tfoot>
@@ -4985,18 +5058,33 @@ const FinanceManager = ({
                 <tbody>
                   <tr>
                     <td className="p-2 border-b border-border/80">Verified collections</td>
-                    <td className="p-2 border-b border-border/80 text-right font-mono">
-                      ₹{financePeriodReport.receiptByMethod.cash.toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-2 border-b border-border/80 text-right font-mono">
-                      ₹{financePeriodReport.receiptByMethod.bank.toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-2 border-b border-border/80 text-right font-mono">
-                      ₹{financePeriodReport.receiptByMethod.other.toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-2 border-b border-border/80 text-right font-mono font-semibold">
-                      ₹{financePeriodReport.totalReceipts.toLocaleString('en-IN')}
-                    </td>
+                    <TableSumInsight
+                      {...SUM_INSIGHT_METRICS.channelCash}
+                      title="Verified collections — cash"
+                      value={`₹${financePeriodReport.receiptByMethod.cash.toLocaleString('en-IN')}`}
+                      valueClassName="text-xs font-mono"
+                      cellClassName="p-2 border-b border-border/80"
+                    />
+                    <TableSumInsight
+                      {...SUM_INSIGHT_METRICS.channelBank}
+                      title="Verified collections — bank / UPI"
+                      value={`₹${financePeriodReport.receiptByMethod.bank.toLocaleString('en-IN')}`}
+                      valueClassName="text-xs font-mono"
+                      cellClassName="p-2 border-b border-border/80"
+                    />
+                    <TableSumInsight
+                      {...SUM_INSIGHT_METRICS.channelOther}
+                      title="Verified collections — other"
+                      value={`₹${financePeriodReport.receiptByMethod.other.toLocaleString('en-IN')}`}
+                      valueClassName="text-xs font-mono"
+                      cellClassName="p-2 border-b border-border/80"
+                    />
+                    <TableSumInsight
+                      {...SUM_INSIGHT_METRICS.periodVerifiedReceipts}
+                      value={`₹${financePeriodReport.totalReceipts.toLocaleString('en-IN')}`}
+                      valueClassName="text-xs font-mono font-semibold"
+                      cellClassName="p-2 border-b border-border/80"
+                    />
                   </tr>
                 </tbody>
               </table>
@@ -5029,10 +5117,36 @@ const FinanceManager = ({
                         <td className="p-2 border-b border-border/80 max-w-[200px] truncate" title={head}>
                           {head}
                         </td>
-                        <td className="p-2 border-b border-border/80 text-right font-mono">₹{v.cash.toLocaleString('en-IN')}</td>
-                        <td className="p-2 border-b border-border/80 text-right font-mono">₹{v.bank.toLocaleString('en-IN')}</td>
-                        <td className="p-2 border-b border-border/80 text-right font-mono">₹{v.other.toLocaleString('en-IN')}</td>
-                        <td className="p-2 border-b border-border/80 text-right font-mono font-semibold">₹{v.total.toLocaleString('en-IN')}</td>
+                        <TableSumInsight
+                          {...SUM_INSIGHT_METRICS.channelCash}
+                          title={`${head} — cash`}
+                          value={`₹${v.cash.toLocaleString('en-IN')}`}
+                          valueClassName="text-xs font-mono"
+                          cellClassName="p-2 border-b border-border/80"
+                        />
+                        <TableSumInsight
+                          {...SUM_INSIGHT_METRICS.channelBank}
+                          title={`${head} — bank / UPI`}
+                          value={`₹${v.bank.toLocaleString('en-IN')}`}
+                          valueClassName="text-xs font-mono"
+                          cellClassName="p-2 border-b border-border/80"
+                        />
+                        <TableSumInsight
+                          {...SUM_INSIGHT_METRICS.channelOther}
+                          title={`${head} — other`}
+                          value={`₹${v.other.toLocaleString('en-IN')}`}
+                          valueClassName="text-xs font-mono"
+                          cellClassName="p-2 border-b border-border/80"
+                        />
+                        <TableSumInsight
+                          {...SUM_INSIGHT_METRICS.periodExpenseHead}
+                          title={head}
+                          description={`${SUM_INSIGHT_METRICS.periodExpenseHead.description} Head: ${head}.`}
+                          howCalculated={SUM_INSIGHT_METRICS.periodExpenseHead.howCalculated}
+                          value={`₹${v.total.toLocaleString('en-IN')}`}
+                          valueClassName="text-xs font-mono font-semibold"
+                          cellClassName="p-2 border-b border-border/80"
+                        />
                       </tr>
                     ))
                   )}
@@ -5040,10 +5154,33 @@ const FinanceManager = ({
                 <tfoot>
                   <tr className="bg-muted/30 font-semibold">
                     <td className="p-2">All expenses</td>
-                    <td className="p-2 text-right font-mono">₹{financePeriodReport.expenseByMethod.cash.toLocaleString('en-IN')}</td>
-                    <td className="p-2 text-right font-mono">₹{financePeriodReport.expenseByMethod.bank.toLocaleString('en-IN')}</td>
-                    <td className="p-2 text-right font-mono">₹{financePeriodReport.expenseByMethod.other.toLocaleString('en-IN')}</td>
-                    <td className="p-2 text-right font-mono">₹{financePeriodReport.totalExpenses.toLocaleString('en-IN')}</td>
+                    <TableSumInsight
+                      {...SUM_INSIGHT_METRICS.channelCash}
+                      title="All expenses — cash"
+                      value={`₹${financePeriodReport.expenseByMethod.cash.toLocaleString('en-IN')}`}
+                      valueClassName="text-xs font-mono font-semibold"
+                      cellClassName="p-2"
+                    />
+                    <TableSumInsight
+                      {...SUM_INSIGHT_METRICS.channelBank}
+                      title="All expenses — bank / UPI"
+                      value={`₹${financePeriodReport.expenseByMethod.bank.toLocaleString('en-IN')}`}
+                      valueClassName="text-xs font-mono font-semibold"
+                      cellClassName="p-2"
+                    />
+                    <TableSumInsight
+                      {...SUM_INSIGHT_METRICS.channelOther}
+                      title="All expenses — other"
+                      value={`₹${financePeriodReport.expenseByMethod.other.toLocaleString('en-IN')}`}
+                      valueClassName="text-xs font-mono font-semibold"
+                      cellClassName="p-2"
+                    />
+                    <TableSumInsight
+                      {...SUM_INSIGHT_METRICS.periodAllExpenses}
+                      value={`₹${financePeriodReport.totalExpenses.toLocaleString('en-IN')}`}
+                      valueClassName="text-xs font-mono font-semibold"
+                      cellClassName="p-2"
+                    />
                   </tr>
                 </tfoot>
               </table>

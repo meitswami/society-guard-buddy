@@ -1,4 +1,6 @@
 import { cn } from '@/lib/utils';
+import { DescriptiveValueButton } from '@/components/DescriptiveStatCard';
+import { SUM_INSIGHT_METRICS } from '@/lib/descriptiveMetricCopy';
 import {
   type ChannelTotals,
   channelTotal,
@@ -40,7 +42,13 @@ function TotalsStrip({
       )}
     >
       <span className="text-green-700">
-        Receipts total <strong className="font-semibold">{fmt(receiptTotal)}</strong>
+        Receipts total{' '}
+        <DescriptiveValueButton
+          {...SUM_INSIGHT_METRICS.cashBankReceiptTotal}
+          value={fmt(receiptTotal)}
+          valueClassName="text-[10px] font-semibold text-green-700"
+          className="inline-flex px-0.5 py-0"
+        />
         <span className="text-muted-foreground font-normal">
           {' '}
           (Cash {fmt(receipts.cash)} · Bank {fmt(receipts.bank)}
@@ -48,7 +56,13 @@ function TotalsStrip({
         </span>
       </span>
       <span className="text-orange-700">
-        Payments total <strong className="font-semibold">{fmt(paymentTotal)}</strong>
+        Payments total{' '}
+        <DescriptiveValueButton
+          {...SUM_INSIGHT_METRICS.cashBankPaymentTotal}
+          value={fmt(paymentTotal)}
+          valueClassName="text-[10px] font-semibold text-orange-700"
+          className="inline-flex px-0.5 py-0"
+        />
         <span className="text-muted-foreground font-normal">
           {' '}
           (Cash {fmt(payments.cash)} · Bank {fmt(payments.bank)}
@@ -56,7 +70,13 @@ function TotalsStrip({
         </span>
       </span>
       <span className={cn('font-medium', netTotal >= 0 ? 'text-foreground' : 'text-destructive')}>
-        Net total <strong className="font-semibold">{fmt(netTotal)}</strong>
+        Net total{' '}
+        <DescriptiveValueButton
+          {...SUM_INSIGHT_METRICS.cashBankNetTotal}
+          value={fmt(netTotal)}
+          valueClassName={cn('text-[10px] font-semibold', netTotal >= 0 ? 'text-foreground' : 'text-destructive')}
+          className="inline-flex px-0.5 py-0"
+        />
         <span className="text-muted-foreground font-normal">
           {' '}
           (Cash {fmt(net.cash)} · Bank {fmt(net.bank)}
@@ -92,15 +112,28 @@ const CashBankBreakdown = ({
       <p className={cn('text-[10px] text-muted-foreground leading-snug', className)}>
         <span className="text-green-700">{receiptLabel}:</span> {rParts.length ? rParts.join(' · ') : fmt(0)}
         {' · '}
-        <span className="font-semibold text-green-800">Total {fmt(channelTotal(receipts))}</span>
+        <DescriptiveValueButton
+          {...SUM_INSIGHT_METRICS.cashBankReceiptTotal}
+          value={`Total ${fmt(channelTotal(receipts))}`}
+          valueClassName="text-[10px] font-semibold text-green-800"
+          className="inline-flex px-0.5 py-0"
+        />
         {' · '}
         <span className="text-orange-700">{paymentLabel}:</span> {pParts.length ? pParts.join(' · ') : fmt(0)}
         {' · '}
-        <span className="font-semibold text-orange-800">Total {fmt(channelTotal(payments))}</span>
+        <DescriptiveValueButton
+          {...SUM_INSIGHT_METRICS.cashBankPaymentTotal}
+          value={`Total ${fmt(channelTotal(payments))}`}
+          valueClassName="text-[10px] font-semibold text-orange-800"
+          className="inline-flex px-0.5 py-0"
+        />
         {' · '}
-        <span className={cn('font-semibold', channelTotal(net) >= 0 ? 'text-foreground' : 'text-destructive')}>
-          Net {fmt(channelTotal(net))}
-        </span>
+        <DescriptiveValueButton
+          {...SUM_INSIGHT_METRICS.cashBankNetTotal}
+          value={`Net ${fmt(channelTotal(net))}`}
+          valueClassName={cn('text-[10px] font-semibold', channelTotal(net) >= 0 ? 'text-foreground' : 'text-destructive')}
+          className="inline-flex px-0.5 py-0"
+        />
       </p>
     );
   }
@@ -151,10 +184,42 @@ const CashBankBreakdown = ({
           {rows.map(({ key, label, r, bold }) => (
             <tr key={key} className={bold ? 'bg-muted/20 font-semibold' : undefined}>
               <td className="p-1.5 border-b border-border/80">{label}</td>
-              <td className="p-1.5 border-b border-border/80 text-right font-mono">{fmt(r.cash)}</td>
-              <td className="p-1.5 border-b border-border/80 text-right font-mono">{fmt(r.bank)}</td>
-              <td className="p-1.5 border-b border-border/80 text-right font-mono">{fmt(r.other)}</td>
-              <td className="p-1.5 border-b border-border/80 text-right font-mono">{fmt(channelTotal(r))}</td>
+              <td className="p-1.5 border-b border-border/80 text-right">
+                <DescriptiveValueButton
+                  {...SUM_INSIGHT_METRICS.channelCash}
+                  title={`${label} — cash`}
+                  value={fmt(r.cash)}
+                  valueClassName="text-[10px] font-mono"
+                  className="justify-end w-full px-0.5 py-0"
+                />
+              </td>
+              <td className="p-1.5 border-b border-border/80 text-right">
+                <DescriptiveValueButton
+                  {...SUM_INSIGHT_METRICS.channelBank}
+                  title={`${label} — bank / UPI`}
+                  value={fmt(r.bank)}
+                  valueClassName="text-[10px] font-mono"
+                  className="justify-end w-full px-0.5 py-0"
+                />
+              </td>
+              <td className="p-1.5 border-b border-border/80 text-right">
+                <DescriptiveValueButton
+                  {...SUM_INSIGHT_METRICS.channelOther}
+                  title={`${label} — other`}
+                  value={fmt(r.other)}
+                  valueClassName="text-[10px] font-mono"
+                  className="justify-end w-full px-0.5 py-0"
+                />
+              </td>
+              <td className="p-1.5 border-b border-border/80 text-right">
+                <DescriptiveValueButton
+                  {...SUM_INSIGHT_METRICS.rowTotal}
+                  title={`${label} — total`}
+                  value={fmt(channelTotal(r))}
+                  valueClassName={cn('text-[10px] font-mono', bold && 'font-semibold')}
+                  className="justify-end w-full px-0.5 py-0"
+                />
+              </td>
             </tr>
           ))}
         </tbody>

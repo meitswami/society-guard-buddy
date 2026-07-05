@@ -2,6 +2,8 @@ import { useState, useMemo, useCallback } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Banknote, Building2, ChevronRight, TrendingUp } from 'lucide-react';
 import { fmtDate, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
+import { DescriptiveValueButton } from '@/components/DescriptiveStatCard';
+import { FINANCE_PERIOD_METRICS } from '@/lib/descriptiveMetricCopy';
 import type { FinancePeriodLedgerEntry, FinancePeriodPayment, FinancePeriodReserveTransfer, FinanceOpeningBalanceAnchor } from '@/lib/financePeriodReport';
 import {
   computeCashFlowStatement,
@@ -312,7 +314,15 @@ const CashFlowStatement = ({
               <tr className="border-t border-border bg-primary/5">
                 <td className="py-2.5 pl-3 font-semibold text-xs">Closing cash + bank</td>
                 <td className="py-2.5 pr-3 text-right font-mono font-semibold text-primary text-xs">
-                  ₹{(cfs.closing.cash + cfs.closing.bank).toLocaleString('en-IN')}
+                  <DescriptiveValueButton
+                    {...FINANCE_PERIOD_METRICS.closingBalance}
+                    title="Closing cash + bank"
+                    description="Combined cash and bank position at period end (excludes other channels)."
+                    howCalculated="Closing cash + closing bank from the cash flow statement."
+                    value={`₹${(cfs.closing.cash + cfs.closing.bank).toLocaleString('en-IN')}`}
+                    valueClassName="text-xs font-mono font-semibold text-primary"
+                    className="justify-end w-full px-0.5 py-0"
+                  />
                 </td>
               </tr>
             </tfoot>
@@ -344,11 +354,21 @@ const CashFlowStatement = ({
           </button>
           <div className="rounded-lg border border-border bg-background/60 p-2">
             <p className="text-[10px] text-muted-foreground">Period net (cash)</p>
-            <p className="text-xs font-mono font-semibold">₹{cfs.periodReport.cashInHand.toLocaleString('en-IN')}</p>
+            <DescriptiveValueButton
+              {...FINANCE_PERIOD_METRICS.cashInHand}
+              value={`₹${cfs.periodReport.cashInHand.toLocaleString('en-IN')}`}
+              valueClassName="text-xs font-mono font-semibold"
+              className="px-0.5 py-0"
+            />
           </div>
           <div className="rounded-lg border border-border bg-background/60 p-2">
             <p className="text-[10px] text-muted-foreground">Period net (bank)</p>
-            <p className="text-xs font-mono font-semibold">₹{cfs.periodReport.cashInBank.toLocaleString('en-IN')}</p>
+            <DescriptiveValueButton
+              {...FINANCE_PERIOD_METRICS.cashInBank}
+              value={`₹${cfs.periodReport.cashInBank.toLocaleString('en-IN')}`}
+              valueClassName="text-xs font-mono font-semibold"
+              className="px-0.5 py-0"
+            />
           </div>
         </div>
       )}

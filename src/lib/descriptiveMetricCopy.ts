@@ -353,3 +353,73 @@ export const AUDIT_LOG_METRICS = {
     howCalculated: 'Rows where event_type is password_reset or password_change.',
   },
 } as const;
+
+/** Tap-to-explain copy for channel totals and table sum rows. */
+export const SUM_INSIGHT_METRICS = {
+  channelCash: {
+    title: 'Cash total',
+    description: 'Sum of amounts on the cash payment channel in this grouped view.',
+    howCalculated: 'Adds rows where payment_method normalizes to cash.',
+  },
+  channelBank: {
+    title: 'Bank / UPI total',
+    description: 'Sum of amounts on bank, UPI, online, or card channels in this view.',
+    howCalculated: 'Adds rows where payment_method normalizes to bank.',
+  },
+  channelOther: {
+    title: 'Other channels total',
+    description: 'Sum on payment methods not classified as cash or bank.',
+    howCalculated: 'Adds rows where payment_method normalizes to other.',
+  },
+  rowTotal: {
+    title: 'Row total',
+    description: 'Combined cash, bank, and other for this row.',
+    howCalculated: 'Cash + bank + other amounts on this row.',
+  },
+  periodVerifiedReceipts: {
+    title: 'Verified collections (total)',
+    description: 'All verified maintenance receipts in the selected period, split by channel.',
+    howCalculated:
+      'Sum of verified maintenance_payments in the period range, plus ledger-only inflows when applicable.',
+  },
+  periodAllExpenses: {
+    title: 'All expenses (total)',
+    description: 'Total society payments (separate entry) in the selected period.',
+    howCalculated: 'Sum of separate_entry finance_entries in the period, by payment channel.',
+  },
+  periodExpenseHead: {
+    title: 'Expense head total',
+    description: 'Outflow under this expense head in the selected period.',
+    howCalculated: 'Sum of separate_entry entries for this head, split by cash / bank / other.',
+  },
+  cashBankReceiptTotal: {
+    title: 'Receipts total',
+    description: 'All inflows in this cash/bank breakdown.',
+    howCalculated: 'Cash + bank + other receipt amounts in the scoped set.',
+  },
+  cashBankPaymentTotal: {
+    title: 'Payments total',
+    description: 'All outflows in this cash/bank breakdown.',
+    howCalculated: 'Cash + bank + other payment amounts in the scoped set.',
+  },
+  cashBankNetTotal: {
+    title: 'Net total',
+    description: 'Receipts minus payments across all channels in this breakdown.',
+    howCalculated: 'Receipt total − payment total (per channel and overall).',
+  },
+  transactionListTotal: {
+    title: 'Filtered transaction total',
+    description: 'Sum of all entries visible under the current transaction filters.',
+    howCalculated: 'Adds amounts from filtered maintenance_payments and scoped ledger-only rows.',
+  },
+  transactionReceiptHeadGrandTotal: {
+    title: 'All receipt heads (total)',
+    description: 'Grand total across all receipt heads in the head-wise summary.',
+    howCalculated: 'Sum of row totals in the receipt head summary table for current filters.',
+  },
+  transactionPaymentHeadGrandTotal: {
+    title: 'All expense heads (total)',
+    description: 'Grand total across all expense heads in the head-wise summary.',
+    howCalculated: 'Sum of row totals in the payment head summary table for current filters.',
+  },
+} as const;

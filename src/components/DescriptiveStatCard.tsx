@@ -227,3 +227,37 @@ export function DescriptiveStatSummary({
     </>
   );
 }
+
+/** Table cell or inline sum with tap-to-view insight dialog. */
+export function TableSumInsight({
+  title,
+  value,
+  description,
+  howCalculated,
+  valueClassName,
+  className,
+  cellClassName,
+  as = 'td',
+}: {
+  title: string;
+  value: ReactNode;
+  description: string;
+  howCalculated?: string;
+  valueClassName?: string;
+  className?: string;
+  cellClassName?: string;
+  as?: 'td' | 'span';
+}) {
+  const button = (
+    <DescriptiveValueButton
+      title={title}
+      value={value}
+      description={description}
+      howCalculated={howCalculated}
+      className={cn('justify-end w-full max-w-full', className)}
+      valueClassName={valueClassName}
+    />
+  );
+  if (as === 'span') return button;
+  return <td className={cn('text-right', cellClassName)}>{button}</td>;
+}
