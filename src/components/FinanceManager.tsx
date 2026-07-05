@@ -5554,6 +5554,20 @@ const FinanceManager = ({
           </div>
         </div>
       )}
+
+      {currentHeadSummaryModal && (
+        <ReportDetailModal
+          open={headSummaryModalOpen}
+          onClose={closeHeadSummaryModal}
+          title={currentHeadSummaryModal.title}
+          subtitle={currentHeadSummaryModal.subtitle}
+          totalAmount={currentHeadSummaryModal.total}
+          rows={currentHeadSummaryModal.rows}
+          drillable={currentHeadSummaryModal.drillable}
+          onRowClick={currentHeadSummaryModal.drillable ? openHeadSummaryEntryDetail : undefined}
+          onBack={headSummaryModalStack.length > 1 ? headSummaryModalBack : undefined}
+        />
+      )}
     </div>
   );
 };
