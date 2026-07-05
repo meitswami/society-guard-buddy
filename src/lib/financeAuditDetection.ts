@@ -63,6 +63,102 @@ export function paymentDuplicateGroupKey(p: AuditPaymentRow): string {
   return `${p.flat_number}||${p.charge_id}||${month}||${channel}`;
 }
 
+export type ReceiptHeadRecordingTarget = {
+  flatNumber: string;
+  dueDate: string;
+  chargeId: string;
+  paymentMethod: string;
+};
+
+/** Key used to block a new payment when the receipt head is already recorded. */
+export function receiptHeadKeyFromRecording(
+  flatNumber: string,
+  chargeId: string,
+  dueDate: string,
+  paymentMethod: string,
+): string {
+  const month = dueDate.slice(0, 7);
+  return `${flatNumber}||${chargeId}||${month}||${normalizePaymentChannel(paymentMethod)}`;
+}
+
+/** Find verified/pending payments that already occupy the same receipt head slot. */
+export function findReceiptHeadConflicts(
+  existingPayments: AuditPaymentRow[],
+  targets: ReceiptHeadRecordingTarget[],
+): AuditPaymentRow[] {
+  const targetKeys = new Set(
+    targets.map((t) => receiptHeadKeyFromRecording(t.flatNumber, t.chargeId, t.dueDate, t.paymentMethod)),
+  );
+  const seen = new Set<string>();
+  const conflicts: AuditPaymentRow[] = [];
+
+  for (const p of existingPayments) {
+    if (p.payment_status !== 'verified' && p.payment_status !== 'pending') continue;
+    const key = paymentDuplicateGroupKey(p);
+    if (!targetKeys.has(key) || seen.has(p.id)) continue;
+    seen.add(p.id);
+    conflicts.push(p);
+  }
+
+  return conflicts;
+}
+
+export type ReceiptHeadLookupFilter = {
+  flat_number?: string;
+  charge_id?: string;
+  month?: string;
+};
+
+/** Lookup recorded receipt-head payments (including single entries) for audit edit/delete. */
+export function findReceiptHeadLookupGroups(
+  payments: AuditPaymentRow[],
+  chargeTitleById: Map<string, string>,
+  filter: ReceiptHeadLookupFilter,
+): DuplicatePaymentGroup[] {
+  const flat = filter.flat_number?.trim().toUpperCase();
+  const chargeId = filter.charge_id?.trim();
+  const month = filter.month?.trim();
+
+  const groups = new Map<string, AuditPaymentRow[]>();
+  for (const p of payments) {
+    if (p.payment_status !== 'verified' && p.payment_status !== 'pending') continue;
+    if (flat && p.flat_number.toUpperCase() !== flat) continue;
+    if (chargeId && p.charge_id !== chargeId) continue;
+    const key = paymentDuplicateGroupKey(p);
+    const pMonth = key.split('||')[2];
+    if (month && pMonth !== month) continue;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(p);
+  }
+
+  const results: DuplicatePaymentGroup[] = [];
+  for (const [key, group] of groups) {
+    const [flat_number, charge_id, groupMonth, payment_method] = key.split('||') as [
+      string,
+      string,
+      string,
+      PaymentChannel,
+    ];
+    results.push({
+      flat_number,
+      charge_id,
+      charge_title: chargeTitleById.get(charge_id) ?? 'Unknown receipt head',
+      month: groupMonth,
+      payment_method,
+      count: group.length,
+      total_amount: group.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+      payments: group,
+    });
+  }
+
+  results.sort((a, b) => {
+    if (a.month !== b.month) return b.month.localeCompare(a.month);
+    return a.flat_number.localeCompare(b.flat_number);
+  });
+
+  return results;
+}
+
 export function findDuplicatePaymentGroups(
   payments: AuditPaymentRow[],
   chargeTitleById: Map<string, string>,

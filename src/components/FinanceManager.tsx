@@ -53,6 +53,11 @@ import {
   resolveGroupMajorHead,
   type SocietyPaymentMajorHead,
 } from '@/lib/financeExpenseHead';
+import {
+  findReceiptHeadConflicts,
+  type AuditPaymentRow,
+} from '@/lib/financeAuditDetection';
+import { queryReceiptHeadConflicts } from '@/lib/financeAuditRemediation';
 
 export type FinanceSubTab =
   | 'maintenance'
@@ -957,6 +962,24 @@ const FinanceManager = ({
       const now = new Date().toISOString();
       const chargeTitle = entry.charge_id ? charges.find((c) => c.id === entry.charge_id)?.title ?? '' : '';
 
+      if (entry.destination === 'current_month_maintenance' && entry.charge_id) {
+        const billingDate = ledgerTransactionDate(entry);
+        const targets = scopeFlats.map((f) => ({ flatNumber: f.flat_number, dueDate: billingDate }));
+        const conflicts = await queryReceiptHeadConflicts(supabase, {
+          chargeId: entry.charge_id,
+          paymentMethod: entry.payment_method,
+          targets,
+        });
+        if (conflicts.length > 0) {
+          const flatList = [...new Set(conflicts.map((c) => c.flat_number))].join(', ');
+          toast.error(
+            `Cannot distribute — receipt head already recorded for Flat ${flatList} (${chargeTitle || 'maintenance'}). Edit or delete in Audit → Finance Alarms.`,
+            { duration: 8000 },
+          );
+          return;
+        }
+      }
+
       for (let i = 0; i < scopeFlats.length; i++) {
         const flat = scopeFlats[i];
         const isLast = i === scopeFlats.length - 1;
@@ -1091,34 +1114,26 @@ const FinanceManager = ({
       }
     }
 
-    // Duplicate detection: check if same flat + charge + due_date + amount already exists
+    // Block when receipt head is already recorded (flat + charge + month + channel).
     if (mode !== 'society_pool' && (mode === 'flats_only' || mode === 'flats_plus_outsider')) {
-      const chargeIds = (charges ?? []).map((c: any) => c.id);
-      if (payForm.charge_id && chargeIds.length > 0) {
-        const dupeFlats: string[] = [];
-        for (const flatNum of payForm.selected_flats) {
-          const dueDate = useSameDateForSelectedFlats ? payForm.due_date : (flatDueDates[flatNum] || payForm.due_date);
-          const { data: existing } = await supabase
-            .from('maintenance_payments')
-            .select('id')
-            .eq('charge_id', payForm.charge_id)
-            .eq('flat_number', flatNum)
-            .eq('due_date', dueDate)
-            .eq('amount', Number(payForm.amount))
-            .in('payment_status', ['verified', 'pending'])
-            .limit(1);
-          if (existing && existing.length > 0) {
-            dupeFlats.push(flatNum);
-          }
-        }
-        if (dupeFlats.length > 0) {
-          const confirmed = await confirmAction(
-            'Duplicate entry detected',
-            `Flat(s) ${dupeFlats.join(', ')} already have a payment recorded for this receipt type, date, and amount. Do you still want to proceed?`,
-            'Record anyway',
-            'Cancel',
+      if (payForm.charge_id && payForm.selected_flats.length > 0) {
+        const targets = payForm.selected_flats.map((flatNum) => ({
+          flatNumber: flatNum,
+          dueDate: useSameDateForSelectedFlats ? payForm.due_date : (flatDueDates[flatNum] || payForm.due_date),
+        }));
+        const conflicts = await queryReceiptHeadConflicts(supabase, {
+          chargeId: payForm.charge_id,
+          paymentMethod: payForm.payment_method,
+          targets,
+        });
+        if (conflicts.length > 0) {
+          const chargeTitle = charges.find((c) => c.id === payForm.charge_id)?.title ?? 'Receipt head';
+          const flatList = [...new Set(conflicts.map((c) => c.flat_number))].join(', ');
+          toast.error(
+            `Receipt head already recorded for Flat ${flatList} (${chargeTitle}). Edit or delete the existing entry in Audit → Finance Alarms before recording again.`,
+            { duration: 8000 },
           );
-          if (!confirmed) return;
+          return;
         }
       }
     }
@@ -1899,6 +1914,36 @@ const FinanceManager = ({
     () => (payForm.allocationIncludeVacant ? flats : flats.filter((f) => f.is_occupied)),
     [flats, payForm.allocationIncludeVacant],
   );
+
+  const receiptHeadConflictsPreview = useMemo(() => {
+    if (
+      !payForm.charge_id ||
+      payForm.recordMode === 'society_pool' ||
+      (payForm.recordMode !== 'flats_only' && payForm.recordMode !== 'flats_plus_outsider') ||
+      payForm.selected_flats.length === 0
+    ) {
+      return [] as AuditPaymentRow[];
+    }
+    const targets = payForm.selected_flats
+      .map((flatNumber) => ({
+        flatNumber,
+        dueDate: useSameDateForSelectedFlats ? payForm.due_date : (flatDueDates[flatNumber] || payForm.due_date),
+        chargeId: payForm.charge_id,
+        paymentMethod: payForm.payment_method,
+      }))
+      .filter((t) => t.dueDate);
+    return findReceiptHeadConflicts(payments as AuditPaymentRow[], targets);
+  }, [
+    payForm.charge_id,
+    payForm.recordMode,
+    payForm.selected_flats,
+    payForm.due_date,
+    payForm.payment_method,
+    payments,
+    useSameDateForSelectedFlats,
+    flatDueDates,
+  ]);
+
   const unpaidFlats = targetFlats.filter(f => !payments.some(p => p.flat_number === f.flat_number && p.payment_status === 'verified'));
 
   const chargeById = useMemo(() => {
@@ -3644,7 +3689,33 @@ const FinanceManager = ({
                 </label>
               </div>
 
-              <button type="button" onClick={() => void recordPayment()} className="btn-primary" disabled={receiptUploading}>
+              {receiptHeadConflictsPreview.length > 0 && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Receipt head already recorded — cannot save
+                  </p>
+                  <p className="text-[10px] text-muted-foreground leading-snug">
+                    These flats already have this receipt head for the selected month and payment channel. Edit or delete
+                    the existing entry in <span className="font-medium">Audit → Finance Alarms</span> before recording again.
+                  </p>
+                  <ul className="text-[10px] text-foreground space-y-0.5 pt-1">
+                    {receiptHeadConflictsPreview.map((p) => (
+                      <li key={p.id}>
+                        Flat {p.flat_number} · ₹{Number(p.amount).toLocaleString('en-IN')} · {p.payment_method} ·{' '}
+                        {p.payment_status}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => void recordPayment()}
+                className="btn-primary"
+                disabled={receiptUploading || receiptHeadConflictsPreview.length > 0}
+              >
                 {receiptUploading ? 'Uploading…' : 'Record Reciept'}
               </button>
             </div>

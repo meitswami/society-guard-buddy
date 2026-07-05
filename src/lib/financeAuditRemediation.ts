@@ -1,5 +1,43 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { format } from 'date-fns';
+import {
+  findReceiptHeadConflicts,
+  type AuditPaymentRow,
+  type ReceiptHeadRecordingTarget,
+} from '@/lib/financeAuditDetection';
+
+export async function queryReceiptHeadConflicts(
+  client: SupabaseClient,
+  opts: {
+    chargeId: string;
+    paymentMethod: string;
+    targets: { flatNumber: string; dueDate: string }[];
+  },
+): Promise<AuditPaymentRow[]> {
+  const flatNumbers = [...new Set(opts.targets.map((t) => t.flatNumber))];
+  if (flatNumbers.length === 0 || !opts.chargeId) return [];
+
+  const { data, error } = await client
+    .from('maintenance_payments')
+    .select(
+      'id, charge_id, flat_number, amount, payment_method, due_date, payment_date, created_at, payment_status, transaction_id, notes, finance_entry_id',
+    )
+    .eq('charge_id', opts.chargeId)
+    .in('flat_number', flatNumbers)
+    .in('payment_status', ['verified', 'pending']);
+
+  if (error || !data) return [];
+
+  const recordingTargets: ReceiptHeadRecordingTarget[] = opts.targets.map((t) => ({
+    flatNumber: t.flatNumber,
+    dueDate: t.dueDate,
+    chargeId: opts.chargeId,
+    paymentMethod: opts.paymentMethod,
+  }));
+
+  return findReceiptHeadConflicts(data as AuditPaymentRow[], recordingTargets);
+}
 
 export async function deleteMaintenancePayment(paymentId: string, financeEntryId: string | null) {
   const { error } = await supabase.from('maintenance_payments').delete().eq('id', paymentId);
