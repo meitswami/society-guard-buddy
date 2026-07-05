@@ -2428,6 +2428,39 @@ export type Database = {
           },
         ]
       }
+      platform_branding: {
+        Row: {
+          app_name: string
+          background_color: string
+          id: string
+          logo_url: string | null
+          primary_color: string
+          primary_dark_color: string
+          tagline: string | null
+          updated_at: string
+        }
+        Insert: {
+          app_name?: string
+          background_color?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          primary_dark_color?: string
+          tagline?: string | null
+          updated_at?: string
+        }
+        Update: {
+          app_name?: string
+          background_color?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          primary_dark_color?: string
+          tagline?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       societies: {
         Row: {
           address: string | null
