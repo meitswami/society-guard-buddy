@@ -202,6 +202,37 @@ const isLedgerInSocietyPool = (e: FinanceLedgerRow) => {
   return e.allocation_style === 'none' && allocCount === 0 && e.aggregate_flat_count === 0;
 };
 
+type TransactionHeadSummaryRow = {
+  head: string;
+  total: number;
+  entries: number;
+  byChannel: ChannelTotals;
+};
+
+function addTransactionHeadRow(
+  map: Map<string, TransactionHeadSummaryRow>,
+  head: string,
+  amount: number,
+  paymentMethod: string | null | undefined,
+) {
+  const label = head.trim() || 'Uncategorized';
+  const cur = map.get(label) ?? {
+    head: label,
+    total: 0,
+    entries: 0,
+    byChannel: { cash: 0, bank: 0, other: 0 },
+  };
+  const amt = Number(amount || 0);
+  cur.total += amt;
+  cur.entries += 1;
+  addToChannel(cur.byChannel, paymentMethod, amt);
+  map.set(label, cur);
+}
+
+function transactionHeadSummaryRows(map: Map<string, TransactionHeadSummaryRow>) {
+  return [...map.values()].sort((a, b) => b.total - a.total || a.head.localeCompare(b.head));
+}
+
 const transactionFilterHint = (filter: string): string => {
   switch (filter) {
     case 'all_payments':
@@ -2128,6 +2159,84 @@ const FinanceManager = ({
     };
   }, [filterStatus, unpaidReceiptRows, filteredPayments, scopedLedgerOnly]);
 
+  const ledgerReceiptHead = useCallback(
+    (e: FinanceLedgerRow): string => {
+      const ch = e.charge_id ? chargeById.get(e.charge_id) : null;
+      if (ch) return majorHeadForCharge(ch);
+      if (e.destination === 'corpus') return 'SOCIETY CORPUS FUND';
+      if (e.destination === 'current_month_maintenance') return 'OPERATION & MAINTENANCE';
+      const title = (e.title ?? '').trim();
+      if (title) return inferMajorHeadFromGroupName(title);
+      return 'Uncategorized';
+    },
+    [chargeById, majorHeadForCharge],
+  );
+
+  const transactionReceiptHeadSummary = useMemo((): TransactionHeadSummaryRow[] => {
+    if (filterStatus === 'unpaid') return [];
+    const map = new Map<string, TransactionHeadSummaryRow>();
+    for (const p of filteredPayments) {
+      const ch = chargeById.get(p.charge_id);
+      const head = ch ? majorHeadForCharge(ch) : 'Uncategorized';
+      addTransactionHeadRow(map, head, Number(p.amount || 0), p.payment_method);
+    }
+    for (const e of scopedLedgerOnly) {
+      if (isSocietyPaymentLedgerEntry(e)) continue;
+      addTransactionHeadRow(map, ledgerReceiptHead(e), Number(e.total_amount || 0), e.payment_method);
+    }
+    return transactionHeadSummaryRows(map);
+  }, [
+    filterStatus,
+    filteredPayments,
+    scopedLedgerOnly,
+    chargeById,
+    majorHeadForCharge,
+    isSocietyPaymentLedgerEntry,
+    ledgerReceiptHead,
+  ]);
+
+  const transactionPaymentHeadSummary = useMemo((): TransactionHeadSummaryRow[] => {
+    if (filterStatus === 'unpaid') return [];
+    const map = new Map<string, TransactionHeadSummaryRow>();
+    for (const e of scopedLedgerOnly) {
+      if (!isSocietyPaymentLedgerEntry(e)) continue;
+      const head = financeExpenseHeadFromLedgerEntry(
+        e.title,
+        e.expense_id ? expenseCategoryById.get(e.expense_id) : null,
+      );
+      addTransactionHeadRow(map, head, Number(e.total_amount || 0), e.payment_method);
+    }
+    return transactionHeadSummaryRows(map);
+  }, [filterStatus, scopedLedgerOnly, isSocietyPaymentLedgerEntry, expenseCategoryById]);
+
+  const transactionReceiptChannelTotals = useMemo(
+    () =>
+      transactionReceiptHeadSummary.reduce(
+        (acc, r) => {
+          acc.cash += r.byChannel.cash;
+          acc.bank += r.byChannel.bank;
+          acc.other += r.byChannel.other;
+          return acc;
+        },
+        { cash: 0, bank: 0, other: 0 } as ChannelTotals,
+      ),
+    [transactionReceiptHeadSummary],
+  );
+
+  const transactionPaymentChannelTotals = useMemo(
+    () =>
+      transactionPaymentHeadSummary.reduce(
+        (acc, r) => {
+          acc.cash += r.byChannel.cash;
+          acc.bank += r.byChannel.bank;
+          acc.other += r.byChannel.other;
+          return acc;
+        },
+        { cash: 0, bank: 0, other: 0 } as ChannelTotals,
+      ),
+    [transactionPaymentHeadSummary],
+  );
+
   const receiptLineItems = useMemo(() => {
     if (filterStatus === 'unpaid') return [] as { kind: 'mp' | 'ledger'; t: string; p?: any; e?: FinanceLedgerRow }[];
     const items: { kind: 'mp' | 'ledger'; t: string; p?: any; e?: FinanceLedgerRow }[] = [
@@ -3491,6 +3600,145 @@ const FinanceManager = ({
               />
             </div>
           )}
+
+          {filterStatus !== 'unpaid' &&
+            (transactionReceiptHeadSummary.length > 0 || transactionPaymentHeadSummary.length > 0) && (
+              <div className="space-y-3 mb-3">
+                {transactionReceiptHeadSummary.length > 0 && (
+                  <div className="card-section p-3 space-y-2">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase">
+                      Society receipts — head-wise summary
+                    </p>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      Grouped by major head from receipt type. Respects current status, type, month, and mode filters.
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[10px] border border-border rounded-md overflow-hidden">
+                        <thead>
+                          <tr className="bg-muted/50 text-left">
+                            <th className="p-1.5 border-b border-border">Head</th>
+                            <th className="p-1.5 border-b border-border text-right">Entries</th>
+                            <th className="p-1.5 border-b border-border text-right">Cash</th>
+                            <th className="p-1.5 border-b border-border text-right">Bank / UPI</th>
+                            <th className="p-1.5 border-b border-border text-right">Other</th>
+                            <th className="p-1.5 border-b border-border text-right font-semibold">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {transactionReceiptHeadSummary.map((row) => (
+                            <tr key={row.head}>
+                              <td className="p-1.5 border-b border-border/80 max-w-[160px] truncate" title={row.head}>
+                                {row.head}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right">{row.entries}</td>
+                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
+                                ₹{row.byChannel.cash.toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
+                                ₹{row.byChannel.bank.toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
+                                ₹{row.byChannel.other.toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right font-mono font-semibold text-green-700">
+                                ₹{row.total.toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-muted/30 font-semibold">
+                            <td className="p-1.5">All receipt heads</td>
+                            <td className="p-1.5 text-right">
+                              {transactionReceiptHeadSummary.reduce((s, r) => s + r.entries, 0)}
+                            </td>
+                            <td className="p-1.5 text-right font-mono">
+                              ₹{transactionReceiptChannelTotals.cash.toLocaleString('en-IN')}
+                            </td>
+                            <td className="p-1.5 text-right font-mono">
+                              ₹{transactionReceiptChannelTotals.bank.toLocaleString('en-IN')}
+                            </td>
+                            <td className="p-1.5 text-right font-mono">
+                              ₹{transactionReceiptChannelTotals.other.toLocaleString('en-IN')}
+                            </td>
+                            <td className="p-1.5 text-right font-mono text-green-700">
+                              ₹{transactionReceiptHeadSummary.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {transactionPaymentHeadSummary.length > 0 && (
+                  <div className="card-section p-3 space-y-2">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase">
+                      Society payments — head-wise summary
+                    </p>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      Grouped by expense head from Record payment. Respects current status, type, month, and mode filters.
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[10px] border border-border rounded-md overflow-hidden">
+                        <thead>
+                          <tr className="bg-muted/50 text-left">
+                            <th className="p-1.5 border-b border-border">Expense head</th>
+                            <th className="p-1.5 border-b border-border text-right">Entries</th>
+                            <th className="p-1.5 border-b border-border text-right">Cash</th>
+                            <th className="p-1.5 border-b border-border text-right">Bank / UPI</th>
+                            <th className="p-1.5 border-b border-border text-right">Other</th>
+                            <th className="p-1.5 border-b border-border text-right font-semibold">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {transactionPaymentHeadSummary.map((row) => (
+                            <tr key={row.head}>
+                              <td className="p-1.5 border-b border-border/80 max-w-[160px] truncate" title={row.head}>
+                                {row.head}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right">{row.entries}</td>
+                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
+                                ₹{row.byChannel.cash.toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
+                                ₹{row.byChannel.bank.toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right font-mono">
+                                ₹{row.byChannel.other.toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-1.5 border-b border-border/80 text-right font-mono font-semibold text-orange-700">
+                                ₹{row.total.toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-muted/30 font-semibold">
+                            <td className="p-1.5">All payment heads</td>
+                            <td className="p-1.5 text-right">
+                              {transactionPaymentHeadSummary.reduce((s, r) => s + r.entries, 0)}
+                            </td>
+                            <td className="p-1.5 text-right font-mono">
+                              ₹{transactionPaymentChannelTotals.cash.toLocaleString('en-IN')}
+                            </td>
+                            <td className="p-1.5 text-right font-mono">
+                              ₹{transactionPaymentChannelTotals.bank.toLocaleString('en-IN')}
+                            </td>
+                            <td className="p-1.5 text-right font-mono">
+                              ₹{transactionPaymentChannelTotals.other.toLocaleString('en-IN')}
+                            </td>
+                            <td className="p-1.5 text-right font-mono text-orange-700">
+                              ₹{transactionPaymentHeadSummary.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
           {filterStatus !== 'unpaid' && (
             <div className="flex flex-wrap gap-2 items-center mb-3 card-section p-2">
