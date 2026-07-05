@@ -1,13 +1,19 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, Download, Printer, Calendar, Users, Car, Truck, Shield, IndianRupee, Heart, Split, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench } from 'lucide-react';
+import { BarChart3, Calendar, CalendarRange, Users, Car, Truck, Shield, IndianRupee, Heart, Split, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench } from 'lucide-react';
 import { format, parse, endOfMonth } from 'date-fns';
-import { fmtDate, fmtDateTime } from '@/lib/dateFormat';
+import { fmtDate, fmtDateTime, fmtIsoDateToDisplay, fmtIsoMonthToDisplay } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
+import CashFlowStatement from '@/components/CashFlowStatement';
+import { DateInput } from '@/components/DateInput';
 import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
 import { REPORT_MAINTENANCE_METRICS, REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
+import ExportFormatMenu from '@/components/ExportFormatMenu';
+import { downloadMonthlyReport } from '@/lib/monthlyReportExport';
+import type { ExportFormat } from '@/lib/reportExportUtils';
+import { toast } from 'sonner';
 
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }
 
@@ -38,6 +44,14 @@ function normalizePaymentChannel(method: unknown): 'cash' | 'bank' | 'other' {
 }
 
 type ReportTab = 'financial' | 'visitor' | 'vehicle' | 'all_modules';
+type StatementPeriodMode = 'monthly' | 'custom';
+
+const defaultCustomPeriodFrom = () => {
+  const y = new Date().getFullYear();
+  return `${y}-04-01`;
+};
+
+const defaultCustomPeriodTo = () => format(new Date(), 'yyyy-MM-dd');
 
 const REPORT_TABS: { id: ReportTab; labelKey: string; icon: React.ElementType }[] = [
   { id: 'financial', labelKey: 'Financial Reports', icon: IndianRupee },
@@ -51,6 +65,9 @@ const ReportPage = () => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<ReportTab>('financial');
   const [reportMonth, setReportMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [statementPeriodMode, setStatementPeriodMode] = useState<StatementPeriodMode>('monthly');
+  const [customPeriodFrom, setCustomPeriodFrom] = useState(defaultCustomPeriodFrom);
+  const [customPeriodTo, setCustomPeriodTo] = useState(defaultCustomPeriodTo);
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [financeEntries, setFinanceEntries] = useState<FinanceEntrySummaryRow[]>([]);
   const [ledgerStatuses, setLedgerStatuses] = useState<{ payment_status: string; count: number; total: number }[]>([]);
@@ -61,6 +78,7 @@ const ReportPage = () => {
   } | null>(null);
   const [donationStatuses, setDonationStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
   const [splitStatuses, setSplitStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
+  const [societyName, setSocietyName] = useState('Society');
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,6 +92,13 @@ const ReportPage = () => {
   const monthFrom = useMemo(() => format(monthDate, 'yyyy-MM-dd'), [monthDate]);
   const monthTo = useMemo(() => format(endOfMonth(monthDate), 'yyyy-MM-dd'), [monthDate]);
 
+  const statementPeriodFrom = statementPeriodMode === 'monthly' ? monthFrom : customPeriodFrom;
+  const statementPeriodTo = statementPeriodMode === 'monthly' ? monthTo : customPeriodTo;
+  const statementPeriodLabel =
+    statementPeriodMode === 'monthly'
+      ? fmtIsoMonthToDisplay(reportMonth)
+      : `${fmtIsoDateToDisplay(statementPeriodFrom)} – ${fmtIsoDateToDisplay(statementPeriodTo)}`;
+
   useEffect(() => {
     const loadShifts = async () => {
       if (!societyId) { setShifts([]); return; }
@@ -86,6 +111,18 @@ const ReportPage = () => {
     };
     loadShifts();
   }, [monthFrom, monthTo, societyId]);
+
+  useEffect(() => {
+    const loadSocietyName = async () => {
+      if (!societyId) {
+        setSocietyName('Society');
+        return;
+      }
+      const { data } = await supabase.from('societies').select('name').eq('id', societyId).maybeSingle();
+      setSocietyName(data?.name?.trim() || 'Society');
+    };
+    void loadSocietyName();
+  }, [societyId]);
 
   useEffect(() => {
     const loadFinance = async () => {
@@ -452,31 +489,19 @@ const ReportPage = () => {
     setModalOpen(true);
   };
 
-  const exportFinanceCSV = () => {
-    const headers = ['record_mode', 'destination', 'entries', 'total_amount', 'flat_units'];
-    const rows = financeGroups.map((g) => [g.record_mode, g.destination, g.count, g.total, g.flatUnits]);
-    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `finance-totals-${reportMonth}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportVisitorCSV = () => {
-    const headers = ['Name', 'Phone', 'Flat', 'Category', 'Purpose', 'Entry', 'Exit', 'Vehicle', 'Guard'];
-    const rows = monthVisitors.map(v => [
-      v.name, v.phone, v.flatNumber, v.category, v.purpose,
-      fmtDateTime(v.entryTime),
-      v.exitTime ? fmtDateTime(v.exitTime) : 'Inside',
-      v.vehicleNumber || '-', v.guardName,
-    ]);
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `visitors-${reportMonth}.csv`; a.click();
-    URL.revokeObjectURL(url);
+  const exportReport = (format: ExportFormat) => {
+    downloadMonthlyReport(format, {
+      societyName,
+      reportMonth,
+      tab: activeTab,
+      financeEntries,
+      financeGroups,
+      financeMonthTotal,
+      reportMonthNet,
+      visitors: monthVisitors,
+      visitorStats,
+    });
+    toast.success(`${format.toUpperCase()} downloaded`);
   };
 
   // ─── RENDER ───────────────────────────────────────────────────────────────────
@@ -493,11 +518,7 @@ const ReportPage = () => {
             <p className="text-xs text-muted-foreground">{t('report.subtitle')}</p>
           </div>
         </div>
-        <div className="flex gap-1.5">
-          <button onClick={activeTab === 'financial' ? exportFinanceCSV : exportVisitorCSV} className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1">
-            <Download className="w-3.5 h-3.5" /> CSV
-          </button>
-        </div>
+        <ExportFormatMenu label={t('report.export')} onExport={exportReport} />
       </div>
 
       {/* Month Selector */}
@@ -574,6 +595,72 @@ const ReportPage = () => {
               />
             </div>
           </div>
+
+          {/* Cash Flow Statement with drill-down to cash/bank statements */}
+          <div className="mb-4 rounded-lg border border-border bg-card/40 p-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-3">
+              <div>
+                <p className="text-[11px] font-medium text-foreground">Statement period</p>
+                <p className="text-[10px] text-muted-foreground">Cash flow, cash & bank statements use this range</p>
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setStatementPeriodMode('monthly')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                    statementPeriodMode === 'monthly'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Calendar className="w-3 h-3" />
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatementPeriodMode('custom')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                    statementPeriodMode === 'custom'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                  }`}
+                >
+                  <CalendarRange className="w-3 h-3" />
+                  Date range
+                </button>
+              </div>
+            </div>
+            {statementPeriodMode === 'monthly' ? (
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+                <input
+                  type="month"
+                  className="input-field text-sm flex-1"
+                  value={reportMonth}
+                  onChange={(e) => setReportMonth(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">From</label>
+                  <DateInput className="input-field text-sm w-full" value={customPeriodFrom} onChange={(e) => setCustomPeriodFrom(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">To</label>
+                  <DateInput className="input-field text-sm w-full" value={customPeriodTo} onChange={(e) => setCustomPeriodTo(e.target.value)} />
+                </div>
+              </div>
+            )}
+            {statementPeriodFrom > statementPeriodTo && (
+              <p className="text-[10px] text-destructive mt-2">End date must be on or after start date.</p>
+            )}
+          </div>
+          <CashFlowStatement
+            periodFrom={statementPeriodFrom}
+            periodTo={statementPeriodTo}
+            periodLabel={statementPeriodLabel}
+          />
 
           {/* Gross clickable */}
           <DescriptiveStatCard

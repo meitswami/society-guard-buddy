@@ -12,6 +12,13 @@ import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flat
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
 import { DateInput } from '@/components/DateInput';
 import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
+import ExportFormatMenu from '@/components/ExportFormatMenu';
+import {
+  buildTransactionExportRows,
+  downloadFinancePeriodReport,
+  downloadTransactionStatement,
+} from '@/lib/transactionStatementExport';
+import type { ExportFormat } from '@/lib/reportExportUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DescriptiveStatCard, DescriptiveStatSummary, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
 import { capsFieldChange } from '@/lib/entryCaps';
@@ -2525,35 +2532,62 @@ const FinanceManager = ({
     return [...new Set(reportResidentIds.filter(Boolean))];
   };
 
-  const downloadPeriodReportPdf = () => {
+  const periodReportExportInput = () => ({
+    societyName: societyName || 'Society',
+    periodFrom,
+    periodTo,
+    generatedAt: new Date().toISOString(),
+    receiptByMethod: financePeriodReport.receiptByMethod,
+    totalReceipts: financePeriodReport.totalReceipts,
+    expenseByHead: financePeriodReport.expenseByHead,
+    expenseByMethod: financePeriodReport.expenseByMethod,
+    totalExpenses: financePeriodReport.totalExpenses,
+    cashInHand: financePeriodReport.cashInHand,
+    cashInBank: financePeriodReport.cashInBank,
+    otherNet: financePeriodReport.otherNet,
+    totalBalance: financePeriodReport.totalBalance,
+    verifiedPaymentCount: financePeriodReport.verifiedPaymentCount,
+    extraLedgerReceipt: financePeriodReport.extraLedgerReceipt,
+    openingCash: financePeriodReport.openingCash,
+    openingBank: financePeriodReport.openingBank,
+    openingOther: financePeriodReport.openingOther,
+    openingBalance: financePeriodReport.openingBalance,
+    closingCash: financePeriodReport.closingCash,
+    closingBank: financePeriodReport.closingBank,
+    closingOther: financePeriodReport.closingOther,
+    closingBalance: financePeriodReport.closingBalance,
+  });
+
+  const exportPeriodReport = (format: ExportFormat) => {
     if (periodFrom > periodTo) {
       toast.error('Fix the date range first');
       return;
     }
-    const blob = buildFinancePeriodReportPdfBlob({
-      societyName: societyName || 'Society',
-      periodFrom,
-      periodTo,
-      generatedAt: new Date().toISOString(),
-      receiptByMethod: financePeriodReport.receiptByMethod,
-      totalReceipts: financePeriodReport.totalReceipts,
-      expenseByHead: financePeriodReport.expenseByHead,
-      expenseByMethod: financePeriodReport.expenseByMethod,
-      totalExpenses: financePeriodReport.totalExpenses,
-      cashInHand: financePeriodReport.cashInHand,
-      cashInBank: financePeriodReport.cashInBank,
-      otherNet: financePeriodReport.otherNet,
-      totalBalance: financePeriodReport.totalBalance,
-      verifiedPaymentCount: financePeriodReport.verifiedPaymentCount,
-      extraLedgerReceipt: financePeriodReport.extraLedgerReceipt,
+    downloadFinancePeriodReport(format, periodReportExportInput(), `finance-report-${periodFrom}-to-${periodTo}`);
+    toast.success(`${format.toUpperCase()} downloaded`);
+  };
+
+  const exportTransactionStatement = (format: ExportFormat) => {
+    if (filterStatus === 'unpaid') {
+      toast.error('Switch to a transaction status filter to export entries');
+      return;
+    }
+    const rows = buildTransactionExportRows({
+      items: receiptLineItems,
+      chargeTitleById: new Map([...chargeById.entries()].map(([id, ch]) => [id, ch.title])),
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `finance-report-${periodFrom}-to-${periodTo}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('PDF downloaded');
+    if (rows.length === 0) {
+      toast.error('No transactions match the current filters');
+      return;
+    }
+    downloadTransactionStatement(format, {
+      societyName: societyName || 'Society',
+      title: 'Transaction statement',
+      subtitle: `${receiptSummary.count} entries · ${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
+      filenameBase: `transactions-${selectedReceiptMonthLabel.replace(/\s+/g, '-')}-${Date.now()}`,
+      rows,
+    });
+    toast.success(`${format.toUpperCase()} downloaded`);
   };
 
   const sendPeriodReportToMembers = async () => {
@@ -3537,18 +3571,25 @@ const FinanceManager = ({
               howCalculated="Target flats minus flats with at least one verified payment matching charge/type/month filters."
             />
           ) : (
-            <DescriptiveStatSummary
-              label={
-                <>
-                  {receiptSummary.count} entries · ₹{receiptSummary.sum.toLocaleString('en-IN')} total ·{' '}
-                  {receiptSummary.flatCount} flat(s) · Type: {selectedReceiptTypeLabel} · Mode:{' '}
-                  {receiptModeFilter === 'all' ? 'All' : receiptModeFilter.replace(/_/g, ' ')} · Month:{' '}
-                  {selectedReceiptMonthLabel}
-                </>
-              }
-              description="Totals for the current transaction list after filters (status, type, month, mode)."
-              howCalculated="Count and sum of visible maintenance_payment rows plus ledger-only rows in scopedLedgerOnly."
-            />
+            <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+              <DescriptiveStatSummary
+                label={
+                  <>
+                    {receiptSummary.count} entries · ₹{receiptSummary.sum.toLocaleString('en-IN')} total ·{' '}
+                    {receiptSummary.flatCount} flat(s) · Type: {selectedReceiptTypeLabel} · Mode:{' '}
+                    {receiptModeFilter === 'all' ? 'All' : receiptModeFilter.replace(/_/g, ' ')} · Month:{' '}
+                    {selectedReceiptMonthLabel}
+                  </>
+                }
+                description="Totals for the current transaction list after filters (status, type, month, mode)."
+                howCalculated="Count and sum of visible maintenance_payment rows plus ledger-only rows in scopedLedgerOnly."
+              />
+              <ExportFormatMenu
+                label="Export statement"
+                className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1 shrink-0"
+                onExport={exportTransactionStatement}
+              />
+            </div>
           )}
 
           {filterStatus !== 'unpaid' && (
@@ -4320,20 +4361,18 @@ const FinanceManager = ({
           <div className="card-section p-4 space-y-4">
             <div className="flex flex-wrap gap-3 items-start justify-between">
               <div className="min-w-[200px]">
-                <h3 className="text-sm font-semibold">PDF & member delivery</h3>
+                <h3 className="text-sm font-semibold">Export & member delivery</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Download this period as PDF, or send one alert per resident with the PDF link. Opening the alert in the app records it as seen for this send.
+                  Download this period as PDF, Excel, Word, or CSV. Send one alert per resident with the PDF link — opening the alert records it as seen.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 shrink-0">
-                <button
-                  type="button"
-                  className="btn-secondary text-xs px-3 py-2"
-                  onClick={downloadPeriodReportPdf}
+                <ExportFormatMenu
+                  label="Download report"
+                  className="btn-secondary text-xs px-3 py-2 flex items-center gap-1"
                   disabled={periodFrom > periodTo}
-                >
-                  Download PDF
-                </button>
+                  onExport={exportPeriodReport}
+                />
                 <button
                   type="button"
                   className="btn-primary text-xs px-3 py-2"

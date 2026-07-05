@@ -35,3 +35,17 @@ export function ledgerTransactionDate(e: {
 export function ledgerEntryMonthFromBilling(billingYmd: string): string {
   return billingMonthFromDate(billingYmd);
 }
+
+export function dateInInclusiveRange(iso: string, fromYmd: string, toYmd: string): boolean {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return false;
+  const fromMs = new Date(`${fromYmd}T00:00:00`).getTime();
+  const toMs = new Date(`${toYmd}T23:59:59.999`).getTime();
+  return t >= fromMs && t <= toMs;
+}
+
+export function isDateBefore(iso: string, beforeYmd: string): boolean {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return false;
+  return t < new Date(`${beforeYmd}T00:00:00`).getTime();
+}
