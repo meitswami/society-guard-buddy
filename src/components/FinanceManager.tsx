@@ -44,7 +44,14 @@ import HeadFundReconciliation from '@/components/HeadFundReconciliation';
 import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
 import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
 import { sumByChannel, addToChannel, type ChannelTotals } from '@/lib/cashBankChannel';
-import { computeFinancePeriodReport, createDefaultOpeningAnchorForm, filterSocietyLedgerEntries, openingAnchorRowToForm, parseOptionalAnchorAmount } from '@/lib/financePeriodReport';
+import {
+  computeFinancePeriodReport,
+  createDefaultOpeningAnchorForm,
+  filterSocietyLedgerEntries,
+  isManualOpeningBalanceSetupPeriod,
+  openingAnchorRowToForm,
+  parseOptionalAnchorAmount,
+} from '@/lib/financePeriodReport';
 import { useSocietyOpeningBalanceAnchors } from '@/hooks/useSocietyOpeningBalanceAnchors';
 import {
   financeExpenseHeadFromLedgerEntry,
@@ -2789,6 +2796,8 @@ const FinanceManager = ({
     [periodFrom, periodTo, payments, societyLedgerEntries, expenseCategoryById, openingBalanceAnchors],
   );
 
+  const showManualOpeningBalanceSetup = isManualOpeningBalanceSetupPeriod(periodFrom);
+
   const parseOptionalAmount = parseOptionalAnchorAmount;
 
   const saveOpeningBalanceAnchor = async () => {
@@ -5041,13 +5050,14 @@ const FinanceManager = ({
             </div>
           </div>
 
+          {showManualOpeningBalanceSetup && (
           <div className="card-section p-4 space-y-3">
             <div>
               <h3 className="text-sm font-semibold">Manual opening balances</h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Set verified balances as on a cut-off date (default 28 Feb 2026). Period opening uses the anchor plus
-                verified receipts/expenses after that date. Cash defaults to ₹0 — edit any field; leave blank to use
-                transaction totals for that channel.
+                One-time setup for the March 2026 go-live: set verified balances as on a cut-off date (default 28 Feb
+                2026). Later periods roll forward from transactions — change the period to March 2026 or earlier to
+                edit this anchor. Cash defaults to ₹0; leave blank to use transaction totals for that channel.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -5176,6 +5186,7 @@ const FinanceManager = ({
               </p>
             )}
           </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <PeriodMetric
@@ -5202,7 +5213,7 @@ const FinanceManager = ({
               value={`₹${financePeriodReport.openingBalance.toLocaleString('en-IN')}`}
               valueClassName={`text-xl ${financePeriodReport.openingBalance >= 0 ? 'text-blue-700' : 'text-destructive'}`}
             />
-            {financePeriodReport.openingBankFromManualAnchor && (
+            {showManualOpeningBalanceSetup && financePeriodReport.openingBankFromManualAnchor && (
               <p className="sm:col-span-2 lg:col-span-4 text-[10px] text-primary -mt-1">
                 Bank opening includes manual anchor
                 {financePeriodReport.appliedOpeningAnchor
@@ -5210,7 +5221,7 @@ const FinanceManager = ({
                   : ''}
               </p>
             )}
-            {financePeriodReport.openingCashFromManualAnchor && (
+            {showManualOpeningBalanceSetup && financePeriodReport.openingCashFromManualAnchor && (
               <p className="sm:col-span-2 lg:col-span-4 text-[10px] text-primary -mt-1">
                 Cash opening includes manual anchor
                 {financePeriodReport.appliedOpeningAnchor

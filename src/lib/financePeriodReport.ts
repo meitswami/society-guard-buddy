@@ -56,6 +56,13 @@ export type FinancePeriodReserveTransfer = {
 
 export const DEFAULT_OPENING_ANCHOR_DATE = '2026-02-28';
 
+/** Last period start (inclusive) that shows manual opening-balance setup — March 2026 go-live only. */
+export const MANUAL_OPENING_BALANCE_LAST_PERIOD_FROM = '2026-03-31';
+
+export function isManualOpeningBalanceSetupPeriod(periodFrom: string): boolean {
+  return periodFrom.slice(0, 10) <= MANUAL_OPENING_BALANCE_LAST_PERIOD_FROM;
+}
+
 export type FinanceOpeningBalanceAnchor = {
   as_on_date: string;
   cash_amount: number | null;

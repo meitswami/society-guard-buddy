@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { computeFinancePeriodReport, findApplicableOpeningAnchor } from '@/lib/financePeriodReport';
+import {
+  computeFinancePeriodReport,
+  findApplicableOpeningAnchor,
+  isManualOpeningBalanceSetupPeriod,
+} from '@/lib/financePeriodReport';
 
 describe('finance opening balance anchors', () => {
+  it('shows manual setup UI only for March 2026 or earlier period starts', () => {
+    expect(isManualOpeningBalanceSetupPeriod('2026-03-01')).toBe(true);
+    expect(isManualOpeningBalanceSetupPeriod('2026-03-31')).toBe(true);
+    expect(isManualOpeningBalanceSetupPeriod('2026-04-01')).toBe(false);
+  });
+
   it('finds latest anchor before period start', () => {
     const anchors = [
       { as_on_date: '2026-01-31', cash_amount: null, bank_amount: 10000, other_amount: null },
