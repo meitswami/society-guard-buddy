@@ -8,6 +8,9 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
 import CashFlowStatement from '@/components/CashFlowStatement';
 import { DateInput } from '@/components/DateInput';
+import { useSocietyFinanceReportData } from '@/hooks/useSocietyFinanceReportData';
+import { computeFinancePeriodReport } from '@/lib/financePeriodReport';
+import { buildPeriodStatementEntries, filterStatementByChannel } from '@/lib/cashFlowStatement';
 import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
 import { REPORT_MAINTENANCE_METRICS, REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
 import ExportFormatMenu from '@/components/ExportFormatMenu';
@@ -27,20 +30,6 @@ interface FinanceEntrySummaryRow {
   created_at: string;
   payment_status: string;
   payment_method: string;
-}
-
-function normalizePaymentChannel(method: unknown): 'cash' | 'bank' | 'other' {
-  const x = String(method ?? 'cash')
-    .toLowerCase()
-    .replace(/\s/g, '');
-  if (x === 'cash') return 'cash';
-  if (
-    ['upi', 'bank_transfer', 'razorpay', 'online', 'card', 'neft', 'rtgs', 'imps', 'netbanking', 'cheque', 'dd'].some(
-      (k) => x === k || x.includes(k),
-    )
-  )
-    return 'bank';
-  return 'other';
 }
 
 type ReportTab = 'financial' | 'visitor' | 'vehicle' | 'all_modules';
@@ -86,6 +75,9 @@ const ReportPage = () => {
   const [modalSubtitle, setModalSubtitle] = useState('');
   const [modalTotal, setModalTotal] = useState<number | undefined>(undefined);
   const [modalRows, setModalRows] = useState<ReportDetailRow[]>([]);
+
+  const { payments, societyLedgerEntries, expenseCategoryById, reserveTransfers, loading: financeLoading } =
+    useSocietyFinanceReportData(societyId);
 
   // Derived date range from month
   const monthDate = useMemo(() => parse(`${reportMonth}-01`, 'yyyy-MM-dd', new Date()), [reportMonth]);
@@ -237,21 +229,29 @@ const ReportPage = () => {
   // Visitors for the selected month
   const monthVisitors = useMemo(() => visitors.filter(v => v.entryTime.startsWith(reportMonth)), [visitors, reportMonth]);
 
-  const reportMonthNet = useMemo(() => {
-    const receipt = { cash: 0, bank: 0, other: 0 };
-    const expense = { cash: 0, bank: 0, other: 0 };
-    for (const e of financeEntries) {
-      if (String(e.payment_status) !== 'verified') continue;
-      const amt = Number(e.total_amount || 0);
-      const ch = normalizePaymentChannel(e.payment_method);
-      if (e.destination === 'separate_entry') expense[ch] += amt;
-      else if (e.destination === 'current_month_maintenance' || e.destination === 'corpus') receipt[ch] += amt;
-    }
-    const cashInHand = receipt.cash - expense.cash;
-    const cashInBank = receipt.bank - expense.bank;
-    const otherNet = receipt.other - expense.other;
-    return { cashInHand, cashInBank, otherNet, totalBalance: cashInHand + cashInBank + otherNet };
-  }, [financeEntries]);
+  const periodReport = useMemo(
+    () =>
+      computeFinancePeriodReport({
+        periodFrom: monthFrom,
+        periodTo: monthTo,
+        payments,
+        ledgerEntries: societyLedgerEntries,
+        expenseCategoryById,
+      }),
+    [monthFrom, monthTo, payments, societyLedgerEntries, expenseCategoryById],
+  );
+
+  const monthStatementEntries = useMemo(
+    () =>
+      buildPeriodStatementEntries({
+        periodFrom: monthFrom,
+        periodTo: monthTo,
+        payments,
+        ledgerEntries: societyLedgerEntries,
+        expenseCategoryById,
+      }),
+    [monthFrom, monthTo, payments, societyLedgerEntries, expenseCategoryById],
+  );
 
   const financeGroups = useMemo(() => {
     const map = new Map<string, { total: number; flatUnits: number; count: number }>();
@@ -280,75 +280,49 @@ const ReportPage = () => {
     uniqueFlats: new Set(monthVisitors.map(v => v.flatNumber)).size,
   }), [monthVisitors]);
 
-  // Modal openers for clickable amount boxes
+  const statementEntriesToRows = (entries: ReturnType<typeof buildPeriodStatementEntries>): ReportDetailRow[] =>
+    entries.map((e) => ({
+      id: e.id,
+      label: e.label,
+      sublabel: e.sublabel,
+      amount: e.amount,
+      date: fmtDate(e.date),
+      status: e.type === 'expense' ? 'expense' : 'receipt',
+    }));
+
+  // Modal openers — same entry sources as Finance → Period report
   const openCashInHandModal = () => {
-    const rows: ReportDetailRow[] = financeEntries
-      .filter(e => String(e.payment_status) === 'verified' && normalizePaymentChannel(e.payment_method) === 'cash')
-      .map(e => ({
-        id: e.id,
-        label: `${e.record_mode.replace(/_/g, ' ')} → ${e.destination.replace(/_/g, ' ')}`,
-        sublabel: `Method: Cash`,
-        amount: Number(e.total_amount || 0),
-        date: fmtDate(e.created_at),
-        status: e.destination === 'separate_entry' ? 'expense' : 'receipt',
-      }));
+    const rows = statementEntriesToRows(filterStatementByChannel(monthStatementEntries, 'cash'));
     setModalTitle('Cash In Hand — Breakdown');
-    setModalSubtitle(`Verified cash transactions for ${reportMonth}`);
-    setModalTotal(reportMonthNet.cashInHand);
+    setModalSubtitle(`Verified transactions for ${reportMonth} (synced with Finance → Period report)`);
+    setModalTotal(periodReport.cashInHand);
     setModalRows(rows);
     setModalOpen(true);
   };
 
   const openBankBalanceModal = () => {
-    const rows: ReportDetailRow[] = financeEntries
-      .filter(e => String(e.payment_status) === 'verified' && normalizePaymentChannel(e.payment_method) === 'bank')
-      .map(e => ({
-        id: e.id,
-        label: `${e.record_mode.replace(/_/g, ' ')} → ${e.destination.replace(/_/g, ' ')}`,
-        sublabel: `Method: ${e.payment_method}`,
-        amount: Number(e.total_amount || 0),
-        date: fmtDate(e.created_at),
-        status: e.destination === 'separate_entry' ? 'expense' : 'receipt',
-      }));
+    const rows = statementEntriesToRows(filterStatementByChannel(monthStatementEntries, 'bank'));
     setModalTitle('Balance In Bank — Breakdown');
-    setModalSubtitle(`Verified bank transactions for ${reportMonth}`);
-    setModalTotal(reportMonthNet.cashInBank);
+    setModalSubtitle(`Verified bank/UPI transactions for ${reportMonth}`);
+    setModalTotal(periodReport.cashInBank);
     setModalRows(rows);
     setModalOpen(true);
   };
 
   const openOtherNetModal = () => {
-    const rows: ReportDetailRow[] = financeEntries
-      .filter(e => String(e.payment_status) === 'verified' && normalizePaymentChannel(e.payment_method) === 'other')
-      .map(e => ({
-        id: e.id,
-        label: `${e.record_mode.replace(/_/g, ' ')} → ${e.destination.replace(/_/g, ' ')}`,
-        sublabel: `Method: ${e.payment_method || 'Other'}`,
-        amount: Number(e.total_amount || 0),
-        date: fmtDate(e.created_at),
-        status: e.destination === 'separate_entry' ? 'expense' : 'receipt',
-      }));
+    const rows = statementEntriesToRows(filterStatementByChannel(monthStatementEntries, 'other'));
     setModalTitle('Other Net — Breakdown');
     setModalSubtitle(`Other payment channel transactions for ${reportMonth}`);
-    setModalTotal(reportMonthNet.otherNet);
+    setModalTotal(periodReport.otherNet);
     setModalRows(rows);
     setModalOpen(true);
   };
 
   const openTotalBalanceModal = () => {
-    const rows: ReportDetailRow[] = financeEntries
-      .filter(e => String(e.payment_status) === 'verified')
-      .map(e => ({
-        id: e.id,
-        label: `${e.record_mode.replace(/_/g, ' ')} → ${e.destination.replace(/_/g, ' ')}`,
-        sublabel: `Method: ${e.payment_method || 'N/A'} | Channel: ${normalizePaymentChannel(e.payment_method)}`,
-        amount: Number(e.total_amount || 0),
-        date: fmtDate(e.created_at),
-        status: e.destination === 'separate_entry' ? 'expense' : 'receipt',
-      }));
+    const rows = statementEntriesToRows(monthStatementEntries);
     setModalTitle('Total Balance — All Verified');
     setModalSubtitle(`All verified entries for ${reportMonth}`);
-    setModalTotal(reportMonthNet.totalBalance);
+    setModalTotal(periodReport.totalBalance);
     setModalRows(rows);
     setModalOpen(true);
   };
@@ -497,7 +471,12 @@ const ReportPage = () => {
       financeEntries,
       financeGroups,
       financeMonthTotal,
-      reportMonthNet,
+      reportMonthNet: {
+        cashInHand: periodReport.cashInHand,
+        cashInBank: periodReport.cashInBank,
+        otherNet: periodReport.otherNet,
+        totalBalance: periodReport.totalBalance,
+      },
       visitors: monthVisitors,
       visitorStats,
     });
@@ -556,11 +535,14 @@ const ReportPage = () => {
           {/* Net Summary - Clickable Boxes */}
           <div className="mb-4 rounded-lg border border-border bg-card/40 p-3">
             <p className="text-[11px] font-medium text-foreground mb-2">{t('report.financeNetTitle')}</p>
+            <p className="text-[10px] text-muted-foreground mb-2">
+              Period net for {fmtIsoMonthToDisplay(reportMonth)} — synced with Finance → Period report
+            </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <DescriptiveStatCard
                 {...REPORT_PAGE_METRICS.reportCashInHand}
                 caption={t('report.cashInHand')}
-                value={`₹${reportMonthNet.cashInHand.toLocaleString('en-IN')}`}
+                value={`₹${periodReport.cashInHand.toLocaleString('en-IN')}`}
                 valueClassName="text-sm font-mono"
                 onNavigate={openCashInHandModal}
                 navigateLabel="View entries"
@@ -569,7 +551,7 @@ const ReportPage = () => {
               <DescriptiveStatCard
                 {...REPORT_PAGE_METRICS.reportCashInBank}
                 caption={t('report.balanceInBank')}
-                value={`₹${reportMonthNet.cashInBank.toLocaleString('en-IN')}`}
+                value={`₹${periodReport.cashInBank.toLocaleString('en-IN')}`}
                 valueClassName="text-sm font-mono"
                 onNavigate={openBankBalanceModal}
                 navigateLabel="View entries"
@@ -578,7 +560,7 @@ const ReportPage = () => {
               <DescriptiveStatCard
                 {...REPORT_PAGE_METRICS.reportOtherNet}
                 caption={t('report.otherNet')}
-                value={`₹${reportMonthNet.otherNet.toLocaleString('en-IN')}`}
+                value={`₹${periodReport.otherNet.toLocaleString('en-IN')}`}
                 valueClassName="text-sm font-mono"
                 onNavigate={openOtherNetModal}
                 navigateLabel="View entries"
@@ -587,7 +569,7 @@ const ReportPage = () => {
               <DescriptiveStatCard
                 {...REPORT_PAGE_METRICS.reportTotalBalance}
                 caption={t('report.totalBalance')}
-                value={`₹${reportMonthNet.totalBalance.toLocaleString('en-IN')}`}
+                value={`₹${periodReport.totalBalance.toLocaleString('en-IN')}`}
                 valueClassName="text-sm font-mono text-primary"
                 onNavigate={openTotalBalanceModal}
                 navigateLabel="View entries"
@@ -631,15 +613,9 @@ const ReportPage = () => {
               </div>
             </div>
             {statementPeriodMode === 'monthly' ? (
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
-                <input
-                  type="month"
-                  className="input-field text-sm flex-1"
-                  value={reportMonth}
-                  onChange={(e) => setReportMonth(e.target.value)}
-                />
-              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Uses report month {fmtIsoMonthToDisplay(reportMonth)} from the selector above.
+              </p>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -660,6 +636,11 @@ const ReportPage = () => {
             periodFrom={statementPeriodFrom}
             periodTo={statementPeriodTo}
             periodLabel={statementPeriodLabel}
+            loading={financeLoading}
+            payments={payments}
+            societyLedgerEntries={societyLedgerEntries}
+            expenseCategoryById={expenseCategoryById}
+            reserveTransfers={reserveTransfers}
           />
 
           {/* Gross clickable */}

@@ -18,6 +18,7 @@ import {
   downloadFinancePeriodReport,
   downloadTransactionStatement,
 } from '@/lib/transactionStatementExport';
+import { toFinancePeriodReportExportInput } from '@/lib/financePeriodReportExport';
 import type { ExportFormat } from '@/lib/reportExportUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DescriptiveStatCard, DescriptiveStatSummary, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
@@ -42,9 +43,9 @@ import HeadFundReconciliation from '@/components/HeadFundReconciliation';
 import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
 import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
 import { sumByChannel, addToChannel, type ChannelTotals } from '@/lib/cashBankChannel';
+import { computeFinancePeriodReport, filterSocietyLedgerEntries } from '@/lib/financePeriodReport';
 import {
   financeExpenseHeadFromLedgerEntry,
-  isEventFoodLedgerEntry,
   SOCIETY_PAYMENT_MAJOR_HEADS,
   inferMajorHeadFromGroupName,
   resolveGroupMajorHead,
@@ -286,15 +287,10 @@ const FinanceManager = ({
     [expenseCategoryById],
   );
 
-  const isEventFoodLedger = useCallback(
-    (e: FinanceLedgerRow) => isEventFoodLedgerEntry(e, expenseCategoryById),
-    [expenseCategoryById],
-  );
-
   /** Finance module ledger — excludes event food (reconciled under Events & food). */
   const societyLedgerEntries = useMemo(
-    () => ledgerEntries.filter((e) => !isEventFoodLedger(e)),
-    [ledgerEntries, isEventFoodLedger],
+    () => filterSocietyLedgerEntries(ledgerEntries, expenseCategoryById),
+    [ledgerEntries, expenseCategoryById],
   );
 
   const ledgerEntryKindLabel = useCallback(
@@ -2395,129 +2391,17 @@ const FinanceManager = ({
     [flats, primaryByFlatId],
   );
 
-  const financePeriodReport = useMemo(() => {
-    // --- Collect ALL finance_entry_ids linked to any verified payment (for deduplication) ---
-    const allLinkedFeIds = new Set<string>();
-    for (const p of payments) {
-      if (String(p.payment_status) !== 'verified') continue;
-      const feId = (p as any).finance_entry_id;
-      if (typeof feId === 'string' && feId.length > 0) allLinkedFeIds.add(feId);
-    }
-
-    // --- Opening balances: all verified transactions BEFORE periodFrom ---
-    const openingReceipt = { cash: 0, bank: 0, other: 0 };
-    const openingExpense = { cash: 0, bank: 0, other: 0 };
-
-    for (const p of payments) {
-      if (String(p.payment_status) !== 'verified') continue;
-      const d = paymentBillingDate(p as { due_date?: string });
-      if (!d) continue;
-      const t = new Date(d).getTime();
-      if (Number.isNaN(t)) continue;
-      const fromMs = new Date(`${periodFrom}T00:00:00`).getTime();
-      if (t >= fromMs) continue; // not before period
-      const amt = Number(p.amount || 0);
-      const ch = normalizePaymentChannel(p.payment_method);
-      openingReceipt[ch] += amt;
-    }
-
-    for (const e of societyLedgerEntries) {
-      const ledgerDate = ledgerTransactionDate(e);
-      const t = new Date(ledgerDate).getTime();
-      if (Number.isNaN(t)) continue;
-      const fromMs = new Date(`${periodFrom}T00:00:00`).getTime();
-      if (t >= fromMs) continue; // not before period
-      const amt = Number(e.total_amount || 0);
-      const ch = normalizePaymentChannel(e.payment_method);
-      if (e.destination === 'separate_entry') {
-        openingExpense[ch] += amt;
-      } else if (e.destination === 'current_month_maintenance' || e.destination === 'corpus') {
-        if (!allLinkedFeIds.has(e.id)) {
-          openingReceipt[ch] += amt;
-        }
-      }
-    }
-
-    const openingCash = openingReceipt.cash - openingExpense.cash;
-    const openingBank = openingReceipt.bank - openingExpense.bank;
-    const openingOther = openingReceipt.other - openingExpense.other;
-    const openingBalance = openingCash + openingBank + openingOther;
-
-    // --- Period transactions ---
-    const receiptByMethod = { cash: 0, bank: 0, other: 0 };
-    let verifiedPaymentCount = 0;
-    for (const p of payments) {
-      if (String(p.payment_status) !== 'verified') continue;
-      const d = paymentBillingDate(p as { due_date?: string });
-      if (!d || !dateInInclusiveRange(d, periodFrom, periodTo)) continue;
-      const amt = Number(p.amount || 0);
-      const ch = normalizePaymentChannel(p.payment_method);
-      receiptByMethod[ch] += amt;
-      verifiedPaymentCount += 1;
-    }
-
-    const expenseByMethod = { cash: 0, bank: 0, other: 0 };
-    const expenseByHead = new Map<string, { cash: number; bank: number; other: number; total: number }>();
-
-    let extraLedgerReceipt = 0;
-    for (const e of societyLedgerEntries) {
-      const ledgerDate = ledgerTransactionDate(e);
-      if (!ledgerDate || !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
-      const amt = Number(e.total_amount || 0);
-      const ch = normalizePaymentChannel(e.payment_method);
-      if (e.destination === 'separate_entry') {
-        expenseByMethod[ch] += amt;
-        const head = financeExpenseHeadFromLedgerEntry(
-          e.title,
-          e.expense_id ? expenseCategoryById.get(e.expense_id) : null,
-        );
-        const cur = expenseByHead.get(head) ?? { cash: 0, bank: 0, other: 0, total: 0 };
-        cur[ch] += amt;
-        cur.total += amt;
-        expenseByHead.set(head, cur);
-      } else if (e.destination === 'current_month_maintenance' || e.destination === 'corpus') {
-        if (!allLinkedFeIds.has(e.id)) {
-          extraLedgerReceipt += amt;
-          receiptByMethod[ch] += amt;
-        }
-      }
-    }
-
-    const totalReceipts = receiptByMethod.cash + receiptByMethod.bank + receiptByMethod.other;
-    const totalExpenses = expenseByMethod.cash + expenseByMethod.bank + expenseByMethod.other;
-    const cashInHand = receiptByMethod.cash - expenseByMethod.cash;
-    const cashInBank = receiptByMethod.bank - expenseByMethod.bank;
-    const otherNet = receiptByMethod.other - expenseByMethod.other;
-    const totalBalance = cashInHand + cashInBank + otherNet;
-
-    // Closing = Opening + Period net
-    const closingCash = openingCash + cashInHand;
-    const closingBank = openingBank + cashInBank;
-    const closingOther = openingOther + otherNet;
-    const closingBalance = openingBalance + totalBalance;
-
-    return {
-      verifiedPaymentCount,
-      receiptByMethod,
-      totalReceipts,
-      expenseByMethod,
-      expenseByHead: [...expenseByHead.entries()].sort((a, b) => a[0].localeCompare(b[0])),
-      totalExpenses,
-      cashInHand,
-      cashInBank,
-      otherNet,
-      totalBalance,
-      extraLedgerReceipt,
-      openingCash,
-      openingBank,
-      openingOther,
-      openingBalance,
-      closingCash,
-      closingBank,
-      closingOther,
-      closingBalance,
-    };
-  }, [periodFrom, periodTo, payments, societyLedgerEntries, expenseCategoryById]);
+  const financePeriodReport = useMemo(
+    () =>
+      computeFinancePeriodReport({
+        periodFrom,
+        periodTo,
+        payments,
+        ledgerEntries: societyLedgerEntries,
+        expenseCategoryById,
+      }),
+    [periodFrom, periodTo, payments, societyLedgerEntries, expenseCategoryById],
+  );
 
   const collectReportAudienceIds = (): string[] => {
     if (reportAudience === 'all') return residentUsers.map((r) => r.id);
@@ -2532,31 +2416,12 @@ const FinanceManager = ({
     return [...new Set(reportResidentIds.filter(Boolean))];
   };
 
-  const periodReportExportInput = () => ({
-    societyName: societyName || 'Society',
-    periodFrom,
-    periodTo,
-    generatedAt: new Date().toISOString(),
-    receiptByMethod: financePeriodReport.receiptByMethod,
-    totalReceipts: financePeriodReport.totalReceipts,
-    expenseByHead: financePeriodReport.expenseByHead,
-    expenseByMethod: financePeriodReport.expenseByMethod,
-    totalExpenses: financePeriodReport.totalExpenses,
-    cashInHand: financePeriodReport.cashInHand,
-    cashInBank: financePeriodReport.cashInBank,
-    otherNet: financePeriodReport.otherNet,
-    totalBalance: financePeriodReport.totalBalance,
-    verifiedPaymentCount: financePeriodReport.verifiedPaymentCount,
-    extraLedgerReceipt: financePeriodReport.extraLedgerReceipt,
-    openingCash: financePeriodReport.openingCash,
-    openingBank: financePeriodReport.openingBank,
-    openingOther: financePeriodReport.openingOther,
-    openingBalance: financePeriodReport.openingBalance,
-    closingCash: financePeriodReport.closingCash,
-    closingBank: financePeriodReport.closingBank,
-    closingOther: financePeriodReport.closingOther,
-    closingBalance: financePeriodReport.closingBalance,
-  });
+  const periodReportExportInput = () =>
+    toFinancePeriodReportExportInput(financePeriodReport, {
+      societyName: societyName || 'Society',
+      periodFrom,
+      periodTo,
+    });
 
   const exportPeriodReport = (format: ExportFormat) => {
     if (periodFrom > periodTo) {
@@ -2602,23 +2467,13 @@ const FinanceManager = ({
     }
     setReportPushBusy(true);
     try {
-      const blob = buildFinancePeriodReportPdfBlob({
-        societyName: societyName || 'Society',
-        periodFrom,
-        periodTo,
-        generatedAt: new Date().toISOString(),
-        receiptByMethod: financePeriodReport.receiptByMethod,
-        totalReceipts: financePeriodReport.totalReceipts,
-        expenseByHead: financePeriodReport.expenseByHead,
-        expenseByMethod: financePeriodReport.expenseByMethod,
-        totalExpenses: financePeriodReport.totalExpenses,
-        cashInHand: financePeriodReport.cashInHand,
-        cashInBank: financePeriodReport.cashInBank,
-        otherNet: financePeriodReport.otherNet,
-        totalBalance: financePeriodReport.totalBalance,
-        verifiedPaymentCount: financePeriodReport.verifiedPaymentCount,
-        extraLedgerReceipt: financePeriodReport.extraLedgerReceipt,
-      });
+      const blob = buildFinancePeriodReportPdfBlob(
+        toFinancePeriodReportExportInput(financePeriodReport, {
+          societyName: societyName || 'Society',
+          periodFrom,
+          periodTo,
+        }),
+      );
       const batchId = crypto.randomUUID();
       const path = `finance-reports/${societyId}/${batchId}.pdf`;
       const { error: upErr } = await supabase.storage.from('notification-media').upload(path, blob, {

@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { buildFinancePeriodReportPdfBlob, type FinancePeriodReportPdfInput } from '@/lib/financePeriodReportPdf';
+import type { FinancePeriodReportResult } from '@/lib/financePeriodReport';
 import {
   buildHtmlTable,
   htmlToWordBlob,
@@ -19,6 +20,20 @@ export type FinancePeriodReportExportInput = FinancePeriodReportPdfInput & {
   closingOther?: number;
   closingBalance?: number;
 };
+
+export function toFinancePeriodReportExportInput(
+  report: FinancePeriodReportResult,
+  meta: { societyName: string; periodFrom: string; periodTo: string; generatedAt?: string },
+): FinancePeriodReportExportInput {
+  const { maintenanceReceipts: _maintenanceReceipts, corpusReceipts: _corpusReceipts, ...exportFields } = report;
+  return {
+    societyName: meta.societyName,
+    periodFrom: meta.periodFrom,
+    periodTo: meta.periodTo,
+    generatedAt: meta.generatedAt ?? new Date().toISOString(),
+    ...exportFields,
+  };
+}
 
 function summaryRows(input: FinancePeriodReportExportInput): [string, string][] {
   const rows: [string, string][] = [
