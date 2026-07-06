@@ -3397,6 +3397,28 @@ const FinanceManager = ({
                     : 'Amount is allocated to the flats you select below at record time.'}
                 </p>
               </div>
+              <div>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">Billing / transaction date</label>
+                <DateInput
+                  className="input-field"
+                  value={payForm.due_date}
+                  onChange={e => {
+                    const nextDate = e.target.value;
+                    setPayForm({ ...payForm, due_date: nextDate });
+                    if (useSameDateForSelectedFlats) {
+                      setFlatDueDates((prev) => {
+                        const next = { ...prev };
+                        for (const flat of payForm.selected_flats) next[flat] = nextDate;
+                        return next;
+                      });
+                    }
+                  }}
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Entry month for reports: {fmtIsoMonthToDisplay(billingMonthFromDate(payForm.due_date))} (billing date must
+                  fall in this month)
+                </p>
+              </div>
               {(payForm.recordMode === 'society_pool' || payForm.recordMode !== 'flats_only') && (
                 <div>
                   <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">
@@ -3620,28 +3642,6 @@ const FinanceManager = ({
               <input className="input-field" placeholder="Screenshot URL (paste link, optional)" value={payForm.screenshot_url} onChange={e => setPayForm({...payForm, screenshot_url: e.target.value})} />
               <label className="text-[10px] font-medium text-muted-foreground uppercase">Or upload receipt / bill</label>
               <input id="finance-payment-receipt" type="file" accept="image/*,application/pdf" className="text-xs" />
-              <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase">Billing / transaction date</label>
-                <DateInput
-                  className="input-field"
-                  value={payForm.due_date}
-                  onChange={e => {
-                    const nextDate = e.target.value;
-                    setPayForm({ ...payForm, due_date: nextDate });
-                    if (useSameDateForSelectedFlats) {
-                      setFlatDueDates((prev) => {
-                        const next = { ...prev };
-                        for (const flat of payForm.selected_flats) next[flat] = nextDate;
-                        return next;
-                      });
-                    }
-                  }}
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Entry month for reports: {fmtIsoMonthToDisplay(billingMonthFromDate(payForm.due_date))} (billing date must
-                  fall in this month)
-                </p>
-              </div>
               {payForm.recordMode !== 'society_pool' && !useSameDateForSelectedFlats && payForm.selected_flats.length > 0 && (
                 <div className="rounded-lg border border-border p-2 space-y-1.5">
                   <p className="text-[10px] uppercase font-medium text-muted-foreground">Per-flat due dates</p>

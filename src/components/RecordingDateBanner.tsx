@@ -20,8 +20,8 @@ export function RecordingDateBanner({ className = '' }: Props) {
         <p className="text-sm font-semibold tabular-nums">{fmtIsoDateToDisplay(today)}</p>
       </div>
       <p className="text-[10px] text-muted-foreground max-w-md leading-snug">
-        When you save, this is stored as the system entry date. Reports and period totals use the billing /
-        transaction date on each row, not this date.
+        System entry date when you save (defaults to today). For receipts and payments, set the billing /
+        transaction date in the form — that date drives period reports.
       </p>
     </div>
   );

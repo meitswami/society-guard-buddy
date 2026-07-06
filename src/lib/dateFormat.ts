@@ -54,6 +54,15 @@ export function fmtIsoDateToDisplay(iso: string | null | undefined): string {
   return isValid(d) ? format(d, DATE_FMT) : iso;
 }
 
+/** `dd/MM/yyyy` or `yyyy-MM-dd` typed by user → `yyyy-MM-dd`, or null if incomplete/invalid. */
+export function parseDisplayDateToIso(input: string): string | null {
+  const s = input.trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s.slice(0, 10))) return s.slice(0, 10);
+  const d = parse(s, DATE_FMT, new Date());
+  return isValid(d) ? format(d, 'yyyy-MM-dd') : null;
+}
+
 /** `yyyy-MM` (month picker / entry_month) → `MM/yyyy` for display. */
 export function fmtIsoMonthToDisplay(ym: string | null | undefined): string {
   if (!ym) return '';
