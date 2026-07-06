@@ -1,6 +1,7 @@
 import { normalizePaymentChannel, type PaymentChannel } from '@/lib/cashBankChannel';
 import { dateInInclusiveRange, ledgerTransactionDate, paymentBillingDate } from '@/lib/financeDates';
 import { financeExpenseHeadFromLedgerEntry } from '@/lib/financeExpenseHead';
+import { compareFlatNumbers } from '@/lib/flatMultiSelectOptions';
 import {
   collectLinkedFinanceEntryIds,
   computeFinancePeriodReport,
@@ -416,7 +417,10 @@ export function filterStatementEntriesForDrill(
   kind: NonNullable<CashFlowLine['drillKind']>,
   drillKey?: string,
 ): StatementEntry[] {
-  if (kind === 'receipts') return entries.filter((e) => e.type === 'receipt' || e.type === 'corpus');
+  if (kind === 'receipts') {
+    const filtered = entries.filter((e) => e.type === 'receipt' || e.type === 'corpus');
+    return sortFlatMaintenanceReceiptEntries(filtered);
+  }
   if (kind === 'corpus') return entries.filter((e) => e.type === 'corpus');
   if (kind === 'expense_head' && drillKey) {
     return entries.filter((e) => e.type === 'expense' && e.expenseHead === drillKey);
@@ -425,4 +429,23 @@ export function filterStatementEntriesForDrill(
     return entries.filter((e) => e.type === 'reserve');
   }
   return entries;
+}
+
+function flatNumberFromStatementLabel(label: string): string | null {
+  const m = label.match(/Flat\s+(\S+)/i);
+  return m?.[1] ?? null;
+}
+
+/** Flat maintenance receipts first in numeric flat order (101 → 605); ledger-only after. */
+export function sortFlatMaintenanceReceiptEntries(entries: StatementEntry[]): StatementEntry[] {
+  return [...entries].sort((a, b) => {
+    const flatA = flatNumberFromStatementLabel(a.label);
+    const flatB = flatNumberFromStatementLabel(b.label);
+    if (flatA && flatB) {
+      const byFlat = compareFlatNumbers(flatA, flatB);
+      if (byFlat !== 0) return byFlat;
+    } else if (flatA && !flatB) return -1;
+    else if (!flatA && flatB) return 1;
+    return a.date.localeCompare(b.date) || a.label.localeCompare(b.label);
+  });
 }

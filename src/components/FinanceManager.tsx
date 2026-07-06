@@ -8,7 +8,12 @@ import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
 import { fmtDate, fmtDateTimeFull, fmtIsoDateToDisplay, fmtIsoMonthToDisplay, fmtTime } from '@/lib/dateFormat';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
-import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
+import {
+  compareFlatNumbers,
+  flatOptionsWithPrimaryLabel,
+  residentLabelForFlatRow,
+  sortFlatsByNumber,
+} from '@/lib/flatMultiSelectOptions';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
 import { DateInput } from '@/components/DateInput';
 import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
@@ -508,7 +513,7 @@ const FinanceManager = ({
       .select('flat_number, id, owner_name, is_occupied')
       .eq('society_id', societyId)
       .order('flat_number');
-    if (f) setFlats(f);
+    if (f) setFlats(sortFlatsByNumber(f));
     const flatIds = (f ?? []).map((x) => x.id);
     const mRes =
       flatIds.length > 0
@@ -2214,7 +2219,8 @@ const FinanceManager = ({
       .filter((row) => {
         if (!q) return true;
         return `${row.flat_number} ${row.primary_name}`.toLowerCase().includes(q);
-      });
+      })
+      .sort((a, b) => compareFlatNumbers(a.flat_number, b.flat_number));
   }, [filterStatus, scopedReceiptPayments, targetFlats, paymentSearchQuery, primaryByFlatId]);
 
   const receiptSummary = useMemo(() => {
@@ -2378,7 +2384,18 @@ const FinanceManager = ({
           },
         });
       }
-      items.sort((a, b) => (a.t < b.t ? 1 : -1));
+      items.sort((a, b) => {
+        const flatA =
+          a.row.meta?.kind === 'mp' ? String((a.row.meta.payment as { flat_number?: string })?.flat_number ?? '') : '';
+        const flatB =
+          b.row.meta?.kind === 'mp' ? String((b.row.meta.payment as { flat_number?: string })?.flat_number ?? '') : '';
+        if (flatA && flatB) {
+          const byFlat = compareFlatNumbers(flatA, flatB);
+          if (byFlat !== 0) return byFlat;
+        } else if (flatA && !flatB) return -1;
+        else if (!flatA && flatB) return 1;
+        return a.t < b.t ? 1 : -1;
+      });
       return items.map((i) => i.row);
     },
     [
@@ -2507,7 +2524,16 @@ const FinanceManager = ({
       ...filteredPayments.map((p) => ({ kind: 'mp' as const, t: p.created_at, p })),
       ...scopedLedgerOnly.map((e) => ({ kind: 'ledger' as const, t: e.created_at, e })),
     ];
-    items.sort((a, b) => (a.t < b.t ? 1 : -1));
+    items.sort((a, b) => {
+      const flatA = a.kind === 'mp' && a.p ? String(a.p.flat_number || '') : '';
+      const flatB = b.kind === 'mp' && b.p ? String(b.p.flat_number || '') : '';
+      if (flatA && flatB) {
+        const byFlat = compareFlatNumbers(flatA, flatB);
+        if (byFlat !== 0) return byFlat;
+      } else if (flatA && !flatB) return -1;
+      else if (!flatA && flatB) return 1;
+      return a.t < b.t ? 1 : -1;
+    });
     return items;
   }, [filterStatus, filteredPayments, scopedLedgerOnly]);
 
@@ -2794,7 +2820,7 @@ const FinanceManager = ({
       row.details.sort((a, b) => b.date.localeCompare(a.date));
     }
 
-    let rows = [...flatMap.values()].sort((a, b) => a.flat_number.localeCompare(b.flat_number, undefined, { numeric: true }));
+    let rows = [...flatMap.values()].sort((a, b) => compareFlatNumbers(a.flat_number, b.flat_number));
     if (flatReportSelectedFlat !== 'all') {
       rows = rows.filter((r) => r.flat_number === flatReportSelectedFlat);
     }
