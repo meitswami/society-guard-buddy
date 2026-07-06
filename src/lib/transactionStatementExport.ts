@@ -7,6 +7,7 @@ import {
   buildFinancePeriodReportWord,
   type FinancePeriodReportExportInput,
 } from '@/lib/financePeriodReportExport';
+import { monthlyAmountTotals, sumAmountRows } from '@/lib/statementAmountTotals';
 import {
   buildHtmlTable,
   htmlToWordBlob,
@@ -19,6 +20,7 @@ import {
 
 export type TransactionExportRow = {
   date: string;
+  dateIso: string;
   type: string;
   flat: string;
   description: string;
@@ -74,11 +76,24 @@ export function transactionRowToRawCells(r: TransactionExportRow): unknown[] {
 }
 
 export function buildTransactionStatementExcel(rows: TransactionExportRow[]): Blob {
+  const monthly = monthlyAmountTotals(rows);
+  const total = sumAmountRows(rows);
   return rowsToXlsxBlob([
     {
       name: 'Transactions',
       headers: TXN_HEADERS,
-      rows: rows.map(transactionRowToRawCells),
+      rows: [
+        ...rows.map(transactionRowToRawCells),
+        ['', '', '', '', '', '', 'Total', total, '', ''],
+      ],
+    },
+    {
+      name: 'Monthly totals',
+      headers: ['Month', 'Entries', 'Total amount'],
+      rows: [
+        ...monthly.map((m) => [m.label, m.count, m.total]),
+        ['Total', rows.length, total],
+      ],
     },
   ]);
 }
@@ -90,22 +105,44 @@ export function buildTransactionStatementWord(opts: {
   generatedAt: string;
   rows: TransactionExportRow[];
 }): Blob {
+  const monthly = monthlyAmountTotals(opts.rows);
+  const total = sumAmountRows(opts.rows);
   const table = buildHtmlTable(
     TXN_HEADERS,
-    opts.rows.map(transactionRowToCells),
+    [...opts.rows.map(transactionRowToCells), ['', '', '', '', '', '', 'Total', moneyInr(total), '', '']],
     new Set([7]),
+  );
+  const monthlyTable = buildHtmlTable(
+    ['Month', 'Entries', 'Total amount'],
+    [
+      ...monthly.map((m) => [m.label, String(m.count), moneyInr(m.total)]),
+      ['Total', String(opts.rows.length), moneyInr(total)],
+    ],
+    new Set([2]),
   );
   const body = `
     <h1>${opts.societyName}</h1>
     <p class="meta">${opts.title}</p>
     <p class="meta">${opts.subtitle}</p>
-    <p class="meta">Generated: ${fmtDateTimeFull(opts.generatedAt)} · ${opts.rows.length} row(s)</p>
-    ${table}`;
+    <p class="meta">Generated: ${fmtDateTimeFull(opts.generatedAt)} · ${opts.rows.length} row(s) · Total ${moneyInr(total)}</p>
+    <h2>Transactions</h2>${table}
+    <h2>Monthly totals</h2>${monthlyTable}`;
   return htmlToWordBlob(opts.title, body);
 }
 
 export function buildTransactionStatementCsv(rows: TransactionExportRow[]): Blob {
-  return rowsToCsvBlob(TXN_HEADERS, rows.map(transactionRowToRawCells));
+  const monthly = monthlyAmountTotals(rows);
+  const total = sumAmountRows(rows);
+  const dataRows = [
+    ...rows.map(transactionRowToRawCells),
+    ['', '', '', '', '', '', 'Total', total, '', ''],
+    ['', ''],
+    ['Monthly totals', '', ''],
+    ['Month', 'Entries', 'Total amount'],
+    ...monthly.map((m) => [m.label, m.count, m.total]),
+    ['Total', rows.length, total],
+  ];
+  return rowsToCsvBlob(TXN_HEADERS, dataRows);
 }
 
 export function downloadTransactionStatement(
@@ -120,6 +157,8 @@ export function downloadTransactionStatement(
 ) {
   const generatedAt = new Date().toISOString();
   const cellRows = opts.rows.map(transactionRowToCells);
+  const monthly = monthlyAmountTotals(opts.rows);
+  const transactionTotal = sumAmountRows(opts.rows);
   let blob: Blob;
   let ext: string;
 
@@ -131,7 +170,12 @@ export function downloadTransactionStatement(
         subtitle: opts.subtitle,
         generatedAt,
         headers: TXN_HEADERS,
-        rows: cellRows,
+        rows: [
+          ...cellRows,
+          ['', '', '', '', '', '', 'Total', moneyInr(transactionTotal), '', ''],
+        ],
+        monthlyTotals: monthly,
+        transactionTotal,
       });
       ext = 'pdf';
       break;
@@ -195,6 +239,7 @@ export function buildTransactionExportRows(input: {
       const chargeId = String(p.charge_id ?? '');
       rows.push({
         date: fmtDate(String(p.created_at ?? '')),
+        dateIso: String(p.created_at ?? ''),
         type: 'Maintenance receipt',
         flat: String(p.flat_number ?? ''),
         description: input.chargeTitleById.get(chargeId) || 'Unknown charge',
@@ -216,6 +261,7 @@ export function buildTransactionExportRows(input: {
         : '';
       rows.push({
         date: fmtDate(String(e.created_at ?? '')),
+        dateIso: String(e.created_at ?? ''),
         type: String(e.destination ?? 'ledger').replace(/_/g, ' '),
         flat: flats || '—',
         description: String(e.title ?? e.record_mode ?? 'Ledger entry').replace(/_/g, ' '),

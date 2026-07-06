@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { monthlyAmountTotals, sumAmountRows } from '@/lib/statementAmountTotals';
 
 export interface ReportDetailRow {
   id: string;
@@ -6,6 +8,8 @@ export interface ReportDetailRow {
   sublabel?: string;
   amount?: number;
   date?: string;
+  /** `yyyy-MM-dd` or ISO timestamp — used for monthly subtotals. */
+  dateIso?: string;
   status?: string;
   extra?: string;
   /** When set, row is clickable for drill-down */
@@ -40,9 +44,18 @@ const ReportDetailModal = ({
   onBack,
   footerActions,
 }: Props) => {
+  const rowsWithAmounts = useMemo(() => rows.filter((r) => r.amount !== undefined), [rows]);
+  const transactionTotal = useMemo(() => sumAmountRows(rowsWithAmounts), [rowsWithAmounts]);
+  const monthlyTotals = useMemo(() => monthlyAmountTotals(rowsWithAmounts), [rowsWithAmounts]);
+  const hasAmounts = rowsWithAmounts.length > 0;
+
   if (!open) return null;
 
   const canDrill = drillable && !!onRowClick;
+  const fmtSigned = (n: number) => {
+    const sign = n < 0 ? '−' : '';
+    return `${sign}₹${Math.abs(n).toLocaleString('en-IN')}`;
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -142,6 +155,38 @@ const ReportDetailModal = ({
         {/* Footer */}
         <div className="p-3 border-t border-border">
           {footerActions && <div className="mb-2 flex gap-2 flex-wrap">{footerActions}</div>}
+          {hasAmounts && monthlyTotals.length > 0 && (
+            <div className="mb-2 rounded-lg border border-border/60 bg-muted/20 p-2.5 space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                Monthly totals
+              </p>
+              {monthlyTotals.map((m) => (
+                <div key={m.monthKey} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-muted-foreground">
+                    {m.label}
+                    <span className="text-[10px] ml-1">({m.count})</span>
+                  </span>
+                  <span
+                    className={`font-mono font-semibold shrink-0 ${
+                      m.total < 0 ? 'text-red-600 dark:text-red-400' : ''
+                    }`}
+                  >
+                    {fmtSigned(m.total)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {hasAmounts && (
+            <p className="text-xs font-semibold text-center mb-1">
+              Transaction total:{' '}
+              <span
+                className={`font-mono ${transactionTotal < 0 ? 'text-red-600 dark:text-red-400' : 'text-primary'}`}
+              >
+                {fmtSigned(transactionTotal)}
+              </span>
+            </p>
+          )}
           <p className="text-[10px] text-muted-foreground text-center">
             {rows.length} record{rows.length !== 1 ? 's' : ''}
             {canDrill ? ' · Tap a row for entry detail' : ''}

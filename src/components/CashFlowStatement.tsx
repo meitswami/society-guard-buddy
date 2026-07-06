@@ -96,6 +96,7 @@ const CashFlowStatement = ({
     sublabel: e.sublabel,
     amount: e.amount,
     date: fmtDate(e.date),
+    dateIso: e.date,
     status: e.type === 'expense' ? 'expense' : e.type === 'receipt' ? 'receipt' : e.type,
     extra: e.runningBalance !== undefined ? `Bal: ₹${e.runningBalance.toLocaleString('en-IN')}` : undefined,
     meta: { entry: e },
@@ -134,7 +135,7 @@ const CashFlowStatement = ({
     pushModal({
       title: 'Cash Statement',
       subtitle: `Chronological cash transactions — ${displayPeriod}`,
-      total: cfs.closing.cash,
+      total: cashEntries.reduce((s, r) => s + r.amount, 0),
       rows: withBal.map(statementEntryToRow),
       drillable: true,
     });
@@ -147,7 +148,7 @@ const CashFlowStatement = ({
     pushModal({
       title: 'Bank Statement',
       subtitle: `Chronological bank / UPI transactions — ${displayPeriod}`,
-      total: cfs.closing.bank,
+      total: bankEntries.reduce((s, r) => s + r.amount, 0),
       rows: withBal.map(statementEntryToRow),
       drillable: true,
     });

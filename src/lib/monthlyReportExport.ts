@@ -9,6 +9,7 @@ import {
   type ExportFormat,
   triggerDownload,
 } from '@/lib/reportExportUtils';
+import { monthlyAmountTotals, sumAmountRows } from '@/lib/statementAmountTotals';
 
 type FinanceEntryRow = {
   record_mode: string;
@@ -80,9 +81,13 @@ function buildFinancialSheets(ctx: ReportExportContext) {
   const entries = ctx.financeEntries ?? [];
   const groups = ctx.financeGroups ?? [];
   const net = ctx.reportMonthNet;
+  const entryTotal = sumAmountRows(entries.map((e) => ({ amount: e.total_amount })));
+  const monthly = monthlyAmountTotals(
+    entries.map((e) => ({ amount: e.total_amount, dateIso: e.created_at })),
+  );
   const summary: unknown[][] = [
     ['Report month', ctx.reportMonth],
-    ['Gross total', ctx.financeMonthTotal ?? 0],
+    ['Gross total', ctx.financeMonthTotal ?? entryTotal],
     ['Cash in hand (net)', net?.cashInHand ?? 0],
     ['Balance in bank (net)', net?.cashInBank ?? 0],
     ['Other net', net?.otherNet ?? 0],
@@ -91,14 +96,28 @@ function buildFinancialSheets(ctx: ReportExportContext) {
   return [
     { name: 'Summary', headers: ['Item', 'Value'], rows: summary },
     {
+      name: 'Monthly totals',
+      headers: ['Month', 'Entries', 'Total amount'],
+      rows: [
+        ...monthly.map((m) => [m.label, m.count, m.total]),
+        ['Total', entries.length, entryTotal],
+      ],
+    },
+    {
       name: 'Totals by mode',
       headers: ['record_mode', 'destination', 'entries', 'total_amount', 'flat_units'],
-      rows: groups.map((g) => [g.record_mode, g.destination, g.count, g.total, g.flatUnits]),
+      rows: [
+        ...groups.map((g) => [g.record_mode, g.destination, g.count, g.total, g.flatUnits]),
+        ['', '', 'Total', entryTotal, ''],
+      ],
     },
     {
       name: 'All entries',
       headers: ['record_mode', 'destination', 'flat_units', 'total_amount', 'status', 'method', 'date'],
-      rows: financeDetailRows(entries),
+      rows: [
+        ...financeDetailRows(entries),
+        ['', '', '', entryTotal, '', '', 'Total'],
+      ],
     },
   ];
 }

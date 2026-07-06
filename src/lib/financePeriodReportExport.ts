@@ -157,6 +157,8 @@ export function buildTransactionStatementPdfBlob(opts: {
   generatedAt: string;
   headers: string[];
   rows: string[][];
+  monthlyTotals?: { label: string; count: number; total: number }[];
+  transactionTotal?: number;
 }): Blob {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   const margin = 10;
@@ -175,6 +177,10 @@ export function buildTransactionStatementPdfBlob(opts: {
   doc.text(opts.subtitle, margin, y);
   y += 4;
   doc.text(`Generated: ${fmtDateTimeFull(opts.generatedAt)}`, margin, y);
+  if (opts.transactionTotal != null) {
+    y += 4;
+    doc.text(`Transaction total: ${moneyInr(opts.transactionTotal)}`, margin, y);
+  }
   doc.setTextColor(0, 0, 0);
   y += 8;
 
@@ -205,6 +211,39 @@ export function buildTransactionStatementPdfBlob(opts: {
       doc.text(text[0] ?? '', margin + i * colW + 1, y + 3.5);
     });
     y += rowH;
+  }
+
+  if (opts.monthlyTotals && opts.monthlyTotals.length > 0) {
+    if (y + rowH * (opts.monthlyTotals.length + 4) > pageH - margin) {
+      doc.addPage();
+      y = margin;
+    }
+    y += 6;
+    doc.setFontSize(10);
+    doc.text('Monthly totals', margin, y);
+    y += 6;
+    doc.setFontSize(7);
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, y - 3.5, pageW - 2 * margin, rowH, 'F');
+    doc.text('Month', margin + 1, y);
+    doc.text('Entries', margin + 50, y);
+    doc.text('Total', pageW - margin - 1, y, { align: 'right' });
+    y += rowH;
+    for (const m of opts.monthlyTotals) {
+      if (y + rowH > pageH - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(m.label, margin + 1, y);
+      doc.text(String(m.count), margin + 50, y);
+      doc.text(moneyInr(m.total), pageW - margin - 1, y, { align: 'right' });
+      y += rowH;
+    }
+    if (opts.transactionTotal != null) {
+      doc.setFontSize(8);
+      doc.text('Grand total', margin + 1, y);
+      doc.text(moneyInr(opts.transactionTotal), pageW - margin - 1, y, { align: 'right' });
+    }
   }
 
   return doc.output('blob');

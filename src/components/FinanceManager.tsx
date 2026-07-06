@@ -2352,6 +2352,7 @@ const FinanceManager = ({
             sublabel: `${chargeById.get(p.charge_id)?.title || 'Unknown charge'} · ${p.resident_name || '—'}`,
             amount: Number(p.amount || 0),
             date: fmtDate(p.created_at),
+            dateIso: String(p.created_at ?? ''),
             status: p.payment_status,
             extra: String(p.payment_method || '').toUpperCase() || undefined,
             meta: { kind: 'mp', payment: p },
@@ -2369,6 +2370,7 @@ const FinanceManager = ({
             sublabel: `${e.record_mode.replace(/_/g, ' ')} · ${e.destination.replace(/_/g, ' ')}`,
             amount: Number(e.total_amount || 0),
             date: fmtDate(e.created_at),
+            dateIso: String(e.created_at ?? ''),
             status: e.payment_status,
             extra: String(e.payment_method || '').toUpperCase() || undefined,
             meta: { kind: 'ledger', entry: e },
@@ -2406,6 +2408,7 @@ const FinanceManager = ({
             sublabel: `${e.record_mode.replace(/_/g, ' ')} · ${e.destination.replace(/_/g, ' ')}`,
             amount: Number(e.total_amount || 0),
             date: fmtDate(e.created_at),
+            dateIso: String(e.created_at ?? ''),
             status: e.payment_status,
             extra: String(e.payment_method || '').toUpperCase() || undefined,
             meta: { kind: 'ledger', entry: e },
@@ -2911,7 +2914,7 @@ const FinanceManager = ({
     downloadTransactionStatement(format, {
       societyName: societyName || 'Society',
       title: 'Transaction statement',
-      subtitle: `${receiptSummary.count} entries · ${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
+      subtitle: `${receiptSummary.count} entries · ₹${receiptSummary.sum.toLocaleString('en-IN')} total · ${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
       filenameBase: `transactions-${selectedReceiptMonthLabel.replace(/\s+/g, '-')}-${Date.now()}`,
       rows,
     });

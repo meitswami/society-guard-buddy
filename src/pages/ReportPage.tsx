@@ -304,6 +304,7 @@ const ReportPage = () => {
       sublabel: e.sublabel,
       amount: e.amount,
       date: fmtDate(e.date),
+      dateIso: e.date,
       status: e.type === 'expense' ? 'expense' : 'receipt',
     }));
 
@@ -355,6 +356,7 @@ const ReportPage = () => {
       sublabel: `Flats: ${e.aggregate_flat_count ?? 0} | Method: ${e.payment_method || 'N/A'}`,
       amount: Number(e.total_amount || 0),
       date: fmtDate(ledgerTransactionDate(e)),
+      dateIso: ledgerTransactionDate(e),
       status: e.payment_status,
     }));
     setModalTitle('Finance — All Entries');
@@ -371,6 +373,7 @@ const ReportPage = () => {
       sublabel: `Flats: ${e.aggregate_flat_count ?? 0} | Method: ${e.payment_method || 'N/A'}`,
       amount: Number(e.total_amount || 0),
       date: fmtDate(ledgerTransactionDate(e)),
+      dateIso: ledgerTransactionDate(e),
       status: e.payment_status,
     }));
     setModalTitle('Gross Amount — All Entries');
@@ -389,6 +392,7 @@ const ReportPage = () => {
         sublabel: `Method: ${e.payment_method || 'N/A'}`,
         amount: Number(e.total_amount || 0),
         date: fmtDate(ledgerTransactionDate(e)),
+        dateIso: ledgerTransactionDate(e),
         status: e.payment_status,
       }));
     setModalTitle(`Ledger — ${status}`);
