@@ -11,6 +11,33 @@ export function sortFlatsByNumber<T extends { flat_number: string }>(flats: T[])
   return [...flats].sort((a, b) => compareFlatNumbers(a.flat_number, b.flat_number));
 }
 
+/** Lowest flat number on a ledger allocation list (for sort keys). */
+export function primaryFlatFromAllocations(
+  allocations: { flat_number: string }[] | null | undefined,
+): string {
+  if (!allocations?.length) return '';
+  return sortFlatsByNumber(allocations)[0]!.flat_number;
+}
+
+/**
+ * Numeric flat order when both rows have a flat; otherwise chronological.
+ * Avoids pushing non-flat ledger rows into a separate block at the end.
+ */
+export function compareByFlatThenDate(
+  flatA: string,
+  flatB: string,
+  dateA: string,
+  dateB: string,
+): number {
+  if (flatA && flatB) {
+    const byFlat = compareFlatNumbers(flatA, flatB);
+    if (byFlat !== 0) return byFlat;
+  }
+  const byDate = dateA.localeCompare(dateB);
+  if (byDate !== 0) return byDate;
+  return compareFlatNumbers(flatA, flatB);
+}
+
 /** Build options with a second-line label: primary member name, else flat owner_name. */
 export function flatOptionsWithPrimaryLabel(
   flats: FlatRowForOptions[],

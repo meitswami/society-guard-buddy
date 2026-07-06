@@ -95,7 +95,7 @@ const ReportDetailModal = ({
           {rows.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8">No data available</p>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               {rows.map((row) => {
                 const RowTag = canDrill ? 'button' : 'div';
                 return (

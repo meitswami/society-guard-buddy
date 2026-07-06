@@ -9,8 +9,10 @@ import { format } from 'date-fns';
 import { fmtDate, fmtDateTimeFull, fmtIsoDateToDisplay, fmtIsoMonthToDisplay, fmtTime } from '@/lib/dateFormat';
 import { FlatMultiSelect } from '@/components/FlatMultiSelect';
 import {
+  compareByFlatThenDate,
   compareFlatNumbers,
   flatOptionsWithPrimaryLabel,
+  primaryFlatFromAllocations,
   residentLabelForFlatRow,
   sortFlatsByNumber,
 } from '@/lib/flatMultiSelectOptions';
@@ -2386,15 +2388,18 @@ const FinanceManager = ({
       }
       items.sort((a, b) => {
         const flatA =
-          a.row.meta?.kind === 'mp' ? String((a.row.meta.payment as { flat_number?: string })?.flat_number ?? '') : '';
+          a.row.meta?.kind === 'mp'
+            ? String((a.row.meta.payment as { flat_number?: string })?.flat_number ?? '')
+            : primaryFlatFromAllocations(
+                (a.row.meta?.entry as FinanceLedgerRow | undefined)?.finance_entry_allocations,
+              );
         const flatB =
-          b.row.meta?.kind === 'mp' ? String((b.row.meta.payment as { flat_number?: string })?.flat_number ?? '') : '';
-        if (flatA && flatB) {
-          const byFlat = compareFlatNumbers(flatA, flatB);
-          if (byFlat !== 0) return byFlat;
-        } else if (flatA && !flatB) return -1;
-        else if (!flatA && flatB) return 1;
-        return a.t < b.t ? 1 : -1;
+          b.row.meta?.kind === 'mp'
+            ? String((b.row.meta.payment as { flat_number?: string })?.flat_number ?? '')
+            : primaryFlatFromAllocations(
+                (b.row.meta?.entry as FinanceLedgerRow | undefined)?.finance_entry_allocations,
+              );
+        return compareByFlatThenDate(flatA, flatB, a.t, b.t);
       });
       return items.map((i) => i.row);
     },
@@ -2525,14 +2530,15 @@ const FinanceManager = ({
       ...scopedLedgerOnly.map((e) => ({ kind: 'ledger' as const, t: e.created_at, e })),
     ];
     items.sort((a, b) => {
-      const flatA = a.kind === 'mp' && a.p ? String(a.p.flat_number || '') : '';
-      const flatB = b.kind === 'mp' && b.p ? String(b.p.flat_number || '') : '';
-      if (flatA && flatB) {
-        const byFlat = compareFlatNumbers(flatA, flatB);
-        if (byFlat !== 0) return byFlat;
-      } else if (flatA && !flatB) return -1;
-      else if (!flatA && flatB) return 1;
-      return a.t < b.t ? 1 : -1;
+      const flatA =
+        a.kind === 'mp' && a.p
+          ? String(a.p.flat_number || '')
+          : primaryFlatFromAllocations(a.e?.finance_entry_allocations);
+      const flatB =
+        b.kind === 'mp' && b.p
+          ? String(b.p.flat_number || '')
+          : primaryFlatFromAllocations(b.e?.finance_entry_allocations);
+      return compareByFlatThenDate(flatA, flatB, a.t, b.t);
     });
     return items;
   }, [filterStatus, filteredPayments, scopedLedgerOnly]);
@@ -4371,10 +4377,10 @@ const FinanceManager = ({
               ))}
             </div>
           ) : (
-            <>
+            <div className="space-y-1">
               {receiptLineItems.map((item) =>
                 item.kind === 'mp' && item.p ? (
-                  <div key={`mp-${item.p.id}`} className="card-section p-3 mb-2 w-full text-left">
+                  <div key={`mp-${item.p.id}`} className="card-section p-3 w-full text-left">
                     <div className="flex gap-2 items-start">
                       <input
                         type="checkbox"
@@ -4499,7 +4505,7 @@ const FinanceManager = ({
                 ) : item.kind === 'ledger' && item.e ? (
                   <div
                     key={`fe-${item.e.id}`}
-                    className="card-section p-3 mb-2 w-full text-left border-l-4 border-l-primary/40"
+                    className="card-section p-3 w-full text-left border-l-4 border-l-primary/40"
                   >
                     <div className="flex gap-2 items-start">
                       <input
@@ -4923,7 +4929,7 @@ const FinanceManager = ({
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
 
           <div className="mt-8 pt-6 border-t border-border space-y-4">
