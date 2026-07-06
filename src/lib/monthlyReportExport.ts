@@ -10,6 +10,29 @@ import {
   triggerDownload,
 } from '@/lib/reportExportUtils';
 import { monthlyAmountTotals, sumAmountRows } from '@/lib/statementAmountTotals';
+import type { ChannelByHeadRow } from '@/lib/financePeriodReport';
+
+const HEAD_WISE_HEADERS = ['Head', 'Cash', 'Bank / UPI', 'Other', 'Total'] as const;
+
+type PeriodHeadWiseExport = {
+  receiptByHead: [string, ChannelByHeadRow][];
+  expenseByHead: [string, ChannelByHeadRow][];
+  receiptByMethod: { cash: number; bank: number; other: number };
+  expenseByMethod: { cash: number; bank: number; other: number };
+  totalReceipts: number;
+  totalExpenses: number;
+};
+
+function headWiseSheetRows(
+  rows: [string, ChannelByHeadRow][],
+  footerLabel: string,
+  footer: { cash: number; bank: number; other: number; total: number },
+): unknown[][] {
+  return [
+    ...rows.map(([head, v]) => [head, v.cash, v.bank, v.other, v.total]),
+    [footerLabel, footer.cash, footer.bank, footer.other, footer.total],
+  ];
+}
 
 type FinanceEntryRow = {
   record_mode: string;
@@ -41,6 +64,7 @@ type ReportExportContext = {
   financeGroups?: { record_mode: string; destination: string; count: number; total: number; flatUnits: number }[];
   financeMonthTotal?: number;
   reportMonthNet?: { cashInHand: number; cashInBank: number; otherNet: number; totalBalance: number };
+  periodHeadWise?: PeriodHeadWiseExport;
   visitors?: VisitorRow[];
   visitorStats?: {
     totalVisitors: number;
@@ -93,8 +117,35 @@ function buildFinancialSheets(ctx: ReportExportContext) {
     ['Other net', net?.otherNet ?? 0],
     ['Total balance', net?.totalBalance ?? 0],
   ];
-  return [
+  const headWise = ctx.periodHeadWise;
+  const sheets: { name: string; headers: string[]; rows: unknown[][] }[] = [
     { name: 'Summary', headers: ['Item', 'Value'], rows: summary },
+  ];
+  if (headWise) {
+    sheets.push(
+      {
+        name: 'Receipts by head',
+        headers: [...HEAD_WISE_HEADERS],
+        rows: headWiseSheetRows(headWise.receiptByHead, 'All receipts', {
+          cash: headWise.receiptByMethod.cash,
+          bank: headWise.receiptByMethod.bank,
+          other: headWise.receiptByMethod.other,
+          total: headWise.totalReceipts,
+        }),
+      },
+      {
+        name: 'Expenses by head',
+        headers: [...HEAD_WISE_HEADERS],
+        rows: headWiseSheetRows(headWise.expenseByHead, 'All expenses', {
+          cash: headWise.expenseByMethod.cash,
+          bank: headWise.expenseByMethod.bank,
+          other: headWise.expenseByMethod.other,
+          total: headWise.totalExpenses,
+        }),
+      },
+    );
+  }
+  sheets.push(
     {
       name: 'Monthly totals',
       headers: ['Month', 'Entries', 'Total amount'],
@@ -119,7 +170,8 @@ function buildFinancialSheets(ctx: ReportExportContext) {
         ['', '', '', entryTotal, '', '', 'Total'],
       ],
     },
-  ];
+  );
+  return sheets;
 }
 
 function buildVisitorSheets(ctx: ReportExportContext) {

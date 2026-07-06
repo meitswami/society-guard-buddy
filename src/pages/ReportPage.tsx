@@ -7,6 +7,7 @@ import { fmtDate, fmtDateTime, fmtIsoDateToDisplay, fmtIsoMonthToDisplay } from 
 import { useLanguage } from '@/i18n/LanguageContext';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
 import CashFlowStatement from '@/components/CashFlowStatement';
+import FinancePeriodHeadTables from '@/components/FinancePeriodHeadTables';
 import { DateInput } from '@/components/DateInput';
 import { useSocietyFinanceReportData } from '@/hooks/useSocietyFinanceReportData';
 import { useSocietyOpeningBalanceAnchors } from '@/hooks/useSocietyOpeningBalanceAnchors';
@@ -528,6 +529,16 @@ const ReportPage = () => {
             totalBalance: periodReport.totalBalance,
           }
         : undefined,
+      periodHeadWise: periodReport
+        ? {
+            receiptByHead: periodReport.receiptByHead,
+            expenseByHead: periodReport.expenseByHead,
+            receiptByMethod: periodReport.receiptByMethod,
+            expenseByMethod: periodReport.expenseByMethod,
+            totalReceipts: periodReport.totalReceipts,
+            totalExpenses: periodReport.totalExpenses,
+          }
+        : undefined,
       visitors: monthVisitors,
       visitorStats,
     });
@@ -628,6 +639,16 @@ const ReportPage = () => {
               />
             </div>
           </div>
+
+          {periodReport && (
+            <div className="mb-4">
+              <p className="text-[11px] font-medium text-foreground mb-2">Head-wise breakdown</p>
+              <p className="text-[10px] text-muted-foreground mb-3">
+                {statementPeriodLabel} — same columnar layout as Finance → Period report
+              </p>
+              <FinancePeriodHeadTables report={periodReport} />
+            </div>
+          )}
 
           {/* Cash Flow Statement with drill-down to cash/bank statements */}
           <div className="mb-4 rounded-lg border border-border bg-card/40 p-3">
