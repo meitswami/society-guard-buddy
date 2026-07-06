@@ -70,15 +70,19 @@ function summaryRows(input: FinancePeriodReportExportInput): [string, string][] 
   return rows;
 }
 
-function expenseHeadRows(input: FinancePeriodReportExportInput): unknown[][] {
-  return input.expenseByHead.map(([head, v]) => [
-    head,
-    v.cash,
-    v.bank,
-    v.other,
-    v.total,
-  ]);
+function headWiseRows(rows: [string, { cash: number; bank: number; other: number; total: number }][]): unknown[][] {
+  return rows.map(([head, v]) => [head, v.cash, v.bank, v.other, v.total]);
 }
+
+function receiptHeadRows(input: FinancePeriodReportExportInput): unknown[][] {
+  return headWiseRows(input.receiptByHead);
+}
+
+function expenseHeadRows(input: FinancePeriodReportExportInput): unknown[][] {
+  return headWiseRows(input.expenseByHead);
+}
+
+const HEAD_WISE_HEADERS = ['Head', 'Cash', 'Bank / UPI', 'Other', 'Total'] as const;
 
 export function buildFinancePeriodReportPdf(input: FinancePeriodReportExportInput): Blob {
   return buildFinancePeriodReportPdfBlob(input);
@@ -92,8 +96,13 @@ export function buildFinancePeriodReportExcel(input: FinancePeriodReportExportIn
       rows: summaryRows(input),
     },
     {
+      name: 'Receipts by head',
+      headers: [...HEAD_WISE_HEADERS],
+      rows: receiptHeadRows(input),
+    },
+    {
       name: 'Expenses by head',
-      headers: ['Expense head', 'Cash', 'Bank / UPI', 'Other', 'Total'],
+      headers: [...HEAD_WISE_HEADERS],
       rows: expenseHeadRows(input),
     },
   ]);
