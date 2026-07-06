@@ -2802,6 +2802,14 @@ const FinanceManager = ({
     [flats, primaryByFlatId],
   );
 
+  const chargeMajorHeadById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of charges) {
+      map.set(c.id, majorHeadForCharge(c as { title: string; expense_group_id?: string | null }));
+    }
+    return map;
+  }, [charges, majorHeadForCharge]);
+
   const financePeriodReport = useMemo(
     () =>
       computeFinancePeriodReport({
@@ -2810,9 +2818,10 @@ const FinanceManager = ({
         payments,
         ledgerEntries: societyLedgerEntries,
         expenseCategoryById,
+        chargeMajorHeadById,
         openingBalanceAnchors,
       }),
-    [periodFrom, periodTo, payments, societyLedgerEntries, expenseCategoryById, openingBalanceAnchors],
+    [periodFrom, periodTo, payments, societyLedgerEntries, expenseCategoryById, chargeMajorHeadById, openingBalanceAnchors],
   );
 
   const showManualOpeningBalanceSetup = isManualOpeningBalanceSetupPeriod(periodFrom);
@@ -5170,7 +5179,7 @@ const FinanceManager = ({
           </Dialog>
 
           <div className="card-section p-4 space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collection receipts (verified)</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collection receipts (head-wise)</p>
             <p className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-1">
               <span>
                 {financePeriodReport.verifiedPaymentCount} maintenance receipt row(s) in range; ledger-only inflows added:
@@ -5185,7 +5194,7 @@ const FinanceManager = ({
               <table className="w-full text-xs border border-border rounded-md overflow-hidden">
                 <thead>
                   <tr className="bg-muted/50 text-left">
-                    <th className="p-2 border-b border-border">Head</th>
+                    <th className="p-2 border-b border-border">Receipt head</th>
                     <th className="p-2 border-b border-border text-right">Cash</th>
                     <th className="p-2 border-b border-border text-right">Bank / UPI / online</th>
                     <th className="p-2 border-b border-border text-right">Other</th>
@@ -5193,37 +5202,84 @@ const FinanceManager = ({
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="p-2 border-b border-border/80">Verified collections</td>
+                  {financePeriodReport.receiptByHead.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center text-muted-foreground">
+                        No verified collections in this period.
+                      </td>
+                    </tr>
+                  ) : (
+                    financePeriodReport.receiptByHead.map(([head, v]) => (
+                      <tr key={head}>
+                        <td className="p-2 border-b border-border/80 max-w-[200px] truncate" title={head}>
+                          {head}
+                        </td>
+                        <TableSumInsight
+                          {...SUM_INSIGHT_METRICS.channelCash}
+                          title={`${head} — cash`}
+                          value={`₹${v.cash.toLocaleString('en-IN')}`}
+                          valueClassName="text-xs font-mono"
+                          cellClassName="p-2 border-b border-border/80"
+                        />
+                        <TableSumInsight
+                          {...SUM_INSIGHT_METRICS.channelBank}
+                          title={`${head} — bank / UPI`}
+                          value={`₹${v.bank.toLocaleString('en-IN')}`}
+                          valueClassName="text-xs font-mono"
+                          cellClassName="p-2 border-b border-border/80"
+                        />
+                        <TableSumInsight
+                          {...SUM_INSIGHT_METRICS.channelOther}
+                          title={`${head} — other`}
+                          value={`₹${v.other.toLocaleString('en-IN')}`}
+                          valueClassName="text-xs font-mono"
+                          cellClassName="p-2 border-b border-border/80"
+                        />
+                        <TableSumInsight
+                          {...SUM_INSIGHT_METRICS.periodReceiptHead}
+                          title={head}
+                          description={`${SUM_INSIGHT_METRICS.periodReceiptHead.description} Head: ${head}.`}
+                          howCalculated={SUM_INSIGHT_METRICS.periodReceiptHead.howCalculated}
+                          value={`₹${v.total.toLocaleString('en-IN')}`}
+                          valueClassName="text-xs font-mono font-semibold"
+                          cellClassName="p-2 border-b border-border/80"
+                        />
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/30 font-semibold">
+                    <td className="p-2">All receipts</td>
                     <TableSumInsight
                       {...SUM_INSIGHT_METRICS.channelCash}
-                      title="Verified collections — cash"
+                      title="All receipts — cash"
                       value={`₹${financePeriodReport.receiptByMethod.cash.toLocaleString('en-IN')}`}
-                      valueClassName="text-xs font-mono"
-                      cellClassName="p-2 border-b border-border/80"
+                      valueClassName="text-xs font-mono font-semibold"
+                      cellClassName="p-2"
                     />
                     <TableSumInsight
                       {...SUM_INSIGHT_METRICS.channelBank}
-                      title="Verified collections — bank / UPI"
+                      title="All receipts — bank / UPI"
                       value={`₹${financePeriodReport.receiptByMethod.bank.toLocaleString('en-IN')}`}
-                      valueClassName="text-xs font-mono"
-                      cellClassName="p-2 border-b border-border/80"
+                      valueClassName="text-xs font-mono font-semibold"
+                      cellClassName="p-2"
                     />
                     <TableSumInsight
                       {...SUM_INSIGHT_METRICS.channelOther}
-                      title="Verified collections — other"
+                      title="All receipts — other"
                       value={`₹${financePeriodReport.receiptByMethod.other.toLocaleString('en-IN')}`}
-                      valueClassName="text-xs font-mono"
-                      cellClassName="p-2 border-b border-border/80"
+                      valueClassName="text-xs font-mono font-semibold"
+                      cellClassName="p-2"
                     />
                     <TableSumInsight
                       {...SUM_INSIGHT_METRICS.periodVerifiedReceipts}
                       value={`₹${financePeriodReport.totalReceipts.toLocaleString('en-IN')}`}
                       valueClassName="text-xs font-mono font-semibold"
-                      cellClassName="p-2 border-b border-border/80"
+                      cellClassName="p-2"
                     />
                   </tr>
-                </tbody>
+                </tfoot>
               </table>
             </div>
           </div>

@@ -387,6 +387,11 @@ export const SUM_INSIGHT_METRICS = {
     description: 'Total society payments (separate entry) in the selected period.',
     howCalculated: 'Sum of separate_entry finance_entries in the period, by payment channel.',
   },
+  periodReceiptHead: {
+    title: 'Receipt head total',
+    description: 'Inflow under this receipt head in the selected period.',
+    howCalculated: 'Sum of verified maintenance payments and ledger-only inflows for this head, split by cash / bank / other.',
+  },
   periodExpenseHead: {
     title: 'Expense head total',
     description: 'Outflow under this expense head in the selected period.',
