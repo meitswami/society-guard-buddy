@@ -109,8 +109,13 @@ export function buildFinancePeriodReportExcel(input: FinancePeriodReportExportIn
 }
 
 export function buildFinancePeriodReportWord(input: FinancePeriodReportExportInput): Blob {
+  const receiptTable = buildHtmlTable(
+    [...HEAD_WISE_HEADERS],
+    receiptHeadRows(input).map((r) => r.map((c) => (typeof c === 'number' ? moneyInr(c) : String(c)))),
+    new Set([1, 2, 3, 4]),
+  );
   const expenseTable = buildHtmlTable(
-    ['Expense head', 'Cash', 'Bank / UPI', 'Other', 'Total'],
+    [...HEAD_WISE_HEADERS],
     expenseHeadRows(input).map((r) => r.map((c) => (typeof c === 'number' ? moneyInr(c) : String(c)))),
     new Set([1, 2, 3, 4]),
   );
@@ -123,8 +128,9 @@ export function buildFinancePeriodReportWord(input: FinancePeriodReportExportInp
     <p class="meta">Finance period report · ${fmtIsoDateToDisplay(input.periodFrom)} to ${fmtIsoDateToDisplay(input.periodTo)}</p>
     <p class="meta">Generated: ${fmtDateTimeFull(input.generatedAt)}</p>
     <h2>Summary</h2>${summaryTable}
-    <h2>Expenses by head</h2>${expenseTable}
-    <p class="meta">Receipts use verified maintenance payment dates. Expenses use ledger separate-entry rows by created_at.</p>`;
+    <h2>Collection receipts (head-wise)</h2>${receiptTable}
+    <h2>Expenses (head-wise)</h2>${expenseTable}
+    <p class="meta">Receipts use verified maintenance payment dates. Expenses use ledger separate-entry rows by transaction_date.</p>`;
   return htmlToWordBlob('Finance period report', body);
 }
 
@@ -132,7 +138,12 @@ export function buildFinancePeriodReportCsv(input: FinancePeriodReportExportInpu
   const rows: unknown[][] = [
     ...summaryRows(input),
     ['', ''],
-    ['Expense head', 'Cash', 'Bank / UPI', 'Other', 'Total'],
+    ['Collection receipts (head-wise)', ''],
+    [...HEAD_WISE_HEADERS],
+    ...receiptHeadRows(input),
+    ['', ''],
+    ['Expenses (head-wise)', ''],
+    [...HEAD_WISE_HEADERS],
     ...expenseHeadRows(input),
   ];
   return rowsToCsvBlob(['Item', 'Value'], rows);

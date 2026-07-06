@@ -44,7 +44,7 @@ export function useSocietyFinanceReportData(societyId: string | undefined) {
       const { data: led } = await supabase
         .from('finance_entries')
         .select(
-          'id, record_mode, destination, total_amount, entry_month, created_at, payment_status, payment_method, title, notes, transaction_id, transaction_date, expense_id, aggregate_flat_count',
+          'id, record_mode, destination, total_amount, entry_month, created_at, payment_status, payment_method, title, notes, transaction_id, transaction_date, expense_id, charge_id, aggregate_flat_count',
         )
         .eq('society_id', societyId)
         .order('created_at', { ascending: false })

@@ -71,3 +71,90 @@ describe('finance opening balance anchors', () => {
     expect(report.openingBank).toBe(18645);
   });
 });
+
+describe('finance period report head-wise columns', () => {
+  it('groups verified receipts by head with cash, bank, and total columns', () => {
+    const chargeMajorHeadById = new Map([
+      ['ch-maint', 'OPERATION & MAINTENANCE'],
+      ['ch-corpus', 'SOCIETY CORPUS FUND'],
+    ]);
+    const report = computeFinancePeriodReport({
+      periodFrom: '2026-04-01',
+      periodTo: '2026-04-30',
+      payments: [
+        {
+          payment_status: 'verified',
+          amount: 1000,
+          payment_method: 'cash',
+          due_date: '2026-04-05',
+          charge_id: 'ch-maint',
+        },
+        {
+          payment_status: 'verified',
+          amount: 2500,
+          payment_method: 'upi',
+          due_date: '2026-04-10',
+          charge_id: 'ch-corpus',
+        },
+      ],
+      ledgerEntries: [
+        {
+          id: 'fe-ledger',
+          destination: 'current_month_maintenance',
+          total_amount: 500,
+          payment_method: 'cash',
+          transaction_date: '2026-04-12',
+        },
+      ],
+      chargeMajorHeadById,
+    });
+
+    expect(report.receiptByHead).toEqual([
+      ['SOCIETY CORPUS FUND', { cash: 0, bank: 2500, other: 0, total: 2500 }],
+      ['OPERATION & MAINTENANCE', { cash: 1500, bank: 0, other: 0, total: 1500 }],
+    ]);
+    expect(report.receiptByMethod).toEqual({ cash: 1500, bank: 2500, other: 0 });
+    expect(report.totalReceipts).toBe(4000);
+  });
+
+  it('groups separate-entry expenses by head with cash, bank, and total columns', () => {
+    const report = computeFinancePeriodReport({
+      periodFrom: '2026-04-01',
+      periodTo: '2026-04-30',
+      payments: [],
+      ledgerEntries: [
+        {
+          id: 'fe-1',
+          destination: 'separate_entry',
+          total_amount: 800,
+          payment_method: 'cash',
+          title: 'Electricity',
+          transaction_date: '2026-04-03',
+        },
+        {
+          id: 'fe-2',
+          destination: 'separate_entry',
+          total_amount: 1200,
+          payment_method: 'upi',
+          title: 'Electricity',
+          transaction_date: '2026-04-08',
+        },
+        {
+          id: 'fe-3',
+          destination: 'separate_entry',
+          total_amount: 300,
+          payment_method: 'cash',
+          title: 'Security salary',
+          transaction_date: '2026-04-15',
+        },
+      ],
+    });
+
+    expect(report.expenseByHead).toEqual([
+      ['Electricity', { cash: 800, bank: 1200, other: 0, total: 2000 }],
+      ['Security salary', { cash: 300, bank: 0, other: 0, total: 300 }],
+    ]);
+    expect(report.expenseByMethod).toEqual({ cash: 1100, bank: 1200, other: 0 });
+    expect(report.totalExpenses).toBe(2300);
+  });
+});
