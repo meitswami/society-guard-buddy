@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
+import type { ChannelByHeadRow } from '@/lib/financePeriodReport';
 
 export type FinancePeriodReportPdfInput = {
   societyName: string;
@@ -7,8 +8,9 @@ export type FinancePeriodReportPdfInput = {
   periodTo: string;
   generatedAt: string;
   receiptByMethod: { cash: number; bank: number; other: number };
+  receiptByHead: [string, ChannelByHeadRow][];
   totalReceipts: number;
-  expenseByHead: [string, { cash: number; bank: number; other: number; total: number }][];
+  expenseByHead: [string, ChannelByHeadRow][];
   expenseByMethod: { cash: number; bank: number; other: number };
   totalExpenses: number;
   cashInHand: number;
@@ -21,6 +23,83 @@ export type FinancePeriodReportPdfInput = {
 
 function money(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+const HEAD_TABLE_COLUMNS = ['Head', 'Cash', 'Bank / UPI', 'Other', 'Total'] as const;
+const HEAD_TABLE_WIDTHS = [52, 28, 32, 24, 28] as const;
+
+function drawHeadWiseTable(
+  doc: jsPDF,
+  margin: number,
+  startY: number,
+  title: string,
+  rows: [string, ChannelByHeadRow][],
+  footerLabel: string,
+  footerTotals: { cash: number; bank: number; other: number; total: number },
+): number {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const rowH = 5.5;
+  let y = startY;
+
+  const ensureSpace = (needed: number) => {
+    if (y + needed > pageH - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  ensureSpace(12);
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
+  doc.text(title, margin, y);
+  y += 6;
+
+  const tableW = HEAD_TABLE_WIDTHS.reduce((s, w) => s + w, 0);
+  const colX = HEAD_TABLE_WIDTHS.reduce<number[]>((acc, w, i) => {
+    acc.push(i === 0 ? margin : acc[i - 1] + HEAD_TABLE_WIDTHS[i - 1]);
+    return acc;
+  }, []);
+
+  const drawRow = (cells: string[], bold = false, fill = false) => {
+    ensureSpace(rowH + 1);
+    if (fill) {
+      doc.setFillColor(240, 240, 240);
+      doc.rect(margin, y - 3.5, tableW, rowH, 'F');
+    }
+    doc.setFontSize(bold ? 8 : 7.5);
+    cells.forEach((cell, i) => {
+      const alignRight = i > 0;
+      const x = colX[i] + (alignRight ? HEAD_TABLE_WIDTHS[i] - 1.5 : 1);
+      const text = doc.splitTextToSize(cell, HEAD_TABLE_WIDTHS[i] - 2)[0] ?? '';
+      doc.text(text, x, y, { align: alignRight ? 'right' : 'left' });
+    });
+    y += rowH;
+  };
+
+  drawRow([...HEAD_TABLE_COLUMNS], true, true);
+
+  if (rows.length === 0) {
+    drawRow(['(none in this period)', '—', '—', '—', '—']);
+  } else {
+    for (const [head, v] of rows) {
+      drawRow([head, money(v.cash), money(v.bank), money(v.other), money(v.total)]);
+    }
+  }
+
+  drawRow(
+    [
+      footerLabel,
+      money(footerTotals.cash),
+      money(footerTotals.bank),
+      money(footerTotals.other),
+      money(footerTotals.total),
+    ],
+    true,
+    true,
+  );
+
+  return y + 4;
 }
 
 /** Build a printable finance period report PDF (returns Blob). */
@@ -54,25 +133,43 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
   y += 5;
   doc.text(`Generated: ${fmtDateTimeFull(input.generatedAt)}`, margin, y);
   doc.setTextColor(0, 0, 0);
-  y += 10;
+  y += 8;
 
-  line('Collection receipts (verified maintenance + ledger-only inflows)', 11, 6);
-  line(`  Cash: ${money(input.receiptByMethod.cash)}`, 9, 5);
-  line(`  Bank / UPI / online: ${money(input.receiptByMethod.bank)}`, 9, 5);
-  line(`  Other: ${money(input.receiptByMethod.other)}`, 9, 5);
-  line(`  Total receipts: ${money(input.totalReceipts)}`, 10, 6);
-  line(`  Rows: ${input.verifiedPaymentCount} verified payments · Ledger-only add: ${money(input.extraLedgerReceipt)}`, 8, 7);
+  line(
+    `${input.verifiedPaymentCount} verified payment row(s) · Ledger-only inflows: ${money(input.extraLedgerReceipt)}`,
+    8,
+    6,
+  );
 
-  line('Expenses (separate-entry ledger), by head', 11, 6);
-  if (input.expenseByHead.length === 0) {
-    line('  (none in this period)', 9, 6);
-  } else {
-    for (const [head, v] of input.expenseByHead) {
-      line(`  ${head}`, 9, 4);
-      line(`    Cash ${money(v.cash)} · Bank ${money(v.bank)} · Other ${money(v.other)} · Total ${money(v.total)}`, 8, 5);
-    }
-  }
-  line(`  All expenses: ${money(input.totalExpenses)}`, 10, 7);
+  y = drawHeadWiseTable(
+    doc,
+    margin,
+    y,
+    'Collection receipts (head-wise)',
+    input.receiptByHead,
+    'All receipts',
+    {
+      cash: input.receiptByMethod.cash,
+      bank: input.receiptByMethod.bank,
+      other: input.receiptByMethod.other,
+      total: input.totalReceipts,
+    },
+  );
+
+  y = drawHeadWiseTable(
+    doc,
+    margin,
+    y,
+    'Expenses (head-wise)',
+    input.expenseByHead,
+    'All expenses',
+    {
+      cash: input.expenseByMethod.cash,
+      bank: input.expenseByMethod.bank,
+      other: input.expenseByMethod.other,
+      total: input.totalExpenses,
+    },
+  );
 
   line('Summary', 11, 6);
   line(`  Cash in hand (net): ${money(input.cashInHand)}`, 10, 5);
@@ -83,7 +180,8 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
 
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
-  const foot = 'Receipts use verified maintenance payment dates (verified_at / payment_date / created_at). Expenses use ledger separate-entry rows by created_at.';
+  const foot =
+    'Receipts use verified maintenance payment dates (verified_at / payment_date / created_at). Expenses use ledger separate-entry rows by transaction_date.';
   const split = doc.splitTextToSize(foot, pageW - 2 * margin);
   for (const row of split) {
     line(row, 8, 4);
