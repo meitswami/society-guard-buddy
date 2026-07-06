@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed, Scale, ChevronRight } from 'lucide-react';
+import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed, Scale, ChevronRight, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
@@ -423,6 +423,7 @@ const FinanceManager = ({
   const [reportPushBusy, setReportPushBusy] = useState(false);
   const [lastDeliveryBatchId, setLastDeliveryBatchId] = useState<string | null>(null);
   const [readStatusOpen, setReadStatusOpen] = useState(false);
+  const [readStatusBatchId, setReadStatusBatchId] = useState<string | null>(null);
   const [readStatusRows, setReadStatusRows] = useState<{ id: string; target_id: string | null; is_read: boolean; read_at: string | null }[]>([]);
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
@@ -473,6 +474,23 @@ const FinanceManager = ({
   useEffect(() => {
     void loadAll();
   }, [societyId]);
+
+  useEffect(() => {
+    if (!societyId || subTab !== 'period') return;
+    const loadLatestReportBatch = async () => {
+      const { data } = await supabase
+        .from('notifications')
+        .select('delivery_batch_id')
+        .eq('society_id', societyId)
+        .eq('type', 'finance_period_report')
+        .not('delivery_batch_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const batchId = (data?.[0] as { delivery_batch_id?: string } | undefined)?.delivery_batch_id ?? null;
+      if (batchId) setLastDeliveryBatchId(batchId);
+    };
+    void loadLatestReportBatch();
+  }, [societyId, subTab]);
 
   const loadAll = async () => {
     if (!societyId) {
@@ -2969,6 +2987,7 @@ const FinanceManager = ({
   };
 
   const loadReadStatusForBatch = async (batchId: string) => {
+    setReadStatusBatchId(batchId);
     const { data, error } = await supabase
       .from('notifications')
       .select('id, target_id, is_read, read_at')
@@ -2980,6 +2999,97 @@ const FinanceManager = ({
     }
     setReadStatusRows((data ?? []) as { id: string; target_id: string | null; is_read: boolean; read_at: string | null }[]);
     setReadStatusOpen(true);
+  };
+
+  const recallPeriodReportSend = async (batchId: string) => {
+    if (!societyId) return;
+    const ok = await confirmAction(
+      'Recall this report?',
+      'This removes the finance report alerts from every recipient\'s inbox. Residents who already opened the PDF may still have a copy. You can send a corrected report afterward.',
+      'Recall send',
+      'Cancel',
+    );
+    if (!ok) return;
+    setReportPushBusy(true);
+    try {
+      const { data: batchRows, error: fetchErr } = await supabase
+        .from('notifications')
+        .select('target_id')
+        .eq('delivery_batch_id', batchId)
+        .eq('society_id', societyId)
+        .eq('type', 'finance_period_report');
+      if (fetchErr) {
+        toast.error(fetchErr.message);
+        return;
+      }
+      const targetIds = [...new Set((batchRows ?? []).map((r) => r.target_id).filter(Boolean))] as string[];
+
+      const { error: delErr } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('delivery_batch_id', batchId)
+        .eq('society_id', societyId)
+        .eq('type', 'finance_period_report');
+      if (delErr) {
+        toast.error(delErr.message);
+        return;
+      }
+
+      const path = `finance-reports/${societyId}/${batchId}.pdf`;
+      await supabase.storage.from('notification-media').remove([path]);
+
+      if (targetIds.length > 0) {
+        const title = 'Finance report withdrawn';
+        const message =
+          'The finance period report sent earlier was sent in error and has been removed. Please ignore the previous PDF link. A corrected report may follow.';
+        const chunk = 40;
+        for (let i = 0; i < targetIds.length; i += chunk) {
+          const slice = targetIds.slice(i, i + chunk);
+          const rows = slice.map((rid) => ({
+            title,
+            message,
+            type: 'general',
+            target_type: 'user',
+            target_id: rid,
+            society_id: societyId,
+            created_by: adminName,
+            sound_key: 'digital',
+            sound_custom_url: null as string | null,
+            is_read: false,
+          }));
+          const { error: insErr } = await supabase.from('notifications').insert(rows);
+          if (insErr) {
+            toast.error(insErr.message);
+            return;
+          }
+        }
+        try {
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              title,
+              message: 'The finance report sent earlier was withdrawn. Please ignore it.',
+              target_type: 'user',
+              target_ids: targetIds,
+              society_id: societyId,
+              sound_key: 'digital',
+              sound_custom_url: '',
+            },
+          });
+        } catch (e) {
+          console.warn('Push invoke failed', e);
+        }
+      }
+
+      if (lastDeliveryBatchId === batchId) setLastDeliveryBatchId(null);
+      if (readStatusBatchId === batchId) {
+        setReadStatusOpen(false);
+        setReadStatusRows([]);
+        setReadStatusBatchId(null);
+      }
+      toast.success(targetIds.length > 0 ? `Recalled send for ${targetIds.length} resident(s)` : 'Report send recalled');
+    } finally {
+      setReportPushBusy(false);
+    }
   };
 
   const sendReminders = async () => {
@@ -4931,7 +5041,7 @@ const FinanceManager = ({
               <div className="min-w-[200px]">
                 <h3 className="text-sm font-semibold">Export & member delivery</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Download this period as PDF, Excel, Word, or CSV. Send one alert per resident with the PDF link — opening the alert records it as seen.
+                  Download this period as PDF, Excel, Word, or CSV. Send one alert per resident with the PDF link — opening the alert records it as seen. Sent by mistake? Use <span className="font-medium">Recall send</span> to withdraw it.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 shrink-0">
@@ -4950,13 +5060,24 @@ const FinanceManager = ({
                   {reportPushBusy ? 'Sending…' : 'Send to members'}
                 </button>
                 {lastDeliveryBatchId && (
-                  <button
-                    type="button"
-                    className="btn-secondary text-xs px-3 py-2"
-                    onClick={() => void loadReadStatusForBatch(lastDeliveryBatchId)}
-                  >
-                    Read receipts
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs px-3 py-2"
+                      onClick={() => void loadReadStatusForBatch(lastDeliveryBatchId)}
+                    >
+                      Read receipts
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs px-3 py-2 flex items-center gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={() => void recallPeriodReportSend(lastDeliveryBatchId)}
+                      disabled={reportPushBusy}
+                    >
+                      <Undo2 className="w-3.5 h-3.5" />
+                      Recall send
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -4999,6 +5120,22 @@ const FinanceManager = ({
               <DialogHeader>
                 <DialogTitle>Who opened this report</DialogTitle>
               </DialogHeader>
+              {readStatusBatchId && (
+                <div className="flex flex-wrap gap-2 pb-2 border-b border-border">
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => void recallPeriodReportSend(readStatusBatchId)}
+                    disabled={reportPushBusy}
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                    Recall this send
+                  </button>
+                  <p className="text-[11px] text-muted-foreground self-center">
+                    Use if the wrong report was sent — removes alerts and notifies residents to ignore the PDF.
+                  </p>
+                </div>
+              )}
               {readStatusRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No rows for this send.</p>
               ) : (

@@ -6,7 +6,12 @@ import {
   ledgerTransactionDate,
   paymentBillingDate,
 } from '@/lib/financeDates';
-import { financeExpenseHeadFromLedgerEntry, isEventFoodLedgerEntry } from '@/lib/financeExpenseHead';
+import {
+  financeExpenseHeadFromLedgerEntry,
+  financeReceiptHeadForPayment,
+  financeReceiptHeadFromLedgerEntry,
+  isEventFoodLedgerEntry,
+} from '@/lib/financeExpenseHead';
 
 /** Verified maintenance payment row — same fields Finance → Period report uses. */
 export type FinancePeriodPayment = {
@@ -39,10 +44,14 @@ export type FinancePeriodLedgerEntry = {
   entry_month?: string | null;
   created_at?: string;
   expense_id?: string | null;
+  charge_id?: string | null;
   aggregate_flat_count?: number;
 };
 
-export type ExpenseByHeadRow = { cash: number; bank: number; other: number; total: number };
+export type ChannelByHeadRow = { cash: number; bank: number; other: number; total: number };
+
+/** @deprecated Use ChannelByHeadRow */
+export type ExpenseByHeadRow = ChannelByHeadRow;
 
 export type FinancePeriodReserveTransfer = {
   id: string;
@@ -115,9 +124,10 @@ export type FinancePeriodReportResult = {
   maintenanceReceipts: number;
   corpusReceipts: number;
   receiptByMethod: ChannelTotals;
+  receiptByHead: [string, ChannelByHeadRow][];
   totalReceipts: number;
   expenseByMethod: ChannelTotals;
-  expenseByHead: [string, ExpenseByHeadRow][];
+  expenseByHead: [string, ChannelByHeadRow][];
   totalExpenses: number;
   cashInHand: number;
   cashInBank: number;
@@ -283,16 +293,26 @@ function resolveOpeningBalances(input: {
  * Core period report math — single source of truth for Finance → Period report,
  * Reports → net summary, and Cash Flow Statement opening/closing/receipts/expenses.
  */
+function addToHeadRow(map: Map<string, ChannelByHeadRow>, head: string, ch: keyof ChannelTotals, amt: number) {
+  const label = head.trim() || 'Uncategorized';
+  const cur = map.get(label) ?? { cash: 0, bank: 0, other: 0, total: 0 };
+  cur[ch] += amt;
+  cur.total += amt;
+  map.set(label, cur);
+}
+
 export function computeFinancePeriodReport(input: {
   periodFrom: string;
   periodTo: string;
   payments: FinancePeriodPayment[];
   ledgerEntries: FinancePeriodLedgerEntry[];
   expenseCategoryById?: Map<string, string>;
+  chargeMajorHeadById?: Map<string, string>;
   openingBalanceAnchors?: FinanceOpeningBalanceAnchor[];
 }): FinancePeriodReportResult {
   const { periodFrom, periodTo, payments, ledgerEntries } = input;
   const expenseCategoryById = input.expenseCategoryById ?? new Map<string, string>();
+  const chargeMajorHeadById = input.chargeMajorHeadById ?? new Map<string, string>();
   const openingBalanceAnchors = input.openingBalanceAnchors ?? [];
   const allLinkedFeIds = collectLinkedFinanceEntryIds(payments);
 
@@ -347,6 +367,7 @@ export function computeFinancePeriodReport(input: {
   const openingBalance = openingCash + openingBank + openingOther;
 
   const receiptByMethod = { cash: 0, bank: 0, other: 0 };
+  const receiptByHead = new Map<string, ChannelByHeadRow>();
   let verifiedPaymentCount = 0;
   let maintenanceReceipts = 0;
 
@@ -357,12 +378,13 @@ export function computeFinancePeriodReport(input: {
     const amt = Number(p.amount || 0);
     const ch = normalizePaymentChannel(p.payment_method);
     receiptByMethod[ch] += amt;
+    addToHeadRow(receiptByHead, financeReceiptHeadForPayment(p.charge_id, chargeMajorHeadById), ch, amt);
     maintenanceReceipts += amt;
     verifiedPaymentCount += 1;
   }
 
   const expenseByMethod = { cash: 0, bank: 0, other: 0 };
-  const expenseByHead = new Map<string, ExpenseByHeadRow>();
+  const expenseByHead = new Map<string, ChannelByHeadRow>();
   let extraLedgerReceipt = 0;
   let corpusReceipts = 0;
 
@@ -378,14 +400,17 @@ export function computeFinancePeriodReport(input: {
         e.title,
         e.expense_id ? expenseCategoryById.get(e.expense_id) : null,
       );
-      const cur = expenseByHead.get(head) ?? { cash: 0, bank: 0, other: 0, total: 0 };
-      cur[ch] += amt;
-      cur.total += amt;
-      expenseByHead.set(head, cur);
+      addToHeadRow(expenseByHead, head, ch, amt);
     } else if (e.destination === 'current_month_maintenance' || e.destination === 'corpus') {
       if (!allLinkedFeIds.has(e.id)) {
         extraLedgerReceipt += amt;
         receiptByMethod[ch] += amt;
+        addToHeadRow(
+          receiptByHead,
+          financeReceiptHeadFromLedgerEntry(e, chargeMajorHeadById),
+          ch,
+          amt,
+        );
         if (e.destination === 'corpus') corpusReceipts += amt;
       }
     }
@@ -403,9 +428,10 @@ export function computeFinancePeriodReport(input: {
     maintenanceReceipts,
     corpusReceipts,
     receiptByMethod,
+    receiptByHead: [...receiptByHead.entries()].sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0])),
     totalReceipts,
     expenseByMethod,
-    expenseByHead: [...expenseByHead.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+    expenseByHead: [...expenseByHead.entries()].sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0])),
     totalExpenses,
     cashInHand,
     cashInBank,

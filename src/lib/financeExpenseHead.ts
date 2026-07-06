@@ -131,6 +131,32 @@ export function financeExpenseHeadFromLedgerTitle(rawTitle: string): string {
   return t;
 }
 
+/** Major receipt head for period report / head-wise summaries. */
+export function financeReceiptHeadFromLedgerEntry(
+  entry: { destination: string; title?: string | null; charge_id?: string | null },
+  chargeMajorHeadById?: Map<string, string>,
+): string {
+  if (entry.charge_id) {
+    const fromCharge = chargeMajorHeadById?.get(entry.charge_id);
+    if (fromCharge) return fromCharge;
+  }
+  if (entry.destination === 'corpus') return 'SOCIETY CORPUS FUND';
+  if (entry.destination === 'current_month_maintenance') return 'OPERATION & MAINTENANCE';
+  const title = (entry.title ?? '').trim();
+  if (title) return inferMajorHeadFromGroupName(title);
+  return 'Uncategorized';
+}
+
+export function financeReceiptHeadForPayment(
+  chargeId: string | null | undefined,
+  chargeMajorHeadById?: Map<string, string>,
+): string {
+  if (chargeId) {
+    return chargeMajorHeadById?.get(chargeId) ?? 'Uncategorized';
+  }
+  return 'Uncategorized';
+}
+
 export function financeExpenseHeadFromLedgerEntry(
   rawTitle: string,
   expenseCategory?: string | null,
