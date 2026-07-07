@@ -693,6 +693,7 @@ export type AuditFixQueueItem = {
     | 'channel_balance';
   alignTargetMonth?: string;
   relatedEntryId?: string;
+  financeEntryId?: string | null;
 };
 
 export type AuditFixQueueInput = {
@@ -739,6 +740,7 @@ export function buildAuditFixQueue(input: AuditFixQueueInput): AuditFixQueueItem
           : 'Keep this entry — delete the newer duplicate(s) for this flat/month',
         severity: 'critical',
         findingKind: 'duplicate_payments',
+        financeEntryId: p.finance_entry_id,
       });
     });
   }
@@ -781,6 +783,7 @@ export function buildAuditFixQueue(input: AuditFixQueueInput): AuditFixQueueItem
         findingKind: 'ledger_overcount',
         alignTargetMonth: row.entryMonth,
         relatedEntryId: row.entryId,
+        financeEntryId: row.payment.finance_entry_id,
       });
     }
   }
@@ -806,6 +809,7 @@ export function buildAuditFixQueue(input: AuditFixQueueInput): AuditFixQueueItem
             : 'Delete orphan ledger row if it has no linked payments',
         severity: 'warning',
         findingKind: 'recording_mismatch',
+        financeEntryId: source.kind === 'orphan_payment' ? null : undefined,
       });
     }
   }
@@ -827,6 +831,7 @@ export function buildAuditFixQueue(input: AuditFixQueueInput): AuditFixQueueItem
       actionHint: 'Delete if mistaken, or re-record from Finance → Payments with ledger',
       severity: 'warning',
       findingKind: 'orphaned_payments',
+      financeEntryId: null,
     });
   }
 

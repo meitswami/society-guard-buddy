@@ -593,7 +593,7 @@ const FinanceIntegrityAudit = () => {
     setBusyQueueKey(item.queueKey);
     const res =
       item.entryKind === 'payment'
-        ? await deleteMaintenancePayment(item.entryId, null)
+        ? await deleteMaintenancePayment(item.entryId, item.financeEntryId ?? null)
         : await deleteOrphanLedgerEntry(item.entryId);
     setBusyQueueKey(null);
 
@@ -719,6 +719,125 @@ const FinanceIntegrityAudit = () => {
             Audit ran at {format(new Date(result.ranAt), 'dd MMM yyyy, hh:mm a')}
           </p>
 
+          {/* Chronological fix queue — exact entries from earliest discrepancy */}
+          {result.fixQueue.length > 0 && (
+            <div className="card-section p-3 border-primary/40 bg-primary/5 space-y-3">
+              <div className="flex items-start gap-2">
+                <ListOrdered className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold">Entries to inspect (earliest first)</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Fix one entry at a time from the oldest discrepancy through today, then re-run the audit.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {result.fixQueue.map((item, idx) => {
+                  const done = resolvedQueueKeys.has(item.queueKey);
+                  return (
+                    <div
+                      key={item.queueKey}
+                      className={`rounded-lg border p-3 ${
+                        done
+                          ? 'border-green-500/30 bg-green-500/5 opacity-60'
+                          : item.severity === 'critical'
+                            ? 'border-destructive/30 bg-background'
+                            : 'border-amber-500/30 bg-background'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                            done ? 'bg-green-500/20 text-green-700' : 'bg-primary/10 text-primary'
+                          }`}
+                        >
+                          {done ? '✓' : idx + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold">{item.issueLabel}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {fmtIsoDateToDisplay(item.sortDate)}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {fmtIsoMonthToDisplay(item.month)}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium mt-1">{item.title}</p>
+                          <p className="text-xs font-mono mt-0.5">₹{item.amount.toLocaleString('en-IN')}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1">{item.detail}</p>
+                          <p className="text-[10px] text-foreground mt-1">
+                            <span className="font-semibold">Action:</span> {item.actionHint}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground/70 font-mono mt-0.5">
+                            {item.entryKind === 'payment' ? 'Payment' : 'Ledger'} ID: {item.entryId.slice(0, 8)}…
+                          </p>
+                          {!done && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {item.action === 'delete' && (
+                                <button
+                                  type="button"
+                                  disabled={busyQueueKey === item.queueKey}
+                                  onClick={() => void handleQueueDelete(item)}
+                                  className="text-[10px] px-2 py-1.5 rounded-lg bg-destructive/10 text-destructive flex items-center gap-1"
+                                >
+                                  <Trash2 className="w-3 h-3" /> Delete
+                                </button>
+                              )}
+                              {item.action === 'align_payment_month' && item.alignTargetMonth && (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={busyQueueKey === item.queueKey}
+                                    onClick={() => void handleQueueAlignPayment(item)}
+                                    className="text-[10px] px-2 py-1.5 rounded-lg border border-border flex items-center gap-1"
+                                  >
+                                    <Calendar className="w-3 h-3" />
+                                    Set payment to {fmtIsoMonthToDisplay(item.alignTargetMonth)}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={busyQueueKey === item.queueKey}
+                                    onClick={() => void handleQueueAlignLedger(item, item.month)}
+                                    className="text-[10px] px-2 py-1.5 rounded-lg border border-border flex items-center gap-1"
+                                  >
+                                    <Calendar className="w-3 h-3" />
+                                    Set ledger to {fmtIsoMonthToDisplay(item.month)}
+                                  </button>
+                                </>
+                              )}
+                              {item.action === 'review' && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    scrollToAuditAlarms();
+                                  }}
+                                  className="text-[10px] px-2 py-1.5 rounded-lg border border-border flex items-center gap-1"
+                                >
+                                  <Pencil className="w-3 h-3" /> Review in Finance
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {resolvedQueueKeys.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void runAudit()}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground w-full"
+                >
+                  Re-run audit after fixes ({resolvedQueueKeys.size} marked done)
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Findings */}
           {result.findings
             .filter((f) => f.severity !== 'pass')
@@ -776,8 +895,10 @@ const FinanceIntegrityAudit = () => {
                     )}
                     {f.kind === 'ledger_overcount' && f.ledgerIssues && f.ledgerIssues.length > 0 && (
                       <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 space-y-2">
-                        <p className="text-[10px] font-semibold uppercase text-muted-foreground">Affected months</p>
-                        {f.ledgerIssues.map((issue) => (
+                        <p className="text-[10px] font-semibold uppercase text-muted-foreground">Affected months (oldest first)</p>
+                        {[...f.ledgerIssues]
+                          .sort((a, b) => a.month.localeCompare(b.month))
+                          .map((issue) => (
                           <div key={issue.month} className="text-xs">
                             <p className="font-medium">
                               {fmtIsoMonthToDisplay(issue.month)} — ₹{issue.excess.toLocaleString('en-IN')} extra
@@ -841,7 +962,7 @@ const FinanceIntegrityAudit = () => {
         <div className="card-section p-4 text-center">
           <ShieldCheck className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
           <p className="text-xs text-muted-foreground">
-            Click "Run Self-Audit" to scan for negative balances, recording discrepancies, orphaned entries, and data integrity issues.
+            Click "Run Self-Audit" to scan for discrepancies. Results list exact entries to inspect from the earliest date through today.
           </p>
         </div>
       )}
