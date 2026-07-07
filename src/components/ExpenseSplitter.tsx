@@ -98,7 +98,7 @@ const ExpenseSplitter = ({
   const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null; is_occupied: boolean | null }[]>([]);
   const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
-  const [fundingSource, setFundingSource] = useState<FundingSource>('residents');
+  const [fundingSource, setFundingSource] = useState<FundingSource>(paymentOnly ? 'society_fund' : 'residents');
   const [outsiderName, setOutsiderName] = useState('');
   const [splitMode, setSplitMode] = useState<SplitMode>('by_headcount');
   const [splitFlats, setSplitFlats] = useState<string[]>([]);
@@ -276,7 +276,7 @@ const ExpenseSplitter = ({
     setSplitFlats([]);
     setPaidByFlats([]);
     setCustomSplits({});
-    setFundingSource('residents');
+    setFundingSource(paymentOnly ? 'society_fund' : 'residents');
     setOutsiderName('');
     setExpenseNotifyAudience('none');
     setShowExpenseForm(null);
