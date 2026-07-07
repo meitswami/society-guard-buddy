@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Bell, Plus, Send, Users, User, Home, Paperclip, X } from 'lucide-react';
+import { Bell, Plus, Send, Users, User, Home, Paperclip, X, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   NotificationDetailModal,
@@ -17,7 +17,10 @@ import {
   type NotificationSoundPresetId,
   playNotificationAlert,
 } from '@/lib/notificationSounds';
-import { fmtDateTimeFull } from '@/lib/dateFormat';
+import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
+import { DateInput } from '@/components/DateInput';
+import { confirmAction } from '@/lib/swal';
+import { endOfDay, format, parse } from 'date-fns';
 import { isSupported as isFcmSupported } from 'firebase/messaging';
 import {
   Dialog,
@@ -116,8 +119,32 @@ const NotificationCenter = ({
   const [alertSoundKey, setAlertSoundKey] = useState<NotificationSoundPresetId>('digital');
   const [societyCustomSoundUrl, setSocietyCustomSoundUrl] = useState<string | null>(null);
   const [uploadingSound, setUploadingSound] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearTillDate, setClearTillDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [clearing, setClearing] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  const loadDismissedIds = useCallback(async () => {
+    if (!isResident || !resident?.id) {
+      setDismissedIds(new Set());
+      return new Set<string>();
+    }
+    const { data, error } = await supabase
+      .from('notification_dismissals')
+      .select('notification_id')
+      .eq('resident_id', resident.id);
+    if (error) {
+      toast.error(error.message);
+      return new Set<string>();
+    }
+    const ids = new Set((data ?? []).map((row) => row.notification_id));
+    setDismissedIds(ids);
+    return ids;
+  }, [isResident, resident?.id]);
 
   const loadNotifications = useCallback(async () => {
+    const hiddenIds = isResident && resident?.id ? await loadDismissedIds() : new Set<string>();
+
     let query = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(150);
     if (!isResident && societyId) {
       query = query.eq('society_id', societyId);
@@ -137,8 +164,11 @@ const NotificationCenter = ({
       toast.error(error.message);
       return;
     }
-    if (data) setNotifications(data as Tables<'notifications'>[]);
-  }, [isResident, flatNumber, societyId, resident?.id]);
+    if (data) {
+      const visible = (data as Tables<'notifications'>[]).filter((row) => !hiddenIds.has(row.id));
+      setNotifications(visible);
+    }
+  }, [isResident, flatNumber, societyId, resident?.id, loadDismissedIds]);
 
   useEffect(() => {
     loadNotifications();
@@ -271,6 +301,80 @@ const NotificationCenter = ({
     }
     toast.success('All marked as read');
     await loadNotifications();
+  };
+
+  const clearAllTillDate = async () => {
+    if (!isResident || !resident?.id || !societyId || !clearTillDate) return;
+
+    const parsed = parse(clearTillDate, 'yyyy-MM-dd', new Date());
+    if (Number.isNaN(parsed.getTime())) {
+      toast.error('Choose a valid date');
+      return;
+    }
+
+    const cutoffIso = endOfDay(parsed).toISOString();
+    const label = fmtIsoDateToDisplay(clearTillDate);
+    const ok = await confirmAction(
+      'Clear alerts till date?',
+      `Notifications on or before ${label} will be removed from your inbox. Other residents are not affected.`,
+      'Yes, clear',
+      'Cancel',
+    );
+    if (!ok) return;
+
+    setClearing(true);
+    try {
+      let query = supabase
+        .from('notifications')
+        .select('id, target_type, target_id, created_at')
+        .eq('society_id', societyId)
+        .lte('created_at', cutoffIso)
+        .order('created_at', { ascending: false });
+
+      if (resident.id) {
+        query = query.or(
+          `target_type.eq.all,and(target_type.eq.flat,target_id.eq.${flatNumber}),and(target_type.eq.user,target_id.eq.${resident.id})`,
+        );
+      } else {
+        query = query.or(`target_type.eq.all,target_id.eq.${flatNumber}`);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      const ids = (data ?? [])
+        .map((row) => row.id)
+        .filter((id) => !dismissedIds.has(id));
+
+      if (ids.length === 0) {
+        toast.message('No alerts to clear for that date');
+        setClearOpen(false);
+        return;
+      }
+
+      const rows = ids.map((notification_id) => ({
+        notification_id,
+        resident_id: resident.id,
+      }));
+
+      const { error: dismissErr } = await supabase
+        .from('notification_dismissals')
+        .upsert(rows, { onConflict: 'notification_id,resident_id', ignoreDuplicates: true });
+
+      if (dismissErr) {
+        toast.error(dismissErr.message);
+        return;
+      }
+
+      toast.success(`Cleared ${ids.length} alert${ids.length === 1 ? '' : 's'} till ${label}`);
+      setClearOpen(false);
+      await loadNotifications();
+    } finally {
+      setClearing(false);
+    }
   };
 
   const sendNotification = async () => {
@@ -572,11 +676,23 @@ const NotificationCenter = ({
             <p className="text-xs text-muted-foreground">{unreadCount} unread • Push enabled</p>
           </div>
         </div>
-        {unreadCount > 0 && (
-          <button type="button" onClick={markAllRead} className="text-xs text-primary underline">
-            Mark all read
-          </button>
-        )}
+        <div className="flex flex-col items-end gap-1">
+          {unreadCount > 0 && (
+            <button type="button" onClick={markAllRead} className="text-xs text-primary underline">
+              Mark all read
+            </button>
+          )}
+          {isResident && notifications.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setClearOpen(true)}
+              className="text-xs text-destructive underline inline-flex items-center gap-1"
+            >
+              <Trash2 className="w-3 h-3" />
+              Clear till date
+            </button>
+          )}
+        </div>
       </div>
 
       {!isResident && (
@@ -831,6 +947,44 @@ const NotificationCenter = ({
         resident={resident}
         adminName={adminName}
       />
+
+      <Dialog open={clearOpen} onOpenChange={setClearOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Clear alerts till date</DialogTitle>
+            <DialogDescription>
+              Remove alerts from your inbox on or before the selected date. This only affects your view.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Till date (inclusive)</p>
+              <DateInput
+                className="input-field w-full"
+                value={clearTillDate}
+                onChange={(e) => setClearTillDate(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setClearOpen(false)}
+                className="text-xs px-3 py-2 rounded-lg border border-border"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void clearAllTillDate()}
+                disabled={clearing || !clearTillDate}
+                className="text-xs px-3 py-2 rounded-lg bg-destructive text-destructive-foreground disabled:opacity-50"
+              >
+                {clearing ? 'Clearing…' : 'Clear alerts'}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={healthOpen} onOpenChange={setHealthOpen}>
         <DialogContent className="max-w-lg">

@@ -4,6 +4,20 @@ import '../features/home/models/announcement.dart';
 
 /// Port of notification feed logic from `NotificationCenter.tsx` + resident filters.
 class NotificationService {
+  Future<Set<String>> _dismissedIds(String residentId) async {
+    if (!Env.isConfigured) return {};
+
+    final rows = await SupabaseBootstrap.client
+        .from('notification_dismissals')
+        .select('notification_id')
+        .eq('resident_id', residentId);
+
+    return (rows as List)
+        .map((row) => (row as Map<String, dynamic>)['notification_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+  }
+
   Future<List<Announcement>> fetchRecentForResident({
     required String societyId,
     required String residentId,
@@ -11,6 +25,8 @@ class NotificationService {
     int limit = 5,
   }) async {
     if (!Env.isConfigured) return _demoAnnouncements();
+
+    final dismissed = await _dismissedIds(residentId);
 
     final rows = await SupabaseBootstrap.client
         .from('notifications')
@@ -21,6 +37,8 @@ class NotificationService {
 
     final filtered = (rows as List).where((row) {
       final map = row as Map<String, dynamic>;
+      final id = map['id']?.toString() ?? '';
+      if (dismissed.contains(id)) return false;
       return _rowVisibleToResident(
         row: map,
         residentId: residentId,
@@ -40,6 +58,8 @@ class NotificationService {
   }) async {
     if (!Env.isConfigured) return 12;
 
+    final dismissed = await _dismissedIds(residentId);
+
     final rows = await SupabaseBootstrap.client
         .from('notifications')
         .select('id, target_type, target_id, society_id, is_read')
@@ -48,12 +68,65 @@ class NotificationService {
 
     return (rows as List).where((row) {
       final map = row as Map<String, dynamic>;
+      final id = map['id']?.toString() ?? '';
+      if (dismissed.contains(id)) return false;
       return _rowVisibleToResident(
         row: map,
         residentId: residentId,
         flatNumber: flatNumber,
       );
     }).length;
+  }
+
+  Future<int> clearTillDateForResident({
+    required String societyId,
+    required String residentId,
+    required String flatNumber,
+    required DateTime tillDateInclusive,
+  }) async {
+    if (!Env.isConfigured) return 0;
+
+    final dismissed = await _dismissedIds(residentId);
+    final cutoff = DateTime(
+      tillDateInclusive.year,
+      tillDateInclusive.month,
+      tillDateInclusive.day,
+      23,
+      59,
+      59,
+      999,
+    );
+
+    final rows = await SupabaseBootstrap.client
+        .from('notifications')
+        .select('id, target_type, target_id, created_at')
+        .eq('society_id', societyId)
+        .lte('created_at', cutoff.toUtc().toIso8601String())
+        .order('created_at', ascending: false);
+
+    final ids = (rows as List).where((row) {
+      final map = row as Map<String, dynamic>;
+      final id = map['id']?.toString() ?? '';
+      if (dismissed.contains(id)) return false;
+      return _rowVisibleToResident(
+        row: map,
+        residentId: residentId,
+        flatNumber: flatNumber,
+      );
+    }).map((row) => (row as Map<String, dynamic>)['id']?.toString() ?? '').where((id) => id.isNotEmpty);
+
+    final payload = ids.map((id) => {
+      'notification_id': id,
+      'resident_id': residentId,
+    }).toList();
+
+    if (payload.isEmpty) return 0;
+
+    await SupabaseBootstrap.client
+        .from('notification_dismissals')
+        .upsert(payload, onConflict: 'notification_id,resident_id', ignoreDuplicates: true);
+
+    return payload.length;
   }
 
   bool _rowVisibleToResident({
