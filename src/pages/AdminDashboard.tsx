@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, IndianRupee, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench, Landmark, X } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, IndianRupee, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench, Landmark, X, FolderLock } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
 import DashboardPage from '@/pages/DashboardPage';
@@ -26,6 +26,7 @@ import DonationManager from '@/components/DonationManager';
 import EventsModule from '@/components/EventsModule';
 import PollManager from '@/components/PollManager';
 import MeetingManager from '@/components/MeetingManager';
+import SocietyDocumentsManager from '@/components/SocietyDocumentsManager';
 import CommitteeManager from '@/components/CommitteeManager';
 import ParkingManager from '@/components/ParkingManager';
 import NotificationCenter from '@/components/NotificationCenter';
@@ -420,6 +421,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     // Finance
     { id: 'finance', label: 'Finance', icon: IndianRupee, group: 'finance' },
     { id: 'meetings', label: 'Meetings', icon: ScrollText, group: 'meetings' },
+    { id: 'documents', label: 'Documents', icon: FolderLock, group: 'meetings' },
     { id: 'committee', label: 'Committee', icon: Landmark, group: 'meetings' },
     { id: 'donations', label: 'Donations', icon: Heart, group: 'finance' },
     // Community — events + food catering splits (one module)
@@ -520,6 +522,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'splits':
         return null;
       case 'meetings': return <MeetingManager adminName={admin.name} />;
+      case 'documents': return <SocietyDocumentsManager adminName={admin.name} />;
       case 'committee': return <CommitteeManager />;
       case 'polls': return <PollManager adminName={admin.name} />;
       case 'parking': return <ParkingManager />;

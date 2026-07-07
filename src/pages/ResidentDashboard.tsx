@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, IndianRupee, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare, ScrollText, Landmark } from 'lucide-react';
+import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, IndianRupee, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare, ScrollText, Landmark, FolderLock } from 'lucide-react';
 import { format } from 'date-fns';
 import { fmtDate, fmtDateTime, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { showSuccess, confirmAction } from '@/lib/swal';
@@ -16,6 +16,7 @@ import PollManager from '@/components/PollManager';
 import { isMemberOnCommitteeRoster } from '@/lib/committeeProtection';
 import type { CommitteeMemberRow } from '@/lib/committeeMember';
 import MeetingManager from '@/components/MeetingManager';
+import SocietyDocumentsManager from '@/components/SocietyDocumentsManager';
 import CommitteeManager from '@/components/CommitteeManager';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
@@ -136,6 +137,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     | 'notifications'
     | 'polls'
     | 'meetings'
+    | 'documents'
     | 'committee'
     | 'payments'
     | 'family'
@@ -151,6 +153,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     | 'notifications'
     | 'polls'
     | 'meetings'
+    | 'documents'
     | 'committee'
     | 'payments'
     | 'family'
@@ -1073,6 +1076,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     { id: 'notifications' as const, label: 'Alerts', icon: Bell },
     { id: 'polls' as const, label: 'Polls', icon: Vote },
     { id: 'meetings' as const, label: 'Meetings', icon: ScrollText },
+    { id: 'documents' as const, label: 'Documents', icon: FolderLock },
     { id: 'committee' as const, label: 'Committee', icon: Landmark },
     { id: 'payments' as const, label: 'Payments', icon: IndianRupee },
     { id: 'profile' as const, label: 'Profile', icon: User },
@@ -1950,6 +1954,13 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         )}
 
         {tab === 'meetings' && <MeetingManager isResident />}
+
+        {tab === 'documents' && (
+          <SocietyDocumentsManager
+            isResident
+            viewerLabel={`${resident.flatNumber} · ${resident.name}`}
+          />
+        )}
 
         {tab === 'committee' && <CommitteeManager isResident />}
 
