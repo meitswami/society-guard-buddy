@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { fmtIsoMonthToDisplay } from '@/lib/dateFormat';
 import { ledgerTransactionDate, paymentBillingDate } from '@/lib/financeDates';
 
 export type PaymentChannel = 'cash' | 'bank' | 'other';
@@ -350,6 +351,8 @@ export type ChannelBalanceCulprit = {
   amount: number;
   type: 'receipt' | 'expense';
   balanceAfter: number;
+  source: 'payment' | 'ledger';
+  id: string;
 };
 
 export type ChannelMonthlyBalance = {
@@ -473,6 +476,8 @@ export function traceChannelBalanceDeficit(
         amount: t.amount,
         type: t.type,
         balanceAfter: balance,
+        source: t.source,
+        id: t.id,
       });
     } else if (firstNegativeDate === t.date) {
       culprits.push({
@@ -481,6 +486,8 @@ export function traceChannelBalanceDeficit(
         amount: t.amount,
         type: t.type,
         balanceAfter: balance,
+        source: t.source,
+        id: t.id,
       });
     }
   }
@@ -637,21 +644,220 @@ export function formatChannelBalanceFaultTrace(trace: ChannelBalanceTrace): stri
 export function formatRecordingMismatchFaultTrace(issues: RecordingMismatchMonth[]): string {
   if (issues.length === 0) return '';
 
-  const lines = issues.slice(0, 6).map((m) => {
+  const chronological = [...issues].sort((a, b) => a.month.localeCompare(b.month));
+  const lines = chronological.map((m) => {
     const dir = m.difference > 0 ? 'payments exceed ledger' : 'ledger exceeds payments';
     const sourceHint =
       m.sources.length > 0
-        ? ` — likely from: ${m.sources
-            .slice(0, 3)
+        ? ` — entries: ${m.sources
             .map((s) => `${s.date} ${s.label} (₹${s.amount.toLocaleString('en-IN')})`)
             .join('; ')}`
         : '';
     return `  • ${m.month}: ₹${Math.abs(m.difference).toLocaleString('en-IN')} (${dir})${sourceHint}`;
   });
 
-  const earliest = [...issues].sort((a, b) => a.month.localeCompare(b.month))[0];
+  const earliest = chronological[0];
   return [
     `Earliest affected month: ${earliest.month}`,
-    `Months with mismatch (largest first):\n${lines.join('\n')}`,
+    `Months with mismatch (oldest first):\n${lines.join('\n')}`,
   ].join('\n\n');
+}
+
+/* ─── Chronological fix queue for self-audit ─── */
+
+export type AuditFixAction =
+  | 'delete'
+  | 'edit'
+  | 'align_payment_month'
+  | 'align_ledger_month'
+  | 'review';
+
+export type AuditFixQueueItem = {
+  queueKey: string;
+  sortDate: string;
+  month: string;
+  issueLabel: string;
+  entryKind: 'payment' | 'ledger';
+  entryId: string;
+  title: string;
+  amount: number;
+  detail: string;
+  action: AuditFixAction;
+  actionHint: string;
+  severity: 'critical' | 'warning' | 'info';
+  findingKind:
+    | 'duplicate_payments'
+    | 'ledger_overcount'
+    | 'recording_mismatch'
+    | 'orphaned_payments'
+    | 'channel_balance';
+  alignTargetMonth?: string;
+  relatedEntryId?: string;
+};
+
+export type AuditFixQueueInput = {
+  duplicateGroups: DuplicatePaymentGroup[];
+  ledgerOvercountIssues: LedgerOvercountMonth[];
+  recordingMismatchMonths: RecordingMismatchMonth[];
+  orphanedPayments: AuditPaymentRow[];
+  cashTrace: ChannelBalanceTrace | null;
+  bankTrace: ChannelBalanceTrace | null;
+};
+
+const paymentSortDate = (p: AuditPaymentRow): string =>
+  paymentBillingDate(p) || (p.payment_date || '').slice(0, 10) || (p.created_at || '').slice(0, 10);
+
+/** Ordered list of exact entries to inspect — earliest discrepancy date first. */
+export function buildAuditFixQueue(input: AuditFixQueueInput): AuditFixQueueItem[] {
+  const items: AuditFixQueueItem[] = [];
+  const seenEntryIds = new Set<string>();
+
+  const push = (item: AuditFixQueueItem) => {
+    if (seenEntryIds.has(item.entryId)) return;
+    seenEntryIds.add(item.entryId);
+    items.push(item);
+  };
+
+  for (const group of input.duplicateGroups) {
+    const sorted = [...group.payments].sort((a, b) => paymentSortDate(a).localeCompare(paymentSortDate(b)));
+    sorted.forEach((p, idx) => {
+      const sortDate = paymentSortDate(p);
+      const isExtra = idx > 0;
+      push({
+        queueKey: `dupe-${p.id}`,
+        sortDate,
+        month: group.month,
+        issueLabel: 'Duplicate payment',
+        entryKind: 'payment',
+        entryId: p.id,
+        title: `Flat ${group.flat_number} — ${group.charge_title}`,
+        amount: Number(p.amount || 0),
+        detail: `${group.payment_method.toUpperCase()} · ${fmtIsoMonthToDisplay(group.month)} · ${group.count} rows for same receipt head`,
+        action: isExtra ? 'delete' : 'review',
+        actionHint: isExtra
+          ? 'Delete this extra duplicate — keep one verified row per flat/month/channel'
+          : 'Keep this entry — delete the newer duplicate(s) for this flat/month',
+        severity: 'critical',
+        findingKind: 'duplicate_payments',
+      });
+    });
+  }
+
+  for (const issue of input.ledgerOvercountIssues) {
+    for (const e of issue.unlinkedLedger) {
+      const sortDate = ledgerTransactionDate(e);
+      push({
+        queueKey: `ledger-orphan-${e.id}`,
+        sortDate,
+        month: issue.month,
+        issueLabel: 'Orphan ledger receipt',
+        entryKind: 'ledger',
+        entryId: e.id,
+        title: e.title || 'Ledger entry',
+        amount: e.total_amount,
+        detail: `Inflates ${fmtIsoMonthToDisplay(issue.month)} period report — no linked maintenance payment`,
+        action: 'delete',
+        actionHint: 'Delete this orphan finance_entries row',
+        severity: 'critical',
+        findingKind: 'ledger_overcount',
+      });
+    }
+
+    for (const row of issue.dateBoundary) {
+      const sortDate = paymentSortDate(row.payment);
+      push({
+        queueKey: `boundary-pay-${row.payment.id}`,
+        sortDate,
+        month: issue.month,
+        issueLabel: 'Payment vs ledger month mismatch',
+        entryKind: 'payment',
+        entryId: row.payment.id,
+        title: `Flat ${row.payment.flat_number}${row.entryTitle ? ` — ${row.entryTitle}` : ''}`,
+        amount: Number(row.payment.amount || 0),
+        detail: `Payment month ${row.paymentMonth} ≠ ledger month ${row.entryMonth}`,
+        action: 'align_payment_month',
+        actionHint: `Align payment due date to ${row.entryMonth}, or align ledger to ${row.paymentMonth}`,
+        severity: 'critical',
+        findingKind: 'ledger_overcount',
+        alignTargetMonth: row.entryMonth,
+        relatedEntryId: row.entryId,
+      });
+    }
+  }
+
+  for (const monthIssue of [...input.recordingMismatchMonths].sort((a, b) => a.month.localeCompare(b.month))) {
+    const sortedSources = [...monthIssue.sources].sort((a, b) => a.date.localeCompare(b.date));
+    for (const source of sortedSources) {
+      const entryKind = source.kind === 'orphan_ledger' ? 'ledger' : 'payment';
+      push({
+        queueKey: `rec-${source.kind}-${source.id}`,
+        sortDate: source.date.slice(0, 10),
+        month: monthIssue.month,
+        issueLabel: source.kind === 'orphan_payment' ? 'Orphan payment (no ledger)' : 'Orphan ledger (no payment)',
+        entryKind,
+        entryId: source.id,
+        title: source.label,
+        amount: source.amount,
+        detail: `Recording vs ledger gap in ${fmtIsoMonthToDisplay(monthIssue.month)} — ₹${Math.abs(monthIssue.difference).toLocaleString('en-IN')} mismatch`,
+        action: 'delete',
+        actionHint:
+          source.kind === 'orphan_payment'
+            ? 'Delete orphan payment or re-record with ledger link'
+            : 'Delete orphan ledger row if it has no linked payments',
+        severity: 'warning',
+        findingKind: 'recording_mismatch',
+      });
+    }
+  }
+
+  for (const p of input.orphanedPayments) {
+    const sortDate = paymentSortDate(p);
+    const month = sortDate ? format(new Date(sortDate), 'yyyy-MM') : 'unknown';
+    push({
+      queueKey: `orphan-pay-${p.id}`,
+      sortDate: sortDate || '9999-12-31',
+      month,
+      issueLabel: 'Orphan payment',
+      entryKind: 'payment',
+      entryId: p.id,
+      title: `Flat ${p.flat_number}`,
+      amount: Number(p.amount || 0),
+      detail: 'Verified payment with no finance_entry_id',
+      action: 'delete',
+      actionHint: 'Delete if mistaken, or re-record from Finance → Payments with ledger',
+      severity: 'warning',
+      findingKind: 'orphaned_payments',
+    });
+  }
+
+  for (const trace of [input.cashTrace, input.bankTrace]) {
+    if (!trace?.firstNegativeDate) continue;
+    const channelLabel = trace.channel === 'cash' ? 'Cash' : trace.channel === 'bank' ? 'Bank/UPI' : 'Other';
+    for (const culprit of trace.culprits) {
+      push({
+        queueKey: `channel-${trace.channel}-${culprit.id}`,
+        sortDate: culprit.date,
+        month: culprit.date.slice(0, 7),
+        issueLabel: `Negative ${channelLabel.toLowerCase()} balance`,
+        entryKind: culprit.source === 'payment' ? 'payment' : 'ledger',
+        entryId: culprit.id,
+        title: culprit.label,
+        amount: culprit.amount,
+        detail: `${culprit.type === 'expense' ? 'Expense' : 'Receipt'} on fault date → balance ₹${culprit.balanceAfter.toLocaleString('en-IN')}`,
+        action: 'review',
+        actionHint: `Review payment_method channel tag — may need edit or delete in Finance → Period Report (${channelLabel})`,
+        severity: 'critical',
+        findingKind: 'channel_balance',
+      });
+    }
+  }
+
+  items.sort((a, b) => {
+    const dateCmp = a.sortDate.localeCompare(b.sortDate);
+    if (dateCmp !== 0) return dateCmp;
+    const sevOrder = { critical: 0, warning: 1, info: 2 };
+    return sevOrder[a.severity] - sevOrder[b.severity];
+  });
+
+  return items;
 }

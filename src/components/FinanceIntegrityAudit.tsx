@@ -13,6 +13,10 @@ import {
   IndianRupee,
   ArrowRight,
   MapPin,
+  ListOrdered,
+  Trash2,
+  Calendar,
+  Pencil,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fmtIsoMonthToDisplay } from '@/lib/dateFormat';
@@ -20,12 +24,14 @@ import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import {
   analyzeLedgerOvercountByMonth,
   analyzeRecordingMismatchByMonth,
+  buildAuditFixQueue,
   buildChannelTransactions,
   findDuplicatePaymentGroups,
   formatChannelBalanceFaultTrace,
   formatRecordingMismatchFaultTrace,
   normalizePaymentChannel,
   traceChannelBalanceDeficit,
+  type AuditFixQueueItem,
   type AuditLedgerRow,
   type AuditPaymentRow,
   type ChannelBalanceTrace,
@@ -34,6 +40,14 @@ import {
 } from '@/lib/financeAuditDetection';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { ledgerTransactionDate } from '@/lib/financeDates';
+import {
+  alignLedgerEntryMonth,
+  alignPaymentDueToMonth,
+  deleteMaintenancePayment,
+  deleteOrphanLedgerEntry,
+} from '@/lib/financeAuditRemediation';
+import { toast } from 'sonner';
+import { confirmAction } from '@/lib/swal';
 
 /* ─── Types ─── */
 
@@ -64,6 +78,7 @@ interface AuditFinding {
 interface AuditResult {
   ranAt: string;
   findings: AuditFinding[];
+  fixQueue: AuditFixQueueItem[];
   summary: { critical: number; warning: number; info: number; pass: number };
 }
 
@@ -96,17 +111,27 @@ const FinanceIntegrityAudit = () => {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<AuditResult | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [busyQueueKey, setBusyQueueKey] = useState<string | null>(null);
+  const [resolvedQueueKeys, setResolvedQueueKeys] = useState<Set<string>>(new Set());
 
   const runAudit = useCallback(async () => {
     if (!societyId) return;
     setRunning(true);
     setResult(null);
+    setResolvedQueueKeys(new Set());
 
     const findings: AuditFinding[] = [];
     let findingIdx = 0;
     const addFinding = (f: Omit<AuditFinding, 'id'>) => {
       findings.push({ ...f, id: `f-${findingIdx++}` });
     };
+
+    let duplicateGroups: ReturnType<typeof findDuplicatePaymentGroups> = [];
+    let ledgerOvercountIssues: LedgerOvercountMonth[] = [];
+    let recordingMismatchMonths: RecordingMismatchMonth[] = [];
+    let orphanedPayments: AuditPaymentRow[] = [];
+    let cashTrace: ChannelBalanceTrace | null = null;
+    let bankTrace: ChannelBalanceTrace | null = null;
 
     try {
       /* ─── 1. Load all data ─── */
@@ -169,8 +194,8 @@ const FinanceIntegrityAudit = () => {
       const bankBalance = receiptByChannel.bank - expenseByChannel.bank;
 
       const channelTransactions = buildChannelTransactions(verifiedPayments, allLedger, linkedFeIds);
-      const cashTrace = traceChannelBalanceDeficit(channelTransactions, 'cash');
-      const bankTrace = traceChannelBalanceDeficit(channelTransactions, 'bank');
+      cashTrace = traceChannelBalanceDeficit(channelTransactions, 'cash');
+      bankTrace = traceChannelBalanceDeficit(channelTransactions, 'bank');
 
       if (cashBalance < 0) {
         const faultDate = cashTrace?.firstNegativeDate;
@@ -243,7 +268,7 @@ const FinanceIntegrityAudit = () => {
       }
 
       /* ─── 3. DUPLICATE PAYMENT DETECTION (monthly charges — same as alarm panel) ─── */
-      const duplicateGroups = findDuplicatePaymentGroups(allPayments, chargeTitleById, {
+      duplicateGroups = findDuplicatePaymentGroups(allPayments, chargeTitleById, {
         chargeIds: monthlyChargeIds,
       });
 
@@ -295,7 +320,7 @@ const FinanceIntegrityAudit = () => {
         .reduce((s, e) => s + Number(e.total_amount || 0), 0);
 
       const discrepancy = Math.abs(mpTotal - feFlatsOnlyTotal);
-      const recordingMismatchMonths = analyzeRecordingMismatchByMonth(verifiedPayments, allLedger);
+      recordingMismatchMonths = analyzeRecordingMismatchByMonth(verifiedPayments, allLedger);
       if (discrepancy > 1) {
         const earliestMonth = recordingMismatchMonths.length > 0
           ? [...recordingMismatchMonths].sort((a, b) => a.month.localeCompare(b.month))[0].month
@@ -332,7 +357,7 @@ const FinanceIntegrityAudit = () => {
       }
 
       /* ─── 5. PERIOD REPORT LEDGER DOUBLE-COUNT (matches FinanceManager period report) ─── */
-      const ledgerOvercountIssues = analyzeLedgerOvercountByMonth(verifiedPayments, allLedger);
+      ledgerOvercountIssues = analyzeLedgerOvercountByMonth(verifiedPayments, allLedger);
 
       if (ledgerOvercountIssues.length > 0) {
         const totalExcess = ledgerOvercountIssues.reduce((s, m) => s + m.excess, 0);
@@ -389,7 +414,7 @@ const FinanceIntegrityAudit = () => {
       }
 
       /* ─── 6. ORPHANED PAYMENTS (no finance_entry_id) ─── */
-      const orphanedPayments = verifiedPayments.filter((p) => !p.finance_entry_id);
+      orphanedPayments = verifiedPayments.filter((p) => !p.finance_entry_id);
       if (orphanedPayments.length > 0) {
         const orphanTotal = orphanedPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
         const orphansByMonth = new Map<string, AuditPaymentRow[]>();
@@ -536,6 +561,15 @@ const FinanceIntegrityAudit = () => {
       });
     }
 
+    const fixQueue = buildAuditFixQueue({
+      duplicateGroups,
+      ledgerOvercountIssues,
+      recordingMismatchMonths,
+      orphanedPayments,
+      cashTrace,
+      bankTrace,
+    });
+
     const summary = {
       critical: findings.filter((f) => f.severity === 'critical').length,
       warning: findings.filter((f) => f.severity === 'warning').length,
@@ -543,9 +577,59 @@ const FinanceIntegrityAudit = () => {
       pass: findings.filter((f) => f.severity === 'pass').length,
     };
 
-    setResult({ ranAt: new Date().toISOString(), findings, summary });
+    setResult({ ranAt: new Date().toISOString(), findings, fixQueue, summary });
     setRunning(false);
   }, [societyId]);
+
+  const handleQueueDelete = async (item: AuditFixQueueItem) => {
+    const ok = await confirmAction(
+      'Delete this entry?',
+      `${item.title} — ₹${item.amount.toLocaleString('en-IN')} on ${fmtIsoDateToDisplay(item.sortDate)}. ${item.actionHint}`,
+      'Delete',
+      'Cancel',
+    );
+    if (!ok) return;
+
+    setBusyQueueKey(item.queueKey);
+    const res =
+      item.entryKind === 'payment'
+        ? await deleteMaintenancePayment(item.entryId, null)
+        : await deleteOrphanLedgerEntry(item.entryId);
+    setBusyQueueKey(null);
+
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success('Entry deleted — re-run audit when done with this batch');
+    setResolvedQueueKeys((prev) => new Set(prev).add(item.queueKey));
+  };
+
+  const handleQueueAlignPayment = async (item: AuditFixQueueItem) => {
+    if (!item.alignTargetMonth) return;
+    setBusyQueueKey(item.queueKey);
+    const res = await alignPaymentDueToMonth(item.entryId, item.alignTargetMonth);
+    setBusyQueueKey(null);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success(`Payment aligned to ${fmtIsoMonthToDisplay(item.alignTargetMonth)}`);
+    setResolvedQueueKeys((prev) => new Set(prev).add(item.queueKey));
+  };
+
+  const handleQueueAlignLedger = async (item: AuditFixQueueItem, paymentMonth: string) => {
+    if (!item.relatedEntryId) return;
+    setBusyQueueKey(item.queueKey);
+    const res = await alignLedgerEntryMonth(item.relatedEntryId, paymentMonth);
+    setBusyQueueKey(null);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success(`Ledger aligned to ${fmtIsoMonthToDisplay(paymentMonth)}`);
+    setResolvedQueueKeys((prev) => new Set(prev).add(item.queueKey));
+  };
 
   return (
     <div className="space-y-3">
