@@ -386,7 +386,7 @@ const FinanceManager = ({
   >([]);
   const [distributingPoolEntryId, setDistributingPoolEntryId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({
-    recordMode: 'society_pool' as 'society_pool' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only',
+    recordMode: 'flats_only' as 'society_pool' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only',
     destination: 'current_month_maintenance' as 'current_month_maintenance' | 'corpus' | 'separate_entry',
     allocationStyle: 'same_per_flat' as 'same_per_flat' | 'split_total_equally',
     allocationIncludeVacant: false,
@@ -1411,7 +1411,8 @@ const FinanceManager = ({
       }
     }
 
-    const notifyAudience = paymentNotifyAudience;
+    const notifyAudience =
+      mode === 'flats_only' && paymentNotifyAudience === 'all' ? 'selected_flats' : paymentNotifyAudience;
     const snapshotFlats = [...payForm.selected_flats];
     const payMethod = payForm.payment_method;
     const payTxn = payForm.transaction_id;
@@ -1419,7 +1420,7 @@ const FinanceManager = ({
     const allFlatNumbers = flats.map((f) => f.flat_number);
 
     setPayForm({
-      recordMode: 'society_pool',
+      recordMode: 'flats_only',
       destination: 'current_month_maintenance',
       allocationStyle: 'same_per_flat',
       allocationIncludeVacant: false,
@@ -3534,15 +3535,16 @@ const FinanceManager = ({
                 <select
                   className="input-field"
                   value={payForm.recordMode}
-                  onChange={(e) =>
-                    setPayForm({
-                      ...payForm,
-                      recordMode: e.target.value as typeof payForm.recordMode,
-                    })
-                  }
+                  onChange={(e) => {
+                    const nextMode = e.target.value as typeof payForm.recordMode;
+                    setPayForm({ ...payForm, recordMode: nextMode });
+                    if (nextMode === 'flats_only' && paymentNotifyAudience === 'all') {
+                      setPaymentNotifyAudience('none');
+                    }
+                  }}
                 >
-                  <option value="society_pool">Society pool (default — distribute to flats later)</option>
-                  <option value="flats_only">Direct to selected flats (per-flat amount)</option>
+                  <option value="society_pool">Society pool (distribute to flats later)</option>
+                  <option value="flats_only">Direct to selected flats (default — per-flat amount)</option>
                   <option value="flats_plus_outsider">Selected flats + outsider share</option>
                   <option value="outsider_only">Outsider only (split across selected flats now)</option>
                 </select>
@@ -3842,16 +3844,18 @@ const FinanceManager = ({
                     Flats in this payment only ({payForm.selected_flats.length} selected above)
                   </span>
                 </label>
-                <label className="flex items-start gap-2 text-xs cursor-pointer">
-                  <input
-                    type="radio"
-                    name="pay-notify"
-                    className="mt-0.5"
-                    checked={paymentNotifyAudience === 'all'}
-                    onChange={() => setPaymentNotifyAudience('all')}
-                  />
-                  <span>All society flats ({flats.length}) — for transparency (e.g. common-area bills)</span>
-                </label>
+                {payForm.recordMode !== 'flats_only' && (
+                  <label className="flex items-start gap-2 text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pay-notify"
+                      className="mt-0.5"
+                      checked={paymentNotifyAudience === 'all'}
+                      onChange={() => setPaymentNotifyAudience('all')}
+                    />
+                    <span>All society flats ({flats.length}) — for transparency (e.g. common-area bills)</span>
+                  </label>
+                )}
               </div>
 
               {receiptHeadConflictsPreview.length > 0 && (
