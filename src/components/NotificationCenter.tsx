@@ -20,6 +20,10 @@ import {
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { DateInput } from '@/components/DateInput';
 import { confirmAction } from '@/lib/swal';
+import {
+  notificationVisibleToResident,
+  NOTIFICATION_TYPE_LABELS,
+} from '@/lib/notificationAudience';
 import { endOfDay, format, parse } from 'date-fns';
 import { isSupported as isFcmSupported } from 'firebase/messaging';
 import {
@@ -146,18 +150,8 @@ const NotificationCenter = ({
     const hiddenIds = isResident && resident?.id ? await loadDismissedIds() : new Set<string>();
 
     let query = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(150);
-    if (!isResident && societyId) {
+    if (societyId) {
       query = query.eq('society_id', societyId);
-    }
-    if (isResident) {
-      if (societyId) query = query.eq('society_id', societyId);
-      if (resident?.id) {
-        query = query.or(
-          `target_type.eq.all,and(target_type.eq.flat,target_id.eq.${flatNumber}),and(target_type.eq.user,target_id.eq.${resident.id})`,
-        );
-      } else {
-        query = query.or(`target_type.eq.all,target_id.eq.${flatNumber}`);
-      }
     }
     const { data, error } = await query;
     if (error) {
@@ -165,10 +159,15 @@ const NotificationCenter = ({
       return;
     }
     if (data) {
-      const visible = (data as Tables<'notifications'>[]).filter((row) => !hiddenIds.has(row.id));
+      const residentRef = resident ?? { id: '', name: '' };
+      const visible = (data as Tables<'notifications'>[]).filter((row) => {
+        if (hiddenIds.has(row.id)) return false;
+        if (!isResident) return true;
+        return notificationVisibleToResident(row, residentRef, flatNumber);
+      });
       setNotifications(visible);
     }
-  }, [isResident, flatNumber, societyId, resident?.id, loadDismissedIds]);
+  }, [isResident, flatNumber, societyId, resident, loadDismissedIds]);
 
   useEffect(() => {
     loadNotifications();
@@ -316,7 +315,7 @@ const NotificationCenter = ({
     const label = fmtIsoDateToDisplay(clearTillDate);
     const ok = await confirmAction(
       'Clear alerts till date?',
-      `Notifications on or before ${label} will be removed from your inbox. Other residents are not affected.`,
+      `Alerts on or before ${label} will be removed from your inbox. Other residents are not affected.`,
       'Yes, clear',
       'Cancel',
     );
@@ -324,28 +323,20 @@ const NotificationCenter = ({
 
     setClearing(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('notifications')
         .select('id, target_type, target_id, created_at')
         .eq('society_id', societyId)
         .lte('created_at', cutoffIso)
         .order('created_at', { ascending: false });
 
-      if (resident.id) {
-        query = query.or(
-          `target_type.eq.all,and(target_type.eq.flat,target_id.eq.${flatNumber}),and(target_type.eq.user,target_id.eq.${resident.id})`,
-        );
-      } else {
-        query = query.or(`target_type.eq.all,target_id.eq.${flatNumber}`);
-      }
-
-      const { data, error } = await query;
       if (error) {
         toast.error(error.message);
         return;
       }
 
       const ids = (data ?? [])
+        .filter((row) => notificationVisibleToResident(row, resident, flatNumber))
         .map((row) => row.id)
         .filter((id) => !dismissedIds.has(id));
 
@@ -672,14 +663,20 @@ const NotificationCenter = ({
             )}
           </div>
           <div>
-            <h1 className="page-title">Notifications</h1>
-            <p className="text-xs text-muted-foreground">{unreadCount} unread • Push enabled</p>
+            <h1 className="page-title">{isResident ? 'Alerts' : 'Notifications'}</h1>
+            <p className="text-xs text-muted-foreground">
+              {isResident
+                ? unreadCount > 0
+                  ? `${unreadCount} new · Tap an alert to read the full message`
+                  : 'Society notices for your flat — all caught up'
+                : `${unreadCount} unread • Push enabled`}
+            </p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           {unreadCount > 0 && (
             <button type="button" onClick={markAllRead} className="text-xs text-primary underline">
-              Mark all read
+              {isResident ? 'Mark all as seen' : 'Mark all read'}
             </button>
           )}
           {isResident && notifications.length > 0 && (
@@ -694,6 +691,13 @@ const NotificationCenter = ({
           )}
         </div>
       </div>
+
+      {isResident && (
+        <p className="mb-4 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+          Announcements from your society office appear here. Open any alert to read the full text, view photos or
+          videos, and reply in the thread below it.
+        </p>
+      )}
 
       {!isResident && (
         <>
@@ -900,10 +904,13 @@ const NotificationCenter = ({
 
       <div className="space-y-2">
         {notifications.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">No notifications</p>
+          <p className="text-sm text-muted-foreground text-center py-8">
+            {isResident ? 'No alerts yet — society notices will appear here.' : 'No notifications'}
+          </p>
         )}
         {notifications.map(n => {
           const mediaCount = parseNotificationMedia(n.media_items).length;
+          const typeLabel = NOTIFICATION_TYPE_LABELS[n.type] ?? 'Notice';
           return (
             <button
               key={n.id}
@@ -916,20 +923,37 @@ const NotificationCenter = ({
               <div className="flex gap-2">
                 <span className="text-lg">{typeIcons[n.type] || '📢'}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{n.title}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold">{n.title}</p>
+                    {!n.is_read && isResident && (
+                      <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                        New
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-medium text-muted-foreground">{typeLabel}</span>
                     <p className="text-[10px] text-muted-foreground">{fmtDateTimeFull(n.created_at)}</p>
-                    {n.target_type !== 'all' && (
+                    {n.created_by && isResident && (
+                      <span className="text-[10px] text-muted-foreground">· {n.created_by}</span>
+                    )}
+                    {!isResident && n.target_type !== 'all' && (
                       <span className="text-[10px] bg-primary/10 text-primary px-1.5 rounded">
                         → {n.target_type === 'flat' ? `Flat ${n.target_id}` : n.target_id}
                       </span>
                     )}
                     <NotificationMediaBadges count={mediaCount} />
                   </div>
-                  <p className="mt-1 text-[10px] text-primary/80">Tap to view · discuss in thread</p>
+                  {isResident ? (
+                    <p className="mt-1 text-[10px] text-primary/80">Tap to open</p>
+                  ) : (
+                    <p className="mt-1 text-[10px] text-primary/80">Tap to view · discuss in thread</p>
+                  )}
                 </div>
-                {!n.is_read && <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" aria-hidden />}
+                {!n.is_read && !isResident && (
+                  <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" aria-hidden />
+                )}
               </div>
             </button>
           );

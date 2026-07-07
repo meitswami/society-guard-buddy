@@ -66,11 +66,13 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
     final announcements = await _notificationService.fetchRecentForResident(
       societyId: widget.session.societyId,
       residentId: r.id,
+      residentName: r.name,
       flatNumber: r.flatNumber,
     );
     final unread = await _notificationService.countUnreadForResident(
       societyId: widget.session.societyId,
       residentId: r.id,
+      residentName: r.name,
       flatNumber: r.flatNumber,
     );
     final pending = await _approvalService.countPending(r.flatId);

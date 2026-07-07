@@ -21,6 +21,7 @@ class NotificationService {
   Future<List<Announcement>> fetchRecentForResident({
     required String societyId,
     required String residentId,
+    required String residentName,
     required String flatNumber,
     int limit = 5,
   }) async {
@@ -42,6 +43,7 @@ class NotificationService {
       return _rowVisibleToResident(
         row: map,
         residentId: residentId,
+        residentName: residentName,
         flatNumber: flatNumber,
       );
     }).take(limit);
@@ -54,6 +56,7 @@ class NotificationService {
   Future<int> countUnreadForResident({
     required String societyId,
     required String residentId,
+    required String residentName,
     required String flatNumber,
   }) async {
     if (!Env.isConfigured) return 12;
@@ -73,6 +76,7 @@ class NotificationService {
       return _rowVisibleToResident(
         row: map,
         residentId: residentId,
+        residentName: residentName,
         flatNumber: flatNumber,
       );
     }).length;
@@ -81,6 +85,7 @@ class NotificationService {
   Future<int> clearTillDateForResident({
     required String societyId,
     required String residentId,
+    required String residentName,
     required String flatNumber,
     required DateTime tillDateInclusive,
   }) async {
@@ -111,6 +116,7 @@ class NotificationService {
       return _rowVisibleToResident(
         row: map,
         residentId: residentId,
+        residentName: residentName,
         flatNumber: flatNumber,
       );
     }).map((row) => (row as Map<String, dynamic>)['id']?.toString() ?? '').where((id) => id.isNotEmpty);
@@ -132,10 +138,11 @@ class NotificationService {
   bool _rowVisibleToResident({
     required Map<String, dynamic> row,
     required String residentId,
+    required String residentName,
     required String flatNumber,
   }) {
     final targetType = row['target_type']?.toString() ?? '';
-    final targetId = row['target_id']?.toString() ?? '';
+    final targetId = row['target_id']?.toString().trim() ?? '';
     if (targetType == 'all') return true;
     if (targetType == 'flat') {
       if (targetId == flatNumber) return true;
@@ -143,7 +150,14 @@ class NotificationService {
         return targetId.split(',').map((s) => s.trim()).contains(flatNumber);
       }
     }
-    if (targetType == 'user' && targetId == residentId) return true;
+    if (targetType == 'user') {
+      if (targetId == residentId) return true;
+      if (targetId == residentName) return true;
+      if (targetId.contains(',')) {
+        final parts = targetId.split(',').map((s) => s.trim());
+        return parts.contains(residentId) || parts.contains(residentName);
+      }
+    }
     return false;
   }
 

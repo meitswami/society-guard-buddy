@@ -22,6 +22,7 @@ import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
 import { isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
 import { useNotificationsRealtimeRevision } from '@/hooks/useNotificationsRealtimeRevision';
+import { notificationVisibleToResident } from '@/lib/notificationAudience';
 import { useBiometric } from '@/hooks/useBiometric';
 import { playNotificationAlert } from '@/lib/notificationSounds';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
@@ -108,15 +109,11 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
   const notificationRowForResident = (row: Record<string, unknown>) => {
     if (societyId && row.society_id && String(row.society_id) !== societyId) return false;
-    const tt = String(row.target_type ?? '');
-    const tid = String(row.target_id ?? '');
-    if (tt === 'all') return true;
-    if (tt === 'flat') {
-      if (tid === resident.flatNumber) return true;
-      if (tid.includes(',')) return tid.split(',').map((s) => s.trim()).includes(resident.flatNumber);
-    }
-    if (tt === 'user' && tid === resident.id) return true;
-    return false;
+    return notificationVisibleToResident(
+      { target_type: String(row.target_type ?? ''), target_id: String(row.target_id ?? '') },
+      { id: resident.id, name: resident.name },
+      resident.flatNumber,
+    );
   };
 
   const notificationFeedRevision = useNotificationsRealtimeRevision(true, `resident-${resident.id}`, {

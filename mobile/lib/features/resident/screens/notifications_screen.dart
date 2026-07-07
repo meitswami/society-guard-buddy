@@ -32,6 +32,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final items = await _service.fetchRecentForResident(
       societyId: widget.session.societyId,
       residentId: widget.session.resident.id,
+      residentName: widget.session.resident.name,
       flatNumber: widget.session.resident.flatNumber,
       limit: 50,
     );
@@ -48,7 +49,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Clear alerts till today?'),
         content: const Text(
-          'Notifications on or before today will be removed from your inbox. Other residents are not affected.',
+          'Alerts on or before today will be removed from your inbox. Other residents are not affected.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -62,6 +63,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final cleared = await _service.clearTillDateForResident(
       societyId: widget.session.societyId,
       residentId: widget.session.resident.id,
+      residentName: widget.session.resident.name,
       flatNumber: widget.session.resident.flatNumber,
       tillDateInclusive: DateTime.now(),
     );
@@ -95,6 +97,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Text(
+            'Alerts',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Society notices for your flat. Tap an alert to read the full message.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 12),
           if (_items.isNotEmpty)
             Align(
               alignment: Alignment.centerRight,
@@ -110,7 +124,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 label: Text(_clearing ? 'Clearing…' : 'Clear till today'),
               ),
             ),
-          RecentAnnouncements(items: _items),
+          RecentAnnouncements(items: _items, title: 'Inbox'),
         ],
       ),
     );

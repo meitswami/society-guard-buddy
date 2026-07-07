@@ -217,7 +217,9 @@ const NotificationDetailModal = ({
 
           <div className="flex min-h-0 flex-1 flex-col">
             <p className="shrink-0 border-b border-border bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
-              Discussion · stay on this thread instead of WhatsApp
+              {isResident
+                ? 'Replies · your flat can ask follow-up questions here'
+                : 'Discussion · stay on this thread instead of WhatsApp'}
             </p>
             <div
               ref={scrollRef}
@@ -254,7 +256,7 @@ const NotificationDetailModal = ({
               <div className="flex gap-2">
                 <textarea
                   className="input-field min-h-[44px] flex-1 resize-none py-2.5 text-sm"
-                  placeholder={isResident ? 'Message as your flat…' : 'Reply as admin…'}
+                  placeholder={isResident ? 'Ask a question or reply…' : 'Reply as admin…'}
                   rows={2}
                   value={draft}
                   onChange={e => setDraft(e.target.value)}

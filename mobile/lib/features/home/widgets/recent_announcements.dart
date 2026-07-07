@@ -9,11 +9,13 @@ class RecentAnnouncements extends StatelessWidget {
   const RecentAnnouncements({
     super.key,
     required this.items,
+    this.title = 'Recent Announcements',
     this.onViewAll,
     this.onItemTap,
   });
 
   final List<Announcement> items;
+  final String title;
   final VoidCallback? onViewAll;
   final void Function(Announcement item)? onItemTap;
 
@@ -29,7 +31,7 @@ class RecentAnnouncements extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Recent Announcements',
+                title,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
