@@ -19,6 +19,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   final _service = NotificationService();
   List<Announcement> _items = const [];
   bool _loading = true;
+  bool _clearing = false;
 
   @override
   void initState() {
@@ -41,6 +42,45 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
   }
 
+  Future<void> _clearTillToday() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear alerts till today?'),
+        content: const Text(
+          'Notifications on or before today will be removed from your inbox. Other residents are not affected.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Clear')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _clearing = true);
+    final cleared = await _service.clearTillDateForResident(
+      societyId: widget.session.societyId,
+      residentId: widget.session.resident.id,
+      flatNumber: widget.session.resident.flatNumber,
+      tillDateInclusive: DateTime.now(),
+    );
+    if (!mounted) return;
+    setState(() => _clearing = false);
+
+    if (cleared == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No alerts to clear')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Cleared $cleared alert${cleared == 1 ? '' : 's'}')),
+    );
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final brand = KutumbikaBrandTheme.of(context);
@@ -55,6 +95,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (_items.isNotEmpty)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _clearing ? null : _clearTillToday,
+                icon: _clearing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline, size: 18),
+                label: Text(_clearing ? 'Clearing…' : 'Clear till today'),
+              ),
+            ),
           RecentAnnouncements(items: _items),
         ],
       ),
