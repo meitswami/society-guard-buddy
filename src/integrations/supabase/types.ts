@@ -2628,6 +2628,7 @@ export type Database = {
           id: string
           mime_type: string | null
           published: boolean
+          member_reveal_until: string | null
           society_id: string
           sort_order: number
           storage_path: string
@@ -2643,6 +2644,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           published?: boolean
+          member_reveal_until?: string | null
           society_id: string
           sort_order?: number
           storage_path: string
@@ -2658,6 +2660,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           published?: boolean
+          member_reveal_until?: string | null
           society_id?: string
           sort_order?: number
           storage_path?: string

@@ -9,9 +9,21 @@ type Props = {
   mimeType?: string | null;
   watermark: string;
   onClose: () => void;
+  /** When true, image/PDF content is heavily blurred (member default until admin reveals). */
+  contentBlurred?: boolean;
+  /** Seconds remaining on an active member reveal window. */
+  revealSecondsLeft?: number | null;
 };
 
-export default function ProtectedDocumentViewer({ title, signedUrl, mimeType, watermark, onClose }: Props) {
+export default function ProtectedDocumentViewer({
+  title,
+  signedUrl,
+  mimeType,
+  watermark,
+  onClose,
+  contentBlurred = false,
+  revealSecondsLeft = null,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [obscured, setObscured] = useState(false);
 
@@ -92,7 +104,12 @@ export default function ProtectedDocumentViewer({ title, signedUrl, mimeType, wa
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{title}</p>
             <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-              <ShieldAlert className="w-3 h-3" /> View only — copying, saving, and printing are disabled
+              <ShieldAlert className="w-3 h-3" />
+              {contentBlurred
+                ? 'Preview hidden — waiting for society office to enable viewing'
+                : revealSecondsLeft != null && revealSecondsLeft > 0
+                  ? `Viewing enabled — ${revealSecondsLeft}s remaining`
+                  : 'View only — copying, saving, and printing are disabled'}
             </p>
           </div>
         </div>
@@ -111,19 +128,23 @@ export default function ProtectedDocumentViewer({ title, signedUrl, mimeType, wa
         className="protected-doc-surface relative flex-1 overflow-auto bg-muted/30"
         onContextMenu={(e) => e.preventDefault()}
       >
-        {isPdf && (
-          <iframe
-            title={title}
-            src={`${signedUrl}#toolbar=0&navpanes=0&scrollbar=1`}
-            className="w-full h-full min-h-[70vh] border-0 bg-white"
-            sandbox="allow-scripts allow-same-origin"
-          />
-        )}
-        {!isPdf && isImage && (
-          <div className="flex items-center justify-center min-h-[70vh] p-4">
-            <img src={signedUrl} alt="" draggable={false} className="max-w-full max-h-[75vh] object-contain" />
-          </div>
-        )}
+        <div
+          className={`transition-[filter] duration-500 ${contentBlurred ? 'blur-2xl scale-105' : ''}`}
+        >
+          {isPdf && (
+            <iframe
+              title={title}
+              src={`${signedUrl}#toolbar=0&navpanes=0&scrollbar=1`}
+              className="w-full h-full min-h-[70vh] border-0 bg-white"
+              sandbox="allow-scripts allow-same-origin"
+            />
+          )}
+          {!isPdf && isImage && (
+            <div className="flex items-center justify-center min-h-[70vh] p-4">
+              <img src={signedUrl} alt="" draggable={false} className="max-w-full max-h-[75vh] object-contain" />
+            </div>
+          )}
+        </div>
         {!isPdf && !isImage && (
           <div className="flex items-center justify-center min-h-[70vh] p-6 text-center text-sm text-muted-foreground">
             This file type cannot be previewed in the app. Contact your society office for access.
@@ -148,6 +169,17 @@ export default function ProtectedDocumentViewer({ title, signedUrl, mimeType, wa
             </div>
           ))}
         </div>
+
+        {contentBlurred && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-6 text-center">
+            <div className="max-w-xs space-y-2">
+              <p className="text-sm font-medium">Document preview hidden</p>
+              <p className="text-xs text-muted-foreground">
+                Your society office will enable viewing when needed. The image stays blurred until then.
+              </p>
+            </div>
+          </div>
+        )}
 
         {obscured && (
           <div className="absolute inset-0 bg-background/95 backdrop-blur-md flex items-center justify-center p-6 text-center">

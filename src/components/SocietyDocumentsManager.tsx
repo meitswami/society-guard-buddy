@@ -11,6 +11,8 @@ import {
   FolderOpen,
   Loader2,
   Plus,
+  Timer,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction } from '@/lib/swal';
@@ -35,11 +37,18 @@ export type SocietyDocumentRow = {
   file_name: string;
   mime_type: string | null;
   published: boolean;
+  member_reveal_until: string | null;
   sort_order: number;
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;
 };
+
+const REVEAL_DURATIONS = [
+  { label: '15 sec', seconds: 15 },
+  { label: '30 sec', seconds: 30 },
+  { label: '1 min', seconds: 60 },
+] as const;
 
 const CATEGORIES: { id: SocietyDocumentCategory; label: string }[] = [
   { id: 'bylaws', label: 'Bylaws & rules' },
@@ -58,6 +67,22 @@ const ACCEPTED_TYPES = [
 ];
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
+
+function isRevealActive(doc: Pick<SocietyDocumentRow, 'member_reveal_until'>, nowMs: number): boolean {
+  if (!doc.member_reveal_until) return false;
+  return new Date(doc.member_reveal_until).getTime() > nowMs;
+}
+
+function revealSecondsLeft(doc: Pick<SocietyDocumentRow, 'member_reveal_until'>, nowMs: number): number {
+  if (!doc.member_reveal_until) return 0;
+  const left = Math.ceil((new Date(doc.member_reveal_until).getTime() - nowMs) / 1000);
+  return Math.max(0, left);
+}
+
+function isImageDoc(doc: Pick<SocietyDocumentRow, 'mime_type' | 'file_name'>): boolean {
+  if (doc.mime_type?.startsWith('image/')) return true;
+  return /\.(png|jpe?g|webp|gif)$/i.test(doc.file_name);
+}
 
 interface Props {
   isResident?: boolean;
@@ -97,6 +122,14 @@ export default function SocietyDocumentsManager({ isResident, adminName, viewerL
   const [viewerDoc, setViewerDoc] = useState<SocietyDocumentRow | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [revealMenuId, setRevealMenuId] = useState<string | null>(null);
+  const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const loadDocs = useCallback(async () => {
     if (!societyId) return;
@@ -117,6 +150,63 @@ export default function SocietyDocumentsManager({ isResident, adminName, viewerL
   useEffect(() => {
     void loadDocs();
   }, [loadDocs]);
+
+  useEffect(() => {
+    if (!societyId) return;
+
+    const channel = supabase
+      .channel(`society-docs-${societyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'society_documents',
+          filter: `society_id=eq.${societyId}`,
+        },
+        (payload) => {
+          const updated = payload.new as SocietyDocumentRow;
+          setDocs((prev) => prev.map((d) => (d.id === updated.id ? { ...d, ...updated } : d)));
+          setViewerDoc((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [societyId]);
+
+  useEffect(() => {
+    if (!isResident || !societyId) return;
+
+    const imageDocs = docs.filter((d) => isImageDoc(d));
+    if (imageDocs.length === 0) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      const entries = await Promise.all(
+        imageDocs.map(async (doc) => {
+          const { data, error } = await supabase.storage
+            .from('society-documents')
+            .createSignedUrl(doc.storage_path, 300);
+          if (error || !data?.signedUrl) return null;
+          return [doc.id, data.signedUrl] as const;
+        }),
+      );
+      if (cancelled) return;
+      const next: Record<string, string> = {};
+      for (const entry of entries) {
+        if (entry) next[entry[0]] = entry[1];
+      }
+      setThumbUrls(next);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [docs, isResident, societyId]);
 
   const filtered = useMemo(() => {
     if (categoryFilter === 'all') return docs;
@@ -213,15 +303,43 @@ export default function SocietyDocumentsManager({ isResident, adminName, viewerL
   };
 
   const togglePublished = async (doc: SocietyDocumentRow) => {
+    const nextPublished = !doc.published;
     const { error } = await supabase
       .from('society_documents')
-      .update({ published: !doc.published })
+      .update({
+        published: nextPublished,
+        member_reveal_until: nextPublished ? doc.member_reveal_until : null,
+      })
       .eq('id', doc.id);
     if (error) toast.error(error.message);
     else {
-      toast.success(doc.published ? 'Hidden from members' : 'Published for members');
+      toast.success(nextPublished ? 'Visible to members (blurred)' : 'Hidden from members');
       void loadDocs();
     }
+  };
+
+  const revealToMembers = async (doc: SocietyDocumentRow, seconds: number) => {
+    if (!doc.published) {
+      toast.error('Publish the document for members first');
+      return;
+    }
+    const until = new Date(Date.now() + seconds * 1000).toISOString();
+    const { error } = await supabase
+      .from('society_documents')
+      .update({ member_reveal_until: until })
+      .eq('id', doc.id);
+    setRevealMenuId(null);
+    if (error) toast.error(error.message);
+    else toast.success(`Members can view clearly for ${seconds < 60 ? `${seconds} seconds` : '1 minute'}`);
+  };
+
+  const hideRevealNow = async (doc: SocietyDocumentRow) => {
+    const { error } = await supabase
+      .from('society_documents')
+      .update({ member_reveal_until: null })
+      .eq('id', doc.id);
+    if (error) toast.error(error.message);
+    else toast.success('Member viewing disabled — content blurred again');
   };
 
   const deleteDoc = async (doc: SocietyDocumentRow) => {
@@ -242,6 +360,9 @@ export default function SocietyDocumentsManager({ isResident, adminName, viewerL
     }
   };
 
+  const viewerRevealActive = viewerDoc ? isRevealActive(viewerDoc, nowMs) : false;
+  const viewerContentBlurred = Boolean(isResident && viewerDoc && !viewerRevealActive);
+
   if (!societyId) {
     return (
       <div className="page-container text-sm text-muted-foreground">Society not loaded.</div>
@@ -259,8 +380,8 @@ export default function SocietyDocumentsManager({ isResident, adminName, viewerL
             <h2 className="font-semibold">Society documents</h2>
             <p className="text-xs text-muted-foreground">
               {isResident
-                ? 'Official society records — view only in this app'
-                : 'Upload bylaws, minutes, notices, and other society files for members'}
+                ? 'Official society records — previews stay blurred until your office enables viewing'
+                : 'Upload documents for members. They always see blurred previews until you enable viewing.'}
             </p>
           </div>
         </div>
@@ -356,70 +477,134 @@ export default function SocietyDocumentsManager({ isResident, adminName, viewerL
                 {group.label}
               </h3>
               <div className="space-y-2">
-                {group.items.map((doc) => (
-                  <div key={doc.id} className="card-section p-3 flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{doc.title}</p>
-                      {doc.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{doc.description}</p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {fmtDate(doc.created_at)}
-                        {!isResident && (
-                          <span className={`ml-2 ${doc.published ? 'text-emerald-600' : 'text-amber-600'}`}>
-                            {doc.published ? '· Published' : '· Draft'}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <button
-                        type="button"
-                        className="p-2 rounded-lg bg-primary/10 text-primary"
-                        title={isResident ? 'View' : 'Preview'}
-                        disabled={openingId === doc.id}
-                        onClick={() => void openViewer(doc, isResident ?? false)}
-                      >
-                        {openingId === doc.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                {group.items.map((doc) => {
+                  const revealActive = isRevealActive(doc, nowMs);
+                  const secondsLeft = revealSecondsLeft(doc, nowMs);
+                  const thumbUrl = thumbUrls[doc.id];
+
+                  return (
+                    <div key={doc.id} className="card-section p-3 flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden relative">
+                        {isResident && isImageDoc(doc) && thumbUrl ? (
+                          <>
+                            <img
+                              src={thumbUrl}
+                              alt=""
+                              className={`w-full h-full object-cover transition-[filter] duration-300 ${revealActive ? '' : 'blur-md scale-110'}`}
+                              draggable={false}
+                            />
+                            {!revealActive && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-background/30">
+                                <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </>
                         ) : (
-                          <Eye className="w-4 h-4" />
+                          <FileText className="w-4 h-4 text-primary" />
                         )}
-                      </button>
-                      {!isResident && (
-                        <>
-                          <button
-                            type="button"
-                            className="p-2 rounded-lg bg-muted"
-                            title="Download"
-                            onClick={() => void openViewer(doc, false)}
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className="p-2 rounded-lg bg-muted"
-                            title={doc.published ? 'Unpublish' : 'Publish for members'}
-                            onClick={() => void togglePublished(doc)}
-                          >
-                            {doc.published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                          <button
-                            type="button"
-                            className="p-2 rounded-lg bg-destructive/10 text-destructive"
-                            title="Delete"
-                            onClick={() => void deleteDoc(doc)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{doc.title}</p>
+                        {doc.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{doc.description}</p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {fmtDate(doc.created_at)}
+                          {!isResident && (
+                            <span className={`ml-2 ${doc.published ? 'text-emerald-600' : 'text-amber-600'}`}>
+                              {doc.published ? '· Listed for members' : '· Hidden'}
+                            </span>
+                          )}
+                          {!isResident && revealActive && (
+                            <span className="ml-2 text-sky-600">· Viewing enabled ({secondsLeft}s)</span>
+                          )}
+                          {isResident && revealActive && (
+                            <span className="ml-2 text-sky-600">· Clear view ({secondsLeft}s)</span>
+                          )}
+                          {isResident && !revealActive && (
+                            <span className="ml-2 text-amber-600">· Blurred preview</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          type="button"
+                          className="p-2 rounded-lg bg-primary/10 text-primary"
+                          title={isResident ? 'View' : 'Preview'}
+                          disabled={openingId === doc.id}
+                          onClick={() => void openViewer(doc, isResident ?? false)}
+                        >
+                          {openingId === doc.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                        {!isResident && (
+                          <>
+                            <button
+                              type="button"
+                              className="p-2 rounded-lg bg-muted"
+                              title="Download"
+                              onClick={() => void openViewer(doc, false)}
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              className="p-2 rounded-lg bg-muted"
+                              title={doc.published ? 'Hide from members' : 'Show to members (blurred)'}
+                              onClick={() => void togglePublished(doc)}
+                            >
+                              {doc.published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                className={`p-2 rounded-lg w-full ${revealActive ? 'bg-sky-500/15 text-sky-700' : 'bg-muted'}`}
+                                title="Enable clear viewing for members"
+                                onClick={() => setRevealMenuId((id) => (id === doc.id ? null : doc.id))}
+                              >
+                                <Timer className="w-4 h-4" />
+                              </button>
+                              {revealMenuId === doc.id && (
+                                <div className="absolute right-0 top-full mt-1 z-20 min-w-[120px] rounded-lg border border-border bg-card shadow-lg p-1">
+                                  {REVEAL_DURATIONS.map((d) => (
+                                    <button
+                                      key={d.seconds}
+                                      type="button"
+                                      className="w-full text-left px-3 py-2 text-xs rounded-md hover:bg-muted"
+                                      onClick={() => void revealToMembers(doc, d.seconds)}
+                                    >
+                                      {d.label}
+                                    </button>
+                                  ))}
+                                  {revealActive && (
+                                    <button
+                                      type="button"
+                                      className="w-full text-left px-3 py-2 text-xs rounded-md hover:bg-muted text-destructive"
+                                      onClick={() => void hideRevealNow(doc)}
+                                    >
+                                      Hide now
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="p-2 rounded-lg bg-destructive/10 text-destructive"
+                              title="Delete"
+                              onClick={() => void deleteDoc(doc)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           ))}
@@ -433,6 +618,10 @@ export default function SocietyDocumentsManager({ isResident, adminName, viewerL
           mimeType={viewerDoc.mime_type}
           watermark={viewerLabel ?? 'Society document'}
           onClose={closeViewer}
+          contentBlurred={viewerContentBlurred}
+          revealSecondsLeft={
+            isResident && viewerRevealActive ? revealSecondsLeft(viewerDoc, nowMs) : null
+          }
         />
       )}
     </div>
