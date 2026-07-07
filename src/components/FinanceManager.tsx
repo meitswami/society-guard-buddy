@@ -56,7 +56,12 @@ import { sumByChannel, addToChannel, type ChannelTotals } from '@/lib/cashBankCh
 import {
   computeFinancePeriodReport,
   createDefaultOpeningAnchorForm,
+  defaultFinanceFyPeriodFrom,
+  defaultFinancePeriodFrom,
+  defaultFinancePeriodTo,
   filterSocietyLedgerEntries,
+  FINANCE_REPORTING_EARLIEST_MONTH,
+  financeReportingMonthRange,
   isManualOpeningBalanceSetupPeriod,
   openingAnchorRowToForm,
   parseOptionalAnchorAmount,
@@ -119,13 +124,6 @@ const paymentMonthLabel = (payment: any) => {
   if (!raw) return 'Unknown month';
   return fmtIsoMonthToDisplay(billingMonthFromDate(raw));
 };
-
-const defaultFinancePeriodFrom = () => {
-  const y = new Date().getFullYear();
-  return `${y}-04-01`;
-};
-
-const defaultFinancePeriodTo = () => format(new Date(), 'yyyy-MM-dd');
 
 const paymentVerifiedAtOrDate = (p: any) => String(p?.payment_date || p?.verified_at || p?.created_at || '');
 
@@ -5075,7 +5073,28 @@ const FinanceManager = ({
                   type="button"
                   className="btn-secondary text-xs px-3 py-2"
                   onClick={() => {
+                    const { from, to } = financeReportingMonthRange(FINANCE_REPORTING_EARLIEST_MONTH);
+                    setPeriodFrom(from);
+                    setPeriodTo(to);
+                  }}
+                >
+                  Feb 2026
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary text-xs px-3 py-2"
+                  onClick={() => {
                     setPeriodFrom(defaultFinancePeriodFrom());
+                    setPeriodTo(defaultFinancePeriodTo());
+                  }}
+                >
+                  This month → today
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary text-xs px-3 py-2"
+                  onClick={() => {
+                    setPeriodFrom(defaultFinanceFyPeriodFrom());
                     setPeriodTo(defaultFinancePeriodTo());
                   }}
                 >
@@ -5225,7 +5244,7 @@ const FinanceManager = ({
             <div>
               <h3 className="text-sm font-semibold">Manual opening balances</h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                One-time setup for the March 2026 go-live: set verified balances as on a cut-off date (default 28 Feb
+                One-time setup for the Feb–Mar 2026 go-live: set verified balances as on a cut-off date (default 28 Feb
                 2026). Later periods roll forward from transactions — change the period to March 2026 or earlier to
                 edit this anchor. Cash defaults to ₹0; leave blank to use transaction totals for that channel.
               </p>
@@ -5478,9 +5497,17 @@ const FinanceManager = ({
               <input
                 type="month"
                 className="input-field"
+                min={FINANCE_REPORTING_EARLIEST_MONTH}
                 value={totalsMonth}
                 onChange={(e) => setTotalsMonth(e.target.value)}
               />
+              <button
+                type="button"
+                className="btn-secondary text-[10px] px-2 py-1 mt-1.5"
+                onClick={() => setTotalsMonth(FINANCE_REPORTING_EARLIEST_MONTH)}
+              >
+                Feb 2026
+              </button>
             </div>
           </div>
 

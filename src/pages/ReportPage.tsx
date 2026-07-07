@@ -11,7 +11,12 @@ import FinancePeriodHeadTables from '@/components/FinancePeriodHeadTables';
 import { DateInput } from '@/components/DateInput';
 import { useSocietyFinanceReportData } from '@/hooks/useSocietyFinanceReportData';
 import { useSocietyOpeningBalanceAnchors } from '@/hooks/useSocietyOpeningBalanceAnchors';
-import { computeFinancePeriodReport } from '@/lib/financePeriodReport';
+import {
+  computeFinancePeriodReport,
+  defaultFinancePeriodFrom,
+  defaultFinancePeriodTo,
+  FINANCE_REPORTING_EARLIEST_MONTH,
+} from '@/lib/financePeriodReport';
 import { buildPeriodStatementEntries, filterStatementByChannel } from '@/lib/cashFlowStatement';
 import { dateInInclusiveRange, ledgerTransactionDate } from '@/lib/financeDates';
 import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
@@ -38,13 +43,6 @@ interface FinanceEntrySummaryRow {
 type ReportTab = 'financial' | 'visitor' | 'vehicle' | 'all_modules';
 type StatementPeriodMode = 'monthly' | 'custom';
 
-const defaultCustomPeriodFrom = () => {
-  const y = new Date().getFullYear();
-  return `${y}-04-01`;
-};
-
-const defaultCustomPeriodTo = () => format(new Date(), 'yyyy-MM-dd');
-
 const REPORT_TABS: { id: ReportTab; labelKey: string; icon: React.ElementType }[] = [
   { id: 'financial', labelKey: 'Financial Reports', icon: IndianRupee },
   { id: 'visitor', labelKey: 'Visitor Reports', icon: Users },
@@ -58,8 +56,8 @@ const ReportPage = () => {
   const [activeTab, setActiveTab] = useState<ReportTab>('financial');
   const [reportMonth, setReportMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [statementPeriodMode, setStatementPeriodMode] = useState<StatementPeriodMode>('monthly');
-  const [customPeriodFrom, setCustomPeriodFrom] = useState(defaultCustomPeriodFrom);
-  const [customPeriodTo, setCustomPeriodTo] = useState(defaultCustomPeriodTo);
+  const [customPeriodFrom, setCustomPeriodFrom] = useState(defaultFinancePeriodFrom);
+  const [customPeriodTo, setCustomPeriodTo] = useState(defaultFinancePeriodTo);
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [ledgerStatuses, setLedgerStatuses] = useState<{ payment_status: string; count: number; total: number }[]>([]);
   const [maintenanceStatuses, setMaintenanceStatuses] = useState<{ payment_status: string; count: number; total: number }[]>([]);
@@ -563,14 +561,22 @@ const ReportPage = () => {
       </div>
 
       {/* Month Selector */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <Calendar className="w-4 h-4 text-muted-foreground" />
         <input
           type="month"
-          className="input-field text-sm flex-1"
+          className="input-field text-sm flex-1 min-w-[140px]"
+          min={FINANCE_REPORTING_EARLIEST_MONTH}
           value={reportMonth}
           onChange={(e) => setReportMonth(e.target.value)}
         />
+        <button
+          type="button"
+          className="btn-secondary text-xs px-2.5 py-2"
+          onClick={() => setReportMonth(FINANCE_REPORTING_EARLIEST_MONTH)}
+        >
+          Feb 2026
+        </button>
       </div>
 
       {/* Report Type Tabs */}

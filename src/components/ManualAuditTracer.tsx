@@ -20,6 +20,7 @@ import { fmtIsoMonthToDisplay, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import type { AdminTab } from '@/lib/adminPermissions';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { MANUAL_AUDIT_METRICS } from '@/lib/descriptiveMetricCopy';
+import { FINANCE_REPORTING_EARLIEST_MONTH } from '@/lib/financePeriodReport';
 
 interface Props {
   onNavigate?: (tab: AdminTab) => void;
@@ -407,6 +408,7 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
             <input
               type="month"
               className="input-field mt-0.5 text-sm"
+              min={FINANCE_REPORTING_EARLIEST_MONTH}
               value={month}
               onChange={(e) => setMonth(e.target.value)}
             />

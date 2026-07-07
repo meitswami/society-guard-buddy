@@ -65,11 +65,51 @@ export type FinancePeriodReserveTransfer = {
 
 export const DEFAULT_OPENING_ANCHOR_DATE = '2026-02-28';
 
-/** Last period start (inclusive) that shows manual opening-balance setup — March 2026 go-live only. */
+/** First month with society finance reporting (pre-go-live expenses e.g. Feb 2026). */
+export const FINANCE_REPORTING_EARLIEST_MONTH = '2026-02';
+export const FINANCE_REPORTING_EARLIEST_DATE = '2026-02-01';
+
+/** Last period start (inclusive) that shows manual opening-balance setup — Feb–Mar 2026 go-live window. */
 export const MANUAL_OPENING_BALANCE_LAST_PERIOD_FROM = '2026-03-31';
 
 export function isManualOpeningBalanceSetupPeriod(periodFrom: string): boolean {
   return periodFrom.slice(0, 10) <= MANUAL_OPENING_BALANCE_LAST_PERIOD_FROM;
+}
+
+export function clampFinancePeriodFrom(date: string): string {
+  const d = date.slice(0, 10);
+  return d < FINANCE_REPORTING_EARLIEST_DATE ? FINANCE_REPORTING_EARLIEST_DATE : d;
+}
+
+/** Inclusive yyyy-MM-dd range for a reporting month (yyyy-MM). */
+export function financeReportingMonthRange(ym: string): { from: string; to: string } {
+  const prefix = ym.slice(0, 7);
+  const [y, mo] = prefix.split('-').map(Number);
+  const lastDay = new Date(y, mo, 0).getDate();
+  return {
+    from: `${prefix}-01`,
+    to: `${prefix}-${String(lastDay).padStart(2, '0')}`,
+  };
+}
+
+export function defaultFinancePeriodFrom(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  return clampFinancePeriodFrom(`${y}-${m}-01`);
+}
+
+export function defaultFinancePeriodTo(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function defaultFinanceFyPeriodFrom(): string {
+  const y = new Date().getFullYear();
+  return clampFinancePeriodFrom(`${y}-04-01`);
 }
 
 export type FinanceOpeningBalanceAnchor = {
