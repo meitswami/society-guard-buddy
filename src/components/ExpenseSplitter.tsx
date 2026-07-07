@@ -9,6 +9,7 @@ import { flatOptionsWithPrimaryLabel, residentLabelForFlatRow } from '@/lib/flat
 import { format } from 'date-fns';
 import { fmtIsoDateToDisplay, fmtIsoMonthToDisplay } from '@/lib/dateFormat';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
+import { adjustSplitRemainder, computeEqualSplitAmounts } from '@/lib/equalSplitAmounts';
 import { insertFinanceLedgerForGroupExpense, syncFinanceLedgerFromGroupExpenseEdit } from '@/lib/groupExpenseFinanceLedger';
 import { computeHeadcountAmounts, headcountForFlat, type FlatMemberRow } from '@/lib/flatHeadcountSplit';
 import { DateInput } from '@/components/DateInput';
@@ -543,15 +544,15 @@ const ExpenseSplitter = ({
             : 'equal_all';
 
     if (splitMode === 'even') {
-      const splitAmount = total / targets.length;
-      splitRows = targets.map((num) => {
-        const flat = activeFlats.find((f) => f.flat_number === num);
+      const equalAmounts = computeEqualSplitAmounts(total, targets);
+      splitRows = equalAmounts.map(({ flat_number, amount }) => {
+        const flat = activeFlats.find((f) => f.flat_number === flat_number);
         return {
           expense_id: '',
-          flat_number: num,
-          amount: Number(splitAmount.toFixed(2)),
-          is_settled: paidBySorted.includes(num),
-          settled_at: paidBySorted.includes(num) ? new Date().toISOString() : null,
+          flat_number,
+          amount,
+          is_settled: paidBySorted.includes(flat_number),
+          settled_at: paidBySorted.includes(flat_number) ? new Date().toISOString() : null,
           resident_name: residentLabelForFlatRow(flat?.id, flat?.owner_name ?? null, primaryByFlatId),
         };
       });
@@ -860,11 +861,15 @@ const ExpenseSplitter = ({
 
     if (old.split_type !== 'society_fund' && expSplits.length > 0 && Math.abs(newTotal - oldTotal) > 0.01) {
       const ratio = newTotal / oldTotal;
-      for (const s of expSplits) {
+      const scaled = adjustSplitRemainder(
+        newTotal,
+        expSplits.map((s) => Number((Number(s.amount) * ratio).toFixed(2))),
+      );
+      for (let i = 0; i < expSplits.length; i++) {
         const { error: uErr } = await supabase
           .from('expense_splits')
-          .update({ amount: Number((Number(s.amount) * ratio).toFixed(2)) })
-          .eq('id', s.id);
+          .update({ amount: scaled[i] })
+          .eq('id', expSplits[i].id);
         if (uErr) {
           toast.error(uErr.message);
           return;
@@ -913,6 +918,7 @@ const ExpenseSplitter = ({
     const syncRes = editCategory === 'food'
       ? { error: null }
       : await syncFinanceLedgerFromGroupExpenseEdit(supabase, {
+      societyId: societyId!,
       adminName,
       groupName,
       expenseId: expenseEdit.id,
@@ -920,6 +926,7 @@ const ExpenseSplitter = ({
       total: newTotal,
       expenseDate: expenseEdit.expense_date,
       payment_method: expenseEdit.payment_method,
+      screenshot_url: expenseEdit.attachment_urls[0] ?? null,
       notes: expenseEdit.notes.trim() || null,
       vendor_or_service: expenseEdit.vendor_or_service.trim() || null,
       flats,

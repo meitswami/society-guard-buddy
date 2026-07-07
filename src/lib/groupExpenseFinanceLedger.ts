@@ -118,6 +118,7 @@ export async function insertFinanceLedgerForGroupExpense(
 export async function syncFinanceLedgerFromGroupExpenseEdit(
   client: SupabaseClient,
   opts: {
+    societyId: string;
     adminName: string;
     groupName: string;
     expenseId: string;
@@ -125,6 +126,7 @@ export async function syncFinanceLedgerFromGroupExpenseEdit(
     total: number;
     expenseDate: string;
     payment_method: string;
+    screenshot_url?: string | null;
     notes: string | null;
     vendor_or_service: string | null;
     flats: { id: string; flat_number: string }[];
@@ -138,7 +140,27 @@ export async function syncFinanceLedgerFromGroupExpenseEdit(
 ): Promise<{ error: string | null }> {
   const { data: fe, error: findErr } = await client.from('finance_entries').select('id').eq('expense_id', opts.expenseId).maybeSingle();
   if (findErr) return { error: findErr.message };
-  if (!fe?.id) return { error: null };
+  if (!fe?.id) {
+    return insertFinanceLedgerForGroupExpense(client, {
+      societyId: opts.societyId,
+      adminName: opts.adminName,
+      groupName: opts.groupName,
+      expenseId: opts.expenseId,
+      title: opts.title,
+      total: opts.total,
+      expenseDate: opts.expenseDate,
+      payment_method: opts.payment_method,
+      screenshot_url: opts.screenshot_url ?? null,
+      notes: opts.notes,
+      vendor_or_service: opts.vendor_or_service,
+      allocationSplits: opts.allocationSplits,
+      flats: opts.flats,
+      counterpartyName: opts.counterpartyName,
+      counterpartyRelation: opts.counterpartyRelation,
+      expenseCategory: opts.expenseCategory,
+      eventTitle: opts.eventTitle,
+    });
+  }
 
   const transaction_date = opts.expenseDate.slice(0, 10);
   const entry_month = entryMonthFromExpenseDate(transaction_date);
