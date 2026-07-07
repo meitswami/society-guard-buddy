@@ -8,6 +8,7 @@ import 'family_members_screen.dart';
 import 'feedback_screen.dart';
 import 'meetings_screen.dart';
 import 'polls_screen.dart';
+import 'society_documents_screen.dart';
 import 'vehicles_screen.dart';
 
 class MoreMenuScreen extends StatelessWidget {
@@ -52,6 +53,12 @@ class MoreMenuScreen extends StatelessWidget {
         'Meetings',
         'Published minutes',
         () => _openScreen(context, MeetingsScreen(session: session)),
+      ),
+      _MenuItem(
+        Icons.folder_copy_outlined,
+        'Society documents',
+        'Bylaws & notices',
+        () => _openScreen(context, SocietyDocumentsScreen(session: session)),
       ),
       _MenuItem(
         Icons.account_balance_outlined,

@@ -204,6 +204,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'resident.demo': { en: 'Demo: 9876543210 / resident123', hi: 'डेमो: 9876543210 / resident123' },
   'resident.approvals': { en: 'Approvals', hi: 'अनुमोदन' },
   'resident.passes': { en: 'Visitor Passes', hi: 'विज़िटर पास' },
+  'resident.documents': { en: 'Documents', hi: 'दस्तावेज़' },
   'resident.pendingApprovals': { en: 'Pending Approvals', hi: 'लंबित अनुमोदन' },
   'resident.approve': { en: 'Approve', hi: 'स्वीकार' },
   'resident.reject': { en: 'Reject', hi: 'अस्वीकार' },

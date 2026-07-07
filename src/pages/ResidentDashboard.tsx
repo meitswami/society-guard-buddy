@@ -1073,7 +1073,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     { id: 'notifications' as const, label: 'Alerts', icon: Bell },
     { id: 'polls' as const, label: 'Polls', icon: Vote },
     { id: 'meetings' as const, label: 'Meetings', icon: ScrollText },
-    { id: 'documents' as const, label: 'Documents', icon: FolderLock },
+    { id: 'documents' as const, label: t('resident.documents'), icon: FolderLock },
     { id: 'committee' as const, label: 'Committee', icon: Landmark },
     { id: 'payments' as const, label: 'Payments', icon: IndianRupee },
     { id: 'profile' as const, label: 'Profile', icon: User },

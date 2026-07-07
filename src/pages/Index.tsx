@@ -250,7 +250,10 @@ const AppContent = () => {
           onGuardLogin={() => {}}
           onResidentLogin={(resident) => {
             const sid = useStore.getState().societyId;
-            if (sid) writePersistedSession({ v: 1, role: 'resident', societyId: sid, resident });
+            if (sid) {
+              setSocietyId(sid);
+              writePersistedSession({ v: 1, role: 'resident', societyId: sid, resident });
+            }
             setResidentUser(resident);
           }}
           onAdminLogin={(admin) => {
@@ -359,6 +362,7 @@ const AppContent = () => {
         <ResidentLoginPage
           societyId={loginSociety.id}
           onLogin={(resident) => {
+            setSocietyId(loginSociety.id);
             writePersistedSession({ v: 1, role: 'resident', societyId: loginSociety.id, resident });
             setResidentUser(resident);
           }}
