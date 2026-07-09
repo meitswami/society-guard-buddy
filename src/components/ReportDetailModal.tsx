@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { filterReportDetailRows } from '@/lib/reportQueryFilter';
 import { monthlyAmountTotals, sumAmountRows } from '@/lib/statementAmountTotals';
 
 export interface ReportDetailRow {
@@ -30,6 +31,10 @@ interface Props {
   onBack?: () => void;
   /** Optional footer actions (e.g. statement buttons) */
   footerActions?: React.ReactNode;
+  /** Pre-fill search from report page query */
+  initialSearchQuery?: string;
+  /** Show in-modal search to refine rows */
+  searchable?: boolean;
 }
 
 const ReportDetailModal = ({
@@ -43,11 +48,21 @@ const ReportDetailModal = ({
   onRowClick,
   onBack,
   footerActions,
+  initialSearchQuery = '',
+  searchable = true,
 }: Props) => {
-  const rowsWithAmounts = useMemo(() => rows.filter((r) => r.amount !== undefined), [rows]);
+  const [modalSearch, setModalSearch] = useState(initialSearchQuery);
+
+  useEffect(() => {
+    if (open) setModalSearch(initialSearchQuery);
+  }, [open, initialSearchQuery]);
+
+  const filteredRows = useMemo(() => filterReportDetailRows(rows, modalSearch), [rows, modalSearch]);
+  const rowsWithAmounts = useMemo(() => filteredRows.filter((r) => r.amount !== undefined), [filteredRows]);
   const transactionTotal = useMemo(() => sumAmountRows(rowsWithAmounts), [rowsWithAmounts]);
   const monthlyTotals = useMemo(() => monthlyAmountTotals(rowsWithAmounts), [rowsWithAmounts]);
   const hasAmounts = rowsWithAmounts.length > 0;
+  const showSearch = searchable && rows.length > 0;
 
   if (!open) return null;
 
@@ -90,13 +105,34 @@ const ReportDetailModal = ({
           </div>
         </div>
 
+        {showSearch && (
+          <div className="px-4 pt-3 pb-1 border-b border-border/60">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                className="input-field pl-9 text-xs"
+                placeholder="Search in this list…"
+                value={modalSearch}
+                onChange={(e) => setModalSearch(e.target.value)}
+              />
+            </div>
+            {modalSearch.trim() && (
+              <p className="text-[10px] text-muted-foreground mt-1.5">
+                {filteredRows.length} of {rows.length} match
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4">
           {rows.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8">No data available</p>
+          ) : filteredRows.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">No matches for your search</p>
           ) : (
             <div className="flex flex-col gap-1">
-              {rows.map((row) => {
+              {filteredRows.map((row) => {
                 const RowTag = canDrill ? 'button' : 'div';
                 return (
                   <RowTag
@@ -188,7 +224,8 @@ const ReportDetailModal = ({
             </p>
           )}
           <p className="text-[10px] text-muted-foreground text-center">
-            {rows.length} record{rows.length !== 1 ? 's' : ''}
+            {filteredRows.length} record{filteredRows.length !== 1 ? 's' : ''}
+            {modalSearch.trim() && filteredRows.length !== rows.length ? ` (of ${rows.length})` : ''}
             {canDrill ? ' · Tap a row for entry detail' : ''}
           </p>
         </div>

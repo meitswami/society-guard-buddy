@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, Calendar, CalendarRange, Users, Car, Truck, Shield, IndianRupee, Heart, Split, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench } from 'lucide-react';
+import { BarChart3, Calendar, CalendarRange, Users, Car, Truck, Shield, IndianRupee, Heart, Split, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench, Search } from 'lucide-react';
 import { format, parse, endOfMonth } from 'date-fns';
 import { fmtDate, fmtDateTime, fmtIsoDateToDisplay, fmtIsoMonthToDisplay } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -24,6 +24,7 @@ import { REPORT_MAINTENANCE_METRICS, REPORT_PAGE_METRICS } from '@/lib/descripti
 import ExportFormatMenu from '@/components/ExportFormatMenu';
 import { downloadMonthlyReport } from '@/lib/monthlyReportExport';
 import type { ExportFormat } from '@/lib/reportExportUtils';
+import { filterLedgerEntries, filterShiftRows, filterVisitorRows } from '@/lib/reportQueryFilter';
 import { toast } from 'sonner';
 
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }
@@ -54,6 +55,7 @@ const ReportPage = () => {
   const { visitors, societyId } = useStore();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<ReportTab>('financial');
+  const [searchQuery, setSearchQuery] = useState('');
   const [reportMonth, setReportMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [statementPeriodMode, setStatementPeriodMode] = useState<StatementPeriodMode>('monthly');
   const [customPeriodFrom, setCustomPeriodFrom] = useState(defaultFinancePeriodFrom);
@@ -206,6 +208,11 @@ const ReportPage = () => {
 
   // Visitors for the selected month
   const monthVisitors = useMemo(() => visitors.filter(v => v.entryTime.startsWith(reportMonth)), [visitors, reportMonth]);
+  const searchedMonthVisitors = useMemo(
+    () => filterVisitorRows(monthVisitors, searchQuery),
+    [monthVisitors, searchQuery],
+  );
+  const searchedShifts = useMemo(() => filterShiftRows(shifts, searchQuery), [shifts, searchQuery]);
 
   const periodReport = useMemo(
     () =>
@@ -244,9 +251,14 @@ const ReportPage = () => {
     );
   }, [societyLedgerEntries, statementPeriodFrom, statementPeriodTo]);
 
+  const searchedPeriodFinanceEntries = useMemo(
+    () => filterLedgerEntries(periodFinanceEntries, searchQuery),
+    [periodFinanceEntries, searchQuery],
+  );
+
   useEffect(() => {
     const map = new Map<string, { count: number; total: number }>();
-    for (const e of periodFinanceEntries) {
+    for (const e of searchedPeriodFinanceEntries) {
       const st = String(e.payment_status ?? 'verified');
       const cur = map.get(st) ?? { count: 0, total: 0 };
       cur.count += 1;
@@ -254,11 +266,11 @@ const ReportPage = () => {
       map.set(st, cur);
     }
     setLedgerStatuses([...map.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
-  }, [periodFinanceEntries]);
+  }, [searchedPeriodFinanceEntries]);
 
   const financeGroups = useMemo(() => {
     const map = new Map<string, { total: number; flatUnits: number; count: number }>();
-    for (const e of periodFinanceEntries) {
+    for (const e of searchedPeriodFinanceEntries) {
       const key = `${e.record_mode}||${e.destination}`;
       const cur = map.get(key) ?? { total: 0, flatUnits: 0, count: 0 };
       cur.total += Number(e.total_amount || 0);
@@ -270,7 +282,7 @@ const ReportPage = () => {
       const [record_mode, destination] = k.split('||');
       return { record_mode, destination, ...v };
     });
-  }, [periodFinanceEntries]);
+  }, [searchedPeriodFinanceEntries]);
 
   const financePeriodTotal = useMemo(() => financeGroups.reduce((s, g) => s + g.total, 0), [financeGroups]);
 
@@ -282,19 +294,43 @@ const ReportPage = () => {
     [societyLedgerEntries, monthFrom, monthTo],
   );
 
-  const monthFinanceTotal = useMemo(
-    () => monthFinanceEntries.reduce((s, e) => s + Number(e.total_amount || 0), 0),
-    [monthFinanceEntries],
+  const searchedMonthFinanceEntries = useMemo(
+    () => filterLedgerEntries(monthFinanceEntries, searchQuery),
+    [monthFinanceEntries, searchQuery],
   );
 
-  // Visitor stats for the month
+  const monthFinanceTotal = useMemo(
+    () => searchedMonthFinanceEntries.reduce((s, e) => s + Number(e.total_amount || 0), 0),
+    [searchedMonthFinanceEntries],
+  );
+
+  const displayVisitors = searchedMonthVisitors;
+  const displayVehicleEntries = useMemo(
+    () => searchedMonthVisitors.filter((v) => v.vehicleNumber),
+    [searchedMonthVisitors],
+  );
+
+  // Visitor stats for the month (respects search when active)
   const visitorStats = useMemo(() => ({
-    totalVisitors: monthVisitors.filter(v => v.category === 'visitor').length,
-    totalVehicles: monthVisitors.filter(v => v.vehicleNumber).length,
-    totalDeliveries: monthVisitors.filter(v => v.category === 'delivery' || v.category === 'service').length,
-    currentlyInside: monthVisitors.filter(v => !v.exitTime).length,
-    uniqueFlats: new Set(monthVisitors.map(v => v.flatNumber)).size,
-  }), [monthVisitors]);
+    totalVisitors: displayVisitors.filter(v => v.category === 'visitor').length,
+    totalVehicles: displayVisitors.filter(v => v.vehicleNumber).length,
+    totalDeliveries: displayVisitors.filter(v => v.category === 'delivery' || v.category === 'service').length,
+    currentlyInside: displayVisitors.filter(v => !v.exitTime).length,
+    uniqueFlats: new Set(displayVisitors.map(v => v.flatNumber)).size,
+  }), [displayVisitors]);
+
+  const reportSearchPlaceholder = useMemo(() => {
+    switch (activeTab) {
+      case 'financial':
+        return t('report.searchPlaceholderFinancial');
+      case 'visitor':
+        return t('report.searchPlaceholderVisitor');
+      case 'vehicle':
+        return t('report.searchPlaceholderVehicle');
+      default:
+        return t('report.searchPlaceholderAll');
+    }
+  }, [activeTab, t]);
 
   const statementEntriesToRows = (entries: ReturnType<typeof buildPeriodStatementEntries>): ReportDetailRow[] =>
     entries.map((e) => ({
@@ -349,7 +385,7 @@ const ReportPage = () => {
   };
 
   const openMonthFinanceModal = () => {
-    const rows: ReportDetailRow[] = monthFinanceEntries.map((e) => ({
+    const rows: ReportDetailRow[] = searchedMonthFinanceEntries.map((e) => ({
       id: e.id,
       label: `${String(e.record_mode).replace(/_/g, ' ')} → ${e.destination.replace(/_/g, ' ')}`,
       sublabel: `Flats: ${e.aggregate_flat_count ?? 0} | Method: ${e.payment_method || 'N/A'}`,
@@ -366,7 +402,7 @@ const ReportPage = () => {
   };
 
   const openGrossAmountModal = () => {
-    const rows: ReportDetailRow[] = periodFinanceEntries.map((e) => ({
+    const rows: ReportDetailRow[] = searchedPeriodFinanceEntries.map((e) => ({
       id: e.id,
       label: `${String(e.record_mode).replace(/_/g, ' ')} → ${e.destination.replace(/_/g, ' ')}`,
       sublabel: `Flats: ${e.aggregate_flat_count ?? 0} | Method: ${e.payment_method || 'N/A'}`,
@@ -383,7 +419,7 @@ const ReportPage = () => {
   };
 
   const openLedgerStatusModal = (status: string, count: number, total: number) => {
-    const rows: ReportDetailRow[] = periodFinanceEntries
+    const rows: ReportDetailRow[] = searchedPeriodFinanceEntries
       .filter((e) => String(e.payment_status ?? 'verified') === status)
       .map((e) => ({
         id: e.id,
@@ -402,7 +438,7 @@ const ReportPage = () => {
   };
 
   const openVisitorModal = () => {
-    const rows: ReportDetailRow[] = monthVisitors
+    const rows: ReportDetailRow[] = displayVisitors
       .filter(v => v.category === 'visitor')
       .map(v => ({
         id: v.id,
@@ -420,7 +456,7 @@ const ReportPage = () => {
   };
 
   const openVehicleModal = () => {
-    const rows: ReportDetailRow[] = monthVisitors
+    const rows: ReportDetailRow[] = displayVehicleEntries
       .filter(v => v.vehicleNumber)
       .map(v => ({
         id: v.id,
@@ -438,7 +474,7 @@ const ReportPage = () => {
   };
 
   const openDeliveryModal = () => {
-    const rows: ReportDetailRow[] = monthVisitors
+    const rows: ReportDetailRow[] = displayVisitors
       .filter(v => v.category === 'delivery' || v.category === 'service')
       .map(v => ({
         id: v.id,
@@ -456,7 +492,7 @@ const ReportPage = () => {
   };
 
   const openShiftModal = () => {
-    const rows: ReportDetailRow[] = shifts.map(s => ({
+    const rows: ReportDetailRow[] = searchedShifts.map(s => ({
       id: s.id,
       label: s.guard_name,
       sublabel: `Guard ID: ${s.guard_id}`,
@@ -508,7 +544,7 @@ const ReportPage = () => {
       societyName,
       reportMonth: statementPeriodLabel,
       tab: activeTab,
-      financeEntries: periodFinanceEntries.map((e) => ({
+      financeEntries: searchedPeriodFinanceEntries.map((e) => ({
         record_mode: String(e.record_mode ?? ''),
         destination: e.destination,
         total_amount: Number(e.total_amount || 0),
@@ -537,7 +573,7 @@ const ReportPage = () => {
             totalExpenses: periodReport.totalExpenses,
           }
         : undefined,
-      visitors: monthVisitors,
+      visitors: displayVisitors,
       visitorStats,
     });
     toast.success(`${format.toUpperCase()} downloaded`);
@@ -577,6 +613,44 @@ const ReportPage = () => {
         >
           Feb 2026
         </button>
+      </div>
+
+      {/* On-demand search */}
+      <div className="mb-4 rounded-lg border border-border bg-card/40 p-3">
+        <p className="text-[11px] font-medium text-foreground mb-2">{t('report.searchTitle')}</p>
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            className="input-field pl-9 text-sm"
+            placeholder={reportSearchPlaceholder}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        {searchQuery.trim() && (
+          <p className="text-[10px] text-muted-foreground mt-2">
+            {activeTab === 'financial' && (
+              <>
+                {searchedPeriodFinanceEntries.length} of {periodFinanceEntries.length} ledger entries match
+              </>
+            )}
+            {activeTab === 'visitor' && (
+              <>
+                {displayVisitors.length} of {monthVisitors.length} entries match
+              </>
+            )}
+            {activeTab === 'vehicle' && (
+              <>
+                {displayVehicleEntries.length} of {monthVisitors.filter((v) => v.vehicleNumber).length} vehicle entries match
+              </>
+            )}
+            {activeTab === 'all_modules' && (
+              <>
+                {searchedMonthFinanceEntries.length} finance · {displayVisitors.length} visitors · {searchedShifts.length} shifts match
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       {/* Report Type Tabs */}
@@ -729,7 +803,7 @@ const ReportPage = () => {
             className="w-full mb-4 rounded-lg border border-border bg-muted/20 !p-3 shadow-none"
             value={
               <span className="text-sm font-mono font-semibold">
-                ₹{financePeriodTotal.toLocaleString('en-IN')} · {periodFinanceEntries.length} {t('report.entryCountLabel')}
+                ₹{financePeriodTotal.toLocaleString('en-IN')} · {searchedPeriodFinanceEntries.length} {t('report.entryCountLabel')}
               </span>
             }
             valueClassName="text-sm"
@@ -952,12 +1026,17 @@ const ReportPage = () => {
           </div>
 
           {/* Visitor entries list */}
-          <h2 className="text-sm font-semibold mb-3">Entries ({monthVisitors.length})</h2>
-          {monthVisitors.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">{t('report.noEntries')}</p>
+          <h2 className="text-sm font-semibold mb-3">
+            {t('report.entries')} ({displayVisitors.length}
+            {searchQuery.trim() && displayVisitors.length !== monthVisitors.length ? ` / ${monthVisitors.length}` : ''})
+          </h2>
+          {displayVisitors.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              {searchQuery.trim() ? t('report.searchNoResults') : t('report.noEntries')}
+            </p>
           ) : (
             <div className="flex flex-col gap-1.5">
-              {monthVisitors.slice(0, 30).map(v => (
+              {displayVisitors.map(v => (
                 <div key={v.id} className="card-section py-2.5 flex items-center gap-2">
                   <div className={`w-1.5 h-1.5 rounded-full ${v.exitTime ? 'bg-muted-foreground' : 'bg-success'}`} />
                   <div className="flex-1 min-w-0">
@@ -967,9 +1046,6 @@ const ReportPage = () => {
                   {v.vehicleNumber && <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded">{v.vehicleNumber}</span>}
                 </div>
               ))}
-              {monthVisitors.length > 30 && (
-                <p className="text-[10px] text-muted-foreground text-center py-2">+ {monthVisitors.length - 30} more entries</p>
-              )}
             </div>
           )}
         </div>
@@ -1004,14 +1080,19 @@ const ReportPage = () => {
           </div>
 
           {/* Vehicle entries list */}
-          <h2 className="text-sm font-semibold mb-3">Vehicle Entries</h2>
-          {(() => {
-            const vehicleEntries = monthVisitors.filter(v => v.vehicleNumber);
-            return vehicleEntries.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">No vehicle entries this month</p>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {vehicleEntries.slice(0, 30).map(v => (
+          <h2 className="text-sm font-semibold mb-3">
+            Vehicle Entries ({displayVehicleEntries.length}
+            {searchQuery.trim() && displayVehicleEntries.length !== monthVisitors.filter((v) => v.vehicleNumber).length
+              ? ` / ${monthVisitors.filter((v) => v.vehicleNumber).length}`
+              : ''})
+          </h2>
+          {displayVehicleEntries.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              {searchQuery.trim() ? t('report.searchNoResults') : 'No vehicle entries this month'}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {displayVehicleEntries.map(v => (
                   <div key={v.id} className="card-section py-2.5 flex items-center gap-2">
                     <Car className="w-4 h-4 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -1022,13 +1103,9 @@ const ReportPage = () => {
                       {v.exitTime ? 'Exited' : 'Inside'}
                     </span>
                   </div>
-                ))}
-                {vehicleEntries.length > 30 && (
-                  <p className="text-[10px] text-muted-foreground text-center py-2">+ {vehicleEntries.length - 30} more</p>
-                )}
-              </div>
-            );
-          })()}
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1053,7 +1130,7 @@ const ReportPage = () => {
               navigateLabel="View finance detail"
               className="border border-border rounded-xl bg-card/50 shadow-none"
             >
-              <p className="text-[10px] text-muted-foreground mt-1">{monthFinanceEntries.length} entries</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{searchedMonthFinanceEntries.length} entries</p>
             </DescriptiveStatCard>
 
             <DescriptiveStatCard
@@ -1066,7 +1143,7 @@ const ReportPage = () => {
                   <span className="text-xs font-semibold">Guard Shifts</span>
                 </div>
               }
-              value={shifts.length}
+              value={searchedShifts.length}
               onNavigate={openShiftModal}
               navigateLabel="View shift list"
               className="border border-border rounded-xl bg-card/50 shadow-none"
@@ -1206,6 +1283,7 @@ const ReportPage = () => {
         subtitle={modalSubtitle}
         totalAmount={modalTotal}
         rows={modalRows}
+        initialSearchQuery={searchQuery}
       />
     </div>
   );

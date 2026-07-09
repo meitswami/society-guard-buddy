@@ -728,6 +728,24 @@ const translations: Record<string, Record<Lang, string>> = {
   'report.more': { en: 'more — use Print/CSV for full list', hi: 'और — पूरी सूची के लिए प्रिंट/सीएसवी उपयोग करें' },
   'report.flatsVisited': { en: 'Flats Visited', hi: 'फ्लैट विज़िट' },
   'report.print': { en: 'Print', hi: 'प्रिंट' },
+  'report.searchTitle': { en: 'Search report data', hi: 'रिपोर्ट डेटा खोजें' },
+  'report.searchPlaceholderFinancial': {
+    en: 'Flat, amount, mode, destination, txn id, notes…',
+    hi: 'फ्लैट, राशि, मोड, गंतव्य, ट्रांज़ैक्शन आईडी, नोट्स…',
+  },
+  'report.searchPlaceholderVisitor': {
+    en: 'Name, phone, flat, vehicle, guard, purpose…',
+    hi: 'नाम, फोन, फ्लैट, वाहन, गार्ड, उद्देश्य…',
+  },
+  'report.searchPlaceholderVehicle': {
+    en: 'Vehicle number, name, flat…',
+    hi: 'वाहन नंबर, नाम, फ्लैट…',
+  },
+  'report.searchPlaceholderAll': {
+    en: 'Search across finance, visitors, guards…',
+    hi: 'वित्त, आगंतुक, गार्ड में खोजें…',
+  },
+  'report.searchNoResults': { en: 'No entries match your search', hi: 'आपकी खोज से कोई एंट्री मेल नहीं खाती' },
 
   // SWAL confirmations
   'swal.confirmExit': { en: 'Mark Exit?', hi: 'बाहर जाने की पुष्टि करें?' },
