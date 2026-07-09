@@ -583,7 +583,7 @@ const ReportPage = () => {
   return (
     <div className="page-container">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between mb-4 gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <BarChart3 className="w-5 h-5 text-primary" />
@@ -593,26 +593,20 @@ const ReportPage = () => {
             <p className="text-xs text-muted-foreground">{t('report.subtitle')}</p>
           </div>
         </div>
-        <ExportFormatMenu label="Export" onExport={exportReport} />
-      </div>
-
-      {/* Month Selector */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <Calendar className="w-4 h-4 text-muted-foreground" />
-        <input
-          type="month"
-          className="input-field text-sm flex-1 min-w-[140px]"
-          min={FINANCE_REPORTING_EARLIEST_MONTH}
-          value={reportMonth}
-          onChange={(e) => setReportMonth(e.target.value)}
-        />
-        <button
-          type="button"
-          className="btn-secondary text-xs px-2.5 py-2"
-          onClick={() => setReportMonth(FINANCE_REPORTING_EARLIEST_MONTH)}
-        >
-          Feb 2026
-        </button>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <ExportFormatMenu label="Export" onExport={exportReport} />
+          <label className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1.5 cursor-pointer">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{fmtIsoMonthToDisplay(reportMonth)}</span>
+            <input
+              type="month"
+              className="sr-only"
+              min={FINANCE_REPORTING_EARLIEST_MONTH}
+              value={reportMonth}
+              onChange={(e) => setReportMonth(e.target.value)}
+            />
+          </label>
+        </div>
       </div>
 
       {/* On-demand search */}
