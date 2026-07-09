@@ -261,6 +261,50 @@ type TransactionHeadModalLayer = {
   drillable: boolean;
 };
 
+type UnpaidFlatGridRow = {
+  flat_number: string;
+  primary_name: string;
+  is_occupied: boolean | null;
+  pending_payment: 'pending' | 'rejected' | null;
+  due_amount: number | null;
+  charge_title: string | null;
+};
+
+function chargeForUnpaidFilters(
+  charges: any[],
+  paymentTypeFilter: string,
+  paymentMonthFilter: string,
+): { title: string; amount: number } | null {
+  if (
+    paymentTypeFilter === 'all_payments' ||
+    paymentTypeFilter === 'society_pool_pending' ||
+    paymentTypeFilter === 'corpus' ||
+    paymentTypeFilter === 'outsider_mixed'
+  ) {
+    return null;
+  }
+
+  const pool = charges.filter((c) => {
+    if (paymentTypeFilter === 'monthly_maintenance') return isMonthlyMaintenanceCharge(c);
+    if (paymentTypeFilter === 'all' || paymentTypeFilter === 'all_receipts') return true;
+    if (paymentTypeFilter === 'other') return false;
+    return String(c.frequency).toLowerCase() === paymentTypeFilter;
+  });
+  if (pool.length === 0) return null;
+
+  if (paymentMonthFilter !== 'all') {
+    const monthName = format(new Date(`${paymentMonthFilter}-15T12:00:00`), 'MMMM').toLowerCase();
+    const match =
+      pool.find((c) => normalizeTitle(c.title).includes(monthName)) ??
+      pool.find((c) => normalizeTitle(c.title).includes(paymentMonthFilter));
+    if (match) return { title: match.title, amount: Number(match.amount) || 0 };
+  }
+
+  const current =
+    pool.find((c) => isMonthlyMaintenanceCharge(c) && isCurrentMonthChargeTitle(c.title)) ?? pool[0];
+  return current ? { title: current.title, amount: Number(current.amount) || 0 } : null;
+}
+
 const transactionFilterHint = (filter: string): string => {
   switch (filter) {
     case 'all_payments':
@@ -275,6 +319,106 @@ const transactionFilterHint = (filter: string): string => {
       return 'Filter by charge type or recording mode. Use society pool when recording, then distribute from the receipt row when needed.';
   }
 };
+
+function UnpaidFlatGridTable({
+  rows,
+  emptyMessage,
+  showChargeColumn = true,
+}: {
+  rows: UnpaidFlatGridRow[];
+  emptyMessage: string;
+  showChargeColumn?: boolean;
+}) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-8">{emptyMessage}</p>;
+  }
+
+  const totalDue = rows.reduce((sum, row) => sum + (row.due_amount ?? 0), 0);
+  const hasDueAmounts = showChargeColumn && rows.some((row) => row.due_amount != null);
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[10px] border border-border rounded-md overflow-hidden">
+        <thead>
+          <tr className="bg-muted/50 text-left">
+            <th className="p-1.5 border-b border-border w-10">#</th>
+            <th className="p-1.5 border-b border-border">Flat</th>
+            <th className="p-1.5 border-b border-border">Resident</th>
+            <th className="p-1.5 border-b border-border">Occupancy</th>
+            {showChargeColumn && (
+              <th className="p-1.5 border-b border-border">Charge</th>
+            )}
+            {hasDueAmounts && (
+              <th className="p-1.5 border-b border-border text-right">Due amount</th>
+            )}
+            <th className="p-1.5 border-b border-border">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, idx) => (
+            <tr key={row.flat_number} className="border-b border-border/60 hover:bg-muted/20">
+              <td className="p-1.5 text-muted-foreground">{idx + 1}</td>
+              <td className="p-1.5 font-semibold font-mono">{row.flat_number}</td>
+              <td className="p-1.5 max-w-[180px] truncate" title={row.primary_name || 'Primary member not found'}>
+                {row.primary_name || 'Primary member not found'}
+              </td>
+              <td className="p-1.5">
+                <span
+                  className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    row.is_occupied
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {row.is_occupied ? 'Occupied' : 'Vacant'}
+                </span>
+              </td>
+              {showChargeColumn && (
+                <td className="p-1.5 max-w-[160px] truncate text-muted-foreground" title={row.charge_title ?? '—'}>
+                  {row.charge_title ?? '—'}
+                </td>
+              )}
+              {hasDueAmounts && (
+                <td className="p-1.5 text-right font-mono font-medium">
+                  {row.due_amount != null ? `₹${row.due_amount.toLocaleString('en-IN')}` : '—'}
+                </td>
+              )}
+              <td className="p-1.5">
+                {row.pending_payment === 'pending' ? (
+                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    Pending
+                  </span>
+                ) : row.pending_payment === 'rejected' ? (
+                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
+                    Rejected
+                  </span>
+                ) : (
+                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-destructive/20 text-destructive">
+                    Unpaid
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="bg-muted/30 font-semibold">
+            <td
+              className="p-1.5"
+              colSpan={4 + (showChargeColumn ? 1 : 0)}
+            >
+              {rows.length} unpaid flat{rows.length === 1 ? '' : 's'}
+            </td>
+            {hasDueAmounts && (
+              <td className="p-1.5 text-right font-mono">₹{totalDue.toLocaleString('en-IN')}</td>
+            )}
+            <td className="p-1.5" />
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
 
 const ledgerMonthValue = (e: FinanceLedgerRow) => billingMonthFromDate(ledgerTransactionDate(e));
 
@@ -1977,7 +2121,34 @@ const FinanceManager = ({
     flatDueDates,
   ]);
 
-  const unpaidFlats = targetFlats.filter(f => !payments.some(p => p.flat_number === f.flat_number && p.payment_status === 'verified'));
+  const unpaidFlats = targetFlats.filter((f) =>
+    !payments.some((p) => p.flat_number === f.flat_number && p.payment_status === 'verified'),
+  );
+
+  const currentMaintenanceCharge = useMemo(() => {
+    const monthly = charges.filter(isMonthlyMaintenanceCharge);
+    const current =
+      monthly.find((c) => isCurrentMonthChargeTitle(c.title)) ?? monthly[0];
+    return current ? { title: current.title, amount: Number(current.amount) || 0 } : null;
+  }, [charges]);
+
+  const unpaidReminderRows = useMemo((): UnpaidFlatGridRow[] => {
+    return unpaidFlats
+      .map((f) => ({
+        flat_number: f.flat_number,
+        primary_name: residentLabelForFlatRow(f.id, f.owner_name ?? null, primaryByFlatId),
+        is_occupied: f.is_occupied,
+        pending_payment:
+          (payments.find(
+            (p) =>
+              p.flat_number === f.flat_number &&
+              (p.payment_status === 'pending' || p.payment_status === 'rejected'),
+          )?.payment_status as 'pending' | 'rejected' | undefined) ?? null,
+        due_amount: currentMaintenanceCharge?.amount ?? null,
+        charge_title: currentMaintenanceCharge?.title ?? null,
+      }))
+      .sort((a, b) => compareFlatNumbers(a.flat_number, b.flat_number));
+  }, [unpaidFlats, primaryByFlatId, payments, currentMaintenanceCharge]);
 
   const chargeById = useMemo(() => {
     const m = new Map<string, any>();
@@ -2202,27 +2373,50 @@ const FinanceManager = ({
     isSocietyPaymentLedgerEntry,
   ]);
 
-  const unpaidReceiptRows = useMemo(() => {
-    if (filterStatus !== 'unpaid') return [] as { flat_number: string; primary_name: string }[];
+  const unpaidChargeContext = useMemo(
+    () => chargeForUnpaidFilters(charges, paymentTypeFilter, paymentMonthFilter),
+    [charges, paymentTypeFilter, paymentMonthFilter],
+  );
+
+  const unpaidReceiptRows = useMemo((): UnpaidFlatGridRow[] => {
+    if (filterStatus !== 'unpaid') return [];
     const paidSet = new Set(
       scopedReceiptPayments
         .filter((p) => p.payment_status === 'verified')
         .map((p) => String(p.flat_number))
         .filter(Boolean),
     );
+    const pendingByFlat = new Map<string, 'pending' | 'rejected'>();
+    for (const p of scopedReceiptPayments) {
+      if (p.payment_status !== 'pending' && p.payment_status !== 'rejected') continue;
+      const fn = String(p.flat_number);
+      if (!fn) continue;
+      pendingByFlat.set(fn, p.payment_status);
+    }
     const q = paymentSearchQuery.trim().toLowerCase();
     return targetFlats
       .filter((f) => !paidSet.has(String(f.flat_number)))
       .map((f) => ({
         flat_number: f.flat_number,
         primary_name: residentLabelForFlatRow(f.id, f.owner_name ?? null, primaryByFlatId),
+        is_occupied: f.is_occupied,
+        pending_payment: pendingByFlat.get(String(f.flat_number)) ?? null,
+        due_amount: unpaidChargeContext?.amount ?? null,
+        charge_title: unpaidChargeContext?.title ?? null,
       }))
       .filter((row) => {
         if (!q) return true;
         return `${row.flat_number} ${row.primary_name}`.toLowerCase().includes(q);
       })
       .sort((a, b) => compareFlatNumbers(a.flat_number, b.flat_number));
-  }, [filterStatus, scopedReceiptPayments, targetFlats, paymentSearchQuery, primaryByFlatId]);
+  }, [
+    filterStatus,
+    scopedReceiptPayments,
+    targetFlats,
+    paymentSearchQuery,
+    primaryByFlatId,
+    unpaidChargeContext,
+  ]);
 
   const receiptSummary = useMemo(() => {
     if (filterStatus === 'unpaid') {
@@ -4364,20 +4558,10 @@ const FinanceManager = ({
           )}
 
           {filterStatus === 'unpaid' ? (
-            <div className="space-y-2">
-              {unpaidReceiptRows.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">No unpaid flats for selected filters</p>
-              )}
-              {unpaidReceiptRows.map((row) => (
-                <div key={row.flat_number} className="card-section p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">Flat {row.flat_number}</p>
-                    <p className="text-xs text-muted-foreground">{row.primary_name || 'Primary member not found'}</p>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/20 text-destructive">Unpaid</span>
-                </div>
-              ))}
-            </div>
+            <UnpaidFlatGridTable
+              rows={unpaidReceiptRows}
+              emptyMessage="No unpaid flats for selected filters"
+            />
           ) : (
             <div className="space-y-1">
               {receiptLineItems.map((item) =>
@@ -5823,14 +6007,10 @@ const FinanceManager = ({
               </button>
             )}
           </div>
-          <div className="space-y-2">
-            {unpaidFlats.map(f => (
-              <div key={f.id} className="card-section p-3 flex justify-between items-center">
-                <p className="text-sm font-medium">Flat {f.flat_number}</p>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/20 text-destructive">Unpaid</span>
-              </div>
-            ))}
-          </div>
+          <UnpaidFlatGridTable
+            rows={unpaidReminderRows}
+            emptyMessage="All flats have paid maintenance"
+          />
         </div>
       )}
 
