@@ -12,6 +12,7 @@ import type { Flat, Member } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { exportResidentsDirectoryPdf, type PdfFlat, type PdfMember } from '@/lib/exportResidentsPdf';
 import SensitiveAdminVerifyModal from '@/components/SensitiveAdminVerifyModal';
+import Flat360ProfilePanel from '@/components/Flat360ProfilePanel';
 import { DateInput } from '@/components/DateInput';
 
 type MemberDocumentKind = 'photo_id' | 'tenant_doc' | 'service_doc';
@@ -63,6 +64,7 @@ const initialMemberForm = (): MemberFormState => ({
 });
 
 type ViewTab = 'flats' | 'addFlat';
+type FlatDetailView = 'manage' | '360';
 
 interface ResidentUser {
   id: string; name: string; phone: string; flat_id: string; flat_number: string; password: string;
@@ -84,6 +86,7 @@ const AdminResidentManager = ({
   const { flats, members, residentVehicles, loadFlats, loadMembers, loadResidentVehicles, societyId } = useStore();
   const [search, setSearch] = useState('');
   const [expandedFlat, setExpandedFlat] = useState<string | null>(null);
+  const [flatDetailView, setFlatDetailView] = useState<FlatDetailView>('manage');
   const [viewTab, setViewTab] = useState<ViewTab>('flats');
   const [residentUsers, setResidentUsers] = useState<ResidentUser[]>([]);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
@@ -837,9 +840,11 @@ const AdminResidentManager = ({
                   onClick={() => {
                     if (isExpanded) {
                       setExpandedFlat(null);
+                      setFlatDetailView('manage');
                       if (flatMetaEditId === flat.id) setFlatMetaEditId(null);
                     } else {
                       setExpandedFlat(flat.id);
+                      setFlatDetailView('manage');
                     }
                   }}>
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${flat.isOccupied ? 'bg-primary/10' : 'bg-muted'}`}>
@@ -861,6 +866,42 @@ const AdminResidentManager = ({
 
                 {isExpanded && (
                   <div className="px-3 pb-3 border-t border-border space-y-3 pt-3">
+                    <div className="flex gap-1 p-0.5 rounded-lg bg-secondary/50">
+                      <button
+                        type="button"
+                        onClick={() => setFlatDetailView('manage')}
+                        className={`flex-1 text-[10px] font-medium py-1.5 rounded-md transition-colors ${
+                          flatDetailView === 'manage'
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        Manage
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFlatDetailView('360')}
+                        className={`flex-1 text-[10px] font-medium py-1.5 rounded-md transition-colors ${
+                          flatDetailView === '360'
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        360° Profile
+                      </button>
+                    </div>
+
+                    {flatDetailView === '360' && societyId ? (
+                      <Flat360ProfilePanel
+                        params={{
+                          societyId,
+                          flatId: flat.id,
+                          flatNumber: flat.flatNumber,
+                          includeVisitors: true,
+                        }}
+                      />
+                    ) : (
+                      <>
                     {/* Flat details */}
                     {flatMetaEditId === flat.id ? (
                       <div className="space-y-2 rounded-lg bg-secondary/30 p-3">
@@ -1372,6 +1413,8 @@ const AdminResidentManager = ({
                     <button onClick={() => removeFlat(flat.id)} className="text-[10px] text-destructive hover:underline mt-2">
                       Remove this flat
                     </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

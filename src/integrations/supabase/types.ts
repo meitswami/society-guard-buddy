@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -11,31 +11,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
   }
   public: {
     Tables: {
@@ -193,6 +168,178 @@ export type Database = {
           },
         ]
       }
+      bank_reconciliation_matches: {
+        Row: {
+          created_at: string
+          finance_entry_id: string | null
+          id: string
+          maintenance_payment_id: string | null
+          match_confidence: number
+          match_type: string
+          matched_at: string | null
+          matched_by: string | null
+          notes: string | null
+          society_id: string
+          statement_line_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          finance_entry_id?: string | null
+          id?: string
+          maintenance_payment_id?: string | null
+          match_confidence?: number
+          match_type: string
+          matched_at?: string | null
+          matched_by?: string | null
+          notes?: string | null
+          society_id: string
+          statement_line_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          finance_entry_id?: string | null
+          id?: string
+          maintenance_payment_id?: string | null
+          match_confidence?: number
+          match_type?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          notes?: string | null
+          society_id?: string
+          statement_line_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_reconciliation_matches_finance_entry_id_fkey"
+            columns: ["finance_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_reconciliation_matches_maintenance_payment_id_fkey"
+            columns: ["maintenance_payment_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_reconciliation_matches_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_reconciliation_matches_statement_line_id_fkey"
+            columns: ["statement_line_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_statement_imports: {
+        Row: {
+          account_last4: string | null
+          bank_name: string | null
+          created_at: string
+          file_name: string | null
+          id: string
+          imported_by: string | null
+          period_from: string
+          period_to: string
+          society_id: string
+        }
+        Insert: {
+          account_last4?: string | null
+          bank_name?: string | null
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          imported_by?: string | null
+          period_from: string
+          period_to: string
+          society_id: string
+        }
+        Update: {
+          account_last4?: string | null
+          bank_name?: string | null
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          imported_by?: string | null
+          period_from?: string
+          period_to?: string
+          society_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_imports_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_statement_lines: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          created_at: string
+          description: string | null
+          id: string
+          import_id: string
+          line_date: string
+          raw_row: Json | null
+          reference: string | null
+          society_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          import_id: string
+          line_date: string
+          raw_row?: Json | null
+          reference?: string | null
+          society_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          import_id?: string
+          line_date?: string
+          raw_row?: Json | null
+          reference?: string | null
+          society_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_lines_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_lines_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       biometric_credentials: {
         Row: {
           created_at: string
@@ -287,6 +434,8 @@ export type Database = {
           show_representative: boolean
           society_id: string
           sort_order: number
+          source_option_id: string | null
+          source_poll_id: string | null
           term_from: string | null
           term_to: string | null
           updated_at: string
@@ -310,6 +459,8 @@ export type Database = {
           show_representative?: boolean
           society_id: string
           sort_order?: number
+          source_option_id?: string | null
+          source_poll_id?: string | null
           term_from?: string | null
           term_to?: string | null
           updated_at?: string
@@ -333,6 +484,8 @@ export type Database = {
           show_representative?: boolean
           society_id?: string
           sort_order?: number
+          source_option_id?: string | null
+          source_poll_id?: string | null
           term_from?: string | null
           term_to?: string | null
           updated_at?: string
@@ -350,6 +503,20 @@ export type Database = {
             columns: ["society_id"]
             isOneToOne: false
             referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "committee_members_source_option_id_fkey"
+            columns: ["source_option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "committee_members_source_poll_id_fkey"
+            columns: ["source_poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
             referencedColumns: ["id"]
           },
         ]
@@ -611,6 +778,73 @@ export type Database = {
           },
         ]
       }
+      event_food_fund_adjustments: {
+        Row: {
+          adjustment_kind: string
+          amount: number
+          created_at: string
+          created_by: string | null
+          event_id: string | null
+          flat_id: string | null
+          flat_number: string | null
+          id: string
+          notes: string | null
+          payment_method: string
+          society_id: string
+          source_type: string
+        }
+        Insert: {
+          adjustment_kind: string
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          flat_id?: string | null
+          flat_number?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          society_id: string
+          source_type: string
+        }
+        Update: {
+          adjustment_kind?: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          flat_id?: string | null
+          flat_number?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          society_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_food_fund_adjustments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_food_fund_adjustments_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_food_fund_adjustments_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_rsvps: {
         Row: {
           created_at: string
@@ -719,6 +953,7 @@ export type Database = {
           event_id: string | null
           group_kind: string
           id: string
+          major_head: string | null
           name: string
           society_id: string | null
         }
@@ -731,6 +966,7 @@ export type Database = {
           event_id?: string | null
           group_kind?: string
           id?: string
+          major_head?: string | null
           name: string
           society_id?: string | null
         }
@@ -743,6 +979,7 @@ export type Database = {
           event_id?: string | null
           group_kind?: string
           id?: string
+          major_head?: string | null
           name?: string
           society_id?: string | null
         }
@@ -1077,6 +1314,50 @@ export type Database = {
             columns: ["finance_entry_id"]
             isOneToOne: true
             referencedRelation: "finance_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_opening_balance_anchors: {
+        Row: {
+          as_on_date: string
+          bank_amount: number | null
+          cash_amount: number | null
+          created_at: string
+          id: string
+          notes: string | null
+          other_amount: number | null
+          society_id: string
+          updated_at: string
+        }
+        Insert: {
+          as_on_date: string
+          bank_amount?: number | null
+          cash_amount?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          other_amount?: number | null
+          society_id: string
+          updated_at?: string
+        }
+        Update: {
+          as_on_date?: string
+          bank_amount?: number | null
+          cash_amount?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          other_amount?: number | null
+          society_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_opening_balance_anchors_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
             referencedColumns: ["id"]
           },
         ]
@@ -1425,6 +1706,77 @@ export type Database = {
           },
         ]
       }
+      head_fund_adjustments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          expense_group_id: string
+          finance_entry_id: string | null
+          flat_id: string | null
+          flat_number: string | null
+          id: string
+          notes: string | null
+          society_id: string
+          source_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          expense_group_id: string
+          finance_entry_id?: string | null
+          flat_id?: string | null
+          flat_number?: string | null
+          id?: string
+          notes?: string | null
+          society_id: string
+          source_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          expense_group_id?: string
+          finance_entry_id?: string | null
+          flat_id?: string | null
+          flat_number?: string | null
+          id?: string
+          notes?: string | null
+          society_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "head_fund_adjustments_expense_group_id_fkey"
+            columns: ["expense_group_id"]
+            isOneToOne: false
+            referencedRelation: "expense_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "head_fund_adjustments_finance_entry_id_fkey"
+            columns: ["finance_entry_id"]
+            isOneToOne: false
+            referencedRelation: "finance_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "head_fund_adjustments_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "head_fund_adjustments_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_charges: {
         Row: {
           amount: number
@@ -1463,6 +1815,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "maintenance_charges_expense_group_id_fkey"
+            columns: ["expense_group_id"]
+            isOneToOne: false
+            referencedRelation: "expense_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "maintenance_charges_society_id_fkey"
             columns: ["society_id"]
@@ -2172,6 +2531,39 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_branding: {
+        Row: {
+          app_name: string
+          background_color: string
+          id: string
+          logo_url: string | null
+          primary_color: string
+          primary_dark_color: string
+          tagline: string | null
+          updated_at: string
+        }
+        Insert: {
+          app_name?: string
+          background_color?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          primary_dark_color?: string
+          tagline?: string | null
+          updated_at?: string
+        }
+        Update: {
+          app_name?: string
+          background_color?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          primary_dark_color?: string
+          tagline?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       poll_election_ballots: {
         Row: {
           created_at: string
@@ -2181,6 +2573,7 @@ export type Database = {
           poll_id: string
           rankings: Json
           voter_id: string
+          voter_phone: string | null
         }
         Insert: {
           created_at?: string
@@ -2190,6 +2583,7 @@ export type Database = {
           poll_id: string
           rankings?: Json
           voter_id: string
+          voter_phone?: string | null
         }
         Update: {
           created_at?: string
@@ -2199,6 +2593,7 @@ export type Database = {
           poll_id?: string
           rankings?: Json
           voter_id?: string
+          voter_phone?: string | null
         }
         Relationships: [
           {
@@ -2221,7 +2616,11 @@ export type Database = {
         Row: {
           created_at: string
           election_post: string | null
+          flat_id: string | null
+          flat_number: string | null
           id: string
+          member_id: string | null
+          nominated_by: string | null
           option_text: string
           poll_id: string | null
           votes_count: number
@@ -2229,7 +2628,11 @@ export type Database = {
         Insert: {
           created_at?: string
           election_post?: string | null
+          flat_id?: string | null
+          flat_number?: string | null
           id?: string
+          member_id?: string | null
+          nominated_by?: string | null
           option_text: string
           poll_id?: string | null
           votes_count?: number
@@ -2237,12 +2640,30 @@ export type Database = {
         Update: {
           created_at?: string
           election_post?: string | null
+          flat_id?: string | null
+          flat_number?: string | null
           id?: string
+          member_id?: string | null
+          nominated_by?: string | null
           option_text?: string
           poll_id?: string | null
           votes_count?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "poll_options_flat_id_fkey"
+            columns: ["flat_id"]
+            isOneToOne: false
+            referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_options_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "poll_options_poll_id_fkey"
             columns: ["poll_id"]
@@ -2303,46 +2724,111 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          election_applied_at: string | null
           election_committee_seats: number
+          election_phase: string
           election_results: Json | null
+          election_term_from: string | null
+          election_term_to: string | null
           end_date: string | null
           id: string
           is_active: boolean
+          open_posts: Json
           poll_kind: string
           question: string
           society_id: string | null
+          voting_ends_at: string | null
+          voting_starts_at: string | null
         }
         Insert: {
           allow_multiple?: boolean
           created_at?: string
           created_by?: string | null
           description?: string | null
+          election_applied_at?: string | null
           election_committee_seats?: number
+          election_phase?: string
           election_results?: Json | null
+          election_term_from?: string | null
+          election_term_to?: string | null
           end_date?: string | null
           id?: string
           is_active?: boolean
+          open_posts?: Json
           poll_kind?: string
           question: string
           society_id?: string | null
+          voting_ends_at?: string | null
+          voting_starts_at?: string | null
         }
         Update: {
           allow_multiple?: boolean
           created_at?: string
           created_by?: string | null
           description?: string | null
+          election_applied_at?: string | null
           election_committee_seats?: number
+          election_phase?: string
           election_results?: Json | null
+          election_term_from?: string | null
+          election_term_to?: string | null
           end_date?: string | null
           id?: string
           is_active?: boolean
+          open_posts?: Json
           poll_kind?: string
           question?: string
           society_id?: string | null
+          voting_ends_at?: string | null
+          voting_starts_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "polls_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reserve_fund_transfers: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          direction: string
+          entry_month: string
+          id: string
+          notes: string | null
+          payment_method: string
+          society_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          direction: string
+          entry_month: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          society_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          entry_month?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          society_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserve_fund_transfers_society_id_fkey"
             columns: ["society_id"]
             isOneToOne: false
             referencedRelation: "societies"
@@ -2463,39 +2949,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      platform_branding: {
-        Row: {
-          app_name: string
-          background_color: string
-          id: string
-          logo_url: string | null
-          primary_color: string
-          primary_dark_color: string
-          tagline: string | null
-          updated_at: string
-        }
-        Insert: {
-          app_name?: string
-          background_color?: string
-          id?: string
-          logo_url?: string | null
-          primary_color?: string
-          primary_dark_color?: string
-          tagline?: string | null
-          updated_at?: string
-        }
-        Update: {
-          app_name?: string
-          background_color?: string
-          id?: string
-          logo_url?: string | null
-          primary_color?: string
-          primary_dark_color?: string
-          tagline?: string | null
-          updated_at?: string
-        }
-        Relationships: []
       }
       societies: {
         Row: {
@@ -2626,9 +3079,9 @@ export type Database = {
           description: string | null
           file_name: string
           id: string
+          member_reveal_until: string | null
           mime_type: string | null
           published: boolean
-          member_reveal_until: string | null
           society_id: string
           sort_order: number
           storage_path: string
@@ -2642,9 +3095,9 @@ export type Database = {
           description?: string | null
           file_name: string
           id?: string
+          member_reveal_until?: string | null
           mime_type?: string | null
           published?: boolean
-          member_reveal_until?: string | null
           society_id: string
           sort_order?: number
           storage_path: string
@@ -2658,9 +3111,9 @@ export type Database = {
           description?: string | null
           file_name?: string
           id?: string
+          member_reveal_until?: string | null
           mime_type?: string | null
           published?: boolean
-          member_reveal_until?: string | null
           society_id?: string
           sort_order?: number
           storage_path?: string
@@ -3369,9 +3822,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

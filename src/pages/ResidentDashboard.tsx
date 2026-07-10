@@ -29,6 +29,7 @@ import { playNotificationAlert } from '@/lib/notificationSounds';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
 import ResidentFeedbackForm from '@/components/ResidentFeedbackForm';
+import Flat360ProfilePanel from '@/components/Flat360ProfilePanel';
 
 interface Resident {
   id: string; name: string; phone: string; flatId: string; flatNumber: string;
@@ -2092,6 +2093,19 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         {/* ========== PROFILE TAB ========== */}
         {tab === 'profile' && (
           <div className="flex flex-col gap-4">
+            {societyId && (
+              <div className="card-section p-4">
+                <Flat360ProfilePanel
+                  compact
+                  params={{
+                    societyId,
+                    flatId: resident.flatId,
+                    flatNumber: resident.flatNumber,
+                    residentContext: { id: resident.id, name: resident.name },
+                  }}
+                />
+              </div>
+            )}
             <div className="card-section p-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">

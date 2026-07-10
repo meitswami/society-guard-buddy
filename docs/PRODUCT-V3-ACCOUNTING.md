@@ -130,12 +130,14 @@ $$;
 
 **Acceptance criteria**
 
-- [ ] Admin with `residents` read sees 360° for any flat in society
-- [ ] Resident sees 360° for own flat only
-- [ ] Timeline shows last 12 months by default; load more paginates
-- [ ] Dues card matches Finance → Flat report totals for selected period
-- [ ] No duplicate writes — read-only aggregation over existing tables
+- [x] Admin with `residents` read sees 360° for any flat in society (Residents → expand flat → **360° Profile** tab)
+- [x] Resident sees 360° for own flat only (Profile tab)
+- [x] Timeline shows last 12 months by default; load more paginates
+- [ ] Dues card matches Finance → Flat report totals for selected period (summary uses verified payments in-window; full flat-report parity deferred)
+- [x] No duplicate writes — read-only aggregation over existing tables
 - [ ] Flutter parity: flat summary on resident home (Phase 2 of mobile parity)
+
+**Implementation (V3.0 alpha):** `src/services/flat360/flat360Service.ts`, `src/components/Flat360ProfilePanel.tsx`
 
 **RBAC:** `residents` read; no new permission key required (subset of residents module).
 

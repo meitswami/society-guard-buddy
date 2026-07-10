@@ -506,7 +506,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           <BiometricSetup userType="admin" userId={admin.id} userName={admin.name} />
         </div>
       );
-      case 'audit': return <AuditLogViewer onNavigate={setActiveTab} />;
+      case 'audit': return <AuditLogViewer onNavigate={setActiveTab} adminName={admin.name} />;
       case 'finance':
         return (
           <FinanceManager

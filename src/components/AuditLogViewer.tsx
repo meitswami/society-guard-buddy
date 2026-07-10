@@ -6,6 +6,7 @@ import { FileText, Shield, AlertTriangle, Info, Search, Filter } from 'lucide-re
 import { fmtDateTimeFull } from '@/lib/dateFormat';
 import FinanceAuditAlarms from '@/components/FinanceAuditAlarms';
 import FinanceIntegrityAudit from '@/components/FinanceIntegrityAudit';
+import BankReconciliation from '@/components/BankReconciliation';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { AUDIT_LOG_METRICS } from '@/lib/descriptiveMetricCopy';
 import SocietyGovernanceGuide from '@/components/SocietyGovernanceGuide';
@@ -43,7 +44,13 @@ const eventLabels: Record<string, string> = {
   geofence_violation: '📍 Geofence / Location breach',
 };
 
-const AuditLogViewer = ({ onNavigate }: { onNavigate?: (tab: AdminTab) => void }) => {
+const AuditLogViewer = ({
+  onNavigate,
+  adminName = 'Admin',
+}: {
+  onNavigate?: (tab: AdminTab) => void;
+  adminName?: string;
+}) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -126,6 +133,11 @@ const AuditLogViewer = ({ onNavigate }: { onNavigate?: (tab: AdminTab) => void }
       {/* Internal Finance Audit — negative balances, discrepancies, bugs */}
       <div className="mb-4">
         <FinanceIntegrityAudit />
+      </div>
+
+      {/* Bank Reconciliation — CSV import + match to ledger */}
+      <div className="mb-4">
+        <BankReconciliation adminName={adminName} />
       </div>
 
       {/* Manual Discrepancy Tracer — trace recording vs reporting mismatches */}
