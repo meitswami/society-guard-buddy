@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchSocietyFinanceCoreSafe } from '@/services/finance/financeService';
 import type { FinanceLedgerRow } from '@/lib/financeManagerTypes';
 import { financeQueryKeys } from '@/hooks/finance/financeQueryKeys';
+import { invalidateFinanceQueries } from '@/hooks/finance/invalidateFinanceQueries';
 
 function recordToMap(record: Record<string, string>) {
   return new Map(Object.entries(record));
@@ -37,12 +38,7 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
   }, [query.data?.autoReminderEnabled, query.data?.autoReminderSchedule, query.data]);
 
   const loadAll = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: financeQueryKeys.core(societyId) }),
-      queryClient.invalidateQueries({ queryKey: financeQueryKeys.flatReport(societyId) }),
-      queryClient.invalidateQueries({ queryKey: financeQueryKeys.eventReference(societyId) }),
-      queryClient.invalidateQueries({ queryKey: financeQueryKeys.periodReportBatch(societyId) }),
-    ]);
+    await invalidateFinanceQueries(queryClient, societyId);
     await query.refetch();
   };
 

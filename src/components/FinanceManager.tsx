@@ -62,6 +62,8 @@ import { FinanceSubTabNav } from '@/components/finance/FinanceSubTabNav';
 import { PeriodMetric } from '@/components/finance/PeriodMetric';
 import { UnpaidFlatGridTable } from '@/components/finance/UnpaidFlatGridTable';
 import { useFinanceManagerData } from '@/hooks/useFinanceManagerData';
+import { useFinanceMutations } from '@/hooks/finance/useFinanceMutations';
+import { fetchNotificationReadStatus } from '@/services/finance/financeMutations';
 import { useFinanceFlatReport } from '@/hooks/finance/useFinanceFlatReport';
 import { useFinanceEventReference } from '@/hooks/finance/useFinanceEventReference';
 import { useFinancePeriodReportBatch } from '@/hooks/finance/useFinancePeriodReportBatch';
@@ -163,6 +165,7 @@ const FinanceManager = ({
     setAutoReminderSchedule,
     loadAll,
   } = useFinanceManagerData(societyId, adminName);
+  const financeMutations = useFinanceMutations(societyId);
   const {
     expenses: flatReportExpenses,
     splits: flatReportSplits,
@@ -387,69 +390,51 @@ const FinanceManager = ({
         toast.error('Enter sub-head name or use receipt title');
         return;
       }
-      const { data: newGroup, error: gErr } = await supabase
-        .from('expense_groups')
-        .insert({
-          society_id: societyId,
+      try {
+        const newGroup = await financeMutations.createExpenseGroup({
+          societyId,
           name: subName,
           major_head: form.major_head,
-          group_kind: 'general',
           created_by: adminName,
-        })
-        .select('id')
-        .single();
-      if (gErr || !newGroup) {
-        toast.error(gErr?.message ?? 'Could not create payment sub-head');
+        });
+        expenseGroupId = newGroup.id;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not create payment sub-head');
         return;
       }
-      expenseGroupId = newGroup.id;
     }
 
+    const chargeInput = {
+      title: form.title,
+      amount: Number(form.amount),
+      frequency: form.frequency,
+      due_day: Number(form.due_day),
+      expense_group_id: expenseGroupId,
+    };
+
     if (editingChargeId) {
-      const { error } = await supabase
-        .from('maintenance_charges')
-        .update({
-          title: form.title,
-          amount: Number(form.amount),
-          frequency: form.frequency,
-          due_day: Number(form.due_day),
-          expense_group_id: expenseGroupId,
-        })
-        .eq('id', editingChargeId)
-        .eq('society_id', societyId);
-      if (error) {
-        toast.error(error.message);
+      try {
+        await financeMutations.saveCharge({
+          chargeId: editingChargeId,
+          charge: chargeInput,
+          adminName,
+        });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not update receipt type');
         return;
       }
       toast.success('Receipt type updated');
       setEditingChargeId(null);
     } else {
-      const { error } = await supabase.from('maintenance_charges').insert([
-        {
-          title: form.title,
-          amount: Number(form.amount),
-          frequency: form.frequency,
-          due_day: Number(form.due_day),
-          created_by: adminName,
-          society_id: societyId,
-          expense_group_id: expenseGroupId,
-        },
-      ]);
-      if (error) {
-        toast.error(error.message);
+      try {
+        await financeMutations.saveCharge({ charge: chargeInput, adminName });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not add receipt type');
         return;
       }
       toast.success('Receipt type added');
     }
-    setForm({
-      title: '',
-      amount: '',
-      frequency: 'monthly',
-      due_day: '1',
-      major_head: '',
-      expense_group_id: '',
-      new_sub_head: '',
-    });
+    setForm(emptyMaintenanceChargeForm());
     setShowForm(false);
     await loadAll();
   };
@@ -491,7 +476,12 @@ const FinanceManager = ({
       'Cancel',
     );
     if (!ok) return;
-    await supabase.from('maintenance_charges').delete().eq('id', id).eq('society_id', societyId);
+    try {
+      await financeMutations.deleteCharge(id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not delete receipt type');
+      return;
+    }
     toast.success('Receipt type deleted');
     if (editingChargeId === id) {
       setEditingChargeId(null);
@@ -589,39 +579,16 @@ const FinanceManager = ({
         }
       }
 
-      const { error: allocErr } = await supabase.from('finance_entry_allocations').insert(
-        allocationRows.map((a) => ({
-          finance_entry_id: entry.id,
-          flat_id: a.flat_id,
-          flat_number: a.flat_number,
-          amount: a.amount,
-        })),
-      );
-      if (allocErr) {
-        toast.error(allocErr.message);
-        return;
-      }
-
-      if (mpRows.length > 0) {
-        const { error: payErr } = await supabase.from('maintenance_payments').insert(mpRows);
-        if (payErr) {
-          await supabase.from('finance_entry_allocations').delete().eq('finance_entry_id', entry.id);
-          toast.error(payErr.message);
-          return;
-        }
-      }
-
-      const { error: updErr } = await supabase
-        .from('finance_entries')
-        .update({
-          allocation_style: 'split_total_equally',
-          aggregate_flat_count: scopeFlats.length,
-          distributed_at: now,
+      try {
+        await financeMutations.distributePool({
+          entryId: entry.id,
+          allocationRows,
+          maintenancePaymentRows: mpRows,
+          aggregateFlatCount: scopeFlats.length,
           title: entry.title || chargeTitle || 'Society receipt (distributed)',
-        })
-        .eq('id', entry.id);
-      if (updErr) {
-        toast.error(updErr.message);
+        });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not distribute pool');
         return;
       }
 
@@ -884,73 +851,42 @@ const FinanceManager = ({
         ? billingDatesForRows.reduce((a, b) => (a < b ? a : b))
         : primaryBillingDate;
 
-    const { data: feRow, error: feErr } = await supabase
-      .from('finance_entries')
-      .insert({
-        society_id: societyId,
-        record_mode: mode,
-        destination: destForEntry,
-        allocation_style: allocationStyle,
-        include_vacant: payForm.allocationIncludeVacant,
-        entry_month: entryMonth,
-        transaction_date: transactionDate,
-        total_amount: totalAmount,
-        aggregate_flat_count: aggregateFlatCount,
-        charge_id: chargeIdForEntry,
-        title: entryTitle,
-        notes: payForm.notes || null,
-        screenshot_url: screenshotUrl,
-        transaction_id: payForm.transaction_id || null,
-        payment_method: payForm.payment_method,
-        payment_status: 'verified',
-        created_by: adminName,
-      })
-      .select('id')
-      .single();
-
-    if (feErr || !feRow?.id) {
-      toast.error(feErr?.message ?? 'Could not save finance entry');
+    try {
+      await financeMutations.recordFinanceEntry({
+        entry: {
+          society_id: societyId,
+          record_mode: mode,
+          destination: destForEntry,
+          allocation_style: allocationStyle,
+          include_vacant: payForm.allocationIncludeVacant,
+          entry_month: entryMonth,
+          transaction_date: transactionDate,
+          total_amount: totalAmount,
+          aggregate_flat_count: aggregateFlatCount,
+          charge_id: chargeIdForEntry,
+          title: entryTitle,
+          notes: payForm.notes || null,
+          screenshot_url: screenshotUrl,
+          transaction_id: payForm.transaction_id || null,
+          payment_method: payForm.payment_method,
+          payment_status: 'verified',
+          created_by: adminName,
+        },
+        counterparty: needsCounterparty
+          ? {
+              name: payForm.outsiderName.trim(),
+              relation_to_society: payForm.outsiderRelation.trim() || null,
+            }
+          : undefined,
+        allocations: allocationRows,
+        maintenancePayments: mpRows,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save finance entry');
       return;
     }
 
-    const entryId = feRow.id as string;
-
-    if (needsCounterparty) {
-      const { error: cpErr } = await supabase.from('finance_entry_counterparties').insert({
-        finance_entry_id: entryId,
-        name: payForm.outsiderName.trim(),
-        relation_to_society: payForm.outsiderRelation.trim() || null,
-      });
-      if (cpErr) {
-        toast.error(cpErr.message);
-        return;
-      }
-    }
-
-    if (allocationRows.length > 0) {
-      const { error: allocErr } = await supabase.from('finance_entry_allocations').insert(
-        allocationRows.map((a) => ({
-          finance_entry_id: entryId,
-          flat_id: a.flat_id,
-          flat_number: a.flat_number,
-          amount: a.amount,
-        })),
-      );
-      if (allocErr) {
-        toast.error(allocErr.message);
-        return;
-      }
-    }
-
-    if (mpRows.length > 0) {
-      const { error: payErr } = await supabase
-        .from('maintenance_payments')
-        .insert(mpRows.map((row) => ({ ...row, finance_entry_id: entryId })));
-      if (payErr) {
-        toast.error(payErr.message);
-        return;
-      }
-    }
+    const entryId = '';
 
     const notifyAudience =
       mode === 'flats_only' && paymentNotifyAudience === 'all' ? 'selected_flats' : paymentNotifyAudience;
@@ -2208,150 +2144,36 @@ const FinanceManager = ({
     [eventContribRef, eventFoodRef],
   );
 
-  type FlatReportRow = {
-    flat_number: string;
-    resident_name: string;
-    maintenance_paid: number;
-    maintenance_count: number;
-    expense_share: number;
-    expense_count: number;
-    settled_amount: number;
-    unsettled_amount: number;
-    net_position: number;
-    details: {
-      type: 'maintenance' | 'expense';
-      title: string;
-      amount: number;
-      date: string;
-      method: string;
-      status: string;
-      group_name?: string;
-    }[];
-  };
-
-  const flatReportData = useMemo((): FlatReportRow[] => {
-    if (subTab !== 'flat_report') return [];
-    const fromMs = new Date(`${flatReportFrom}T00:00:00`).getTime();
-    const toMs = new Date(`${flatReportTo}T23:59:59.999`).getTime();
-    const isInRange = (iso: string) => {
-      const t = new Date(iso).getTime();
-      return !Number.isNaN(t) && t >= fromMs && t <= toMs;
-    };
-
-    const flatMap = new Map<string, FlatReportRow>();
-    const getRow = (flatNum: string): FlatReportRow => {
-      if (!flatMap.has(flatNum)) {
-        const flat = flats.find((f) => f.flat_number === flatNum);
-        const resName = flat?.id
-          ? (primaryByFlatId.get(flat.id) || flat.owner_name || flatNum)
-          : flatNum;
-        flatMap.set(flatNum, {
-          flat_number: flatNum,
-          resident_name: resName ?? flatNum,
-          maintenance_paid: 0,
-          maintenance_count: 0,
-          expense_share: 0,
-          expense_count: 0,
-          settled_amount: 0,
-          unsettled_amount: 0,
-          net_position: 0,
-          details: [],
-        });
-      }
-      return flatMap.get(flatNum)!;
-    };
-
-    // Maintenance payments in range
-    const countedFinanceEntryIds = new Set<string>();
-    for (const p of payments) {
-      if (String(p.payment_status) !== 'verified') continue;
-      const d = paymentBillingDate(p);
-      if (!d || !isInRange(d)) continue;
-      const flatNum = String(p.flat_number || '');
-      if (!flatNum) continue;
-      const amt = Number(p.amount || 0);
-      const row = getRow(flatNum);
-      row.maintenance_paid += amt;
-      row.maintenance_count += 1;
-      const chargeTitle = charges.find((c) => c.id === p.charge_id)?.title ?? 'Maintenance';
-      row.details.push({
-        type: 'maintenance',
-        title: chargeTitle,
-        amount: amt,
-        date: d.slice(0, 10),
-        method: String(p.payment_method || 'cash'),
-        status: 'paid',
-      });
-      const feId = (p as any).finance_entry_id;
-      if (typeof feId === 'string' && feId.length > 0) countedFinanceEntryIds.add(feId);
-    }
-
-    // Ledger allocations (outsider/corpus entries allocated to flats) in range
-    for (const e of ledgerEntries) {
-      if (e.destination === 'separate_entry') continue;
-      const ledgerDate = ledgerTransactionDate(e);
-      if (!ledgerDate || !isInRange(ledgerDate)) continue;
-      // Skip flats_only entries that are already counted via their linked maintenance_payments
-      if (e.record_mode === 'flats_only' && countedFinanceEntryIds.has(e.id)) continue;
-      const allocations = e.finance_entry_allocations ?? [];
-      for (const alloc of allocations) {
-        const flatNum = alloc.flat_number;
-        if (!flatNum || flatNum === 'SOCIETY') continue;
-        const amt = Number(alloc.amount || 0);
-        const row = getRow(flatNum);
-        row.maintenance_paid += amt;
-        row.maintenance_count += 1;
-        row.details.push({
-          type: 'maintenance',
-          title: e.title || 'Ledger receipt',
-          amount: amt,
-          date: ledgerDate.slice(0, 10),
-          method: e.payment_method || 'other',
-          status: 'verified',
-        });
-      }
-    }
-
-    // Society payment splits (Record payment) in range
-    for (const split of flatReportSplits) {
-      const exp = flatReportExpenses.find((e) => e.id === split.expense_id);
-      if (!exp) continue;
-      const expDate = String(exp.expense_date || '');
-      if (!isInRange(expDate)) continue;
-      const flatNum = String(split.flat_number || '');
-      if (!flatNum || flatNum === 'SOCIETY') continue;
-      const amt = Number(split.amount || 0);
-      const row = getRow(flatNum);
-      row.expense_share += amt;
-      row.expense_count += 1;
-      if (split.is_settled) {
-        row.settled_amount += amt;
-      } else {
-        row.unsettled_amount += amt;
-      }
-      row.details.push({
-        type: 'expense',
-        title: exp.title || 'Expense',
-        amount: amt,
-        date: expDate.slice(0, 10),
-        method: exp.payment_method || 'cash',
-        status: split.is_settled ? 'settled' : 'pending',
-        group_name: exp.group_name,
-      });
-    }
-
-    // Compute net position: maintenance paid minus expense share
-    for (const row of flatMap.values()) {
-      row.net_position = row.maintenance_paid - row.expense_share;
-      row.details.sort((a, b) => b.date.localeCompare(a.date));
-    }
-
-    let rows = [...flatMap.values()].sort((a, b) => compareFlatNumbers(a.flat_number, b.flat_number));
-    if (flatReportSelectedFlat !== 'all') {
-      rows = rows.filter((r) => r.flat_number === flatReportSelectedFlat);
-    }
-    return rows;
-  }, [subTab, flatReportFrom, flatReportTo, flatReportSelectedFlat, payments, ledgerEntries, flatReportExpenses, flatReportSplits, flats, primaryByFlatId, charges]);
+  const flatReportData = useMemo(
+    () =>
+      subTab === 'flat_report'
+        ? buildFlatReportRows({
+            from: flatReportFrom,
+            to: flatReportTo,
+            selectedFlat: flatReportSelectedFlat,
+            payments,
+            ledgerEntries,
+            flatReportExpenses,
+            flatReportSplits,
+            flats,
+            primaryByFlatId,
+            charges,
+          })
+        : [],
+    [
+      subTab,
+      flatReportFrom,
+      flatReportTo,
+      flatReportSelectedFlat,
+      payments,
+      ledgerEntries,
+      flatReportExpenses,
+      flatReportSplits,
+      flats,
+      primaryByFlatId,
+      charges,
+    ],
+  );
 
   const flatMultiOptions = useMemo(
     () => flatOptionsWithPrimaryLabel(flats, primaryByFlatId),
