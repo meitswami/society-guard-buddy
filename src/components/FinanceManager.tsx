@@ -27,8 +27,7 @@ import {
   downloadTransactionStatement,
   getTransactionStatementPdfBlob,
 } from '@/lib/transactionStatementExport';
-import { buildFinancePeriodReportPdf } from '@/lib/financePeriodReportExport';
-import { toFinancePeriodReportExportInput } from '@/lib/financePeriodReportExport';
+import { buildFinancePeriodReportPdf, toFinancePeriodReportExportInput } from '@/lib/financePeriodReportExport';
 import type { ExportFormat } from '@/lib/reportExportUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
@@ -135,6 +134,8 @@ interface Props {
   adminId?: string;
   initialSubTab?: FinanceSubTab;
   onInitialSubTabConsumed?: () => void;
+  initialSearchQuery?: string;
+  onInitialSearchConsumed?: () => void;
 }
 
 
@@ -143,6 +144,8 @@ const FinanceManager = ({
   adminId: _adminId,
   initialSubTab,
   onInitialSubTabConsumed,
+  initialSearchQuery,
+  onInitialSearchConsumed,
 }: Props) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
@@ -297,6 +300,14 @@ const FinanceManager = ({
   const [readStatusRows, setReadStatusRows] = useState<{ id: string; target_id: string | null; is_read: boolean; read_at: string | null }[]>([]);
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!initialSearchQuery) return;
+    setPaymentSearchQuery(initialSearchQuery);
+    setSubTab('transactions');
+    onInitialSearchConsumed?.();
+  }, [initialSearchQuery, onInitialSearchConsumed]);
+
   const [selectedLedger, setSelectedLedger] = useState<FinanceLedgerRow | null>(null);
   const [headSummaryModalOpen, setHeadSummaryModalOpen] = useState(false);
   const [headSummaryModalStack, setHeadSummaryModalStack] = useState<TransactionHeadModalLayer[]>([]);
@@ -2188,7 +2199,7 @@ const FinanceManager = ({
     toast.success(`${format.toUpperCase()} downloaded`);
   };
 
-  const transactionStatementShareOpts = () => {
+  const transactionStatementShare = useMemo(() => {
     if (filterStatus === 'unpaid') return null;
     const rows = buildTransactionExportRows({
       items: receiptLineItems,
@@ -2203,7 +2214,16 @@ const FinanceManager = ({
       message: `${societyName || 'Society'} — Transaction statement (${selectedReceiptMonthLabel})`,
       rows,
     };
-  };
+  }, [
+    filterStatus,
+    receiptLineItems,
+    chargeById,
+    receiptSummary.count,
+    receiptSummary.sum,
+    selectedReceiptTypeLabel,
+    selectedReceiptMonthLabel,
+    societyName,
+  ]);
 
   const sendPeriodReportToMembers = async () => {
     if (!societyId || periodFrom > periodTo) {
@@ -3095,16 +3115,13 @@ const FinanceManager = ({
                   className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1 shrink-0"
                   onExport={exportTransactionStatement}
                 />
-                {transactionStatementShareOpts() && (
+                {transactionStatementShare && (
                   <SharePdfWhatsAppButton
                     label="Share on WhatsApp"
                     className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1 shrink-0 bg-[#25D366]/10 text-[#128C7E] border border-[#25D366]/30 hover:bg-[#25D366]/20"
-                    filename={transactionStatementShareOpts()!.filename}
-                    message={transactionStatementShareOpts()!.message}
-                    getBlob={() => {
-                      const opts = transactionStatementShareOpts()!;
-                      return getTransactionStatementPdfBlob(opts);
-                    }}
+                    filename={transactionStatementShare.filename}
+                    message={transactionStatementShare.message}
+                    getBlob={() => getTransactionStatementPdfBlob(transactionStatementShare)}
                   />
                 )}
               </div>

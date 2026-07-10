@@ -53,11 +53,23 @@ const REPORT_TABS: { id: ReportTab; labelKey: string; icon: React.ElementType }[
   { id: 'all_modules', labelKey: 'All Modules', icon: ClipboardList },
 ];
 
-const ReportPage = () => {
+const ReportPage = ({
+  initialSearchQuery,
+  onInitialSearchConsumed,
+}: {
+  initialSearchQuery?: string;
+  onInitialSearchConsumed?: () => void;
+} = {}) => {
   const { visitors, societyId } = useStore();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<ReportTab>('financial');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (!initialSearchQuery) return;
+    setSearchQuery(initialSearchQuery);
+    onInitialSearchConsumed?.();
+  }, [initialSearchQuery, onInitialSearchConsumed]);
   const [reportMonth, setReportMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [statementPeriodMode, setStatementPeriodMode] = useState<StatementPeriodMode>('monthly');
   const [customPeriodFrom, setCustomPeriodFrom] = useState(defaultFinancePeriodFrom);

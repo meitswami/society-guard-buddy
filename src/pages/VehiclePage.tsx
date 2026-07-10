@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import type { ResidentVehicle } from '@/types';
 import { Car, Plus, Search, Trash2 } from 'lucide-react';
@@ -14,12 +14,25 @@ const VEHICLE_TYPES = [
   { value: 'other', label: 'Other' },
 ] as const;
 
-const VehiclePage = () => {
+const VehiclePage = ({
+  initialSearchQuery,
+  onInitialSearchConsumed,
+}: {
+  initialSearchQuery?: string;
+  onInitialSearchConsumed?: () => void;
+} = {}) => {
   const { residentVehicles, addResidentVehicle, removeResidentVehicle, flats, members } = useStore();
   const { t } = useLanguage();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedFlats, setSelectedFlats] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!initialSearchQuery) return;
+    setSearch(initialSearchQuery);
+    onInitialSearchConsumed?.();
+  }, [initialSearchQuery, onInitialSearchConsumed]);
+
   const [form, setForm] = useState({
     vehicleNumber: '',
     vehicleType: 'car' as ResidentVehicle['vehicleType'],

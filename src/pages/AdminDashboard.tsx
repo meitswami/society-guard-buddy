@@ -39,6 +39,16 @@ import TourGuideHub from '@/components/TourGuideHub';
 import { ElectionResultsBanner } from '@/components/ElectionResultsBanner';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { ADMIN_HOME_METRICS } from '@/lib/descriptiveMetricCopy';
+import AdminModuleDrawer from '@/components/admin/AdminModuleDrawer';
+import AdminTopActions from '@/components/admin/AdminTopActions';
+import AdminGlobalSearch from '@/components/admin/AdminGlobalSearch';
+import {
+  ADMIN_BOTTOM_NAV_TABS,
+  computeQuickAccessTabs,
+  readLastTab,
+  recordLastTab,
+  type AdminTabDef,
+} from '@/lib/adminNavigation';
 
 interface Props {
   admin: {
@@ -76,6 +86,9 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     splitwiseExpenseTotal: 0,
   });
   const [usageVersion, setUsageVersion] = useState(0);
+  const [lastTabVersion, setLastTabVersion] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [moduleSearch, setModuleSearch] = useState<{ tab: AdminTab; query: string } | null>(null);
   const [kycPending, setKycPending] = useState<{ id: string; name: string; guard_id: string; kyc_alert_days: number; created_at: string }[]>([]);
 
   const loadKycPending = async () => {
@@ -381,18 +394,30 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       } catch {
         /* ignore */
       }
+      recordLastTab(admin.societyId, tab);
+      setLastTabVersion((x) => x + 1);
     },
-    [tabUsageKey],
+    [tabUsageKey, admin.societyId],
   );
 
   const goToTab = useCallback(
-    (tab: AdminTab, opts?: { financeSubTab?: FinanceSubTab }) => {
+    (tab: AdminTab, opts?: { financeSubTab?: FinanceSubTab; searchQuery?: string }) => {
       if (tab === 'finance' && opts?.financeSubTab) setFinanceInitialSubTab(opts.financeSubTab);
+      if (opts?.searchQuery?.trim()) setModuleSearch({ tab, query: opts.searchQuery.trim() });
       recordTabUse(tab);
       setActiveTab(tab);
       if (tab === 'overview' && admin.societyId) void loadStats();
     },
     [recordTabUse, admin.societyId, loadStats],
+  );
+
+  const clearModuleSearchFor = useCallback((tab: AdminTab) => {
+    setModuleSearch((prev) => (prev?.tab === tab ? null : prev));
+  }, []);
+
+  const pendingSearchFor = useCallback(
+    (tab: AdminTab) => (moduleSearch?.tab === tab ? moduleSearch.query : undefined),
+    [moduleSearch],
   );
 
   useEffect(() => {
@@ -414,7 +439,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     }
   };
 
-  const tabs: { id: AdminTab; label: string; icon: React.ElementType; group?: string }[] = [
+  const tabs: AdminTabDef[] = [
     { id: 'overview', label: 'Home', icon: Home, group: 'main' },
     // Management
     { id: 'guards', label: 'Guards', icon: Shield, group: 'manage' },
@@ -450,15 +475,25 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
 
   const visibleTabs = tabs.filter((tab) => isAdminTabAllowed(tab.id, admin.permissions));
 
-  const quickAccessTabs = useMemo(() => {
-    const pinnedIds: AdminTab[] = ['finance', 'report', 'events', 'residents', 'committee', 'directory'];
-    return pinnedIds
-      .map((id) => visibleTabs.find((t) => t.id === id))
-      .filter(Boolean) as typeof visibleTabs;
-  }, [visibleTabs]);
+  const allowedTabSet = useMemo(
+    () => new Set(visibleTabs.map((t) => t.id)),
+    [visibleTabs],
+  );
 
-  const bottomNavTabsAlphabetical = useMemo(
-    () => [...visibleTabs].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })),
+  const lastVisitedTab = useMemo(
+    () => readLastTab(admin.societyId),
+    [admin.societyId, lastTabVersion],
+  );
+
+  const quickAccessTabs = useMemo(
+    () => computeQuickAccessTabs(visibleTabs, tabUsageMap, lastVisitedTab),
+    [visibleTabs, tabUsageMap, lastVisitedTab],
+  );
+
+  const bottomNavTabs = useMemo(
+    () => ADMIN_BOTTOM_NAV_TABS
+      .map((id) => visibleTabs.find((t) => t.id === id))
+      .filter(Boolean) as AdminTabDef[],
     [visibleTabs],
   );
 
@@ -503,6 +538,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           verifyAdminName={admin.name}
           initialExpandedFlatId={residentsExpandFlatId}
           onExpandedFlatConsumed={() => setResidentsExpandFlatId(null)}
+          initialSearchQuery={pendingSearchFor('residents')}
+          onInitialSearchConsumed={() => clearModuleSearchFor('residents')}
         />
       );
       case 'geofence': return <GeofenceSetup adminName={admin.name} />;
@@ -513,7 +550,14 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           <BiometricSetup userType="admin" userId={admin.id} userName={admin.name} />
         </div>
       );
-      case 'audit': return <AuditLogViewer onNavigate={setActiveTab} adminName={admin.name} />;
+      case 'audit': return (
+        <AuditLogViewer
+          onNavigate={setActiveTab}
+          adminName={admin.name}
+          initialSearchQuery={pendingSearchFor('audit')}
+          onInitialSearchConsumed={() => clearModuleSearchFor('audit')}
+        />
+      );
       case 'finance':
         return (
           <ErrorBoundary title="Finance module error" onReset={() => setFinanceInitialSubTab(null)}>
@@ -522,6 +566,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               adminId={admin.id}
               initialSubTab={financeInitialSubTab ?? undefined}
               onInitialSubTabConsumed={() => setFinanceInitialSubTab(null)}
+              initialSearchQuery={pendingSearchFor('finance')}
+              onInitialSearchConsumed={() => clearModuleSearchFor('finance')}
             />
           </ErrorBoundary>
         );
@@ -543,12 +589,32 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           feedRevision={notificationFeedRevision}
         />
       );
-      case 'report': return <ReportPage />;
-      case 'logs': return <LogsPage />;
+      case 'report': return (
+        <ReportPage
+          initialSearchQuery={pendingSearchFor('report')}
+          onInitialSearchConsumed={() => clearModuleSearchFor('report')}
+        />
+      );
+      case 'logs': return (
+        <LogsPage
+          initialSearchQuery={pendingSearchFor('logs')}
+          onInitialSearchConsumed={() => clearModuleSearchFor('logs')}
+        />
+      );
       case 'visitor': return <VisitorEntryPage onDone={() => goToTab('overview')} />;
       case 'delivery': return <DeliveryEntryPage onDone={() => goToTab('overview')} />;
-      case 'vehicle': return <VehiclePage />;
-      case 'blacklist': return <BlacklistPage />;
+      case 'vehicle': return (
+        <VehiclePage
+          initialSearchQuery={pendingSearchFor('vehicle')}
+          onInitialSearchConsumed={() => clearModuleSearchFor('vehicle')}
+        />
+      );
+      case 'blacklist': return (
+        <BlacklistPage
+          initialSearchQuery={pendingSearchFor('blacklist')}
+          onInitialSearchConsumed={() => clearModuleSearchFor('blacklist')}
+        />
+      );
       case 'directory': return (
         <DirectoryPage
           canEditResidents={!!admin.permissions.residents_rw}
@@ -556,9 +622,16 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
             setResidentsExpandFlatId(flatId);
             goToTab('residents');
           }}
+          initialSearchQuery={pendingSearchFor('directory')}
+          onInitialSearchConsumed={() => clearModuleSearchFor('directory')}
         />
       );
-      case 'quick': return <QuickEntryPage />;
+      case 'quick': return (
+        <QuickEntryPage
+          initialSearchQuery={pendingSearchFor('quick')}
+          onInitialSearchConsumed={() => clearModuleSearchFor('quick')}
+        />
+      );
       case 'settings': return <SettingsPage />;
       case 'tour':
         return <TourGuideHub role="admin" adminPermissions={admin.permissions} t={t} />;
@@ -693,18 +766,25 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
             </div>
           )}
 
-          {/* Quick access — all modules, most-used first */}
+          {/* Quick access — 6 most used + last visited */}
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Quick access</p>
+          <p className="text-[10px] text-muted-foreground mb-2">Six most used modules plus your last visit</p>
           <div className="grid grid-cols-3 gap-2 mb-4">
             {quickAccessTabs.map((tab) => {
               const Icon = tab.icon;
+              const isLastVisited = tab.id === lastVisitedTab;
               return (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => goToTab(tab.id)}
-                  className="card-section p-3 flex flex-col items-center gap-1 hover:bg-primary/5 text-center min-h-[72px]"
+                  className="card-section p-3 flex flex-col items-center gap-1 hover:bg-primary/5 text-center min-h-[72px] relative"
                 >
+                  {isLastVisited && (
+                    <span className="absolute top-1 right-1 text-[8px] font-semibold uppercase tracking-wide text-primary bg-primary/10 px-1 rounded">
+                      Last
+                    </span>
+                  )}
                   <Icon className="w-5 h-5 text-primary shrink-0" />
                   <span className="text-[9px] text-muted-foreground leading-tight line-clamp-2">{tab.label}</span>
                 </button>
@@ -717,8 +797,16 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-[max(2.75rem,env(safe-area-inset-top))]">
       <TourGuideFirstLogin role="admin" userId={admin.id} adminPermissions={admin.permissions} t={t} />
+      <AdminTopActions onOpenSearch={() => setSearchOpen(true)} />
+      <AdminModuleDrawer tabs={visibleTabs} activeTab={activeTab} onSelectTab={(tab) => goToTab(tab)} />
+      <AdminGlobalSearch
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        allowedTabs={allowedTabSet}
+        onNavigate={(tab, query) => goToTab(tab, { searchQuery: query })}
+      />
       {renderContent()}
 
       {/* Maintenance Monthly Breakdown Modal */}
@@ -822,18 +910,16 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
-        <p className="text-center text-[9px] text-muted-foreground pt-1 border-t border-border/60 bg-card">
-          A–Z navigation
-        </p>
-        <div className="max-w-lg mx-auto flex items-center overflow-x-auto gap-0 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1 scrollbar-hide">
-          {bottomNavTabsAlphabetical.map((tab) => {
+        <div className="max-w-lg mx-auto flex items-center justify-around gap-0 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-2">
+          {bottomNavTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const label = tab.id === 'report' ? 'Reports' : tab.label;
             return (
               <button key={tab.id} type="button" onClick={() => goToTab(tab.id)}
-                className={`${isActive ? 'nav-item-active' : 'nav-item'} min-w-[3rem] flex-1`}>
-                <Icon className="w-4 h-4" />
-                <span className="text-[9px] font-medium leading-tight">{tab.label}</span>
+                className={`${isActive ? 'nav-item-active' : 'nav-item'} flex-1 max-w-[5rem]`}>
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium leading-tight">{label}</span>
               </button>
             );
           })}

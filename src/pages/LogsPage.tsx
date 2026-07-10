@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { Search, FileText, LogOut, Download } from 'lucide-react';
 import { format } from 'date-fns';
@@ -7,12 +7,24 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { confirmAction, showToast } from '@/lib/swal';
 import { DateInput } from '@/components/DateInput';
 
-const LogsPage = () => {
+const LogsPage = ({
+  initialSearchQuery,
+  onInitialSearchConsumed,
+}: {
+  initialSearchQuery?: string;
+  onInitialSearchConsumed?: () => void;
+} = {}) => {
   const { visitors, markExit } = useStore();
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  useEffect(() => {
+    if (!initialSearchQuery) return;
+    setSearch(initialSearchQuery);
+    onInitialSearchConsumed?.();
+  }, [initialSearchQuery, onInitialSearchConsumed]);
 
   const filtered = useMemo(() => {
     return visitors.filter(v => {

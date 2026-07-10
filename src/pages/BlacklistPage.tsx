@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import type { BlacklistEntry } from '@/types';
 import { ShieldAlert, Plus, Trash2, Search, User, Car } from 'lucide-react';
@@ -6,11 +6,24 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { capsFieldChange } from '@/lib/entryCaps';
 
-const BlacklistPage = () => {
+const BlacklistPage = ({
+  initialSearchQuery,
+  onInitialSearchConsumed,
+}: {
+  initialSearchQuery?: string;
+  onInitialSearchConsumed?: () => void;
+} = {}) => {
   const { blacklist, addToBlacklist, removeFromBlacklist, currentGuard } = useStore();
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    if (!initialSearchQuery) return;
+    setSearch(initialSearchQuery);
+    onInitialSearchConsumed?.();
+  }, [initialSearchQuery, onInitialSearchConsumed]);
+
   const [form, setForm] = useState({ type: 'visitor' as 'visitor' | 'vehicle', name: '', phone: '', vehicleNumber: '', reason: '' });
 
   const filtered = blacklist.filter(e => {

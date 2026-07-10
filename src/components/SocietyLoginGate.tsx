@@ -80,17 +80,21 @@ const SocietyLoginGate = ({ onContinue, onSuperadmin }: Props) => {
           >
             {t('login.continueToLogin')}
           </button>
-          <Link
-            to="/society-signup"
-            className="group relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-primary via-amber-500 to-primary bg-[length:200%_100%] py-3.5 pl-4 pr-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/40 transition motion-safe:hover:bg-[position:100%_0] motion-safe:duration-500 active:scale-[0.98] dark:ring-primary/25"
-          >
-            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:via-white/10" aria-hidden />
-            <Building2 className="relative h-5 w-5 shrink-0" aria-hidden />
-            <span className="relative flex-1 text-center">{t('login.registerNewSociety')}</span>
-            <Sparkles className="relative h-4 w-4 shrink-0 opacity-95" aria-hidden />
-            <ArrowRight className="relative h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" aria-hidden />
-          </Link>
-          <p className="text-[10px] text-muted-foreground text-center leading-snug px-1">{t('login.createSocietyCta')}</p>
+          {!selectedId && (
+            <>
+              <Link
+                to="/society-signup"
+                className="group relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-primary via-amber-500 to-primary bg-[length:200%_100%] py-3.5 pl-4 pr-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/40 transition motion-safe:hover:bg-[position:100%_0] motion-safe:duration-500 active:scale-[0.98] dark:ring-primary/25"
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:via-white/10" aria-hidden />
+                <Building2 className="relative h-5 w-5 shrink-0" aria-hidden />
+                <span className="relative flex-1 text-center">{t('login.registerNewSociety')}</span>
+                <Sparkles className="relative h-4 w-4 shrink-0 opacity-95" aria-hidden />
+                <ArrowRight className="relative h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" aria-hidden />
+              </Link>
+              <p className="text-[10px] text-muted-foreground text-center leading-snug px-1">{t('login.createSocietyCta')}</p>
+            </>
+          )}
           {onSuperadmin && (
           <button
             type="button"

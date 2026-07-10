@@ -10,7 +10,8 @@ import { floorLabelFromFlatNumber } from '@/lib/flatFloor';
 import { allowsPrimaryMember, allowsResidentLogin, isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
 import type { Flat, Member } from '@/types';
 import { Switch } from '@/components/ui/switch';
-import { exportResidentsDirectoryPdf, type PdfFlat, type PdfMember } from '@/lib/exportResidentsPdf';
+import { exportResidentsDirectoryPdf, buildResidentsDirectoryPdfBlob, type PdfFlat, type PdfMember } from '@/lib/exportResidentsPdf';
+import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import SensitiveAdminVerifyModal from '@/components/SensitiveAdminVerifyModal';
 import Flat360ProfilePanel from '@/components/Flat360ProfilePanel';
 import { DateInput } from '@/components/DateInput';
@@ -78,6 +79,8 @@ interface AdminResidentManagerProps {
   /** Open Residents with this flat expanded (e.g. from Directory → Edit). */
   initialExpandedFlatId?: string | null;
   onExpandedFlatConsumed?: () => void;
+  initialSearchQuery?: string;
+  onInitialSearchConsumed?: () => void;
 }
 
 const AdminResidentManager = ({
@@ -86,11 +89,19 @@ const AdminResidentManager = ({
   requireSensitiveVerify = true,
   initialExpandedFlatId = null,
   onExpandedFlatConsumed,
+  initialSearchQuery,
+  onInitialSearchConsumed,
 }: AdminResidentManagerProps) => {
   const { t } = useLanguage();
   const { flats, members, residentVehicles, loadFlats, loadMembers, loadResidentVehicles, societyId } = useStore();
   const [search, setSearch] = useState('');
   const [expandedFlat, setExpandedFlat] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialSearchQuery) return;
+    setSearch(initialSearchQuery);
+    onInitialSearchConsumed?.();
+  }, [initialSearchQuery, onInitialSearchConsumed]);
   const [flatDetailView, setFlatDetailView] = useState<FlatDetailView>('manage');
   const [viewTab, setViewTab] = useState<ViewTab>('flats');
   const [residentUsers, setResidentUsers] = useState<ResidentUser[]>([]);
@@ -317,6 +328,34 @@ const AdminResidentManager = ({
     });
   };
 
+  const buildResidentsPdfData = async () => {
+    const { data: soc } = await supabase.from('societies').select('name').eq('id', societyId!).single();
+    const societyName = soc?.name || 'Society';
+    const pdfFlats: PdfFlat[] = flats.map((f) => ({
+      id: f.id,
+      flat_number: f.flatNumber,
+      owner_name: f.ownerName ?? null,
+      floor: f.floor ?? null,
+      wing: f.wing ?? null,
+    }));
+    const pdfMembers: PdfMember[] = members.map((m) => ({
+      flat_id: m.flatId,
+      name: m.name,
+      relation: m.relation,
+      phone: m.phone ?? null,
+      age: m.age ?? null,
+      gender: m.gender ?? null,
+      is_primary: m.isPrimary,
+      spouse_name: m.spouseName ?? null,
+      police_verification: m.policeVerification ?? null,
+      date_joining: m.dateJoining ?? null,
+      date_leave: m.dateLeave ?? null,
+      id_photo_front: m.idPhotoFront ?? null,
+      id_photo_back: m.idPhotoBack ?? null,
+    }));
+    return { societyName, pdfFlats, pdfMembers };
+  };
+
   const handleExportResidentsPdf = async () => {
     if (!societyId) {
       toast.error('Select a society first');
@@ -324,30 +363,8 @@ const AdminResidentManager = ({
     }
     setExportingPdf(true);
     try {
-      const { data: soc } = await supabase.from('societies').select('name').eq('id', societyId).single();
-      const pdfFlats: PdfFlat[] = flats.map((f) => ({
-        id: f.id,
-        flat_number: f.flatNumber,
-        owner_name: f.ownerName ?? null,
-        floor: f.floor ?? null,
-        wing: f.wing ?? null,
-      }));
-      const pdfMembers: PdfMember[] = members.map((m) => ({
-        flat_id: m.flatId,
-        name: m.name,
-        relation: m.relation,
-        phone: m.phone ?? null,
-        age: m.age ?? null,
-        gender: m.gender ?? null,
-        is_primary: m.isPrimary,
-        spouse_name: m.spouseName ?? null,
-        police_verification: m.policeVerification ?? null,
-        date_joining: m.dateJoining ?? null,
-        date_leave: m.dateLeave ?? null,
-        id_photo_front: m.idPhotoFront ?? null,
-        id_photo_back: m.idPhotoBack ?? null,
-      }));
-      exportResidentsDirectoryPdf(soc?.name || 'Society', pdfFlats, pdfMembers);
+      const { societyName, pdfFlats, pdfMembers } = await buildResidentsPdfData();
+      exportResidentsDirectoryPdf(societyName, pdfFlats, pdfMembers);
     } finally {
       setExportingPdf(false);
     }
@@ -728,6 +745,17 @@ const AdminResidentManager = ({
             >
               <FileDown className="w-3.5 h-3.5" /> {exportingPdf ? 'PDF…' : 'Export PDF'}
             </button>
+            <SharePdfWhatsAppButton
+              label="Share on WhatsApp"
+              disabled={!societyId || exportingPdf}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#25D366]/10 text-[#128C7E] border border-[#25D366]/30 hover:bg-[#25D366]/20 disabled:opacity-50"
+              filename="residents-directory.pdf"
+              message="Resident directory"
+              getBlob={async () => {
+                const { societyName, pdfFlats, pdfMembers } = await buildResidentsPdfData();
+                return buildResidentsDirectoryPdfBlob(societyName, pdfFlats, pdfMembers);
+              }}
+            />
             <button onClick={openAddFlatTab}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">
               <Plus className="w-3.5 h-3.5" /> Add Flat

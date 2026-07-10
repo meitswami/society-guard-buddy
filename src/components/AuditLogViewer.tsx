@@ -47,9 +47,13 @@ const eventLabels: Record<string, string> = {
 const AuditLogViewer = ({
   onNavigate,
   adminName = 'Admin',
+  initialSearchQuery,
+  onInitialSearchConsumed,
 }: {
   onNavigate?: (tab: AdminTab) => void;
   adminName?: string;
+  initialSearchQuery?: string;
+  onInitialSearchConsumed?: () => void;
 }) => {
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
@@ -58,6 +62,12 @@ const AuditLogViewer = ({
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialSearchQuery) return;
+    setSearch(initialSearchQuery);
+    onInitialSearchConsumed?.();
+  }, [initialSearchQuery, onInitialSearchConsumed]);
 
   useEffect(() => { loadLogs(); }, [filter, societyId]);
 

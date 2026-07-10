@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { BookUser, Search, ChevronDown, ChevronUp, Home, Users, Car, Phone, Edit2 } from 'lucide-react';
 import { fmtDate } from '@/lib/dateFormat';
@@ -10,14 +10,27 @@ type DirectoryPageProps = {
   /** When true, flats show an Edit action (admin with Residents access). */
   canEditResidents?: boolean;
   onEditFlat?: (flatId: string) => void;
+  initialSearchQuery?: string;
+  onInitialSearchConsumed?: () => void;
 };
 
-const DirectoryPage = ({ canEditResidents = false, onEditFlat }: DirectoryPageProps) => {
+const DirectoryPage = ({
+  canEditResidents = false,
+  onEditFlat,
+  initialSearchQuery,
+  onInitialSearchConsumed,
+}: DirectoryPageProps) => {
   const { visitors, flats, members, residentVehicles } = useStore();
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('flats');
+
+  useEffect(() => {
+    if (!initialSearchQuery) return;
+    setSearch(initialSearchQuery);
+    onInitialSearchConsumed?.();
+  }, [initialSearchQuery, onInitialSearchConsumed]);
 
   const membersByFlatId = useMemo(() => {
     const map = new Map<string, typeof members>();

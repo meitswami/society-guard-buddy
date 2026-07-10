@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import type { Visitor } from '@/types';
 import { Zap, Search, UserCheck, LogOut } from 'lucide-react';
@@ -39,11 +39,23 @@ function rowMatchesSearch(row: QuickRow, q: string): boolean {
   );
 }
 
-const QuickEntryPage = () => {
+const QuickEntryPage = ({
+  initialSearchQuery,
+  onInitialSearchConsumed,
+}: {
+  initialSearchQuery?: string;
+  onInitialSearchConsumed?: () => void;
+} = {}) => {
   const { visitors, members, flats, addVisitor, markExit, currentGuard } = useStore();
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialSearchQuery) return;
+    setSearch(initialSearchQuery);
+    onInitialSearchConsumed?.();
+  }, [initialSearchQuery, onInitialSearchConsumed]);
 
   const flatNumberById = useMemo(
     () => new Map(flats.map(f => [f.id, f.flatNumber])),
