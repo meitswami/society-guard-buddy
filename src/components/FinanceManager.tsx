@@ -41,15 +41,12 @@ import {
   todayRecordingDate,
 } from '@/lib/financeDates';
 import {
-  FINANCE_FLAT_REPORT_METRICS,
   FINANCE_LEDGER_GROUP_METRICS,
   FINANCE_PERIOD_METRICS,
   FINANCE_TOTALS_METRICS,
   SUM_INSIGHT_METRICS,
 } from '@/lib/descriptiveMetricCopy';
 import { uploadMaintenanceReceipt, uploadToNotificationMedia } from '@/lib/notificationMediaStorage';
-import ExpenseSplitter from '@/components/ExpenseSplitter';
-import HeadFundReconciliation from '@/components/HeadFundReconciliation';
 import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
 import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
 import { sumByChannel } from '@/lib/cashBankChannel';
@@ -63,7 +60,7 @@ import { PeriodMetric } from '@/components/finance/PeriodMetric';
 import { UnpaidFlatGridTable } from '@/components/finance/UnpaidFlatGridTable';
 import { useFinanceManagerData } from '@/hooks/useFinanceManagerData';
 import { useFinanceMutations } from '@/hooks/finance/useFinanceMutations';
-import { fetchNotificationReadStatus } from '@/services/finance/financeMutations';
+import { fetchNotificationReadStatus, updateMaintenancePaymentStatus } from '@/services/finance/financeMutations';
 import { useFinanceFlatReport } from '@/hooks/finance/useFinanceFlatReport';
 import { useFinanceEventReference } from '@/hooks/finance/useFinanceEventReference';
 import { useFinancePeriodReportBatch } from '@/hooks/finance/useFinancePeriodReportBatch';
@@ -485,15 +482,7 @@ const FinanceManager = ({
     toast.success('Receipt type deleted');
     if (editingChargeId === id) {
       setEditingChargeId(null);
-      setForm({
-      title: '',
-      amount: '',
-      frequency: 'monthly',
-      due_day: '1',
-      major_head: '',
-      expense_group_id: '',
-      new_sub_head: '',
-    });
+      setForm(emptyMaintenanceChargeForm());
       setShowForm(false);
     }
     await loadAll();
@@ -962,48 +951,23 @@ const FinanceManager = ({
     const ok = await confirmAction('Verify Payment?', 'Confirm this payment as verified?', 'Yes, Verify', 'Cancel');
     if (!ok) return;
     const row = payments.find((p) => p.id === id);
-    const reviewedAt = new Date().toISOString();
-    await (supabase as any)
-      .from('maintenance_payments')
-      .update({
-        payment_status: 'verified',
-        verified_by: adminName,
-        verified_at: reviewedAt,
-        reviewed_at: reviewedAt,
-        rejection_reason: null,
-      })
-      .eq('id', id);
-    if (row?.flat_number) {
+    try {
+      await financeMutations.setPaymentStatus({ paymentId: id, status: 'verified', adminName });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not verify payment');
+      return;
+    }
+    if (row?.flat_number && societyId) {
       const chargeTitle = charges.find((c) => c.id === row.charge_id)?.title || 'Maintenance charge';
-      const title = `Payment approved: ${chargeTitle}`;
-      const message = `Your payment of ₹${Number(row.amount || 0).toLocaleString('en-IN')} has been approved by ${adminName}.`;
-      await (supabase as any).from('notifications').insert([
-        {
-          society_id: societyId,
-          title,
-          message,
-          type: 'maintenance_payment_decision',
-          target_type: 'flat',
-          target_id: row.flat_number,
-          created_by: adminName,
-        },
-      ]);
-      await supabase.functions.invoke('send-push-notification', {
-        body: {
-          title,
-          message,
-          target_type: 'flat',
-          target_flat_numbers: [row.flat_number],
-          target_ids: [],
-          media_items: [],
-          society_id: societyId,
-          sound_key: 'digital',
-          sound_custom_url: '',
-        },
+      await financeMutations.notifyPayment({
+        societyId,
+        adminName,
+        flatNumber: row.flat_number,
+        title: `Payment approved: ${chargeTitle}`,
+        message: `Your payment of ₹${Number(row.amount || 0).toLocaleString('en-IN')} has been approved by ${adminName}.`,
       });
     }
     showSuccess('Verified!', 'Payment verified successfully');
-    await loadAll();
   };
 
   const rejectPayment = async (id: string) => {
@@ -1017,84 +981,31 @@ const FinanceManager = ({
       return;
     }
     const row = payments.find((p) => p.id === id);
-    const reviewedAt = new Date().toISOString();
-    await (supabase as any)
-      .from('maintenance_payments')
-      .update({
-        payment_status: 'rejected',
-        verified_by: adminName,
-        verified_at: reviewedAt,
-        reviewed_at: reviewedAt,
-        rejection_reason: reason,
-      })
-      .eq('id', id);
-    if (row?.flat_number) {
+    try {
+      await financeMutations.setPaymentStatus({ paymentId: id, status: 'rejected', adminName, reason });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not reject payment');
+      return;
+    }
+    if (row?.flat_number && societyId) {
       const chargeTitle = charges.find((c) => c.id === row.charge_id)?.title || 'Maintenance charge';
-      const title = `Payment rejected: ${chargeTitle}`;
-      const message = `Your payment entry was rejected by ${adminName}. Reason: ${reason}`;
-      await (supabase as any).from('notifications').insert([
-        {
-          society_id: societyId,
-          title,
-          message,
-          type: 'maintenance_payment_decision',
-          target_type: 'flat',
-          target_id: row.flat_number,
-          created_by: adminName,
-        },
-      ]);
-      await supabase.functions.invoke('send-push-notification', {
-        body: {
-          title,
-          message,
-          target_type: 'flat',
-          target_flat_numbers: [row.flat_number],
-          target_ids: [],
-          media_items: [],
-          society_id: societyId,
-          sound_key: 'digital',
-          sound_custom_url: '',
-        },
+      await financeMutations.notifyPayment({
+        societyId,
+        adminName,
+        flatNumber: row.flat_number,
+        title: `Payment rejected: ${chargeTitle}`,
+        message: `Your payment entry was rejected by ${adminName}. Reason: ${reason}`,
       });
     }
     showSuccess('Rejected', 'Payment has been rejected');
-    await loadAll();
   };
 
   const deleteMaintenancePaymentRowInternal = async (p: any) => {
-    const feId = p.finance_entry_id as string | null | undefined;
-    if (feId) {
-      await supabase
-        .from('finance_entry_allocations')
-        .delete()
-        .eq('finance_entry_id', feId)
-        .eq('flat_number', String(p.flat_number));
-    }
-    await supabase.from('maintenance_payments').delete().eq('id', p.id);
-    if (feId) {
-      const { data: restAllocs } = await supabase
-        .from('finance_entry_allocations')
-        .select('amount')
-        .eq('finance_entry_id', feId);
-      const { data: restMps } = await supabase
-        .from('maintenance_payments')
-        .select('id')
-        .eq('finance_entry_id', feId);
-      const total = restAllocs?.reduce((s, a) => s + Number(a.amount), 0) ?? 0;
-      const acount = restAllocs?.length ?? 0;
-      const mpLeft = restMps?.length ?? 0;
-      if (acount === 0 && mpLeft === 0) {
-        await supabase.from('finance_entries').delete().eq('id', feId);
-      } else if (acount > 0) {
-        await supabase
-          .from('finance_entries')
-          .update({ total_amount: total, aggregate_flat_count: acount })
-          .eq('id', feId);
-      } else if (mpLeft > 0) {
-        await supabase.from('maintenance_payments').update({ finance_entry_id: null }).eq('finance_entry_id', feId);
-        await supabase.from('finance_entries').delete().eq('id', feId);
-      }
-    }
+    await financeMutations.removePayment({
+      id: p.id,
+      flat_number: String(p.flat_number),
+      finance_entry_id: p.finance_entry_id,
+    });
   };
 
   const deleteMaintenancePaymentRow = async (p: any) => {
@@ -1116,13 +1027,13 @@ const FinanceManager = ({
   };
 
   const updateLedgerEntryStatus = async (entryId: string, payment_status: string) => {
-    const { error } = await supabase.from('finance_entries').update({ payment_status }).eq('id', entryId);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await financeMutations.setLedgerStatus({ entryId, payment_status });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not update status');
       return;
     }
     toast.success('Status updated');
-    await loadAll();
   };
 
   const deleteLedgerRow = async (e: FinanceLedgerRow) => {
@@ -1133,7 +1044,12 @@ const FinanceManager = ({
       'Cancel',
     );
     if (!ok) return;
-    await supabase.from('finance_entries').delete().eq('id', e.id);
+    try {
+      await financeMutations.removeLedger(e.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not delete ledger entry');
+      return;
+    }
     toast.success('Ledger entry deleted');
     setSelectedReceiptKeys((prev) => {
       const next = new Set(prev);
@@ -1150,94 +1066,36 @@ const FinanceManager = ({
   ) => {
     const row = payments.find((x) => x.id === id);
     if (!row) return;
-    const reviewedAt = new Date().toISOString();
     const notify = opts?.notify !== false;
 
-    if (nextStatus === 'verified') {
-      await (supabase as any).from('maintenance_payments').update({
-        payment_status: 'verified',
-        verified_by: adminName,
-        verified_at: reviewedAt,
-        reviewed_at: reviewedAt,
-        rejection_reason: null,
-      }).eq('id', id);
-      if (notify && row.flat_number) {
-        const chargeTitle = charges.find((c) => c.id === row.charge_id)?.title || 'Maintenance charge';
-        const title = `Payment approved: ${chargeTitle}`;
-        const message = `Your payment of ₹${Number(row.amount || 0).toLocaleString('en-IN')} has been approved by ${adminName}.`;
-        await (supabase as any).from('notifications').insert([
-          {
-            society_id: societyId,
-            title,
-            message,
-            type: 'maintenance_payment_decision',
-            target_type: 'flat',
-            target_id: row.flat_number,
-            created_by: adminName,
-          },
-        ]);
-        await supabase.functions.invoke('send-push-notification', {
-          body: {
-            title,
-            message,
-            target_type: 'flat',
-            target_flat_numbers: [row.flat_number],
-            target_ids: [],
-            media_items: [],
-            society_id: societyId,
-            sound_key: 'digital',
-            sound_custom_url: '',
-          },
-        });
-      }
-    } else if (nextStatus === 'rejected') {
-      const reason = opts?.reason?.trim() || 'Rejected by admin';
-      await (supabase as any).from('maintenance_payments').update({
-        payment_status: 'rejected',
-        verified_by: adminName,
-        verified_at: reviewedAt,
-        reviewed_at: reviewedAt,
-        rejection_reason: reason,
-      }).eq('id', id);
-      if (notify && row.flat_number) {
-        const chargeTitle = charges.find((c) => c.id === row.charge_id)?.title || 'Maintenance charge';
-        const title = `Payment rejected: ${chargeTitle}`;
-        const message = `Your payment entry was rejected by ${adminName}. Reason: ${reason}`;
-        await (supabase as any).from('notifications').insert([
-          {
-            society_id: societyId,
-            title,
-            message,
-            type: 'maintenance_payment_decision',
-            target_type: 'flat',
-            target_id: row.flat_number,
-            created_by: adminName,
-          },
-        ]);
-        await supabase.functions.invoke('send-push-notification', {
-          body: {
-            title,
-            message,
-            target_type: 'flat',
-            target_flat_numbers: [row.flat_number],
-            target_ids: [],
-            media_items: [],
-            society_id: societyId,
-            sound_key: 'digital',
-            sound_custom_url: '',
-          },
-        });
-      }
-    } else {
-      await (supabase as any).from('maintenance_payments').update({
-        payment_status: 'pending',
-        verified_by: null,
-        verified_at: null,
-        reviewed_at: null,
-        rejection_reason: null,
-      }).eq('id', id);
+    const result = await updateMaintenancePaymentStatus(id, nextStatus, adminName, opts?.reason);
+    if (result.error) {
+      toast.error(result.error);
+      return;
     }
-    if (!opts?.skipReload) await loadAll();
+
+    if (notify && societyId && row.flat_number) {
+      const chargeTitle = charges.find((c) => c.id === row.charge_id)?.title || 'Maintenance charge';
+      if (nextStatus === 'verified') {
+        await financeMutations.notifyPayment({
+          societyId,
+          adminName,
+          flatNumber: row.flat_number,
+          title: `Payment approved: ${chargeTitle}`,
+          message: `Your payment of ₹${Number(row.amount || 0).toLocaleString('en-IN')} has been approved by ${adminName}.`,
+        });
+      } else if (nextStatus === 'rejected') {
+        const reason = opts?.reason?.trim() || 'Rejected by admin';
+        await financeMutations.notifyPayment({
+          societyId,
+          adminName,
+          flatNumber: row.flat_number,
+          title: `Payment rejected: ${chargeTitle}`,
+          message: `Your payment entry was rejected by ${adminName}. Reason: ${reason}`,
+        });
+      }
+    }
+    if (!opts?.skipReload) await financeMutations.invalidateAll();
   };
 
   const savePaymentEdit = async () => {
@@ -1269,14 +1127,14 @@ const FinanceManager = ({
       payload.reviewed_at = null;
       payload.rejection_reason = null;
     }
-    const { error } = await (supabase as any).from('maintenance_payments').update(payload).eq('id', paymentEdit.id);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await financeMutations.savePayment({ paymentId: paymentEdit.id, payload });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not update payment');
       return;
     }
     toast.success('Payment updated');
     setPaymentEdit(null);
-    await loadAll();
   };
 
   const saveLedgerEdit = async () => {
@@ -1286,26 +1144,26 @@ const FinanceManager = ({
       toast.error('Billing date must fall within the entry month.');
       return;
     }
-    const { error } = await supabase
-      .from('finance_entries')
-      .update({
-        title: ledgerEdit.title.trim() || null,
-        notes: ledgerEdit.notes.trim() || null,
-        payment_status: ledgerEdit.payment_status,
-        transaction_id: ledgerEdit.transaction_id.trim() || null,
-        payment_method: ledgerEdit.payment_method,
-        total_amount: Number(ledgerEdit.total_amount) || 0,
-        entry_month: entryMonth,
-        transaction_date: ledgerEdit.transaction_date,
-      })
-      .eq('id', ledgerEdit.id);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await financeMutations.saveLedger({
+        entryId: ledgerEdit.id,
+        payload: {
+          title: ledgerEdit.title.trim() || null,
+          notes: ledgerEdit.notes.trim() || null,
+          payment_status: ledgerEdit.payment_status,
+          transaction_id: ledgerEdit.transaction_id.trim() || null,
+          payment_method: ledgerEdit.payment_method,
+          total_amount: Number(ledgerEdit.total_amount) || 0,
+          entry_month: entryMonth,
+          transaction_date: ledgerEdit.transaction_date,
+        },
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not update ledger entry');
       return;
     }
     toast.success('Ledger entry updated');
     setLedgerEdit(null);
-    await loadAll();
   };
 
   const bulkDeleteSelectedReceipts = async () => {
@@ -1324,7 +1182,7 @@ const FinanceManager = ({
         if (p) await deleteMaintenancePaymentRowInternal(p);
       } else if (key.startsWith('ledger-')) {
         const id = key.slice(7);
-        await supabase.from('finance_entries').delete().eq('id', id);
+        await financeMutations.removeLedger(id);
       }
     }
     setSelectedReceiptKeys(new Set());
@@ -2339,14 +2197,14 @@ const FinanceManager = ({
           delivery_batch_id: batchId,
           is_read: false,
         }));
-        const { error: insErr } = await supabase.from('notifications').insert(rows);
-        if (insErr) {
-          toast.error(insErr.message);
+        try {
+          await financeMutations.insertNotifications(rows);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'Could not send notifications');
           return;
         }
       }
-      try {
-        await supabase.functions.invoke('send-push-notification', {
+      await financeMutations.sendPushNotification({
           body: {
             title,
             message: `Finance report ${fmtIsoDateToDisplay(periodFrom)}–${fmtIsoDateToDisplay(periodTo)}. Open Alerts in the app.`,
@@ -2355,11 +2213,8 @@ const FinanceManager = ({
             society_id: societyId,
             sound_key: 'digital',
             sound_custom_url: '',
-          },
-        });
-      } catch (e) {
-        console.warn('Push invoke failed', e);
-      }
+        },
+      });
       setLastDeliveryBatchId(batchId);
       toast.success(`Sent to ${ids.length} resident(s). Open “Read receipts” to see who opened it.`);
     } finally {
@@ -2369,11 +2224,7 @@ const FinanceManager = ({
 
   const loadReadStatusForBatch = async (batchId: string) => {
     setReadStatusBatchId(batchId);
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('id, target_id, is_read, read_at')
-      .eq('delivery_batch_id', batchId)
-      .order('target_id');
+    const { data, error } = await fetchNotificationReadStatus(batchId);
     if (error) {
       toast.error(error.message);
       return;
@@ -2393,31 +2244,14 @@ const FinanceManager = ({
     if (!ok) return;
     setReportPushBusy(true);
     try {
-      const { data: batchRows, error: fetchErr } = await supabase
-        .from('notifications')
-        .select('target_id')
-        .eq('delivery_batch_id', batchId)
-        .eq('society_id', societyId)
-        .eq('type', 'finance_period_report');
-      if (fetchErr) {
-        toast.error(fetchErr.message);
+      let targetIds: string[] = [];
+      try {
+        const result = await financeMutations.recallPeriodReport(batchId);
+        targetIds = result.targetIds;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not recall report');
         return;
       }
-      const targetIds = [...new Set((batchRows ?? []).map((r) => r.target_id).filter(Boolean))] as string[];
-
-      const { error: delErr } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('delivery_batch_id', batchId)
-        .eq('society_id', societyId)
-        .eq('type', 'finance_period_report');
-      if (delErr) {
-        toast.error(delErr.message);
-        return;
-      }
-
-      const path = `finance-reports/${societyId}/${batchId}.pdf`;
-      await supabase.storage.from('notification-media').remove([path]);
 
       if (targetIds.length > 0) {
         const title = 'Finance report withdrawn';
@@ -2438,27 +2272,22 @@ const FinanceManager = ({
             sound_custom_url: null as string | null,
             is_read: false,
           }));
-          const { error: insErr } = await supabase.from('notifications').insert(rows);
-          if (insErr) {
-            toast.error(insErr.message);
+          try {
+            await financeMutations.insertNotifications(rows);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Could not notify residents');
             return;
           }
         }
-        try {
-          await supabase.functions.invoke('send-push-notification', {
-            body: {
-              title,
-              message: 'The finance report sent earlier was withdrawn. Please ignore it.',
-              target_type: 'user',
-              target_ids: targetIds,
-              society_id: societyId,
-              sound_key: 'digital',
-              sound_custom_url: '',
-            },
-          });
-        } catch (e) {
-          console.warn('Push invoke failed', e);
-        }
+        await financeMutations.sendPushNotification({
+          title,
+          message: 'The finance report sent earlier was withdrawn. Please ignore it.',
+          target_type: 'user',
+          target_ids: targetIds,
+          society_id: societyId,
+          sound_key: 'digital',
+          sound_custom_url: '',
+        });
       }
 
       if (lastDeliveryBatchId === batchId) setLastDeliveryBatchId(null);
@@ -2474,18 +2303,15 @@ const FinanceManager = ({
   };
 
   const sendReminders = async () => {
-    for (const flat of unpaidFlats) {
-      await supabase.from('notifications').insert([
-        {
-          society_id: societyId,
-          title: 'Maintenance Due Reminder',
-          message: `Dear resident of Flat ${flat.flat_number}, your maintenance payment is due. Please pay at the earliest.`,
-          type: 'payment_reminder',
-          target_type: 'flat',
-          target_id: flat.flat_number,
-          created_by: adminName,
-        },
-      ]);
+    if (!societyId) return;
+    try {
+      await financeMutations.sendReminders({
+        adminName,
+        flatNumbers: unpaidFlats.map((f) => f.flat_number),
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not send reminders');
+      return;
     }
     toast.success(`Reminders sent to ${unpaidFlats.length} flats`);
   };
@@ -2493,34 +2319,28 @@ const FinanceManager = ({
   const saveAutoReminderSettings = async () => {
     if (!societyId) return;
     setSavingAutoReminder(true);
-    const { error } = await (supabase as any).from('finance_reminder_settings').upsert(
-      {
-        society_id: societyId,
+    try {
+      await financeMutations.saveReminderSettings({
         enabled: autoReminderEnabled,
         schedule: autoReminderSchedule,
-        timezone: 'Asia/Kolkata',
-      },
-      { onConflict: 'society_id' },
-    );
-    setSavingAutoReminder(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+      });
+      toast.success('Auto reminder settings saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save settings');
+    } finally {
+      setSavingAutoReminder(false);
     }
-    toast.success('Auto reminder settings saved');
   };
 
   const testAutoReminderNow = async () => {
     if (!societyId) return;
     setTestingAutoReminder(true);
-    const { data, error } = await supabase.functions.invoke('maintenance-reminder', {
-      body: {
-        society_id: societyId,
-        force_slot: '12pm',
-      },
-    });
-    setTestingAutoReminder(false);
-    if (error) {
+    try {
+      const data = await financeMutations.testReminder();
+      const sent = Number(data.sent ?? 0);
+      toast.success(sent > 0 ? `Test reminder sent to ${sent} flat(s)` : 'No pending dues found for test run');
+      setLastReminderTestStatus(`Last test at ${fmtTime(new Date())}: sent to ${sent} flat(s)`);
+    } catch (error) {
       let detail = String((error as any)?.message || 'Unknown function error');
       const ctx = (error as any)?.context;
       if (ctx) {
@@ -2558,11 +2378,9 @@ const FinanceManager = ({
             : detail;
       toast.error(hint);
       setLastReminderTestStatus(`Last test failed at ${fmtTime(new Date())}: ${hint}`);
-      return;
+    } finally {
+      setTestingAutoReminder(false);
     }
-    const sent = Number((data as any)?.sent ?? 0);
-    toast.success(sent > 0 ? `Test reminder sent to ${sent} flat(s)` : 'No pending dues found for test run');
-    setLastReminderTestStatus(`Last test at ${fmtTime(new Date())}: sent to ${sent} flat(s)`);
   };
 
   const openFlatDateModal = (flatNumber: string, fallbackDate: string) => {
@@ -3076,38 +2894,14 @@ const FinanceManager = ({
       )}
 
       {subTab === 'record_payment' && (
-        <div>
-          <p className="text-xs text-muted-foreground mb-3 leading-snug">
-            Record society outflows (electricity, vendors, repairs) and split across flats — same pattern as{' '}
-            <span className="text-foreground font-medium">Record receipt</span> for inflows. Event food/catering →{' '}
-            <span className="text-foreground font-medium">Events &amp; food</span>.
-          </p>
-          <ExpenseSplitter
-            adminName={adminName}
-            paymentOnly
-            embedded
-            onRecordsChanged={bumpHeadReconciliation}
-          />
-          <div className="mt-4 pt-3 border-t border-border/60">
-            <button
-              type="button"
-              className="btn-secondary w-full flex items-center justify-center gap-2"
-              onClick={() => setShowHeadFundRecon((v) => !v)}
-            >
-              <Scale className="w-4 h-4" />
-              {showHeadFundRecon ? 'Hide head fund reconciliation' : 'Head fund reconciliation'}
-            </button>
-            {showHeadFundRecon && (
-              <div className="mt-3">
-                <HeadFundReconciliation
-                  adminName={adminName}
-                  refreshKey={headReconciliationKey}
-                  onOpenRecordReceipt={() => setSubTab('payments')}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        <FinanceRecordPaymentTab
+          adminName={adminName}
+          headReconciliationKey={headReconciliationKey}
+          showHeadFundRecon={showHeadFundRecon}
+          onToggleHeadFundRecon={() => setShowHeadFundRecon((v) => !v)}
+          onRecordsChanged={bumpHeadReconciliation}
+          onOpenRecordReceipt={() => setSubTab('payments')}
+        />
       )}
 
       {subTab === 'receipts' && (
@@ -4635,172 +4429,18 @@ const FinanceManager = ({
       )}
 
       {subTab === 'flat_report' && (
-        <div className="space-y-4">
-          <div className="card-section p-4 flex flex-wrap items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
-              <IndianRupee className="w-5 h-5 text-indigo-500" />
-            </div>
-            <div className="flex-1 min-w-[220px] space-y-3">
-              <div>
-                <h3 className="text-sm font-semibold">Flat-wise Financial Report</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Per-flat breakdown of maintenance receipts and society payment splits for reporting &amp; visibility — not for accounting.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <label className="text-xs flex flex-col gap-1">
-                  <span className="text-muted-foreground">From</span>
-                  <DateInput className="input-field" value={flatReportFrom} onChange={(e) => setFlatReportFrom(e.target.value)} />
-                </label>
-                <label className="text-xs flex flex-col gap-1">
-                  <span className="text-muted-foreground">To</span>
-                  <DateInput className="input-field" value={flatReportTo} onChange={(e) => setFlatReportTo(e.target.value)} />
-                </label>
-                <label className="text-xs flex flex-col gap-1">
-                  <span className="text-muted-foreground">Flat</span>
-                  <select
-                    className="input-field"
-                    value={flatReportSelectedFlat}
-                    onChange={(e) => setFlatReportSelectedFlat(e.target.value)}
-                  >
-                    <option value="all">All flats</option>
-                    {flats.map((f) => (
-                      <option key={f.id} value={f.flat_number}>
-                        {f.flat_number} — {primaryByFlatId.get(f.id) || f.owner_name || 'Vacant'}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              {flatReportFrom > flatReportTo && (
-                <p className="text-xs text-destructive">End date must be on or after the start date.</p>
-              )}
-            </div>
-          </div>
-
-          {flatReportLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-10">Loading flat report data…</p>
-          ) : flatReportData.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">
-              No financial activity found for the selected period{flatReportSelectedFlat !== 'all' ? ` (Flat ${flatReportSelectedFlat})` : ''}.
-            </p>
-          ) : (
-            <>
-              {/* Summary cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <DescriptiveStatCard
-                  {...FINANCE_FLAT_REPORT_METRICS.totalReceipts}
-                  variant="stat"
-                  value={`₹${flatReportData.reduce((s, r) => s + r.maintenance_paid, 0).toLocaleString('en-IN')}`}
-                  valueClassName="text-lg text-green-600"
-                />
-                <DescriptiveStatCard
-                  {...FINANCE_FLAT_REPORT_METRICS.expenseShare}
-                  variant="stat"
-                  value={`₹${flatReportData.reduce((s, r) => s + r.expense_share, 0).toLocaleString('en-IN')}`}
-                  valueClassName="text-lg text-red-600"
-                />
-                <DescriptiveStatCard
-                  {...FINANCE_FLAT_REPORT_METRICS.settled}
-                  variant="stat"
-                  value={`₹${flatReportData.reduce((s, r) => s + r.settled_amount, 0).toLocaleString('en-IN')}`}
-                  valueClassName="text-lg text-blue-600"
-                />
-                <DescriptiveStatCard
-                  {...FINANCE_FLAT_REPORT_METRICS.unsettled}
-                  variant="stat"
-                  value={`₹${flatReportData.reduce((s, r) => s + r.unsettled_amount, 0).toLocaleString('en-IN')}`}
-                  valueClassName="text-lg text-amber-600"
-                />
-              </div>
-
-              {/* Per-flat breakdown */}
-              <div className="space-y-3">
-                {flatReportData.map((row) => (
-                  <details key={row.flat_number} className="card-section overflow-hidden">
-                    <summary className="p-4 cursor-pointer hover:bg-muted/30 transition-colors">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold">Flat {row.flat_number}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">{row.resident_name}</p>
-                        </div>
-                        <div className="text-right shrink-0 space-y-0.5">
-                          <p className="text-xs">
-                            <span className="text-green-600 font-medium">Paid ₹{row.maintenance_paid.toLocaleString('en-IN')}</span>
-                            {' · '}
-                            <span className="text-red-600 font-medium">Share ₹{row.expense_share.toLocaleString('en-IN')}</span>
-                          </p>
-                          <p className={`text-xs font-bold ${row.net_position >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                            Net: {row.net_position >= 0 ? '+' : ''}₹{row.net_position.toLocaleString('en-IN')}
-                          </p>
-                        </div>
-                      </div>
-                    </summary>
-                    <div className="border-t border-border px-4 py-3 space-y-2">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                        <div>
-                          <span className="text-muted-foreground">Maintenance receipts:</span>{' '}
-                          <span className="font-medium">{row.maintenance_count}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Expense splits:</span>{' '}
-                          <span className="font-medium">{row.expense_count}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Settled:</span>{' '}
-                          <span className="font-medium text-blue-600">₹{row.settled_amount.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Unsettled:</span>{' '}
-                          <span className="font-medium text-amber-600">₹{row.unsettled_amount.toLocaleString('en-IN')}</span>
-                        </div>
-                      </div>
-                      {row.details.length > 0 && (
-                        <div className="overflow-x-auto mt-2">
-                          <table className="w-full text-xs border border-border rounded-md overflow-hidden">
-                            <thead>
-                              <tr className="bg-muted/50 text-left">
-                                <th className="p-2 border-b border-border">Type</th>
-                                <th className="p-2 border-b border-border">Description</th>
-                                <th className="p-2 border-b border-border text-right">Amount</th>
-                                <th className="p-2 border-b border-border">Date</th>
-                                <th className="p-2 border-b border-border">Method</th>
-                                <th className="p-2 border-b border-border">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {row.details.map((d, idx) => (
-                                <tr key={idx} className="border-b border-border/60">
-                                  <td className="p-2">
-                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${d.type === 'maintenance' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}`}>
-                                      {d.type === 'maintenance' ? 'Receipt' : 'Expense'}
-                                    </span>
-                                  </td>
-                                  <td className="p-2 max-w-[180px] truncate" title={d.group_name ? `${d.group_name}: ${d.title}` : d.title}>
-                                    {d.group_name ? <span className="text-muted-foreground">[{d.group_name}] </span> : null}
-                                    {d.title}
-                                  </td>
-                                  <td className="p-2 text-right font-mono font-medium">₹{d.amount.toLocaleString('en-IN')}</td>
-                                  <td className="p-2 text-muted-foreground">{fmtIsoDateToDisplay(d.date)}</td>
-                                  <td className="p-2 capitalize">{d.method.replace(/_/g, ' ')}</td>
-                                  <td className="p-2">
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${d.status === 'paid' || d.status === 'verified' || d.status === 'settled' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-                                      {d.status}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        <FinanceFlatReportTab
+          from={flatReportFrom}
+          to={flatReportTo}
+          selectedFlat={flatReportSelectedFlat}
+          onFromChange={setFlatReportFrom}
+          onToChange={setFlatReportTo}
+          onSelectedFlatChange={setFlatReportSelectedFlat}
+          flats={flats}
+          primaryByFlatId={primaryByFlatId}
+          isLoading={flatReportLoading}
+          rows={flatReportData}
+        />
       )}
 
       {subTab === 'reminders' && (
