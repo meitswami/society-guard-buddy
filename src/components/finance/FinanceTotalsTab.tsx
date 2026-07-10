@@ -10,6 +10,7 @@ import { FINANCE_REPORTING_EARLIEST_MONTH } from '@/lib/financePeriodReport';
 import type { ChannelTotals } from '@/lib/cashBankChannel';
 import type { FinanceLedgerRow } from '@/lib/financeManagerTypes';
 import type { TotalsInflowRow, TotalsOutflowRow } from '@/lib/financeTotalsBreakdown';
+import { formatLedgerFieldLabel } from '@/lib/financeLedgerDisplay';
 
 interface Props {
   societyId: string | null;
@@ -126,9 +127,9 @@ export function FinanceTotalsTab({
               className="card-section p-3 flex justify-between items-start gap-3"
             >
               <div className="min-w-0">
-                <p className="text-sm font-semibold capitalize">{row.mode.replace(/_/g, ' ')}</p>
+                <p className="text-sm font-semibold capitalize">{formatLedgerFieldLabel(row.mode)}</p>
                 <p className="text-[10px] text-muted-foreground capitalize">
-                  {row.destination.replace(/_/g, ' ')} · {row.entries} entr{row.entries === 1 ? 'y' : 'ies'}
+                  {formatLedgerFieldLabel(row.destination)} · {row.entries} entr{row.entries === 1 ? 'y' : 'ies'}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   Cash ₹{row.byChannel.cash.toLocaleString('en-IN')} · Bank ₹{row.byChannel.bank.toLocaleString('en-IN')}
@@ -138,8 +139,8 @@ export function FinanceTotalsTab({
               <div className="text-right shrink-0">
                 <DescriptiveValueButton
                   {...FINANCE_LEDGER_GROUP_METRICS.inflowGroup}
-                  title={`${row.mode.replace(/_/g, ' ')} · ${row.destination.replace(/_/g, ' ')}`}
-                  description={`${FINANCE_LEDGER_GROUP_METRICS.inflowGroup.description} Mode: ${row.mode.replace(/_/g, ' ')}; destination: ${row.destination.replace(/_/g, ' ')}.`}
+                  title={`${formatLedgerFieldLabel(row.mode)} · ${formatLedgerFieldLabel(row.destination)}`}
+                  description={`${FINANCE_LEDGER_GROUP_METRICS.inflowGroup.description} Mode: ${formatLedgerFieldLabel(row.mode)}; destination: ${formatLedgerFieldLabel(row.destination)}.`}
                   howCalculated={`${FINANCE_LEDGER_GROUP_METRICS.inflowGroup.howCalculated} This group: ${row.entries} entr${row.entries === 1 ? 'y' : 'ies'}, ${row.flatUnits} flat units.`}
                   value={`₹${row.total.toLocaleString('en-IN')}`}
                 />

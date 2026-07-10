@@ -19,6 +19,7 @@ import {
 } from '@/lib/financePeriodReport';
 import { buildPeriodStatementEntries, filterStatementByChannel } from '@/lib/cashFlowStatement';
 import { dateInInclusiveRange, ledgerTransactionDate } from '@/lib/financeDates';
+import { formatLedgerFieldLabel } from '@/lib/financeLedgerDisplay';
 import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
 import { REPORT_MAINTENANCE_METRICS, REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
 import ExportFormatMenu from '@/components/ExportFormatMenu';
@@ -387,7 +388,7 @@ const ReportPage = () => {
   const openMonthFinanceModal = () => {
     const rows: ReportDetailRow[] = searchedMonthFinanceEntries.map((e) => ({
       id: e.id,
-      label: `${String(e.record_mode).replace(/_/g, ' ')} → ${e.destination.replace(/_/g, ' ')}`,
+      label: `${formatLedgerFieldLabel(e.record_mode)} → ${formatLedgerFieldLabel(e.destination)}`,
       sublabel: `Flats: ${e.aggregate_flat_count ?? 0} | Method: ${e.payment_method || 'N/A'}`,
       amount: Number(e.total_amount || 0),
       date: fmtDate(ledgerTransactionDate(e)),
@@ -404,7 +405,7 @@ const ReportPage = () => {
   const openGrossAmountModal = () => {
     const rows: ReportDetailRow[] = searchedPeriodFinanceEntries.map((e) => ({
       id: e.id,
-      label: `${String(e.record_mode).replace(/_/g, ' ')} → ${e.destination.replace(/_/g, ' ')}`,
+      label: `${formatLedgerFieldLabel(e.record_mode)} → ${formatLedgerFieldLabel(e.destination)}`,
       sublabel: `Flats: ${e.aggregate_flat_count ?? 0} | Method: ${e.payment_method || 'N/A'}`,
       amount: Number(e.total_amount || 0),
       date: fmtDate(ledgerTransactionDate(e)),
@@ -423,7 +424,7 @@ const ReportPage = () => {
       .filter((e) => String(e.payment_status ?? 'verified') === status)
       .map((e) => ({
         id: e.id,
-        label: `${String(e.record_mode).replace(/_/g, ' ')} → ${e.destination.replace(/_/g, ' ')}`,
+        label: `${formatLedgerFieldLabel(e.record_mode)} → ${formatLedgerFieldLabel(e.destination)}`,
         sublabel: `Method: ${e.payment_method || 'N/A'}`,
         amount: Number(e.total_amount || 0),
         date: fmtDate(ledgerTransactionDate(e)),
@@ -823,8 +824,8 @@ const ReportPage = () => {
                 <tbody>
                   {financeGroups.map((g) => (
                     <tr key={`${g.record_mode}-${g.destination}`} className="border-b border-border/60">
-                      <td className="py-2 pr-2 capitalize">{g.record_mode.replace(/_/g, ' ')}</td>
-                      <td className="py-2 pr-2 capitalize">{g.destination.replace(/_/g, ' ')}</td>
+                      <td className="py-2 pr-2 capitalize">{formatLedgerFieldLabel(g.record_mode)}</td>
+                      <td className="py-2 pr-2 capitalize">{formatLedgerFieldLabel(g.destination)}</td>
                       <td className="py-2 pr-2 font-mono">{g.count}</td>
                       <td className="py-2 pr-2 font-mono">₹{g.total.toLocaleString('en-IN')}</td>
                       <td className="py-2 font-mono">{g.flatUnits}</td>

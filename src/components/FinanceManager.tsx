@@ -47,7 +47,6 @@ import {
   SUM_INSIGHT_METRICS,
 } from '@/lib/descriptiveMetricCopy';
 import { uploadMaintenanceReceipt, uploadToNotificationMedia } from '@/lib/notificationMediaStorage';
-import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
 import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
 import { sumByChannel } from '@/lib/cashBankChannel';
 import { FinanceRemindersTab } from '@/components/finance/FinanceRemindersTab';
@@ -162,6 +161,9 @@ const FinanceManager = ({
     setAutoReminderEnabled,
     autoReminderSchedule,
     setAutoReminderSchedule,
+    isLoading: financeDataLoading,
+    isFetching: financeDataFetching,
+    error: financeDataError,
     loadAll,
   } = useFinanceManagerData(societyId, adminName);
   const financeMutations = useFinanceMutations(societyId);
@@ -2435,6 +2437,32 @@ const FinanceManager = ({
     );
   }
 
+  if (financeDataLoading && charges.length === 0 && payments.length === 0 && ledgerEntries.length === 0) {
+    return (
+      <div className="page-container pb-24">
+        <div className="card-section p-6 text-center space-y-2">
+          <p className="text-sm font-medium text-foreground">Loading finance data…</p>
+          <p className="text-xs text-muted-foreground">Fetching receipts, ledger entries, and flat records.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (financeDataError) {
+    const message = financeDataError instanceof Error ? financeDataError.message : 'Could not load finance data';
+    return (
+      <div className="page-container pb-24">
+        <div className="card-section p-4 border border-destructive/40 bg-destructive/5 space-y-3">
+          <p className="text-sm font-semibold text-destructive">Finance module could not load</p>
+          <p className="text-xs text-muted-foreground leading-snug">{message}</p>
+          <button type="button" className="btn-primary w-full" onClick={() => void loadAll()}>
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page-container pb-24">
       <div className="flex items-center gap-3 mb-4">
@@ -2457,6 +2485,10 @@ const FinanceManager = ({
       </div>
 
       <RecordingDateBanner className="mb-4" />
+
+      {financeDataFetching && !financeDataLoading && (
+        <p className="text-[10px] text-muted-foreground mb-3 text-center">Refreshing finance data…</p>
+      )}
 
       <div className="card-section p-3 mb-4">
         <div className="flex items-center justify-between gap-3">
@@ -3368,10 +3400,7 @@ const FinanceManager = ({
                             </p>
                             {item.p.finance_entry_id && financeEntryById.get(item.p.finance_entry_id as string) ? (
                               <p className="text-[10px] text-muted-foreground font-mono">
-                                Mode:{' '}
-                                {financeEntryById
-                                  .get(item.p.finance_entry_id as string)
-                                  ?.record_mode?.replace(/_/g, ' ') ?? '—'}
+                                Mode: {formatLedgerFieldLabel(financeEntryById.get(item.p.finance_entry_id as string)?.record_mode)}
                               </p>
                             ) : null}
                             <p className="text-sm font-semibold">Flat {item.p.flat_number}</p>

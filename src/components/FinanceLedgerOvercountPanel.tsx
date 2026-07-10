@@ -16,6 +16,7 @@ import {
   alignPaymentDueToMonth,
   deleteOrphanLedgerEntry,
 } from '@/lib/financeAuditRemediation';
+import { formatLedgerFieldLabel } from '@/lib/financeLedgerDisplay';
 
 type Props = {
   /** When set, only show issues for this month (manual tracer). */
@@ -216,7 +217,7 @@ const FinanceLedgerOvercountPanel = ({ focusMonth, onResolved }: Props) => {
                         <p className="text-sm font-medium truncate">{e.title || 'Ledger entry'}</p>
                         <p className="text-xs font-mono">₹{e.total_amount.toLocaleString('en-IN')}</p>
                         <p className="text-[10px] text-muted-foreground">
-                          {e.record_mode.replace(/_/g, ' ')} · {e.destination.replace(/_/g, ' ')} ·{' '}
+                          {formatLedgerFieldLabel(e.record_mode)} · {formatLedgerFieldLabel(e.destination)} ·{' '}
                           {fmtIsoMonthToDisplay(e.entry_month || issue.month)}
                         </p>
                       </div>

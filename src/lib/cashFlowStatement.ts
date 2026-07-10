@@ -1,6 +1,7 @@
 import { normalizePaymentChannel, type PaymentChannel } from '@/lib/cashBankChannel';
 import { dateInInclusiveRange, ledgerTransactionDate, paymentBillingDate } from '@/lib/financeDates';
 import { financeExpenseHeadFromLedgerEntry } from '@/lib/financeExpenseHead';
+import { formatLedgerFieldLabel } from '@/lib/financeLedgerDisplay';
 import { compareByFlatThenDate, compareFlatNumbers } from '@/lib/flatMultiSelectOptions';
 import {
   collectLinkedFinanceEntryIds,
@@ -158,7 +159,7 @@ export function buildPeriodStatementEntries(input: {
       entries.push({
         id: e.id,
         date: ledgerDate,
-        label: e.title || `${e.record_mode?.replace(/_/g, ' ') ?? 'Ledger'} → ${e.destination.replace(/_/g, ' ')}`,
+        label: e.title || `${formatLedgerFieldLabel(e.record_mode, 'Ledger')} → ${formatLedgerFieldLabel(e.destination)}`,
         sublabel: `Method: ${e.payment_method || 'N/A'}`,
         amount: Number(e.total_amount || 0),
         type: isCorpus ? 'corpus' : 'receipt',
