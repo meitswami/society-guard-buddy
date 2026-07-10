@@ -611,7 +611,7 @@ export function analyzeRecordingMismatchByMonth(
 
 export function formatChannelBalanceFaultTrace(trace: ChannelBalanceTrace): string {
   if (!trace.firstNegativeDate) {
-    return 'Could not pinpoint the exact date — review channel entries in Finance → Period Report.';
+    return 'Could not pinpoint the exact date — review channel entries in Reports → Financial.';
   }
 
   const monthLabel = trace.firstNegativeMonth ?? trace.firstNegativeDate.slice(0, 7);
@@ -850,7 +850,7 @@ export function buildAuditFixQueue(input: AuditFixQueueInput): AuditFixQueueItem
         amount: culprit.amount,
         detail: `${culprit.type === 'expense' ? 'Expense' : 'Receipt'} on fault date → balance ₹${culprit.balanceAfter.toLocaleString('en-IN')}`,
         action: 'review',
-        actionHint: `Review payment_method channel tag — may need edit or delete in Finance → Period Report (${channelLabel})`,
+        actionHint: `Review payment_method channel tag — may need edit or delete in Finance → Transactions (${channelLabel})`,
         severity: 'critical',
         findingKind: 'channel_balance',
       });

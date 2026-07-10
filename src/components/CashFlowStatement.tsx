@@ -216,7 +216,7 @@ const CashFlowStatement = ({
         <div>
           <h2 className="text-sm font-semibold">Cash Flow Statement</h2>
           <p className="text-[10px] text-muted-foreground">
-            {displayPeriod} · Synced with Finance → Period report
+            {displayPeriod} · Synced with Reports → Financial
           </p>
         </div>
         <div className="flex gap-1.5 shrink-0">

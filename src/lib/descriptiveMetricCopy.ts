@@ -240,24 +240,24 @@ export const REPORT_PAGE_METRICS = {
     title: 'Cash in hand',
     description: 'Net cash movement in the selected report month from verified receipts minus cash expenses.',
     howCalculated:
-      'Same as Finance → Period report: verified maintenance_payments (due_date in month) minus cash-channel society ledger outflows.',
+      'Reports → Financial: verified maintenance_payments (due_date in month) minus cash-channel society ledger outflows.',
   },
   reportCashInBank: {
     title: 'Balance in bank',
     description: 'Net bank / UPI / online movement for the report month.',
     howCalculated:
-      'Same as Finance → Period report: verified receipts on bank channels minus bank-channel society ledger outflows.',
+      'Reports → Financial: verified receipts on bank channels minus bank-channel society ledger outflows.',
   },
   reportOtherNet: {
     title: 'Other (net)',
     description: 'Net movement on other payment methods in the report month.',
     howCalculated:
-      'Same as Finance → Period report: other-channel receipts minus other-channel society ledger outflows.',
+      'Reports → Financial: other-channel receipts minus other-channel society ledger outflows.',
   },
   reportTotalBalance: {
     title: 'Total balance (net)',
     description: 'Overall net funds movement for the month across all channels.',
-    howCalculated: 'Period cash in hand + balance in bank + other net (Finance → Period report totals).',
+    howCalculated: 'Period cash in hand + balance in bank + other net (Reports → Financial totals).',
   },
   financeGross: {
     title: 'Finance gross',

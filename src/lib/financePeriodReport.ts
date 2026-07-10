@@ -13,7 +13,7 @@ import {
   isEventFoodLedgerEntry,
 } from '@/lib/financeExpenseHead';
 
-/** Verified maintenance payment row — same fields Finance → Period report uses. */
+/** Verified maintenance payment row — same fields Reports → Financial period report uses. */
 export type FinancePeriodPayment = {
   id?: string;
   payment_status?: string;
@@ -330,8 +330,8 @@ function resolveOpeningBalances(input: {
 }
 
 /**
- * Core period report math — single source of truth for Finance → Period report,
- * Reports → net summary, and Cash Flow Statement opening/closing/receipts/expenses.
+ * Core period report math — single source of truth for Reports → Financial,
+ * head-wise breakdown, and Cash Flow Statement opening/closing/receipts/expenses.
  */
 function addToHeadRow(map: Map<string, ChannelByHeadRow>, head: string, ch: keyof ChannelTotals, amt: number) {
   const label = head.trim() || 'Uncategorized';

@@ -211,8 +211,8 @@ const FinanceIntegrityAudit = () => {
             'Usually caused by a cash expense on the fault date without a matching cash receipt, or a receipt tagged as bank/UPI instead of cash.',
           faultTrace: cashTrace ? formatChannelBalanceFaultTrace(cashTrace) : undefined,
           rectification: faultDate
-            ? `1. Open Finance → Period Report, set month to ${faultMonth ? fmtIsoMonthToDisplay(faultMonth) : faultDate.slice(0, 7)} and filter payment method to Cash.\n2. Review the entries listed under "Trace to fault" — correct payment_method or delete duplicate expenses.\n3. If a receipt exists under bank/UPI for the same payment, retag it as cash or change the expense to bank.\n4. Re-run this audit after fixing.`
-            : '1. Go to Finance → Period Report and filter by cash method to identify mismatched entries.\n2. Check if any expense marked "cash" should actually be "bank/UPI".\n3. Verify all cash receipts are in "verified" status.\n4. Look for duplicate expense entries under cash channel.\n5. Correct the payment_method on the wrongly tagged entry from the Payments or Receipts tab.',
+            ? `1. Open Reports → Financial, set statement period to ${faultMonth ? fmtIsoMonthToDisplay(faultMonth) : faultDate.slice(0, 7)} and review cash-channel entries.\n2. Review the entries listed under "Trace to fault" — correct payment_method or delete duplicate expenses.\n3. If a receipt exists under bank/UPI for the same payment, retag it as cash or change the expense to bank.\n4. Re-run this audit after fixing.`
+            : '1. Go to Reports → Financial and review cash-channel entries to identify mismatched items.\n2. Check if any expense marked "cash" should actually be "bank/UPI".\n3. Verify all cash receipts are in "verified" status.\n4. Look for duplicate expense entries under cash channel.\n5. Correct the payment_method on the wrongly tagged entry from Finance → Transactions.',
           data: {
             cashReceipts: receiptByChannel.cash,
             cashExpenses: expenseByChannel.cash,
@@ -246,8 +246,8 @@ const FinanceIntegrityAudit = () => {
             'Usually caused by a bank/UPI expense on the fault date without a matching bank receipt, or a receipt incorrectly tagged as cash.',
           faultTrace: bankTrace ? formatChannelBalanceFaultTrace(bankTrace) : undefined,
           rectification: faultDate
-            ? `1. Open Finance → Period Report, set month to ${faultMonth ? fmtIsoMonthToDisplay(faultMonth) : faultDate.slice(0, 7)} and filter to Bank/UPI.\n2. Review entries under "Trace to fault" — correct payment_method or remove duplicate bank expenses.\n3. If the receipt was recorded as cash, retag it as UPI/bank or change the expense channel.\n4. Re-run this audit after fixing.`
-            : '1. Go to Finance → Period Report and review bank-channel entries.\n2. Check if any receipt marked "cash" should be "UPI/bank".\n3. Verify no bank receipts are stuck in "pending" or "rejected" status.\n4. Look for duplicate expense entries under bank channel.\n5. Correct the payment_method on mismatched entries.',
+            ? `1. Open Reports → Financial, set statement period to ${faultMonth ? fmtIsoMonthToDisplay(faultMonth) : faultDate.slice(0, 7)} and review bank-channel entries.\n2. Review entries under "Trace to fault" — correct payment_method or remove duplicate bank expenses.\n3. If the receipt was recorded as cash, retag it as UPI/bank or change the expense channel.\n4. Re-run this audit after fixing.`
+            : '1. Go to Reports → Financial and review bank-channel entries.\n2. Check if any receipt marked "cash" should be "UPI/bank".\n3. Verify no bank receipts are stuck in "pending" or "rejected" status.\n4. Look for duplicate expense entries under bank channel.\n5. Correct the payment_method on mismatched entries in Finance → Transactions.',
           data: {
             bankReceipts: receiptByChannel.bank,
             bankExpenses: expenseByChannel.bank,
@@ -337,7 +337,7 @@ const FinanceIntegrityAudit = () => {
             'Lifetime totals differ — often orphaned payments (no finance_entry_id), deleted ledger rows, or amount edits in only one table. Expand "Trace to fault" to see which month and entries caused the gap.',
           faultTrace: formatRecordingMismatchFaultTrace(recordingMismatchMonths),
           rectification:
-            '1. Start with the earliest month in "Trace to fault" — open Finance → Period Report for that month.\n2. Fix orphan payments or orphan ledger rows listed for that month.\n3. If amounts differ on linked pairs, align in Payments / Receipts tabs.\n4. Re-run audit; repeat for the next affected month if needed.',
+            '1. Start with the earliest month in "Trace to fault" — open Reports → Financial for that statement period.\n2. Fix orphan payments or orphan ledger rows listed for that month.\n3. If amounts differ on linked pairs, align in Finance → Record receipt or Transactions.\n4. Re-run audit; repeat for the next affected month if needed.',
           data: {
             maintenancePaymentsTotal: mpTotal,
             financeEntriesTotal: feFlatsOnlyTotal,

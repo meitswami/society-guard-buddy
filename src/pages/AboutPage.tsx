@@ -193,7 +193,7 @@ const AboutPage = () => {
             </h3>
             <div className="grid gap-3 sm:grid-cols-2">
               {[
-                { icon: <IndianRupee className="w-3.5 h-3.5" />, name: 'Finance', desc: 'Charges → Payments → Ledger → Period Reports → PDF → Notifications' },
+                { icon: <IndianRupee className="w-3.5 h-3.5" />, name: 'Finance', desc: 'Receipt types → Record receipt/payment → Transactions → Totals → Reminders' },
                 { icon: <ShieldCheck className="w-3.5 h-3.5" />, name: 'Audit & Governance', desc: 'Security logs, duplicate alarms, self-audit engine, governance framework' },
                 { icon: <Users className="w-3.5 h-3.5" />, name: 'Resident Portal', desc: 'View committee, pay maintenance, notices, complaints, directory' },
                 { icon: <Landmark className="w-3.5 h-3.5" />, name: 'Guard Module', desc: 'Visitor entry/exit, vehicle tracking, geofence, biometric attendance' },

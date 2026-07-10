@@ -326,9 +326,9 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
             severity: 'warning',
             title: `Period Report vs Flat Report Mismatch — ₹${reportDiff.toLocaleString('en-IN')}`,
             description: `Period report shows ₹${periodReportTotal.toLocaleString('en-IN')} but flat report shows ₹${flatReportTotal.toLocaleString('en-IN')} for ${fmtIsoMonthToDisplay(month)}.`,
-            origin: 'Finance → Period tab and Flat Report tab. Compare the two views for this month.',
-            navigateTo: 'finance',
-            navigateLabel: 'Go to Finance',
+            origin: 'Reports → Financial: compare head-wise and flat-wise views for this month.',
+            navigateTo: 'report',
+            navigateLabel: 'Go to Reports',
             data: { periodReport: periodReportTotal, flatReport: flatReportTotal, difference: reportDiff },
           });
         }
