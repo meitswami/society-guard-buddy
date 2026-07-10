@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import FinanceManager from '@/components/FinanceManager';
 import type { FinanceLedgerRow } from '@/lib/financeManagerTypes';
 
@@ -67,7 +68,9 @@ function renderFinance() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <FinanceManager adminName="Admin" />
+      <TooltipProvider>
+        <FinanceManager adminName="Admin" />
+      </TooltipProvider>
     </QueryClientProvider>,
   );
 }
@@ -78,10 +81,15 @@ describe('FinanceManager render', () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  it('renders Record receipt via Record dropdown', () => {
-    renderFinance();
-    fireEvent.click(screen.getByRole('button', { name: /Record/i }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Record receipt' }));
+  it('renders Record receipt panel when opened via initial sub-tab', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <TooltipProvider>
+          <FinanceManager adminName="Admin" initialSubTab="payments" />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
     expect(screen.getByText('Recording style')).toBeInTheDocument();
   });
 

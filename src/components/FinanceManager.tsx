@@ -42,7 +42,7 @@ import {
   FINANCE_TOTALS_METRICS,
   SUM_INSIGHT_METRICS,
 } from '@/lib/descriptiveMetricCopy';
-import { uploadMaintenanceReceipt, uploadToNotificationMedia } from '@/lib/notificationMediaStorage';
+import { uploadMaintenanceReceipt } from '@/lib/notificationMediaStorage';
 import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
 import { sumByChannel } from '@/lib/cashBankChannel';
 import { FinanceRemindersTab } from '@/components/finance/FinanceRemindersTab';
@@ -1998,6 +1998,54 @@ const FinanceManager = ({
     [eventContribRef, eventFoodRef],
   );
 
+  const exportTransactionStatement = (format: ExportFormat) => {
+    if (filterStatus === 'unpaid') {
+      toast.error('Switch to a transaction status filter to export entries');
+      return;
+    }
+    const rows = buildTransactionExportRows({
+      items: receiptLineItems,
+      chargeTitleById: new Map([...chargeById.entries()].map(([id, ch]) => [id, ch.title])),
+    });
+    if (rows.length === 0) {
+      toast.error('No transactions match the current filters');
+      return;
+    }
+    downloadTransactionStatement(format, {
+      societyName: societyName || 'Society',
+      title: 'Transaction statement',
+      subtitle: `${receiptSummary.count} entries · ₹${receiptSummary.sum.toLocaleString('en-IN')} total · ${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
+      filenameBase: `transactions-${selectedReceiptMonthLabel.replace(/\s+/g, '-')}-${Date.now()}`,
+      rows,
+    });
+    toast.success(`${format.toUpperCase()} downloaded`);
+  };
+
+  const transactionStatementShare = useMemo(() => {
+    if (filterStatus === 'unpaid') return null;
+    const rows = buildTransactionExportRows({
+      items: receiptLineItems,
+      chargeTitleById: new Map([...chargeById.entries()].map(([id, ch]) => [id, ch.title])),
+    });
+    if (rows.length === 0) return null;
+    return {
+      societyName: societyName || 'Society',
+      title: 'Transaction statement',
+      subtitle: `${receiptSummary.count} entries · ₹${receiptSummary.sum.toLocaleString('en-IN')} total · ${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
+      filename: `transactions-${selectedReceiptMonthLabel.replace(/\s+/g, '-')}.pdf`,
+      message: `${societyName || 'Society'} — Transaction statement (${selectedReceiptMonthLabel})`,
+      rows,
+    };
+  }, [
+    filterStatus,
+    receiptLineItems,
+    chargeById,
+    receiptSummary.count,
+    receiptSummary.sum,
+    selectedReceiptTypeLabel,
+    selectedReceiptMonthLabel,
+    societyName,
+  ]);
 
   const sendReminders = async () => {
     if (!societyId) return;

@@ -32,6 +32,7 @@ export type SocietyFinanceCoreData = {
   payments: unknown[];
   ledgerEntries: FinanceLedgerRow[];
   expenseCategoryById: Record<string, string>;
+  reserveTransfers: FinancePeriodReserveTransfer[];
 };
 
 export type FinanceFlatReportData = {
@@ -63,7 +64,18 @@ const emptyCoreData = (): SocietyFinanceCoreData => ({
   payments: [],
   ledgerEntries: [],
   expenseCategoryById: {},
+  reserveTransfers: [],
 });
+
+/** Map core finance cache into period-report shape (single source for Report + Finance). */
+export function derivePeriodReportDataFromCore(core: SocietyFinanceCoreData): SocietyFinanceReportData {
+  return {
+    payments: (core.payments ?? []) as FinancePeriodPayment[],
+    ledgerEntries: core.ledgerEntries as FinancePeriodLedgerEntry[],
+    expenseCategoryById: core.expenseCategoryById,
+    reserveTransfers: core.reserveTransfers ?? [],
+  };
+}
 
 export async function fetchSocietyFinanceCore(
   societyId: string,
@@ -195,6 +207,14 @@ export async function fetchSocietyFinanceCore(
     }
   }
 
+  const { data: reserveRows, error: reserveError } = await supabase
+    .from('reserve_fund_transfers')
+    .select('id, entry_month, amount, direction, payment_method, notes, created_at')
+    .eq('society_id', societyId)
+    .order('entry_month', { ascending: false })
+    .limit(500);
+  if (reserveError) throw new Error(reserveError.message);
+
   return {
     flats,
     primaryByFlatId,
@@ -207,6 +227,7 @@ export async function fetchSocietyFinanceCore(
     payments,
     ledgerEntries,
     expenseCategoryById,
+    reserveTransfers: (reserveRows ?? []) as FinancePeriodReserveTransfer[],
   };
 }
 
@@ -324,67 +345,10 @@ export async function fetchFinanceEventReference(societyId: string): Promise<Fin
   return { contributions, foodExpenses };
 }
 
+/** @deprecated Prefer `fetchSocietyFinanceCore` + `derivePeriodReportDataFromCore`. */
 export async function fetchSocietyFinanceReportData(societyId: string): Promise<SocietyFinanceReportData> {
-  const { data: chargeRows, error: chargeError } = await supabase
-    .from('maintenance_charges')
-    .select('id')
-    .eq('society_id', societyId);
-  if (chargeError) throw new Error(chargeError.message);
-
-  const chargeIds = (chargeRows as { id: string }[] | null)?.map((c) => c.id) ?? [];
-
-  let payments: FinancePeriodPayment[] = [];
-  if (chargeIds.length > 0) {
-    const { data: paymentRows, error: paymentError } = await supabase
-      .from('maintenance_payments')
-      .select(
-        'id, payment_status, amount, payment_method, due_date, finance_entry_id, flat_number, created_at, notes, transaction_id, resident_name, charge_id',
-      )
-      .in('charge_id', chargeIds)
-      .order('created_at', { ascending: false })
-      .limit(2500);
-    if (paymentError) throw new Error(paymentError.message);
-    payments = (paymentRows as FinancePeriodPayment[]) ?? [];
-  }
-
-  const { data: ledgerRows, error: ledgerError } = await supabase
-    .from('finance_entries')
-    .select(
-      'id, record_mode, destination, total_amount, entry_month, created_at, payment_status, payment_method, title, notes, transaction_id, transaction_date, expense_id, charge_id, aggregate_flat_count',
-    )
-    .eq('society_id', societyId)
-    .order('created_at', { ascending: false })
-    .limit(2500);
-  if (ledgerError) throw new Error(ledgerError.message);
-  const ledgerEntries = (ledgerRows as FinancePeriodLedgerEntry[]) ?? [];
-
-  const expenseCategoryById: Record<string, string> = {};
-  const linkedExpenseIds = ledgerEntries.map((e) => e.expense_id).filter((id): id is string => Boolean(id));
-  if (linkedExpenseIds.length > 0) {
-    const { data: expenseCategories, error: categoryError } = await supabase
-      .from('expenses')
-      .select('id, expense_category')
-      .in('id', linkedExpenseIds);
-    if (categoryError) throw new Error(categoryError.message);
-    for (const ex of expenseCategories ?? []) {
-      expenseCategoryById[ex.id] = ex.expense_category;
-    }
-  }
-
-  const { data: reserveRows, error: reserveError } = await supabase
-    .from('reserve_fund_transfers')
-    .select('id, entry_month, amount, direction, payment_method, notes, created_at')
-    .eq('society_id', societyId)
-    .order('entry_month', { ascending: false })
-    .limit(500);
-  if (reserveError) throw new Error(reserveError.message);
-
-  return {
-    payments,
-    ledgerEntries,
-    expenseCategoryById,
-    reserveTransfers: reserveRows ?? [],
-  };
+  const core = await fetchSocietyFinanceCore(societyId, 'Report');
+  return derivePeriodReportDataFromCore(core);
 }
 
 export async function fetchLatestFinancePeriodReportBatch(societyId: string): Promise<string | null> {
