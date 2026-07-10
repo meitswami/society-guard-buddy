@@ -6,17 +6,7 @@ import { confirmAction } from '@/lib/swal';
 import { DateInput } from '@/components/DateInput';
 import { residentLabelForFlatRow } from '@/lib/flatMultiSelectOptions';
 
-async function uploadContributionReceipt(file: File): Promise<string | null> {
-  const safe = file.name.replace(/[^\w.-]/g, '_');
-  const path = `event-contributions/${crypto.randomUUID()}_${safe}`;
-  const { error } = await supabase.storage.from('notification-media').upload(path, file, { cacheControl: '3600', upsert: false });
-  if (error) {
-    toast.error(error.message);
-    return null;
-  }
-  const { data } = supabase.storage.from('notification-media').getPublicUrl(path);
-  return data.publicUrl;
-}
+import { uploadContributionReceipt } from '@/lib/notificationMediaStorage';
 
 type ContribRow = {
   id: string;
@@ -138,7 +128,7 @@ const EventContributionEditModal = ({ contributionId, onClose, onSaved, adminNam
         return;
       }
       setUploading(true);
-      screenshotUrl = await uploadContributionReceipt(file);
+      screenshotUrl = await uploadContributionReceipt(file, (m) => toast.error(m));
       setUploading(false);
       if (!screenshotUrl) return;
     }

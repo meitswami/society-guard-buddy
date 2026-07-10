@@ -47,15 +47,7 @@ interface TraceFinding {
   data?: Record<string, unknown>;
 }
 
-const normalizePaymentChannel = (method: unknown): 'cash' | 'bank' | 'other' => {
-  const x = String(method ?? 'cash').toLowerCase().replace(/\s/g, '');
-  if (x === 'cash') return 'cash';
-  if (['upi', 'bank_transfer', 'razorpay', 'online', 'card', 'neft', 'rtgs', 'imps', 'netbanking', 'cheque', 'dd'].some((k) => x === k || x.includes(k)))
-    return 'bank';
-  return 'other';
-};
-
-const ManualAuditTracer = ({ onNavigate }: Props) => {
+import { normalizePaymentChannel } from '@/lib/cashBankChannel';
   const societyId = useStore((s) => s.societyId);
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [expectedAmount, setExpectedAmount] = useState('');

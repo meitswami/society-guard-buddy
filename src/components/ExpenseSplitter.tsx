@@ -24,6 +24,7 @@ import {
   resolveGroupMajorHead,
   type SocietyPaymentMajorHead,
 } from '@/lib/financeExpenseHead';
+import { uploadExpenseBill } from '@/lib/notificationMediaStorage';
 
 interface Props {
   adminName?: string;
@@ -65,8 +66,6 @@ function parsePaidByFlats(exp: { paid_by_flats?: unknown; paid_by_flat: string }
   }
   return exp.paid_by_flat ? [exp.paid_by_flat] : [];
 }
-
-import { uploadExpenseBill } from '@/lib/notificationMediaStorage';
 
 const ExpenseSplitter = ({
   adminName = 'Admin',
@@ -391,7 +390,7 @@ const ExpenseSplitter = ({
         return;
       }
       setBillUploading(true);
-      billUrl = await uploadExpenseBill(groupId, file);
+      billUrl = await uploadExpenseBill(groupId, file, (m) => toast.error(m));
       setBillUploading(false);
       if (!billUrl) return;
       if (fileInput) fileInput.value = '';
@@ -833,7 +832,7 @@ const ExpenseSplitter = ({
           setEditAttachmentUploading(false);
           return;
         }
-        const url = await uploadExpenseBill(old.group_id, file);
+        const url = await uploadExpenseBill(old.group_id, file, (m) => toast.error(m));
         if (!url) {
           setEditAttachmentUploading(false);
           return;

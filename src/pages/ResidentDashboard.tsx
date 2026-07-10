@@ -83,14 +83,7 @@ const notificationSound = () => {
   } catch {}
 };
 
-async function uploadResidentPaymentReceipt(file: File): Promise<string | null> {
-  const safe = file.name.replace(/[^\w.-]/g, '_');
-  const path = `maintenance-receipts/${crypto.randomUUID()}_${safe}`;
-  const { error } = await supabase.storage.from('notification-media').upload(path, file, { cacheControl: '3600', upsert: false });
-  if (error) return null;
-  const { data } = supabase.storage.from('notification-media').getPublicUrl(path);
-  return data.publicUrl;
-}
+import { uploadMaintenanceReceipt } from '@/lib/notificationMediaStorage';
 
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();
@@ -619,7 +612,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         return;
       }
       setResidentPayUploading(true);
-      const url = await uploadResidentPaymentReceipt(file);
+      const url = await uploadMaintenanceReceipt(file);
       setResidentPayUploading(false);
       if (!url) {
         toast.error('Could not upload receipt');

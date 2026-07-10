@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { uploadToNotificationMedia, sanitizeStorageFileName } from '@/lib/notificationMediaStorage';
 
 interface ResidentRef {
   id: string;
@@ -78,18 +79,12 @@ async function uploadNotificationMedia(files: File[]): Promise<NotificationMedia
       toast.error(`Video too large (max ${MAX_VIDEO_BYTES / 1024 / 1024}MB): ${file.name}`);
       continue;
     }
-    const safe = file.name.replace(/[^\w.-]/g, '_');
+    const safe = sanitizeStorageFileName(file.name);
     const path = `${crypto.randomUUID()}/${Date.now()}_${safe}`;
-    const { error } = await supabase.storage.from('notification-media').upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
+    const url = await uploadToNotificationMedia(path, file, {
+      onError: () => toast.error(`Upload failed: ${file.name}`),
     });
-    if (error) {
-      toast.error(`Upload failed: ${file.name}`);
-      continue;
-    }
-    const { data: pub } = supabase.storage.from('notification-media').getPublicUrl(path);
-    items.push({ url: pub.publicUrl, kind });
+    if (url) items.push({ url, kind });
   }
   return items;
 }
@@ -225,19 +220,14 @@ const NotificationCenter = ({
       return;
     }
     setUploadingSound(true);
-    const safe = file.name.replace(/[^\w.-]/g, '_');
+    const safe = sanitizeStorageFileName(file.name);
     const path = `admin-sounds/${societyId}/${Date.now()}_${safe}`;
-    const { error: upErr } = await supabase.storage.from('notification-media').upload(path, file, {
-      cacheControl: '3600',
+    const url = await uploadToNotificationMedia(path, file, {
       upsert: true,
+      onError: (m) => toast.error(m),
     });
-    if (upErr) {
-      toast.error(upErr.message);
-      setUploadingSound(false);
-      return;
-    }
-    const { data: pub } = supabase.storage.from('notification-media').getPublicUrl(path);
-    const url = pub.publicUrl;
+    setUploadingSound(false);
+    if (!url) return;
     const { error: dbErr } = await supabase.from('societies').update({ admin_push_sound_url: url }).eq('id', societyId);
     setUploadingSound(false);
     if (dbErr) {

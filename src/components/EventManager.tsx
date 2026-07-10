@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { DateInput } from '@/components/DateInput';
 import EventContributionEditModal from '@/components/EventContributionEditModal';
+import { uploadContributionReceipt } from '@/lib/notificationMediaStorage';
 
 interface Props {
   adminName?: string;
@@ -19,18 +20,6 @@ interface Props {
 
 type ReceiptBasis = 'flat' | 'non_flat';
 type FlatCollectMode = 'individual' | 'headcount' | 'lump_equal' | 'same_per_flat';
-
-async function uploadContributionReceipt(file: File): Promise<string | null> {
-  const safe = file.name.replace(/[^\w.-]/g, '_');
-  const path = `event-contributions/${crypto.randomUUID()}_${safe}`;
-  const { error } = await supabase.storage.from('notification-media').upload(path, file, { cacheControl: '3600', upsert: false });
-  if (error) {
-    toast.error(error.message);
-    return null;
-  }
-  const { data } = supabase.storage.from('notification-media').getPublicUrl(path);
-  return data.publicUrl;
-}
 
 const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged, refreshKey = 0 }: Props) => {
   const societyId = useStore((s) => s.societyId);
@@ -162,7 +151,7 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged,
         return null;
       }
       setReceiptUploading(true);
-      screenshotUrl = await uploadContributionReceipt(file);
+      screenshotUrl = await uploadContributionReceipt(file, (m) => toast.error(m));
       setReceiptUploading(false);
       if (!screenshotUrl) return null;
       if (fileInput) fileInput.value = '';

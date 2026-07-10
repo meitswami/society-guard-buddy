@@ -6,17 +6,7 @@ import { confirmAction } from '@/lib/swal';
 import { DateInput } from '@/components/DateInput';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 
-async function uploadExpenseBill(groupId: string, file: File): Promise<string | null> {
-  const safe = file.name.replace(/[^\w.-]/g, '_');
-  const path = `expense-bills/${groupId}/${crypto.randomUUID()}_${safe}`;
-  const { error } = await supabase.storage.from('notification-media').upload(path, file, { cacheControl: '3600', upsert: false });
-  if (error) {
-    toast.error(error.message);
-    return null;
-  }
-  const { data } = supabase.storage.from('notification-media').getPublicUrl(path);
-  return data.publicUrl;
-}
+import { uploadExpenseBill } from '@/lib/notificationMediaStorage';
 
 interface Props {
   expenseId: string | null;
@@ -94,7 +84,7 @@ const FoodExpenseEditModal = ({ expenseId, onClose, onSaved }: Props) => {
           setUploading(false);
           return;
         }
-        const url = await uploadExpenseBill(groupId, file);
+        const url = await uploadExpenseBill(groupId, file, (m) => toast.error(m));
         if (!url) {
           setUploading(false);
           return;

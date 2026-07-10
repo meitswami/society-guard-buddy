@@ -160,29 +160,7 @@ function combineDateAndTimeToIso(dateStr: string, timeStr: string): string {
   return dt.toISOString();
 }
 
-async function uploadMeetingFile(
-  societyId: string,
-  meetingId: string,
-  kind: 'docs' | 'audio' | 'signatures',
-  file: Blob,
-  filename: string,
-): Promise<string | null> {
-  const safe = filename.replace(/[^\w.-]/g, '_').slice(0, 120);
-  const path = `meetings/${societyId}/${meetingId}/${kind}/${crypto.randomUUID()}_${safe}`;
-  const { error } = await supabase.storage.from('notification-media').upload(path, file, {
-    cacheControl: '3600',
-    upsert: false,
-    contentType: file.type || undefined,
-  });
-  if (error) {
-    console.error(error);
-    return null;
-  }
-  const { data } = supabase.storage.from('notification-media').getPublicUrl(path);
-  return data.publicUrl;
-}
-
-/** File picker `accept` — images + PDFs (multiple selection in file manager). */
+import { uploadMeetingFile } from '@/lib/notificationMediaStorage';
 const MEETING_DOC_ACCEPT =
   'image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.heic,.heif,.tif,.tiff';
 

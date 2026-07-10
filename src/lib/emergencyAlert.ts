@@ -1,3 +1,4 @@
+import { uploadToNotificationMedia, sanitizeStorageFileName } from '@/lib/notificationMediaStorage';
 import { supabase } from '@/integrations/supabase/client';
 import type { NotificationMediaItem } from '@/components/NotificationDetailModal';
 
@@ -32,15 +33,10 @@ export async function uploadEmergencyMedia(files: File[], dataUrls: string[] = [
     const kind = fileMediaKind(file);
     if (!kind) continue;
     if (kind === 'image' && file.size > MAX_IMAGE_BYTES) continue;
-    const safe = file.name.replace(/[^\w.-]/g, '_');
+    const safe = sanitizeStorageFileName(file.name);
     const path = `emergency/${crypto.randomUUID()}/${Date.now()}_${safe}`;
-    const { error } = await supabase.storage.from('notification-media').upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
-    if (error) continue;
-    const { data: pub } = supabase.storage.from('notification-media').getPublicUrl(path);
-    items.push({ url: pub.publicUrl, kind });
+    const url = await uploadToNotificationMedia(path, file);
+    if (url) items.push({ url, kind });
   }
   return items;
 }
