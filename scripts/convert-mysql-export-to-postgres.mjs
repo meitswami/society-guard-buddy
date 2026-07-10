@@ -150,7 +150,13 @@ function convertLine(line) {
 }
 
 function main() {
-  const inFile = path.resolve(process.argv[2] || path.join(root, 'full_db_export_2026-04-12T06-50-47-395Z.mysql'));
+  const inArg = process.argv[2];
+  if (!inArg) {
+    console.error('Usage: node scripts/convert-mysql-export-to-postgres.mjs <input.mysql> [output.sql]');
+    process.exit(1);
+  }
+
+  const inFile = path.resolve(inArg);
   const outFile = path.resolve(process.argv[3] || path.join(root, 'supabase', 'seed_from_mysql_export.sql'));
 
   if (!fs.existsSync(inFile)) {

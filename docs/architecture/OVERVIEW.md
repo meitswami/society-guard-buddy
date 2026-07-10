@@ -10,7 +10,8 @@ System architecture aligned with the seven objectives in [README.md](../README.m
 flowchart TB
   subgraph clients [Clients]
     Web[PWA / Vite React]
-    Native[Capacitor Android/iOS]
+    Flutter[Flutter Android/iOS]
+    Cap[Capacitor WebView]
   end
 
   subgraph app [Application Layer]
@@ -36,7 +37,10 @@ flowchart TB
   end
 
   Web --> UI
-  Native --> UI
+  Flutter --> PG
+  Flutter --> ST
+  Flutter --> EF
+  Cap --> UI
   UI --> Core --> Sec --> Dom
   Dom --> PG
   Dom --> ST
@@ -55,7 +59,7 @@ flowchart TB
 
 | Layer | Responsibility | Key paths |
 |-------|----------------|-----------|
-| **User Interface** | Role dashboards, forms, reports | `src/pages/*`, `src/components/*` |
+| **User Interface** | Role dashboards, forms, reports | `src/pages/*`, `src/components/*` (web); `mobile/lib/*` (Flutter) |
 | **Configuration** | Env vars, society settings, geofence | `.env`, `SettingsPage`, `geofence_settings` |
 | **Core Engine** | State, caching, session | `useStore.ts`, TanStack Query, `appSession.ts` |
 | **Security** | AuthN/Z, audit, geofence, MFA | `adminPermissions.ts`, `auditLogger.ts`, `useBiometric.ts` |
@@ -76,7 +80,7 @@ flowchart TB
 | Understandable reporting | REPORTS, period report, flat report | Aggregations over finance + gate tables |
 | Operational flexibility | Multi-society, RBAC, society pool | `societies`, `society_roles`, `admins` |
 | Auditability | Audit tab, meetings, elections | `audit_logs`, `meetings`, `poll_election_ballots` |
-| Future scalability | Edge functions, Capacitor | Stateless functions; horizontal Supabase scaling |
+| Future scalability | Edge functions, Flutter + Capacitor | Stateless functions; horizontal Supabase scaling |
 
 ---
 
@@ -139,4 +143,4 @@ flowchart LR
 
 ---
 
-*Aligned with V2 through `20260608140000`.*
+*Aligned with V2 through `20260707150000`. Mobile details: [mobile/README.md](../../mobile/README.md), [PARITY-ROADMAP.md](../mobile/PARITY-ROADMAP.md).*

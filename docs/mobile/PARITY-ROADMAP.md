@@ -7,7 +7,7 @@
 - Session restore from `sgb_app_session_v1` (same key as web)
 - Resident shell: home, alerts, approvals, passes, directory, **payments**, profile
 - Real Supabase data: notifications, approval requests, visitor passes, maintenance payments
-- Resident more menu: **family members**, **vehicles**, **feedback**, **polls**, **elections** (nomination + ranked voting), **meetings**, **committee**
+- Resident more menu: **family members**, **vehicles**, **feedback**, **polls**, **elections** (nomination + ranked voting), **meetings**, **committee**, **society documents** (protected viewer + timed reveal)
 - **OTP first-time resident onboarding** (primary setup + household member linking)
 - Guard shell: dashboard, visitor entry, visitors, **more** (quick entry, delivery/service, blacklist, emergency, pass OTP verify, **settings**)
 - Guard: **geofence on login**, **visitor entry photos**

@@ -37,11 +37,17 @@ when version tags are published.
 - **Donations — campaign title presets.**
 - **Admin home** — Expanded KPIs, usage-sorted quick access, A–Z bottom nav.
 - **Architecture docs** — `docs/architecture/OVERVIEW.md`, `FINANCIAL-DATA-FLOW.md`, `USER-ROLE-MATRIX.md`.
+- **Society documents** — Admin upload (bylaws, minutes, notices, …); protected viewer; timed member reveal. Migrations `20260707110000`, `20260707120000`.
+- **Finance — opening balance anchors** — Go-live cash/bank/other anchors for period reports. Migration `20260705100000`.
+- **Flutter mobile** — Resident, guard, admin shells; Firebase OTP; FCM; biometrics; `platform_branding`. See `mobile/README.md`.
+- **Platform branding** — Superadmin-managed logo + colors for Flutter. Migration `20260610100000`.
+- **Notification dismissals** — Per-resident inbox clear. Migration `20260707100000`.
+- **Finance data repair** — Backfill missing ledger rows; reconcile orphan payments. Migrations `20260707140000`, `20260707150000`.
 
 ### Changed
 
-- **README** — System objectives, architecture table, security model, 10-check self-audit, Events & food naming, full migration reference, env/deployment guidance.
-- **`docs/VERSION-2-RELEASE.md`** — Extended through `20260608140000`; audit, committee, emergency, head/reserve fund, events/food receipt & adjustment sections; breaking changes table.
+- **README** — Condensed overview with Flutter/Capacitor paths and full docs index.
+- **`docs/VERSION-2-RELEASE.md`** — Extended through `20260707150000`; society documents, opening balances, Flutter mobile, platform branding, finance backfill/reconcile.
 - **`docs/PRODUCT-V2.md`** — Clarified shipped vs future scope.
 - **Finance — Receipts tab** — UI label renamed to **Transactions** (internal id still `receipts`).
 - **REPORTS** — Replaced legacy "Daily Reports" with `ReportPage.tsx` (Financial, Visitor, Vehicle, All Modules).
@@ -83,8 +89,16 @@ Apply **all pending** SQL under `supabase/migrations/` in timestamp order.
 | `20260608120000` | Event contributions: contributor type, headcount, split mode |
 | `20260608130000` | Receipt basis (flat / non_flat), batch grouping |
 | `20260608140000` | Event food fund adjustments |
+| `20260608150000` | Water softener salt → maintenance head |
+| `20260610100000` | `platform_branding` |
+| `20260705100000` | `finance_opening_balance_anchors` |
+| `20260707100000` | `notification_dismissals` |
+| `20260707110000` | `society_documents` + storage bucket |
+| `20260707120000` | Society documents member reveal |
+| `20260707140000` | Backfill missing payment finance entries |
+| `20260707150000` | Reconcile orphan payments / ledger mismatch |
 
-Ensure Storage buckets **`notification-media`** and **`guard-documents`** exist with upload policies.
+Ensure Storage buckets **`notification-media`**, **`guard-documents`**, and **`society-documents`** exist with upload policies.
 
 ### Rollback considerations
 

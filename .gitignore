@@ -33,3 +33,10 @@ mobile/build/
 mobile/.env
 mobile/android/local.properties
 mobile/ios/Pods/
+
+# Database dumps & Supabase CLI cache
+*.mysql
+supabase/.temp/
+
+# Tooling scaffolding
+.lovable/

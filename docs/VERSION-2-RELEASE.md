@@ -89,6 +89,35 @@
 - **Support tickets** — resident feedback form; superadmin ticket viewer.
 - **Dual push stack** — FCM web tokens primary; OneSignal SDK registration + REST fallback when FCM service account not configured.
 
+### Society documents
+
+- Admin CRUD for bylaws, minutes, notices, reports, forms (`society_documents`); publish toggle; protected in-app viewer (signed URLs from `society-documents` bucket).
+- **Timed member reveal** — admins unblur a document for 15s / 30s / 1min (`member_reveal_until`); Realtime updates on mobile resident screen.
+- Web: `SocietyDocumentsManager.tsx`; Flutter: `society_documents_screen.dart`.
+
+### Finance — opening balances
+
+- **`finance_opening_balance_anchors`** — manual cash/bank/other anchors for go-live periods in period reports (`useSocietyOpeningBalanceAnchors.ts`).
+
+### Flutter mobile (`mobile/`)
+
+- Native Android & iOS shells sharing the same Supabase backend and session key `sgb_app_session_v1`.
+- Resident, guard, and admin flows; Firebase OTP; FCM; biometrics; dynamic branding from `platform_branding`.
+- Setup → **[mobile/README.md](../mobile/README.md)** · parity → **[PARITY-ROADMAP.md](./mobile/PARITY-ROADMAP.md)** · API → **[API-STRATEGY.md](./mobile/API-STRATEGY.md)**.
+
+### Platform branding
+
+- Superadmin-managed logo + colors for Flutter apps (`platform_branding`); society logos from Superadmin → Societies.
+
+### Notifications
+
+- **`notification_dismissals`** — per-resident inbox clear without deleting shared notification rows.
+
+### Data integrity (migrations)
+
+- Backfill missing `finance_entries` for payment expenses with split rounding drift (`20260707140000`).
+- Reconcile orphan payments and ledger mismatches (`20260707150000`).
+
 ---
 
 ## Architecture (V2 logical layers)
@@ -154,8 +183,16 @@ Apply **all pending** files under `supabase/migrations/` in timestamp order.
 | `20260608120000` | Event contributions: contributor type, headcount, split mode |
 | `20260608130000` | Receipt basis (flat / non_flat), batch grouping; optional flat_number |
 | `20260608140000` | Event food fund adjustments (shortfall cover / surplus to pool) |
+| `20260608150000` | Water softener salt → Water Softner Maintenance head |
+| `20260610100000` | `platform_branding` (Flutter logo + colors) |
+| `20260705100000` | `finance_opening_balance_anchors` |
+| `20260707100000` | `notification_dismissals` |
+| `20260707110000` | `society_documents` + `society-documents` bucket |
+| `20260707120000` | Society documents timed member reveal + Realtime |
+| `20260707140000` | Backfill missing payment `finance_entries` (split rounding) |
+| `20260707150000` | Reconcile orphan payments and ledger mismatch |
 
-Ensure Storage buckets **`notification-media`** and **`guard-documents`** exist with upload policies.
+Ensure Storage buckets **`notification-media`**, **`guard-documents`**, and **`society-documents`** exist with upload policies.
 
 ---
 
@@ -186,7 +223,9 @@ See README **Getting started** for `VITE_*` variables and Edge Function secrets.
 - **[README.md](../README.md)** — main readme (overview + setup).
 - **[CHANGELOG.md](../CHANGELOG.md)** — Keep a Changelog `[Unreleased]` entries.
 - **[PRODUCT-V2.md](./PRODUCT-V2.md)** — **future** roadmap; distinguish from shipped V2 above.
+- **[mobile/README.md](../mobile/README.md)** — Flutter setup & build.
+- **[mobile/PARITY-ROADMAP.md](./mobile/PARITY-ROADMAP.md)** · **[mobile/FIREBASE-NATIVE-SETUP.md](./mobile/FIREBASE-NATIVE-SETUP.md)** · **[mobile/API-STRATEGY.md](./mobile/API-STRATEGY.md)** — mobile guides.
 
 ---
 
-*Document version: aligned with repo through `20260608140000` (meetings, finance, audit, events/food receipts & adjustments, committee, emergency, head/reserve funds, election governance).*
+*Document version: aligned with repo through `20260707150000` (society documents, opening balances, platform branding, Flutter mobile, notification dismissals, finance backfill/reconcile).*
