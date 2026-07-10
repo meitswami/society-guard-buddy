@@ -268,7 +268,7 @@ export async function fetchFlat360Profile(params: Flat360FetchParams): Promise<F
     });
   }
 
-  const { timeline, hasMore } = mergeFlat360Timeline(timelineItems, timelineLimit);
+  const { timeline } = mergeFlat360Timeline(timelineItems, MAX_TIMELINE_ITEMS);
 
   const flat = flatRes.data;
 
@@ -283,6 +283,5 @@ export async function fetchFlat360Profile(params: Flat360FetchParams): Promise<F
     parking,
     summary,
     timeline,
-    hasMoreTimeline: hasMore,
   };
 }

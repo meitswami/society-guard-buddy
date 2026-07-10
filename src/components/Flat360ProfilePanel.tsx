@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Bell,
   Calendar,
@@ -56,13 +56,11 @@ function SummaryCard({
   );
 }
 
+const DEFAULT_DISPLAY_LIMIT = 50;
+
 const Flat360ProfilePanel = ({ params, className, compact = false }: Flat360ProfilePanelProps) => {
-  const [timelineLimit, setTimelineLimit] = useState(params.timelineLimit ?? 50);
-  const fetchParams = useMemo(
-    () => ({ ...params, timelineLimit }),
-    [params, timelineLimit],
-  );
-  const { profile, loading, error, reload } = useFlat360Profile(fetchParams);
+  const [displayLimit, setDisplayLimit] = useState(DEFAULT_DISPLAY_LIMIT);
+  const { profile, loading, error, reload } = useFlat360Profile(params);
 
   if (loading && !profile) {
     return (
@@ -86,6 +84,8 @@ const Flat360ProfilePanel = ({ params, className, compact = false }: Flat360Prof
   if (!profile) return null;
 
   const { summary } = profile;
+  const visibleTimeline = profile.timeline.slice(0, displayLimit);
+  const hasMoreTimeline = profile.timeline.length > displayLimit;
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -171,11 +171,11 @@ const Flat360ProfilePanel = ({ params, className, compact = false }: Flat360Prof
           <UserCheck className="w-3 h-3" />
           Activity timeline
         </div>
-        {profile.timeline.length === 0 ? (
+        {visibleTimeline.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">No activity in the last 12 months</p>
         ) : (
           <div className="space-y-1.5">
-            {profile.timeline.map((item) => {
+            {visibleTimeline.map((item) => {
               const Icon = KIND_ICONS[item.kind];
               return (
                 <div
@@ -212,13 +212,13 @@ const Flat360ProfilePanel = ({ params, className, compact = false }: Flat360Prof
             })}
           </div>
         )}
-        {profile.hasMoreTimeline && (
+        {hasMoreTimeline && (
           <button
             type="button"
-            onClick={() => setTimelineLimit((n) => n + 30)}
+            onClick={() => setDisplayLimit((n) => n + 30)}
             className="w-full text-xs text-primary font-medium py-2 hover:underline"
           >
-            Load more activity
+            Load more activity ({profile.timeline.length - displayLimit} remaining)
           </button>
         )}
       </div>
