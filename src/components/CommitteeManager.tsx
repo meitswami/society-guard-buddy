@@ -14,6 +14,7 @@ import {
   committeeTenureLabel,
   selectionTypeLabel,
 } from '@/lib/committeeMember';
+import CommitteeDutiesChart from '@/components/CommitteeDutiesChart';
 
 const POSITION_PRESETS = [
   'President',
@@ -402,6 +403,8 @@ const CommitteeManager = ({ isResident = false }: Props) => {
           </button>
         )}
       </div>
+
+      <CommitteeDutiesChart isResident={isResident} />
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

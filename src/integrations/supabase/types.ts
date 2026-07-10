@@ -414,6 +414,82 @@ export type Database = {
           },
         ]
       }
+      committee_duties_charts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          period_from: string
+          period_to: string | null
+          society_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          period_from: string
+          period_to?: string | null
+          society_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          period_from?: string
+          period_to?: string | null
+          society_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "committee_duties_charts_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      committee_duty_rows: {
+        Row: {
+          chart_id: string
+          created_at: string
+          duty_label: string
+          id: string
+          sort_order: number
+          supervisor_names: string[]
+          updated_at: string
+        }
+        Insert: {
+          chart_id: string
+          created_at?: string
+          duty_label: string
+          id?: string
+          sort_order?: number
+          supervisor_names?: string[]
+          updated_at?: string
+        }
+        Update: {
+          chart_id?: string
+          created_at?: string
+          duty_label?: string
+          id?: string
+          sort_order?: number
+          supervisor_names?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "committee_duty_rows_chart_id_fkey"
+            columns: ["chart_id"]
+            isOneToOne: false
+            referencedRelation: "committee_duties_charts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       committee_members: {
         Row: {
           created_at: string
