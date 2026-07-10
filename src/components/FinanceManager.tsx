@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { IndianRupee, Plus, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed, Scale, ChevronRight, Undo2 } from 'lucide-react';
+import { IndianRupee, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed, ChevronRight, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
@@ -55,6 +55,10 @@ import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown'
 import { sumByChannel } from '@/lib/cashBankChannel';
 import { FinanceRemindersTab } from '@/components/finance/FinanceRemindersTab';
 import { FinanceTotalsTab } from '@/components/finance/FinanceTotalsTab';
+import { FinanceMaintenanceTab } from '@/components/finance/FinanceMaintenanceTab';
+import { FinanceFlatReportTab } from '@/components/finance/FinanceFlatReportTab';
+import { FinanceRecordPaymentTab } from '@/components/finance/FinanceRecordPaymentTab';
+import { FinanceSubTabNav } from '@/components/finance/FinanceSubTabNav';
 import { PeriodMetric } from '@/components/finance/PeriodMetric';
 import { UnpaidFlatGridTable } from '@/components/finance/UnpaidFlatGridTable';
 import { useFinanceManagerData } from '@/hooks/useFinanceManagerData';
@@ -167,10 +171,6 @@ const FinanceManager = ({
     isLoading: eventRefLoading,
   } = useFinanceEventReference(societyId, subTab === 'receipts');
   const { batchId: latestPeriodReportBatchId } = useFinancePeriodReportBatch(societyId, subTab === 'period');
-
-  useEffect(() => {
-    if (latestPeriodReportBatchId) setLastDeliveryBatchId(latestPeriodReportBatchId);
-  }, [latestPeriodReportBatchId]);
 
   useEffect(() => {
     if (!initialSubTab) return;
@@ -299,159 +299,13 @@ const FinanceManager = ({
   const [flatReportFrom, setFlatReportFrom] = useState(defaultFinancePeriodFrom);
   const [flatReportTo, setFlatReportTo] = useState(defaultFinancePeriodTo);
   const [flatReportSelectedFlat, setFlatReportSelectedFlat] = useState<string>('all');
-  const [flatReportExpenses, setFlatReportExpenses] = useState<any[]>([]);
-  const [flatReportSplits, setFlatReportSplits] = useState<any[]>([]);
-  const [flatReportLoading, setFlatReportLoading] = useState(false);
-  const [eventContribRef, setEventContribRef] = useState<EventContribRefRow[]>([]);
-  const [eventFoodRef, setEventFoodRef] = useState<EventFoodRefRow[]>([]);
-  const [eventRefLoading, setEventRefLoading] = useState(false);
   const { anchors: openingBalanceAnchors, saveAnchor, deleteAnchor } = useSocietyOpeningBalanceAnchors(societyId);
   const [anchorForm, setAnchorForm] = useState(createDefaultOpeningAnchorForm);
   const [savingOpeningAnchor, setSavingOpeningAnchor] = useState(false);
-  useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
 
   useEffect(() => {
-    if (!societyId || subTab !== 'period') return;
-    const loadLatestReportBatch = async () => {
-      const { data } = await supabase
-        .from('notifications')
-        .select('delivery_batch_id')
-        .eq('society_id', societyId)
-        .eq('type', 'finance_period_report')
-        .not('delivery_batch_id', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const batchId = (data?.[0] as { delivery_batch_id?: string } | undefined)?.delivery_batch_id ?? null;
-      if (batchId) setLastDeliveryBatchId(batchId);
-    };
-    void loadLatestReportBatch();
-  }, [societyId, subTab]);
-
-  const loadFlatReportData = async () => {
-    if (!societyId) return;
-    setFlatReportLoading(true);
-    try {
-      // Society payments (Record payment) — not event food
-      const { data: groupRows } = await supabase
-        .from('expense_groups')
-        .select('id, name')
-        .eq('society_id', societyId)
-        .eq('group_kind', 'general');
-      const groupIds = (groupRows ?? []).map((g) => g.id);
-      let expRows: any[] = [];
-      let splitRows: any[] = [];
-      if (groupIds.length > 0) {
-        const { data: exps } = await supabase
-          .from('expenses')
-          .select('id, title, total_amount, expense_date, payment_method, vendor_or_service, service_kind, group_id, split_type, paid_by_flat, paid_by_flats, record_status')
-          .in('group_id', groupIds)
-          .eq('record_status', 'active')
-          .eq('expense_category', 'payment');
-        expRows = exps ?? [];
-        const expIds = expRows.map((e) => e.id);
-        if (expIds.length > 0) {
-          const { data: sp } = await supabase
-            .from('expense_splits')
-            .select('id, expense_id, flat_number, amount, is_settled, settled_at')
-            .in('expense_id', expIds);
-          splitRows = sp ?? [];
-        }
-      }
-      setFlatReportExpenses(expRows.map((e) => ({
-        ...e,
-        group_name: groupRows?.find((g) => g.id === e.group_id)?.name ?? 'Unknown group',
-      })));
-      setFlatReportSplits(splitRows);
-    } catch (err) {
-      console.error('Flat report data load error:', err);
-    } finally {
-      setFlatReportLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (subTab === 'flat_report') {
-      void loadFlatReportData();
-    }
-  }, [subTab, societyId]);
-
-  const loadEventFoodReference = async () => {
-    if (!societyId) {
-      setEventContribRef([]);
-      setEventFoodRef([]);
-      return;
-    }
-    setEventRefLoading(true);
-    try {
-      const { data: events } = await supabase
-        .from('events')
-        .select('id, title')
-        .eq('society_id', societyId)
-        .order('event_date', { ascending: false })
-        .limit(100);
-      const eventIds = (events ?? []).map((e) => e.id);
-      const eventTitleById = new Map((events ?? []).map((e) => [String(e.id), String(e.title)]));
-
-      const { data: groups } = await supabase
-        .from('expense_groups')
-        .select('id, name, event_id')
-        .eq('society_id', societyId)
-        .eq('group_kind', 'event');
-      const groupIds = (groups ?? []).map((g) => g.id);
-      const groupById = new Map((groups ?? []).map((g) => [String(g.id), g]));
-
-      const [contribRes, expRes] = await Promise.all([
-        eventIds.length
-          ? supabase
-              .from('event_contributions')
-              .select('*')
-              .in('event_id', eventIds)
-              .order('verified_at', { ascending: false })
-              .limit(150)
-          : Promise.resolve({ data: [] as EventContribRefRow[] }),
-        groupIds.length
-          ? supabase
-              .from('expenses')
-              .select('id, title, total_amount, expense_date, payment_method, bill_screenshot_url, group_id')
-              .in('group_id', groupIds)
-              .eq('expense_category', 'food')
-              .eq('record_status', 'active')
-              .order('expense_date', { ascending: false })
-              .limit(150)
-          : Promise.resolve({ data: [] as Omit<EventFoodRefRow, 'group_name' | 'event_title'>[] }),
-      ]);
-
-      setEventContribRef(
-        (contribRes.data ?? []).map((c) => ({
-          ...(c as EventContribRefRow),
-          event_title: eventTitleById.get(String(c.event_id)) ?? 'Event',
-        })),
-      );
-
-      setEventFoodRef(
-        (expRes.data ?? []).map((ex) => {
-          const g = groupById.get(String(ex.group_id));
-          return {
-            ...(ex as Omit<EventFoodRefRow, 'group_name' | 'event_title'>),
-            group_name: g?.name ?? 'Food group',
-            event_title: g?.event_id ? eventTitleById.get(String(g.event_id)) ?? null : null,
-          };
-        }),
-      );
-    } catch (err) {
-      console.error('Event food reference load error:', err);
-    } finally {
-      setEventRefLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (subTab === 'receipts') {
-      void loadEventFoodReference();
-    }
-  }, [subTab, societyId]);
+    if (latestPeriodReportBatchId) setLastDeliveryBatchId(latestPeriodReportBatchId);
+  }, [latestPeriodReportBatchId]);
 
   useEffect(() => {
     if (!showPaymentForm || payForm.charge_id || charges.length === 0) return;
@@ -5133,169 +4987,24 @@ const FinanceManager = ({
       )}
 
       {subTab === 'totals' && (
-        <div>
-          <MonthlyOperatingFundPanel
-            societyId={societyId}
-            totalsMonth={totalsMonth}
-            ledgerEntries={ledgerEntries}
-            societyLedgerEntries={societyLedgerEntries}
-            payments={payments}
-            charges={charges}
-            expenseCategoryById={expenseCategoryById}
-            adminName={adminName}
-            onRefresh={() => void loadAll()}
-          />
-
-          <div className="card-section p-4 mb-4 flex flex-wrap items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Wallet className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-[180px]">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Reporting month</p>
-              <input
-                type="month"
-                className="input-field"
-                min={FINANCE_REPORTING_EARLIEST_MONTH}
-                value={totalsMonth}
-                onChange={(e) => setTotalsMonth(e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn-secondary text-[10px] px-2 py-1 mt-1.5"
-                onClick={() => setTotalsMonth(FINANCE_REPORTING_EARLIEST_MONTH)}
-              >
-                Feb 2026
-              </button>
-            </div>
-          </div>
-
-          <CashBankBreakdown
-            className="mb-4"
-            receipts={totalsMonthReceiptChannels}
-            payments={totalsMonthPaymentChannels}
-            receiptLabel={`Ledger inflows (${totalsMonth})`}
-            paymentLabel={`Ledger outflows (${totalsMonth})`}
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-            <DescriptiveStatCard
-              {...FINANCE_TOTALS_METRICS.inflow}
-              variant="stat"
-              value={`₹${totalsMonthNet.toLocaleString('en-IN')}`}
-              valueClassName="text-xl text-green-600"
-            />
-            <DescriptiveStatCard
-              {...FINANCE_TOTALS_METRICS.groups}
-              variant="stat"
-              value={totalsBreakdown.length}
-              valueClassName="text-xl"
-            />
-            <DescriptiveStatCard
-              {...FINANCE_TOTALS_METRICS.flatUnits}
-              variant="stat"
-              value={totalsBreakdown.reduce((s, r) => s + r.flatUnits, 0)}
-              valueClassName="text-xl"
-            />
-          </div>
-
-          <div className="space-y-2">
-            {totalsBreakdown.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-10">
-                No ledger groups for {totalsMonth}. Record Reciepts or outsider entries to populate totals.
-              </p>
-            ) : (
-              totalsBreakdown.map((row) => (
-                <div
-                  key={`${row.mode}-${row.destination}`}
-                  className="card-section p-3 flex justify-between items-start gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold capitalize">{row.mode.replace(/_/g, ' ')}</p>
-                    <p className="text-[10px] text-muted-foreground capitalize">
-                      {row.destination.replace(/_/g, ' ')} · {row.entries} entr
-                      {row.entries === 1 ? 'y' : 'ies'}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Cash ₹{row.byChannel.cash.toLocaleString('en-IN')} · Bank ₹{row.byChannel.bank.toLocaleString('en-IN')}
-                      {row.byChannel.other > 0 ? ` · Other ₹${row.byChannel.other.toLocaleString('en-IN')}` : ''}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <DescriptiveValueButton
-                      {...FINANCE_LEDGER_GROUP_METRICS.inflowGroup}
-                      title={`${row.mode.replace(/_/g, ' ')} · ${row.destination.replace(/_/g, ' ')}`}
-                      description={`${FINANCE_LEDGER_GROUP_METRICS.inflowGroup.description} Mode: ${row.mode.replace(/_/g, ' ')}; destination: ${row.destination.replace(/_/g, ' ')}.`}
-                      howCalculated={`${FINANCE_LEDGER_GROUP_METRICS.inflowGroup.howCalculated} This group: ${row.entries} entr${row.entries === 1 ? 'y' : 'ies'}, ${row.flatUnits} flat units.`}
-                      value={`₹${row.total.toLocaleString('en-IN')}`}
-                    />
-                    <p className="text-[10px] text-muted-foreground">{row.flatUnits} flat units</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Outflow Section */}
-          <div className="mt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-              <DescriptiveStatCard
-                {...FINANCE_TOTALS_METRICS.outflow}
-                variant="stat"
-                value={`₹${totalsMonthOutflow.toLocaleString('en-IN')}`}
-                valueClassName="text-xl text-red-600"
-              />
-              <DescriptiveStatCard
-                {...FINANCE_TOTALS_METRICS.expenseHeads}
-                variant="stat"
-                value={totalsOutflowBreakdown.length}
-                valueClassName="text-xl"
-              />
-              <DescriptiveStatCard
-                {...FINANCE_TOTALS_METRICS.netInflowOutflow}
-                variant="stat"
-                value={`₹${(totalsMonthNet - totalsMonthOutflow).toLocaleString('en-IN')}`}
-                valueClassName={`text-xl ${totalsMonthNet - totalsMonthOutflow >= 0 ? 'text-green-600' : 'text-red-600'}`}
-              />
-            </div>
-
-            <div className="space-y-2">
-              {totalsOutflowBreakdown.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-10">
-                  No outflow entries for {totalsMonth}. Record separate entries (expenses / payments made) to populate this section.
-                </p>
-              ) : (
-                totalsOutflowBreakdown.map((row) => (
-                  <div
-                    key={row.head}
-                    className="card-section p-3 flex justify-between items-start gap-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">{row.head}</p>
-                      <p className="text-[10px] text-muted-foreground capitalize">
-                        {row.entries} entr{row.entries === 1 ? 'y' : 'ies'}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Cash ₹{row.byChannel.cash.toLocaleString('en-IN')} · Bank ₹{row.byChannel.bank.toLocaleString('en-IN')}
-                        {row.byChannel.other > 0 ? ` · Other ₹${row.byChannel.other.toLocaleString('en-IN')}` : ''}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <DescriptiveValueButton
-                        {...FINANCE_LEDGER_GROUP_METRICS.outflowHead}
-                        title={row.head}
-                        description={`${FINANCE_LEDGER_GROUP_METRICS.outflowHead.description} Head: ${row.head}.`}
-                        howCalculated={`${FINANCE_LEDGER_GROUP_METRICS.outflowHead.howCalculated} This head: ${row.entries} entr${row.entries === 1 ? 'y' : 'ies'}.`}
-                        value={`₹${row.total.toLocaleString('en-IN')}`}
-                        valueClassName="text-red-600"
-                      />
-                      <p className="text-[10px] text-muted-foreground">{row.flatUnits} flat units</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <FinanceTotalsTab
+          societyId={societyId}
+          adminName={adminName}
+          totalsMonth={totalsMonth}
+          onTotalsMonthChange={setTotalsMonth}
+          ledgerEntries={ledgerEntries}
+          societyLedgerEntries={societyLedgerEntries}
+          payments={payments}
+          charges={charges}
+          expenseCategoryById={expenseCategoryById}
+          onRefresh={() => void loadAll()}
+          totalsBreakdown={totalsBreakdown}
+          totalsMonthReceiptChannels={totalsMonthReceiptChannels}
+          totalsMonthNet={totalsMonthNet}
+          totalsOutflowBreakdown={totalsOutflowBreakdown}
+          totalsMonthPaymentChannels={totalsMonthPaymentChannels}
+          totalsMonthOutflow={totalsMonthOutflow}
+        />
       )}
 
       {subTab === 'flat_report' && (
@@ -5468,24 +5177,11 @@ const FinanceManager = ({
       )}
 
       {subTab === 'reminders' && (
-        <div>
-          <div className="card-section p-4 mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              <h3 className="font-semibold">Unpaid Flats</h3>
-            </div>
-            <p className="text-sm text-muted-foreground mb-3">{unpaidFlats.length} flats have not paid maintenance</p>
-            {unpaidFlats.length > 0 && (
-              <button onClick={sendReminders} className="btn-primary w-full flex items-center justify-center gap-2">
-                Send reminders to all ({unpaidFlats.length})
-              </button>
-            )}
-          </div>
-          <UnpaidFlatGridTable
-            rows={unpaidReminderRows}
-            emptyMessage="All flats have paid maintenance"
-          />
-        </div>
+        <FinanceRemindersTab
+          unpaidCount={unpaidFlats.length}
+          rows={unpaidReminderRows}
+          onSendReminders={() => void sendReminders()}
+        />
       )}
 
       {currentHeadSummaryModal && (

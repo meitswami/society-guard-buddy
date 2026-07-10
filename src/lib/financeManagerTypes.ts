@@ -1,5 +1,49 @@
 import type { ChannelTotals } from '@/lib/cashBankChannel';
 import type { ReportDetailRow } from '@/components/ReportDetailModal';
+import type { SocietyPaymentMajorHead } from '@/lib/financeExpenseHead';
+
+export type MaintenanceChargeFormState = {
+  title: string;
+  amount: string;
+  frequency: string;
+  due_day: string;
+  major_head: SocietyPaymentMajorHead | '';
+  expense_group_id: string;
+  new_sub_head: string;
+};
+
+export const emptyMaintenanceChargeForm = (): MaintenanceChargeFormState => ({
+  title: '',
+  amount: '',
+  frequency: 'monthly',
+  due_day: '1',
+  major_head: '',
+  expense_group_id: '',
+  new_sub_head: '',
+});
+
+export type FlatReportDetailRow = {
+  type: 'maintenance' | 'expense';
+  title: string;
+  amount: number;
+  date: string;
+  method: string;
+  status: string;
+  group_name?: string;
+};
+
+export type FlatReportRow = {
+  flat_number: string;
+  resident_name: string;
+  maintenance_paid: number;
+  maintenance_count: number;
+  expense_share: number;
+  expense_count: number;
+  settled_amount: number;
+  unsettled_amount: number;
+  net_position: number;
+  details: FlatReportDetailRow[];
+};
 
 export type FinanceSubTab =
   | 'maintenance'

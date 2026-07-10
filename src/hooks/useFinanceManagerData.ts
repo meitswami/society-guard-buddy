@@ -37,6 +37,12 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
   }, [query.data?.autoReminderEnabled, query.data?.autoReminderSchedule, query.data]);
 
   const loadAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.core(societyId) }),
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.flatReport(societyId) }),
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.eventReference(societyId) }),
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.periodReportBatch(societyId) }),
+    ]);
     await query.refetch();
   };
 
