@@ -7,7 +7,8 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useBiometric } from '@/hooks/useBiometric';
 import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
-import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
+import { completeLoginSession } from '@/lib/loginSession';
+import { checkSocietyGeofence } from '@/lib/geofenceUtils';
 import OTPLoginFlow from '@/components/OTPLoginFlow';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
 import { LoginFooter } from '@/components/LoginFooter';
@@ -17,14 +18,6 @@ import GuardLoginPreview from '@/components/GuardLoginPreview';
 interface Props {
   societyId: string;
   onSwitchToResident?: () => void;
-}
-
-function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
@@ -45,27 +38,15 @@ const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
     isAvailable().then(setBioAvailable);
   }, [isAvailable, setSocietyId, societyId]);
 
-  const checkGeofence = (): Promise<boolean> => {
-    return new Promise(async (resolve) => {
-      const { data: geoData } = await supabase
-        .from('geofence_settings')
-        .select('*')
-        .eq('society_id', societyId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (!geoData || geoData.length === 0) { resolve(true); return; }
-      const geo = geoData[0];
-      if (!navigator.geolocation) { setError(t('admin.geofenceBlocked')); resolve(false); return; }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const dist = getDistanceMeters(pos.coords.latitude, pos.coords.longitude, geo.latitude, geo.longitude);
-          if (dist <= geo.radius_meters) resolve(true);
-          else { setError(`${t('admin.geofenceBlocked')} (${Math.round(dist)}m away)`); resolve(false); }
-        },
-        () => { setError(t('admin.geofenceBlocked')); resolve(false); },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    });
+  const checkGeofence = async (): Promise<boolean> => {
+    const result = await checkSocietyGeofence(societyId, 'strict');
+    if (result.ok) return true;
+    if (result.reason === 'outside') {
+      setError(`${t('admin.geofenceBlocked')} (${Math.round(result.distanceM!)}m away)`);
+    } else {
+      setError(t('admin.geofenceBlocked'));
+    }
+    return false;
   };
 
   const handleOtpVerified = async (phone: string) => {
@@ -98,9 +79,7 @@ const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
     });
     setLoading(false);
     if (success) {
-      auditLoginSuccess('guard', guard.guard_id, guard.name, 'otp');
-      registerOneSignalUser({ userType: 'guard', userId: guard.guard_id, userName: guard.name, societyId });
-      promptPushPermission();
+      completeLoginSession({ userType: 'guard', userId: guard.guard_id, userName: guard.name, societyId, method: 'otp' });
     } else {
       setError(t('login.invalidCredentials'));
     }
@@ -136,9 +115,7 @@ const LoginPage = ({ societyId, onSwitchToResident }: Props) => {
     const success = await login(guardData.guard_id, guardData.password);
     setLoading(false);
     if (success) {
-      auditLoginSuccess('guard', guardData.guard_id, guardData.name);
-      registerOneSignalUser({ userType: 'guard', userId: guardData.guard_id, userName: guardData.name, societyId });
-      promptPushPermission();
+      completeLoginSession({ userType: 'guard', userId: guardData.guard_id, userName: guardData.name, societyId });
     } else {
       auditLoginFailed('guard', guardId.toUpperCase());
       setError(t('login.invalidCredentials'));

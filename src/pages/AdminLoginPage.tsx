@@ -6,10 +6,8 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useBiometric } from '@/hooks/useBiometric';
-import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
-import PasswordResetFlow from '@/components/PasswordResetFlow';
-import { LoginFooter } from '@/components/LoginFooter';
-import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
+import { auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
+import { completeLoginSession } from '@/lib/loginSession';
 import { permissionsFromAdminJoin, type AdminPanelPermissions } from '@/lib/adminPermissions';
 
 interface Props {
@@ -56,9 +54,7 @@ const AdminLoginPage = ({ societyId, onLogin, onBack }: Props) => {
     setLoading(false);
     if (data) {
       setSocietyId(societyId);
-      auditLoginSuccess('admin', data.id, data.name);
-      registerOneSignalUser({ userType: 'admin', userId: data.id, userName: data.name, societyId });
-      promptPushPermission();
+      completeLoginSession({ userType: 'admin', userId: data.id, userName: data.name, societyId });
       onLogin({
         id: data.id,
         name: data.name,

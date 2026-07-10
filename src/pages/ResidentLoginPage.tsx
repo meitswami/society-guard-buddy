@@ -5,10 +5,8 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useBiometric } from '@/hooks/useBiometric';
-import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
-import PasswordResetFlow from '@/components/PasswordResetFlow';
-import OTPLoginFlow from '@/components/OTPLoginFlow';
-import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
+import { auditLoginFailed } from '@/lib/auditLogger';
+import { completeLoginSession, completeBiometricLoginSession } from '@/lib/loginSession';
 import { useStore } from '@/store/useStore';
 import { LoginFooter } from '@/components/LoginFooter';
 import { getResidentByPhoneInSociety } from '@/lib/societiesLogin';
@@ -37,9 +35,13 @@ const ResidentLoginPage = ({ societyId, onLogin, onSwitchToGuard }: Props) => {
   const handleOtpVerified = async (verifiedPhone: string) => {
     const data = await getResidentByPhoneInSociety(verifiedPhone, societyId);
     if (!data) { setError('No resident account found for this phone in this society. Contact your admin.'); return; }
-    auditLoginSuccess('resident', data.id, data.name);
-    registerOneSignalUser({ userType: 'resident', userId: data.id, userName: data.name, flatNumber: data.flat_number, societyId });
-    promptPushPermission();
+    completeLoginSession({
+      userType: 'resident',
+      userId: data.id,
+      userName: data.name,
+      flatNumber: data.flat_number,
+      societyId,
+    });
     setSocietyId(societyId);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
@@ -64,9 +66,13 @@ const ResidentLoginPage = ({ societyId, onLogin, onSwitchToGuard }: Props) => {
     }
     setLoading(false);
     if (!data) { auditLoginFailed('resident', phone); setError(t('login.invalidCredentials')); return; }
-    auditLoginSuccess('resident', data.id, data.name);
-    registerOneSignalUser({ userType: 'resident', userId: data.id, userName: data.name, flatNumber: data.flat_number, societyId });
-    promptPushPermission();
+    completeLoginSession({
+      userType: 'resident',
+      userId: data.id,
+      userName: data.name,
+      flatNumber: data.flat_number,
+      societyId,
+    });
     setSocietyId(societyId);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };
@@ -79,15 +85,13 @@ const ResidentLoginPage = ({ societyId, onLogin, onSwitchToGuard }: Props) => {
     if (!data) { auditLoginFailed('resident', result.userId, 'biometric_user_not_found'); setError(t('login.invalidCredentials')); return; }
     const { data: flat } = await supabase.from('flats').select('society_id').eq('id', data.flat_id).single();
     if (flat?.society_id !== societyId) { setError(t('login.invalidCredentials')); return; }
-    auditBiometricLogin('resident', data.id, data.name);
-    registerOneSignalUser({
+    completeBiometricLoginSession({
       userType: 'resident',
       userId: data.id,
       userName: data.name,
       flatNumber: data.flat_number,
       societyId,
     });
-    promptPushPermission();
     setSocietyId(societyId);
     onLogin({ id: data.id, name: data.name, phone: data.phone, flatId: data.flat_id, flatNumber: data.flat_number });
   };

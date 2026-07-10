@@ -127,20 +127,6 @@ const paymentMonthLabel = (payment: any) => {
 
 const paymentVerifiedAtOrDate = (p: any) => String(p?.payment_date || p?.verified_at || p?.created_at || '');
 
-const normalizePaymentChannel = (method: unknown): 'cash' | 'bank' | 'other' => {
-  const x = String(method ?? 'cash')
-    .toLowerCase()
-    .replace(/\s/g, '');
-  if (x === 'cash') return 'cash';
-  if (
-    ['upi', 'bank_transfer', 'razorpay', 'online', 'card', 'neft', 'rtgs', 'imps', 'netbanking', 'cheque', 'dd'].some(
-      (k) => x === k || x.includes(k),
-    )
-  )
-    return 'bank';
-  return 'other';
-};
-
 const dateInInclusiveRange = (iso: string, fromYmd: string, toYmd: string) => {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return false;
@@ -424,16 +410,7 @@ const ledgerMonthValue = (e: FinanceLedgerRow) => billingMonthFromDate(ledgerTra
 
 const ledgerMonthDisplay = (e: FinanceLedgerRow) => fmtIsoMonthToDisplay(ledgerMonthValue(e));
 
-async function uploadPaymentReceipt(file: File): Promise<string | null> {
-  const safe = file.name.replace(/[^\w.-]/g, '_');
-  const path = `maintenance-receipts/${crypto.randomUUID()}_${safe}`;
-  const { error } = await supabase.storage.from('notification-media').upload(path, file, { cacheControl: '3600', upsert: false });
-  if (error) return null;
-  const { data } = supabase.storage.from('notification-media').getPublicUrl(path);
-  return data.publicUrl;
-}
-
-function PeriodMetric({
+import { uploadMaintenanceReceipt, uploadToNotificationMedia } from '@/lib/notificationMediaStorage';
   metricKey,
   value,
   valueClassName,
@@ -1323,7 +1300,7 @@ const FinanceManager = ({
         return;
       }
       setReceiptUploading(true);
-      const url = await uploadPaymentReceipt(file);
+      const url = await uploadMaintenanceReceipt(file);
       setReceiptUploading(false);
       if (!url) {
         toast.error('Could not upload receipt');
@@ -3168,16 +3145,12 @@ const FinanceManager = ({
       );
       const batchId = crypto.randomUUID();
       const path = `finance-reports/${societyId}/${batchId}.pdf`;
-      const { error: upErr } = await supabase.storage.from('notification-media').upload(path, blob, {
+      const pdfUrl = await uploadToNotificationMedia(path, blob, {
         contentType: 'application/pdf',
         upsert: true,
+        onError: (m) => toast.error(m),
       });
-      if (upErr) {
-        toast.error(upErr.message);
-        return;
-      }
-      const { data: pub } = supabase.storage.from('notification-media').getPublicUrl(path);
-      const pdfUrl = pub.publicUrl;
+      if (!pdfUrl) return;
       const title = `Finance report (${fmtIsoDateToDisplay(periodFrom)} → ${fmtIsoDateToDisplay(periodTo)})`;
       const message = `Society finance period report is attached as PDF.\n\nTotal receipts: ₹${financePeriodReport.totalReceipts.toLocaleString('en-IN')}\nTotal expenses: ₹${financePeriodReport.totalExpenses.toLocaleString('en-IN')}\nBalance: ₹${financePeriodReport.totalBalance.toLocaleString('en-IN')}\n\nOpen PDF: ${pdfUrl}\n\nOpen the Alerts tab and tap this message — we record when you have seen it.`;
       const chunk = 40;

@@ -8,8 +8,9 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useBiometric } from '@/hooks/useBiometric';
-import { auditLoginSuccess, auditLoginFailed, auditBiometricLogin } from '@/lib/auditLogger';
-import { registerOneSignalUser, promptPushPermission } from '@/lib/onesignal';
+import { auditLoginFailed } from '@/lib/auditLogger';
+import { completeLoginSession, completeBiometricLoginSession } from '@/lib/loginSession';
+import { checkSocietyGeofence } from '@/lib/geofenceUtils';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
 import OTPLoginFlow from '@/components/OTPLoginFlow';
 import { LoginFooter } from '@/components/LoginFooter';
@@ -31,14 +32,6 @@ interface Props {
     permissions: AdminPanelPermissions;
   }) => void;
   onSuperadminLogin: (sa: { id: string; name: string; username: string }) => void;
-}
-
-function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 type LoginRole = '' | 'guard' | 'admin' | 'resident';
@@ -105,36 +98,9 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     };
   }, [selectedSocietyId, loginRole]);
 
-  const checkGeofence = (): Promise<boolean> => {
-    return new Promise(async (resolve) => {
-      if (!selectedSocietyId) {
-        resolve(true);
-        return;
-      }
-      const { data: geoData } = await supabase
-        .from('geofence_settings')
-        .select('*')
-        .eq('society_id', selectedSocietyId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (!geoData || geoData.length === 0) {
-        resolve(true);
-        return;
-      }
-      const geo = geoData[0];
-      if (!navigator.geolocation) {
-        resolve(true);
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const dist = getDistanceMeters(pos.coords.latitude, pos.coords.longitude, geo.latitude, geo.longitude);
-          resolve(dist <= geo.radius_meters);
-        },
-        () => resolve(true),
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    });
+  const checkGeofence = async (): Promise<boolean> => {
+    const result = await checkSocietyGeofence(selectedSocietyId, 'permissive');
+    return result.ok;
   };
 
   const handleOtpVerified = async (phone: string) => {
@@ -176,14 +142,13 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
         password: guard.password,
       });
       if (success) {
-        auditLoginSuccess('guard', guard.guard_id, guard.name, 'otp');
-        registerOneSignalUser({
+        completeLoginSession({
           userType: 'guard',
           userId: guard.guard_id,
           userName: guard.name,
           societyId: selectedSocietyId,
+          method: 'otp',
         });
-        promptPushPermission();
         onGuardLogin();
       } else {
         setError(t('login.invalidCredentials'));
@@ -217,15 +182,13 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
         setError(t('login.onboard.phoneOtherFlat'));
         return;
       }
-      auditLoginSuccess('resident', resident.id, resident.name);
-      registerOneSignalUser({
+      completeLoginSession({
         userType: 'resident',
         userId: resident.id,
         userName: resident.name,
         flatNumber: resident.flat_number,
         societyId: selectedSocietyId,
       });
-      promptPushPermission();
       setSocietyId(selectedSocietyId);
       onResidentLogin({
         id: resident.id,
@@ -254,15 +217,13 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       }
     }
 
-    auditLoginSuccess('resident', onboarded.id, onboarded.name);
-    registerOneSignalUser({
+    completeLoginSession({
       userType: 'resident',
       userId: onboarded.id,
       userName: onboarded.name,
       flatNumber: onboarded.flatNumber,
       societyId: selectedSocietyId,
     });
-    promptPushPermission();
     setSocietyId(selectedSocietyId);
     onResidentLogin({
       id: onboarded.id,
@@ -302,16 +263,14 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
         .eq('society_id', selectedSocietyId)
         .maybeSingle();
       if (admin) {
-        auditLoginSuccess('admin', admin.id, admin.name);
         setSocietyId(selectedSocietyId);
         setLoading(false);
-        registerOneSignalUser({
+        completeLoginSession({
           userType: 'admin',
           userId: admin.id,
           userName: admin.name,
           societyId: selectedSocietyId,
         });
-        promptPushPermission();
         onAdminLogin({
           id: admin.id,
           name: admin.name,
@@ -347,14 +306,12 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
         const success = await login(guard.guard_id, guard.password);
         setLoading(false);
         if (success) {
-          auditLoginSuccess('guard', guard.guard_id, guard.name);
-          registerOneSignalUser({
+          completeLoginSession({
             userType: 'guard',
             userId: guard.guard_id,
             userName: guard.name,
             societyId: selectedSocietyId,
           });
-          promptPushPermission();
           onGuardLogin();
         } else {
           setError(t('login.invalidCredentials'));
@@ -404,15 +361,13 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       .maybeSingle();
 
     if (resident) {
-      auditLoginSuccess('resident', resident.id, resident.name);
-      registerOneSignalUser({
+      completeLoginSession({
         userType: 'resident',
         userId: resident.id,
         userName: resident.name,
         flatNumber: resident.flat_number,
         societyId: selectedSocietyId,
       });
-      promptPushPermission();
       setSocietyId(selectedSocietyId);
       setLoading(false);
       onResidentLogin({
@@ -467,15 +422,13 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       }
     }
 
-    auditLoginSuccess('resident', onboarded.id, onboarded.name);
-    registerOneSignalUser({
+    completeLoginSession({
       userType: 'resident',
       userId: onboarded.id,
       userName: onboarded.name,
       flatNumber: onboarded.flatNumber,
       societyId: selectedSocietyId,
     });
-    promptPushPermission();
     setSocietyId(selectedSocietyId);
     setLoading(false);
     onResidentLogin({
@@ -548,16 +501,14 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       setError(t('login.onboard.phoneOtherFlat'));
       return;
     }
-    auditBiometricLogin('resident', resident.id, resident.name);
     setSocietyId(selectedSocietyId);
-    registerOneSignalUser({
+    completeBiometricLoginSession({
       userType: 'resident',
       userId: resident.id,
       userName: resident.name,
       flatNumber: resident.flat_number,
       societyId: selectedSocietyId,
     });
-    promptPushPermission();
     onResidentLogin({
       id: resident.id,
       name: resident.name,
