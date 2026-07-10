@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
@@ -143,6 +143,7 @@ const FinanceManager = ({
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [subTab, setSubTab] = useState<FinanceSubTab>('maintenance');
+  const recordReceiptPanelRef = useRef<HTMLDivElement>(null);
   const [headReconciliationKey, setHeadReconciliationKey] = useState(0);
   const [showHeadFundRecon, setShowHeadFundRecon] = useState(false);
   const bumpHeadReconciliation = useCallback(() => setHeadReconciliationKey((k) => k + 1), []);
@@ -175,12 +176,6 @@ const FinanceManager = ({
   } = useFinanceEventReference(societyId, subTab === 'receipts');
   const { batchId: latestPeriodReportBatchId } = useFinancePeriodReportBatch(societyId, subTab === 'period');
 
-  useEffect(() => {
-    if (!initialSubTab) return;
-    setSubTab(initialSubTab);
-    onInitialSubTabConsumed?.();
-  }, [initialSubTab, onInitialSubTabConsumed]);
-
   const isSocietyPaymentLedgerEntry = useCallback(
     (e: FinanceLedgerRow) => {
       if (!e.expense_id) return false;
@@ -211,6 +206,43 @@ const FinanceManager = ({
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+
+  const scrollToRecordReceiptPanel = useCallback(() => {
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      recordReceiptPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!initialSubTab) return;
+    setSubTab(initialSubTab);
+    if (initialSubTab === 'payments') {
+      setShowPaymentForm(true);
+      scrollToRecordReceiptPanel();
+    }
+    onInitialSubTabConsumed?.();
+  }, [initialSubTab, onInitialSubTabConsumed, scrollToRecordReceiptPanel]);
+
+  const handleSubTabChange = useCallback(
+    (tab: FinanceSubTab) => {
+      setSubTab(tab);
+      if (tab === 'payments') {
+        setShowPaymentForm(true);
+        scrollToRecordReceiptPanel();
+        return;
+      }
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }));
+    },
+    [scrollToRecordReceiptPanel],
+  );
+
+  const openRecordReceiptTab = useCallback(() => {
+    setSubTab('payments');
+    setShowPaymentForm(true);
+    scrollToRecordReceiptPanel();
+  }, [scrollToRecordReceiptPanel]);
+
   const [form, setForm] = useState<MaintenanceChargeFormState>(emptyMaintenanceChargeForm);
   const [distributingPoolEntryId, setDistributingPoolEntryId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({
@@ -2448,7 +2480,7 @@ const FinanceManager = ({
         </div>
       </div>
 
-      <FinanceSubTabNav activeTab={subTab} onTabChange={setSubTab} />
+      <FinanceSubTabNav activeTab={subTab} onTabChange={handleSubTabChange} />
 
       {subTab === 'maintenance' && (
         <FinanceMaintenanceTab
@@ -2489,12 +2521,12 @@ const FinanceManager = ({
       )}
 
       {subTab === 'payments' && (
-        <div>
-          <button onClick={() => setShowPaymentForm(!showPaymentForm)} className="btn-primary w-full mb-3 flex items-center justify-center gap-2">
-            <Upload className="w-4 h-4" /> Record Reciept / Upload Reciept
-          </button>
-          {showPaymentForm && (
-            <div className="card-section p-4 mb-4 flex flex-col gap-3">
+        <div ref={recordReceiptPanelRef} id="finance-record-receipt-panel">
+          <div className="card-section p-4 mb-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Upload className="w-4 h-4" />
+              <span>Record receipt</span>
+            </div>
               <div>
                 <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Recording style</p>
                 <select
@@ -2852,8 +2884,7 @@ const FinanceManager = ({
               >
                 {receiptUploading ? 'Uploading…' : 'Record Reciept'}
               </button>
-            </div>
-          )}
+          </div>
 
           <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
             Pool receipts and flat-wise records appear under <span className="font-medium">Transactions</span>.
@@ -2900,7 +2931,7 @@ const FinanceManager = ({
           showHeadFundRecon={showHeadFundRecon}
           onToggleHeadFundRecon={() => setShowHeadFundRecon((v) => !v)}
           onRecordsChanged={bumpHeadReconciliation}
-          onOpenRecordReceipt={() => setSubTab('payments')}
+          onOpenRecordReceipt={openRecordReceiptTab}
         />
       )}
 

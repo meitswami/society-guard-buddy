@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { Camera, X, ImagePlus } from 'lucide-react';
 
 interface Props {
@@ -24,11 +24,27 @@ const compressImage = (dataUrl: string, maxWidth = 800, quality = 0.7): Promise<
   });
 };
 
+const stopMediaStream = (mediaStream: MediaStream | null | undefined) => {
+  mediaStream?.getTracks().forEach((track) => track.stop());
+};
+
 const PhotoCapture = ({ photos, onChange, maxPhotos = 3, label = 'Photos' }: Props) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [showCamera, setShowCamera] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  const releaseCamera = useCallback(() => {
+    stopMediaStream(streamRef.current);
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setShowCamera(false);
+  }, []);
+
+  useEffect(() => () => {
+    stopMediaStream(streamRef.current);
+    streamRef.current = null;
+  }, []);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -47,19 +63,27 @@ const PhotoCapture = ({ photos, onChange, maxPhotos = 3, label = 'Photos' }: Pro
 
   const startCamera = useCallback(async () => {
     try {
+      releaseCamera();
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 800 }, height: { ideal: 600 } },
       });
-      setStream(mediaStream);
+      streamRef.current = mediaStream;
+      mediaStream.getVideoTracks().forEach((track) => {
+        track.addEventListener('ended', () => {
+          if (streamRef.current === mediaStream) releaseCamera();
+        });
+      });
       setShowCamera(true);
-      setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = mediaStream;
-      }, 100);
+      requestAnimationFrame(() => {
+        if (videoRef.current && streamRef.current === mediaStream) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      });
     } catch {
       // Camera not available, fallback to file picker
       fileRef.current?.click();
     }
-  }, []);
+  }, [releaseCamera]);
 
   const capturePhoto = useCallback(async () => {
     if (!videoRef.current) return;
@@ -69,14 +93,8 @@ const PhotoCapture = ({ photos, onChange, maxPhotos = 3, label = 'Photos' }: Pro
     canvas.getContext('2d')!.drawImage(videoRef.current, 0, 0);
     const compressed = await compressImage(canvas.toDataURL('image/jpeg'));
     onChange([...photos, compressed]);
-    stopCamera();
-  }, [photos, onChange]);
-
-  const stopCamera = useCallback(() => {
-    stream?.getTracks().forEach(t => t.stop());
-    setStream(null);
-    setShowCamera(false);
-  }, [stream]);
+    releaseCamera();
+  }, [photos, onChange, releaseCamera]);
 
   const removePhoto = (index: number) => {
     onChange(photos.filter((_, i) => i !== index));
@@ -114,7 +132,7 @@ const PhotoCapture = ({ photos, onChange, maxPhotos = 3, label = 'Photos' }: Pro
             <button type="button" onClick={capturePhoto} className="bg-primary text-primary-foreground rounded-full p-3">
               <Camera className="w-5 h-5" />
             </button>
-            <button type="button" onClick={stopCamera} className="bg-secondary text-secondary-foreground rounded-full p-3">
+            <button type="button" onClick={releaseCamera} className="bg-secondary text-secondary-foreground rounded-full p-3">
               <X className="w-5 h-5" />
             </button>
           </div>
