@@ -29,12 +29,12 @@ export default function FixedAssetReports({ societyName, assets }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <DescriptiveStatCard label="Total assets" value={String(summary.totalAssets)} hint="All registered items" />
-        <DescriptiveStatCard label="Active" value={String(summary.activeCount)} hint="In use or under repair" />
-        <DescriptiveStatCard label="Total value" value={moneyInr(summary.totalBillValue)} hint="Bill value of active assets" />
-        <DescriptiveStatCard label="Not acquired" value={String(summary.placeholderCount)} hint="Builder templates pending" />
-        <DescriptiveStatCard label="Warranty alert" value={String(summary.warrantyExpiringSoon)} hint="Expiring within 60 days" />
-        <DescriptiveStatCard label="AMC alert" value={String(summary.amcExpiringSoon)} hint="Expiring within 60 days" />
+        <DescriptiveStatCard title="Total assets" value={String(summary.totalAssets)} description="All items in the fixed assets register." caption="All registered items" />
+        <DescriptiveStatCard title="Active" value={String(summary.activeCount)} description="Assets currently in use or under repair." caption="In use or under repair" />
+        <DescriptiveStatCard title="Total value" value={moneyInr(summary.totalBillValue)} description="Sum of bill values for non-disposed assets." caption="Bill value of active assets" />
+        <DescriptiveStatCard title="Not acquired" value={String(summary.placeholderCount)} description="Standard templates awaiting builder handover details." caption="Builder templates pending" />
+        <DescriptiveStatCard title="Warranty alert" value={String(summary.warrantyExpiringSoon)} description="Assets whose warranty ends within the next 60 days." caption="Expiring within 60 days" />
+        <DescriptiveStatCard title="AMC alert" value={String(summary.amcExpiringSoon)} description="Assets whose AMC contract ends within the next 60 days." caption="Expiring within 60 days" />
       </div>
 
       {summary.bySubHead.length > 0 && (
