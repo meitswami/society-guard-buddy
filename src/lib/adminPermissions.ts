@@ -4,6 +4,7 @@ export type AdminPanelPermissions = {
   guards_rw: boolean;
   geofence_rw: boolean;
   finance: boolean;
+  fixed_assets: boolean;
   donations: boolean;
   splits: boolean;
   events: boolean;
@@ -33,6 +34,7 @@ export const NEW_CUSTOM_ROLE_PERMISSIONS: AdminPanelPermissions = {
   guards_rw: false,
   geofence_rw: false,
   finance: true,
+  fixed_assets: false,
   donations: false,
   splits: false,
   events: false,
@@ -61,6 +63,7 @@ export const FULL_ADMIN_PERMISSIONS: AdminPanelPermissions = {
   guards_rw: true,
   geofence_rw: true,
   finance: true,
+  fixed_assets: true,
   donations: true,
   splits: true,
   events: true,
@@ -121,6 +124,7 @@ export type AdminTab =
   | 'biometric'
   | 'audit'
   | 'finance'
+  | 'fixed_assets'
   | 'donations'
   | 'events'
   | 'meetings'
@@ -151,6 +155,7 @@ const TAB_PERM: Record<AdminTab, keyof AdminPanelPermissions | null> = {
   biometric: 'biometric',
   audit: 'audit',
   finance: 'finance',
+  fixed_assets: 'fixed_assets',
   donations: 'donations',
   events: 'events',
   meetings: 'meetings',
