@@ -9,7 +9,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import VisitorEntryPage from '@/pages/VisitorEntryPage';
 import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
 import VehiclePage from '@/pages/VehiclePage';
-import LogsPage from '@/pages/LogsPage';
+import AdminLogsHub from '@/components/guardDuty/AdminLogsHub';
 import QuickEntryPage from '@/pages/QuickEntryPage';
 import DirectoryPage from '@/pages/DirectoryPage';
 import BlacklistPage from '@/pages/BlacklistPage';
@@ -600,7 +600,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         />
       );
       case 'logs': return (
-        <LogsPage
+        <AdminLogsHub
           initialSearchQuery={pendingSearchFor('logs')}
           onInitialSearchConsumed={() => clearModuleSearchFor('logs')}
         />
