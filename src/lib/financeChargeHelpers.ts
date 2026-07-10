@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { billingMonthFromDate, paymentBillingDate } from '@/lib/financeDates';
 
 export const normalizeTitle = (value: unknown) => String(value ?? '').trim().toLowerCase();
 
@@ -16,12 +17,10 @@ export const isCurrentMonthChargeTitle = (title: string, date = new Date()) => {
 
 export const buildCurrentMonthChargeTitle = (date = new Date()) => `${format(date, 'MMMM')} Monthly Maintenance`;
 
-export const paymentMonthValue = (payment: { payment_date?: string; verified_at?: string; created_at?: string }) => {
-  const raw = payment.payment_date || payment.verified_at || payment.created_at || '';
+export const paymentMonthValue = (payment: { due_date?: string | null }) => {
+  const raw = paymentBillingDate(payment);
   if (!raw) return '';
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return '';
-  return format(d, 'yyyy-MM');
+  return billingMonthFromDate(raw);
 };
 
 export const chargeForUnpaidFilters = (
