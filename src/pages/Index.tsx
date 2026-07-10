@@ -26,6 +26,7 @@ import DirectoryPage from '@/pages/DirectoryPage';
 import BlacklistPage from '@/pages/BlacklistPage';
 import SettingsPage from '@/pages/SettingsPage';
 import EmergencyAlertPanel from '@/components/EmergencyAlertPanel';
+import GuardDutyPage from '@/pages/GuardDutyPage';
 import BottomNav from '@/components/BottomNav';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
@@ -380,12 +381,13 @@ const AppContent = () => {
   }
 
   // Guard tabs (tour last — full in-app guide)
-  const guardTabs: TabType[] = ['dashboard', 'quick', 'visitor', 'delivery', 'vehicle', 'blacklist', 'emergency', 'directory', 'settings', 'tour'];
+  const guardTabs: TabType[] = ['dashboard', 'duty', 'quick', 'visitor', 'delivery', 'vehicle', 'blacklist', 'emergency', 'directory', 'settings', 'tour'];
 
   return (
     <div className="min-h-screen bg-background">
       {currentGuard && <TourGuideFirstLogin role="guard" userId={currentGuard.id} t={t} />}
       {activeTab === 'dashboard' && <DashboardPage />}
+      {activeTab === 'duty' && <GuardDutyPage />}
       {activeTab === 'quick' && <QuickEntryPage />}
       {activeTab === 'visitor' && <VisitorEntryPage onDone={goHome} />}
       {activeTab === 'delivery' && <DeliveryEntryPage onDone={goHome} />}
