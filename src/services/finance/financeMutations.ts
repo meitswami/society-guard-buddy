@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { SocietyPaymentMajorHead } from '@/lib/financeExpenseHead';
+import { uploadFinancePeriodReportPdf } from '@/lib/notificationMediaStorage';
 import type { FinanceReminderSchedule } from '@/services/finance/financeService';
 
 export type MutationResult<T = void> = { data: T; error: null } | { data: null; error: string };
@@ -349,11 +350,15 @@ export async function sendMaintenanceReminders(
   adminName: string,
   flatNumbers: string[],
 ): Promise<MutationResult> {
-  for (const flatNumber of flatNumbers) {
+  const flats = [...new Set(flatNumbers.filter(Boolean))];
+  if (flats.length === 0) return { data: undefined, error: null };
+
+  const title = 'Maintenance Due Reminder';
+  for (const flatNumber of flats) {
     const { error } = await supabase.from('notifications').insert([
       {
         society_id: societyId,
-        title: 'Maintenance Due Reminder',
+        title,
         message: `Dear resident of Flat ${flatNumber}, your maintenance payment is due. Please pay at the earliest.`,
         type: 'payment_reminder',
         target_type: 'flat',
@@ -363,6 +368,25 @@ export async function sendMaintenanceReminders(
     ]);
     if (error) return err(error.message);
   }
+
+  try {
+    await supabase.functions.invoke('send-push-notification', {
+      body: {
+        title,
+        message: 'Your maintenance payment is due. Please pay at the earliest.',
+        target_type: 'flat',
+        target_flat_numbers: flats,
+        target_ids: [],
+        media_items: [],
+        society_id: societyId,
+        sound_key: 'digital',
+        sound_custom_url: '',
+      },
+    });
+  } catch (e) {
+    console.warn('Push invoke failed', e);
+  }
+
   return { data: undefined, error: null };
 }
 
@@ -421,6 +445,59 @@ export async function sendPushNotification(body: Record<string, unknown>): Promi
   } catch (e) {
     console.warn('Push invoke failed', e);
   }
+}
+
+export async function sendFinancePeriodReportToMembers(input: {
+  societyId: string;
+  adminName: string;
+  periodLabel: string;
+  summaryMessage: string;
+  pdfBlob: Blob;
+  flatNumbers: string[];
+  sendPush: boolean;
+}): Promise<MutationResult<{ batchId: string }>> {
+  const flats = [...new Set(input.flatNumbers.filter(Boolean))];
+  if (flats.length === 0) return err('No flats to notify');
+
+  const batchId = crypto.randomUUID();
+  const pdfUrl = await uploadFinancePeriodReportPdf(input.societyId, batchId, input.pdfBlob);
+  if (!pdfUrl) return err('Could not upload period report PDF');
+
+  const title = `Finance report · ${input.periodLabel}`;
+  const message = `${input.summaryMessage} Open Alerts for details. PDF: ${pdfUrl}`;
+
+  const rows: PeriodReportNotificationRow[] = flats.map((flat) => ({
+    title,
+    message,
+    type: 'finance_period_report',
+    target_type: 'flat',
+    target_id: flat,
+    society_id: input.societyId,
+    created_by: input.adminName,
+    sound_key: 'digital',
+    sound_custom_url: null,
+    delivery_batch_id: batchId,
+    is_read: false,
+  }));
+
+  const insertResult = await insertNotificationRows(rows);
+  if (insertResult.error) return insertResult;
+
+  if (input.sendPush) {
+    await sendPushNotification({
+      title,
+      message: input.summaryMessage,
+      target_type: 'flat',
+      target_flat_numbers: flats,
+      target_ids: [],
+      media_items: [],
+      society_id: input.societyId,
+      sound_key: 'digital',
+      sound_custom_url: '',
+    });
+  }
+
+  return { data: { batchId }, error: null };
 }
 
 export async function recallFinancePeriodReportNotifications(
