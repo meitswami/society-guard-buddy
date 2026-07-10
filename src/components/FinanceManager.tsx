@@ -53,7 +53,42 @@ import ExpenseSplitter from '@/components/ExpenseSplitter';
 import HeadFundReconciliation from '@/components/HeadFundReconciliation';
 import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
 import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
-import { sumByChannel, addToChannel, type ChannelTotals } from '@/lib/cashBankChannel';
+import { sumByChannel } from '@/lib/cashBankChannel';
+import { FinanceRemindersTab } from '@/components/finance/FinanceRemindersTab';
+import { FinanceTotalsTab } from '@/components/finance/FinanceTotalsTab';
+import { PeriodMetric } from '@/components/finance/PeriodMetric';
+import { UnpaidFlatGridTable } from '@/components/finance/UnpaidFlatGridTable';
+import { useFinanceManagerData } from '@/hooks/useFinanceManagerData';
+import { useFinanceTotalsBreakdown } from '@/lib/financeTotalsBreakdown';
+import {
+  buildCurrentMonthChargeTitle,
+  chargeForUnpaidFilters,
+  isCurrentMonthChargeTitle,
+  isMonthlyMaintenanceCharge,
+  normalizeTitle,
+  paymentMonthValue,
+  transactionFilterHint,
+} from '@/lib/financeChargeHelpers';
+import {
+  addTransactionHeadRow,
+  dateInInclusiveRange,
+  eventContribRefLabel,
+  isLedgerInSocietyPool,
+  ledgerMonthDisplay,
+  ledgerMonthValue,
+  paymentMonthLabel,
+  paymentVerifiedAtOrDate,
+  transactionHeadSummaryRows,
+} from '@/lib/financeLedgerDisplay';
+import {
+  type EventContribRefRow,
+  type EventFoodRefRow,
+  type FinanceLedgerRow,
+  type FinanceSubTab,
+  type TransactionHeadModalLayer,
+  type TransactionHeadSummaryRow,
+  type UnpaidFlatGridRow,
+} from '@/lib/financeManagerTypes';
 import {
   computeFinancePeriodReport,
   createDefaultOpeningAnchorForm,
@@ -81,15 +116,7 @@ import {
 } from '@/lib/financeAuditDetection';
 import { queryReceiptHeadConflicts } from '@/lib/financeAuditRemediation';
 
-export type FinanceSubTab =
-  | 'maintenance'
-  | 'payments'
-  | 'record_payment'
-  | 'receipts'
-  | 'period'
-  | 'totals'
-  | 'reminders'
-  | 'flat_report';
+export type { FinanceSubTab };
 
 interface Props {
   adminName?: string;
@@ -98,344 +125,6 @@ interface Props {
   onInitialSubTabConsumed?: () => void;
 }
 
-const normalizeTitle = (value: unknown) => String(value ?? '').trim().toLowerCase();
-
-const isMonthlyMaintenanceCharge = (charge: any) => {
-  const title = normalizeTitle(charge?.title);
-  const frequency = normalizeTitle(charge?.frequency);
-  return frequency === 'monthly' && title.includes('maint');
-};
-
-const isCurrentMonthChargeTitle = (title: string, date = new Date()) => {
-  const lower = normalizeTitle(title);
-  const monthName = format(date, 'MMMM').toLowerCase();
-  return lower.includes(monthName) || lower.includes(format(date, 'MM/yyyy')) || lower.includes(format(date, 'MM-yyyy'));
-};
-
-const buildCurrentMonthChargeTitle = (date = new Date()) => `${format(date, 'MMMM')} Monthly Maintenance`;
-
-const paymentMonthValue = (payment: any) => {
-  const raw = paymentBillingDate(payment);
-  if (!raw) return '';
-  return billingMonthFromDate(raw);
-};
-
-const paymentMonthLabel = (payment: any) => {
-  const raw = paymentBillingDate(payment);
-  if (!raw) return 'Unknown month';
-  return fmtIsoMonthToDisplay(billingMonthFromDate(raw));
-};
-
-const paymentVerifiedAtOrDate = (p: any) => String(p?.payment_date || p?.verified_at || p?.created_at || '');
-
-const dateInInclusiveRange = (iso: string, fromYmd: string, toYmd: string) => {
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return false;
-  const fromMs = new Date(`${fromYmd}T00:00:00`).getTime();
-  const toMs = new Date(`${toYmd}T23:59:59.999`).getTime();
-  return t >= fromMs && t <= toMs;
-};
-
-type FinanceLedgerRow = {
-  id: string;
-  society_id: string;
-  record_mode: string;
-  destination: string;
-  allocation_style: string;
-  include_vacant: boolean;
-  entry_month: string | null;
-  transaction_date: string | null;
-  total_amount: number;
-  aggregate_flat_count: number;
-  charge_id: string | null;
-  expense_id: string | null;
-  distributed_at: string | null;
-  title: string | null;
-  notes: string | null;
-  screenshot_url: string | null;
-  transaction_id: string | null;
-  payment_method: string;
-  payment_status: string;
-  created_by: string | null;
-  created_at: string;
-  finance_entry_counterparties: { name: string; relation_to_society: string | null }[] | null;
-  finance_entry_allocations: { flat_number: string; amount: number; flat_id: string | null }[] | null;
-};
-
-type EventContribRefRow = {
-  id: string;
-  event_id: string;
-  flat_number: string | null;
-  amount: number;
-  payment_method: string;
-  verified_at: string | null;
-  resident_name: string | null;
-  receipt_basis: string | null;
-  batch_label: string | null;
-  outsider_name: string | null;
-  split_mode: string | null;
-  screenshot_url: string | null;
-  event_title?: string;
-};
-
-type EventFoodRefRow = {
-  id: string;
-  title: string;
-  total_amount: number;
-  expense_date: string;
-  payment_method: string;
-  bill_screenshot_url: string | null;
-  group_name: string;
-  event_title: string | null;
-};
-
-const eventContribRefLabel = (c: EventContribRefRow): string => {
-  if (c.receipt_basis === 'non_flat' || !c.flat_number) {
-    return c.batch_label || c.outsider_name || c.resident_name || 'Receipt (no flat)';
-  }
-  const parts = [`Flat ${c.flat_number}`];
-  if (c.resident_name) parts.push(c.resident_name);
-  if (c.split_mode === 'headcount') parts.push('headcount');
-  return parts.join(' · ');
-};
-
-const isGroupExpenseLedgerEntry = (e: FinanceLedgerRow) => Boolean(e.expense_id);
-
-const isLedgerInSocietyPool = (e: FinanceLedgerRow) => {
-  if (isGroupExpenseLedgerEntry(e)) return false;
-  if (e.distributed_at) return false;
-  const allocCount = e.finance_entry_allocations?.length ?? 0;
-  if (e.record_mode === 'society_pool') return allocCount === 0;
-  return e.allocation_style === 'none' && allocCount === 0 && e.aggregate_flat_count === 0;
-};
-
-type TransactionHeadSummaryRow = {
-  head: string;
-  total: number;
-  entries: number;
-  byChannel: ChannelTotals;
-};
-
-function addTransactionHeadRow(
-  map: Map<string, TransactionHeadSummaryRow>,
-  head: string,
-  amount: number,
-  paymentMethod: string | null | undefined,
-) {
-  const label = head.trim() || 'Uncategorized';
-  const cur = map.get(label) ?? {
-    head: label,
-    total: 0,
-    entries: 0,
-    byChannel: { cash: 0, bank: 0, other: 0 },
-  };
-  const amt = Number(amount || 0);
-  cur.total += amt;
-  cur.entries += 1;
-  addToChannel(cur.byChannel, paymentMethod, amt);
-  map.set(label, cur);
-}
-
-function transactionHeadSummaryRows(map: Map<string, TransactionHeadSummaryRow>) {
-  return [...map.values()].sort((a, b) => b.total - a.total || a.head.localeCompare(b.head));
-}
-
-type TransactionHeadModalLayer = {
-  title: string;
-  subtitle?: string;
-  total?: number;
-  rows: ReportDetailRow[];
-  drillable: boolean;
-};
-
-type UnpaidFlatGridRow = {
-  flat_number: string;
-  primary_name: string;
-  is_occupied: boolean | null;
-  pending_payment: 'pending' | 'rejected' | null;
-  due_amount: number | null;
-  charge_title: string | null;
-};
-
-function chargeForUnpaidFilters(
-  charges: any[],
-  paymentTypeFilter: string,
-  paymentMonthFilter: string,
-): { title: string; amount: number } | null {
-  if (
-    paymentTypeFilter === 'all_payments' ||
-    paymentTypeFilter === 'society_pool_pending' ||
-    paymentTypeFilter === 'corpus' ||
-    paymentTypeFilter === 'outsider_mixed'
-  ) {
-    return null;
-  }
-
-  const pool = charges.filter((c) => {
-    if (paymentTypeFilter === 'monthly_maintenance') return isMonthlyMaintenanceCharge(c);
-    if (paymentTypeFilter === 'all' || paymentTypeFilter === 'all_receipts') return true;
-    if (paymentTypeFilter === 'other') return false;
-    return String(c.frequency).toLowerCase() === paymentTypeFilter;
-  });
-  if (pool.length === 0) return null;
-
-  if (paymentMonthFilter !== 'all') {
-    const monthName = format(new Date(`${paymentMonthFilter}-15T12:00:00`), 'MMMM').toLowerCase();
-    const match =
-      pool.find((c) => normalizeTitle(c.title).includes(monthName)) ??
-      pool.find((c) => normalizeTitle(c.title).includes(paymentMonthFilter));
-    if (match) return { title: match.title, amount: Number(match.amount) || 0 };
-  }
-
-  const current =
-    pool.find((c) => isMonthlyMaintenanceCharge(c) && isCurrentMonthChargeTitle(c.title)) ?? pool[0];
-  return current ? { title: current.title, amount: Number(current.amount) || 0 } : null;
-}
-
-const transactionFilterHint = (filter: string): string => {
-  switch (filter) {
-    case 'all_payments':
-      return 'Society payments recorded via Record payment — vendor bills, utilities, repairs split across flats (not event food or maintenance receipts).';
-    case 'all_receipts':
-      return 'Society collections — flat owners, outsiders, monthly/one-time charges; pooled until you distribute to flats.';
-    case 'all':
-      return 'Society receipts and society-payment rows. Event contribution and food bills appear below as reference only (not in the society ledger).';
-    case 'society_pool_pending':
-      return 'Receipts recorded in the society pool that are not yet split equally across flats.';
-    default:
-      return 'Filter by charge type or recording mode. Use society pool when recording, then distribute from the receipt row when needed.';
-  }
-};
-
-function UnpaidFlatGridTable({
-  rows,
-  emptyMessage,
-  showChargeColumn = true,
-}: {
-  rows: UnpaidFlatGridRow[];
-  emptyMessage: string;
-  showChargeColumn?: boolean;
-}) {
-  if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-8">{emptyMessage}</p>;
-  }
-
-  const totalDue = rows.reduce((sum, row) => sum + (row.due_amount ?? 0), 0);
-  const hasDueAmounts = showChargeColumn && rows.some((row) => row.due_amount != null);
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-[10px] border border-border rounded-md overflow-hidden">
-        <thead>
-          <tr className="bg-muted/50 text-left">
-            <th className="p-1.5 border-b border-border w-10">#</th>
-            <th className="p-1.5 border-b border-border">Flat</th>
-            <th className="p-1.5 border-b border-border">Resident</th>
-            <th className="p-1.5 border-b border-border">Occupancy</th>
-            {showChargeColumn && (
-              <th className="p-1.5 border-b border-border">Charge</th>
-            )}
-            {hasDueAmounts && (
-              <th className="p-1.5 border-b border-border text-right">Due amount</th>
-            )}
-            <th className="p-1.5 border-b border-border">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => (
-            <tr key={row.flat_number} className="border-b border-border/60 hover:bg-muted/20">
-              <td className="p-1.5 text-muted-foreground">{idx + 1}</td>
-              <td className="p-1.5 font-semibold font-mono">{row.flat_number}</td>
-              <td className="p-1.5 max-w-[180px] truncate" title={row.primary_name || 'Primary member not found'}>
-                {row.primary_name || 'Primary member not found'}
-              </td>
-              <td className="p-1.5">
-                <span
-                  className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                    row.is_occupied
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {row.is_occupied ? 'Occupied' : 'Vacant'}
-                </span>
-              </td>
-              {showChargeColumn && (
-                <td className="p-1.5 max-w-[160px] truncate text-muted-foreground" title={row.charge_title ?? '—'}>
-                  {row.charge_title ?? '—'}
-                </td>
-              )}
-              {hasDueAmounts && (
-                <td className="p-1.5 text-right font-mono font-medium">
-                  {row.due_amount != null ? `₹${row.due_amount.toLocaleString('en-IN')}` : '—'}
-                </td>
-              )}
-              <td className="p-1.5">
-                {row.pending_payment === 'pending' ? (
-                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                    Pending
-                  </span>
-                ) : row.pending_payment === 'rejected' ? (
-                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
-                    Rejected
-                  </span>
-                ) : (
-                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-destructive/20 text-destructive">
-                    Unpaid
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="bg-muted/30 font-semibold">
-            <td
-              className="p-1.5"
-              colSpan={4 + (showChargeColumn ? 1 : 0)}
-            >
-              {rows.length} unpaid flat{rows.length === 1 ? '' : 's'}
-            </td>
-            {hasDueAmounts && (
-              <td className="p-1.5 text-right font-mono">₹{totalDue.toLocaleString('en-IN')}</td>
-            )}
-            <td className="p-1.5" />
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  );
-}
-
-const ledgerMonthValue = (e: FinanceLedgerRow) => billingMonthFromDate(ledgerTransactionDate(e));
-
-const ledgerMonthDisplay = (e: FinanceLedgerRow) => fmtIsoMonthToDisplay(ledgerMonthValue(e));
-
-function PeriodMetric({
-  metricKey,
-  value,
-  valueClassName,
-  className,
-}: {
-  metricKey: keyof typeof FINANCE_PERIOD_METRICS;
-  value: ReactNode;
-  valueClassName?: string;
-  className?: string;
-}) {
-  const copy = FINANCE_PERIOD_METRICS[metricKey];
-  return (
-    <DescriptiveStatCard
-      variant="stat"
-      title={copy.title}
-      caption={copy.title}
-      description={copy.description}
-      howCalculated={copy.howCalculated}
-      value={value}
-      valueClassName={valueClassName}
-      className={className}
-    />
-  );
-}
 
 const FinanceManager = ({
   adminName = 'Admin',
