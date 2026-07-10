@@ -1486,6 +1486,7 @@ export type Database = {
       finance_reminder_settings: {
         Row: {
           created_at: string
+          due_day: number
           enabled: boolean
           id: string
           schedule: string
@@ -1495,6 +1496,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          due_day?: number
           enabled?: boolean
           id?: string
           schedule?: string
@@ -1504,6 +1506,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          due_day?: number
           enabled?: boolean
           id?: string
           schedule?: string

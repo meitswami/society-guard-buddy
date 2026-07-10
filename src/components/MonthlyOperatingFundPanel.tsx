@@ -14,6 +14,7 @@ import {
   transfersForMonth,
 } from '@/lib/operatingReserveFund';
 import { fmtIsoMonthToDisplay } from '@/lib/dateFormat';
+import { FINANCE_REPORTING_EARLIEST_MONTH } from '@/lib/financePeriodReport';
 
 type LedgerRow = {
   id: string;
@@ -28,6 +29,7 @@ type LedgerRow = {
 type Props = {
   societyId: string | null;
   totalsMonth: string;
+  onTotalsMonthChange: (month: string) => void;
   ledgerEntries: LedgerRow[];
   societyLedgerEntries: LedgerRow[];
   payments: { amount?: number; due_date?: string; payment_status?: string; charge_id?: string }[];
@@ -40,6 +42,7 @@ type Props = {
 const MonthlyOperatingFundPanel = ({
   societyId,
   totalsMonth,
+  onTotalsMonthChange,
   ledgerEntries,
   societyLedgerEntries,
   payments,
@@ -166,6 +169,26 @@ const MonthlyOperatingFundPanel = ({
             <p className="text-sm font-semibold">Monthly operating fund &amp; reserve</p>
           </HoverInfoTip>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[180px]">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Reporting month</p>
+          <input
+            type="month"
+            className="input-field"
+            min={FINANCE_REPORTING_EARLIEST_MONTH}
+            value={totalsMonth}
+            onChange={(e) => onTotalsMonthChange(e.target.value)}
+          />
+        </div>
+        <button
+          type="button"
+          className="btn-secondary text-[10px] px-2 py-1"
+          onClick={() => onTotalsMonthChange(FINANCE_REPORTING_EARLIEST_MONTH)}
+        >
+          Feb 2026
+        </button>
       </div>
 
       <DescriptiveStatSummary

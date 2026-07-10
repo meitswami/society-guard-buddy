@@ -48,6 +48,7 @@ import { sumByChannel } from '@/lib/cashBankChannel';
 import { FinanceRemindersTab } from '@/components/finance/FinanceRemindersTab';
 import { FinanceTotalsTab } from '@/components/finance/FinanceTotalsTab';
 import { FinanceMaintenanceTab } from '@/components/finance/FinanceMaintenanceTab';
+import { FinanceCreatePaymentTab } from '@/components/finance/FinanceCreatePaymentTab';
 import { FinanceRecordPaymentTab } from '@/components/finance/FinanceRecordPaymentTab';
 import { FinanceSubTabNav } from '@/components/finance/FinanceSubTabNav';
 import { UnpaidFlatGridTable } from '@/components/finance/UnpaidFlatGridTable';
@@ -80,11 +81,13 @@ import {
 } from '@/lib/financeLedgerDisplay';
 import {
   emptyMaintenanceChargeForm,
+  emptyPaymentHeadForm,
   type EventContribRefRow,
   type EventFoodRefRow,
   type FinanceLedgerRow,
   type FinanceSubTab,
   type MaintenanceChargeFormState,
+  type PaymentHeadFormState,
   type TransactionHeadModalLayer,
   type TransactionHeadSummaryRow,
   type UnpaidFlatGridRow,
@@ -94,6 +97,7 @@ import {
   financeExpenseHeadFromLedgerEntry,
   SOCIETY_PAYMENT_MAJOR_HEADS,
   inferMajorHeadFromGroupName,
+  paymentGroupsByMajorHead,
   resolveGroupMajorHead,
   type SocietyPaymentMajorHead,
 } from '@/lib/financeExpenseHead';
@@ -145,6 +149,8 @@ const FinanceManager = ({
     setAutoReminderEnabled,
     autoReminderSchedule,
     setAutoReminderSchedule,
+    reminderDueDay,
+    setReminderDueDay,
     isLoading: financeDataLoading,
     isFetching: financeDataFetching,
     error: financeDataError,
@@ -186,6 +192,7 @@ const FinanceManager = ({
   );
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showPaymentHeadForm, setShowPaymentHeadForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   const scrollToRecordReceiptPanel = useCallback(() => {
@@ -222,6 +229,7 @@ const FinanceManager = ({
   }, [scrollToRecordReceiptPanel]);
 
   const [form, setForm] = useState<MaintenanceChargeFormState>(emptyMaintenanceChargeForm);
+  const [paymentHeadForm, setPaymentHeadForm] = useState<PaymentHeadFormState>(emptyPaymentHeadForm);
   const [distributingPoolEntryId, setDistributingPoolEntryId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({
     recordMode: 'flats_only' as 'society_pool' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only',
@@ -243,16 +251,10 @@ const FinanceManager = ({
   });
   const [filterStatus, setFilterStatus] = useState('all');
   const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
+  const [editingPaymentGroupId, setEditingPaymentGroupId] = useState<string | null>(null);
   const [receiptUploading, setReceiptUploading] = useState(false);
   const [paymentNotifyAudience, setPaymentNotifyAudience] = useState<AdminRecordNotifyAudience>('none');
   const [autoSelectedChargeHint, setAutoSelectedChargeHint] = useState('');
-  const [useSameDateForSelectedFlats, setUseSameDateForSelectedFlats] = useState(true);
-  const [flatDueDates, setFlatDueDates] = useState<Record<string, string>>({});
-  const [flatDateModal, setFlatDateModal] = useState<{ open: boolean; flatNumber: string; date: string }>({
-    open: false,
-    flatNumber: '',
-    date: format(new Date(), 'yyyy-MM-dd'),
-  });
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const [paymentMonthFilter, setPaymentMonthFilter] = useState('all');
   const [receiptModeFilter, setReceiptModeFilter] = useState<
@@ -350,6 +352,22 @@ const FinanceManager = ({
     return paymentExpenseGroups.filter((g) => resolveGroupMajorHead(g) === form.major_head);
   }, [paymentExpenseGroups, form.major_head]);
 
+  const paymentGroupsByMajorHeadMap = useMemo(() => {
+    const grouped = paymentGroupsByMajorHead(paymentExpenseGroups);
+    const map = new Map<string, typeof paymentExpenseGroups>();
+    for (const head of SOCIETY_PAYMENT_MAJOR_HEADS) map.set(head, grouped.get(head) ?? []);
+    map.set('Uncategorized', []);
+    return map;
+  }, [paymentExpenseGroups]);
+
+  const groupIdsInUse = useMemo(() => {
+    const ids = new Set<string>();
+    for (const c of charges) {
+      if (c.expense_group_id) ids.add(String(c.expense_group_id));
+    }
+    return ids;
+  }, [charges]);
+
   const renderGroupedChargeOptions = () =>
     [...SOCIETY_PAYMENT_MAJOR_HEADS, 'Uncategorized' as const].map((major) => {
       const list = chargesByMajorHead.get(major) ?? [];
@@ -403,7 +421,7 @@ const FinanceManager = ({
       title: form.title,
       amount: Number(form.amount),
       frequency: form.frequency,
-      due_day: Number(form.due_day),
+      due_day: reminderDueDay,
       expense_group_id: expenseGroupId,
     };
 
@@ -439,7 +457,6 @@ const FinanceManager = ({
     title: string;
     amount: number;
     frequency?: string | null;
-    due_day?: number | null;
     expense_group_id?: string | null;
   }) => {
     const g = charge.expense_group_id ? paymentGroupById.get(charge.expense_group_id) : undefined;
@@ -449,7 +466,6 @@ const FinanceManager = ({
       title: charge.title,
       amount: String(charge.amount),
       frequency: charge.frequency || 'monthly',
-      due_day: String(charge.due_day ?? 1),
       major_head: major,
       expense_group_id: charge.expense_group_id ?? '',
       new_sub_head: '',
@@ -482,6 +498,94 @@ const FinanceManager = ({
       setEditingChargeId(null);
       setForm(emptyMaintenanceChargeForm());
       setShowForm(false);
+    }
+    await loadAll();
+  };
+
+  const addPaymentHead = async () => {
+    if (!societyId) {
+      toast.error('No society selected');
+      return;
+    }
+    if (!paymentHeadForm.major_head) {
+      toast.error('Choose a major head for the payment type');
+      return;
+    }
+    const name = paymentHeadForm.name.trim();
+    if (!name) {
+      toast.error('Enter a sub-head name');
+      return;
+    }
+
+    if (editingPaymentGroupId) {
+      try {
+        await financeMutations.saveExpenseGroup({
+          societyId,
+          groupId: editingPaymentGroupId,
+          name,
+          description: paymentHeadForm.description.trim() || null,
+          major_head: paymentHeadForm.major_head,
+        });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not update payment type');
+        return;
+      }
+      toast.success('Payment type updated');
+      setEditingPaymentGroupId(null);
+    } else {
+      try {
+        await financeMutations.createExpenseGroup({
+          societyId,
+          name,
+          major_head: paymentHeadForm.major_head,
+          description: paymentHeadForm.description.trim() || null,
+          created_by: adminName,
+        });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not create payment type');
+        return;
+      }
+      toast.success('Payment type added');
+    }
+    setPaymentHeadForm(emptyPaymentHeadForm());
+    setShowPaymentHeadForm(false);
+    await loadAll();
+  };
+
+  const startEditPaymentGroup = (group: {
+    id: string;
+    name: string;
+    description?: string | null;
+    major_head?: string | null;
+  }) => {
+    setEditingPaymentGroupId(group.id);
+    setPaymentHeadForm({
+      name: group.name,
+      description: group.description ?? '',
+      major_head: resolveGroupMajorHead(group),
+    });
+    setShowPaymentHeadForm(true);
+  };
+
+  const deletePaymentGroup = async (id: string) => {
+    const ok = await confirmAction(
+      'Delete this payment type?',
+      'This removes the payment sub-head definition only.',
+      'Delete',
+      'Cancel',
+    );
+    if (!ok) return;
+    try {
+      await financeMutations.deleteExpenseGroup(id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not delete payment type');
+      return;
+    }
+    toast.success('Payment type deleted');
+    if (editingPaymentGroupId === id) {
+      setEditingPaymentGroupId(null);
+      setPaymentHeadForm(emptyPaymentHeadForm());
+      setShowPaymentHeadForm(false);
     }
     await loadAll();
   };
@@ -630,25 +734,11 @@ const FinanceManager = ({
       }
     }
 
-    if (!useSameDateForSelectedFlats) {
-      const missingDateFlat = payForm.selected_flats.find((flat) => !flatDueDates[flat]);
-      if (missingDateFlat) {
-        setFlatDateModal({
-          open: true,
-          flatNumber: missingDateFlat,
-          date: payForm.due_date,
-        });
-        toast.error(`Select due date for Flat ${missingDateFlat}`);
-        return;
-      }
-    }
-
-    // Block when receipt head is already recorded (flat + charge + month + channel).
     if (mode !== 'society_pool' && (mode === 'flats_only' || mode === 'flats_plus_outsider')) {
       if (payForm.charge_id && payForm.selected_flats.length > 0) {
         const targets = payForm.selected_flats.map((flatNum) => ({
           flatNumber: flatNum,
-          dueDate: useSameDateForSelectedFlats ? payForm.due_date : (flatDueDates[flatNum] || payForm.due_date),
+          dueDate: payForm.due_date,
         }));
         const conflicts = await queryReceiptHeadConflicts(supabase, {
           chargeId: payForm.charge_id,
@@ -719,7 +809,7 @@ const FinanceManager = ({
       payment_status:
         payForm.payment_method === 'cash' || payForm.payment_method === 'upi' ? 'verified' : 'pending',
       payment_date: now,
-      due_date: useSameDateForSelectedFlats ? payForm.due_date : flatDueDates[flat_number] || payForm.due_date,
+      due_date: payForm.due_date,
       recording_date: recordingDate,
       transaction_id: payForm.transaction_id || null,
       screenshot_url: screenshotUrl,
@@ -899,8 +989,6 @@ const FinanceManager = ({
       notes: '',
       due_date: format(new Date(), 'yyyy-MM-dd'),
     });
-    setUseSameDateForSelectedFlats(true);
-    setFlatDueDates({});
     setAutoSelectedChargeHint('');
     setPaymentNotifyAudience('none');
     setShowPaymentForm(false);
@@ -1293,7 +1381,7 @@ const FinanceManager = ({
     const targets = payForm.selected_flats
       .map((flatNumber) => ({
         flatNumber,
-        dueDate: useSameDateForSelectedFlats ? payForm.due_date : (flatDueDates[flatNumber] || payForm.due_date),
+        dueDate: payForm.due_date,
         chargeId: payForm.charge_id,
         paymentMethod: payForm.payment_method,
       }))
@@ -1306,8 +1394,6 @@ const FinanceManager = ({
     payForm.due_date,
     payForm.payment_method,
     payments,
-    useSameDateForSelectedFlats,
-    flatDueDates,
   ]);
 
   const unpaidFlats = targetFlats.filter((f) =>
@@ -1423,17 +1509,6 @@ const FinanceManager = ({
     }
     return [{ value: 'all', label: 'All months' }, ...[...uniq.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([value, label]) => ({ value, label }))];
   }, [payments, societyLedgerEntries]);
-
-  const selectedFlatDateBadges = useMemo(() => {
-    const out: Record<string, string> = {};
-    for (const flatNum of payForm.selected_flats) {
-      const rawDate = useSameDateForSelectedFlats ? payForm.due_date : (flatDueDates[flatNum] || '');
-      if (!rawDate) continue;
-      const d = new Date(rawDate);
-      out[flatNum] = Number.isNaN(d.getTime()) ? rawDate : fmtDate(d);
-    }
-    return out;
-  }, [payForm.selected_flats, payForm.due_date, useSameDateForSelectedFlats, flatDueDates]);
 
   const scopedReceiptPayments = payments.filter((p) => {
     if (
@@ -1849,7 +1924,7 @@ const FinanceManager = ({
             { id: 'd-month', label: 'Payment month', sublabel: paymentMonthLabel(p) },
             {
               id: 'd-due',
-              label: 'Due date',
+              label: 'Billing date',
               sublabel: p.due_date ? fmtIsoDateToDisplay(String(p.due_date)) : '—',
             },
             { id: 'd-txn', label: 'Transaction ID', sublabel: String(p.transaction_id || '—') },
@@ -2068,6 +2143,7 @@ const FinanceManager = ({
       await financeMutations.saveReminderSettings({
         enabled: autoReminderEnabled,
         schedule: autoReminderSchedule,
+        dueDay: reminderDueDay,
       });
       toast.success('Auto reminder settings saved');
     } catch (e) {
@@ -2126,20 +2202,6 @@ const FinanceManager = ({
     } finally {
       setTestingAutoReminder(false);
     }
-  };
-
-  const openFlatDateModal = (flatNumber: string, fallbackDate: string) => {
-    setFlatDateModal({
-      open: true,
-      flatNumber,
-      date: flatDueDates[flatNumber] || fallbackDate,
-    });
-  };
-
-  const saveFlatDateFromModal = () => {
-    if (!flatDateModal.flatNumber || !flatDateModal.date) return;
-    setFlatDueDates((prev) => ({ ...prev, [flatDateModal.flatNumber]: flatDateModal.date }));
-    setFlatDateModal({ open: false, flatNumber: '', date: payForm.due_date });
   };
 
   if (!societyId) {
@@ -2217,8 +2279,10 @@ const FinanceManager = ({
           onSendReminders={() => void sendReminders()}
           autoReminderEnabled={autoReminderEnabled}
           autoReminderSchedule={autoReminderSchedule}
+          reminderDueDay={reminderDueDay}
           onAutoReminderEnabledChange={setAutoReminderEnabled}
           onAutoReminderScheduleChange={setAutoReminderSchedule}
+          onReminderDueDayChange={setReminderDueDay}
           onSaveAutoReminderSettings={() => void saveAutoReminderSettings()}
           onTestAutoReminderNow={() => void testAutoReminderNow()}
           savingAutoReminder={savingAutoReminder}
@@ -2263,6 +2327,33 @@ const FinanceManager = ({
         />
       )}
 
+      {subTab === 'create_payment' && (
+        <FinanceCreatePaymentTab
+          showForm={showPaymentHeadForm}
+          editingGroupId={editingPaymentGroupId}
+          form={paymentHeadForm}
+          onFormChange={setPaymentHeadForm}
+          onToggleForm={() => {
+            if (showPaymentHeadForm && !editingPaymentGroupId) {
+              setShowPaymentHeadForm(false);
+              return;
+            }
+            setEditingPaymentGroupId(null);
+            setPaymentHeadForm(emptyPaymentHeadForm());
+            setShowPaymentHeadForm(true);
+          }}
+          onCancelEdit={() => {
+            setEditingPaymentGroupId(null);
+            setPaymentHeadForm(emptyPaymentHeadForm());
+          }}
+          onSaveGroup={() => void addPaymentHead()}
+          groupsByMajorHead={paymentGroupsByMajorHeadMap}
+          groupIdsInUse={groupIdsInUse}
+          onStartEditGroup={startEditPaymentGroup}
+          onDeleteGroup={(id) => void deletePaymentGroup(id)}
+        />
+      )}
+
       {subTab === 'payments' && (
         <div ref={recordReceiptPanelRef} id="finance-record-receipt-panel">
           <div className="card-section p-4 mb-4 flex flex-col gap-3">
@@ -2299,17 +2390,7 @@ const FinanceManager = ({
                 <DateInput
                   className="input-field"
                   value={payForm.due_date}
-                  onChange={e => {
-                    const nextDate = e.target.value;
-                    setPayForm({ ...payForm, due_date: nextDate });
-                    if (useSameDateForSelectedFlats) {
-                      setFlatDueDates((prev) => {
-                        const next = { ...prev };
-                        for (const flat of payForm.selected_flats) next[flat] = nextDate;
-                        return next;
-                      });
-                    }
-                  }}
+                  onChange={(e) => setPayForm({ ...payForm, due_date: e.target.value })}
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
                   Entry month for reports: {fmtIsoMonthToDisplay(billingMonthFromDate(payForm.due_date))} (billing date must
@@ -2465,33 +2546,7 @@ const FinanceManager = ({
               <FlatMultiSelect
                 flats={flatOptionsWithPrimaryLabel(paymentScopeFlats, primaryByFlatId)}
                 selected={payForm.selected_flats}
-                onChange={nums => {
-                  const removed = payForm.selected_flats.filter((flat) => !nums.includes(flat));
-                  if (removed.length > 0) {
-                    setFlatDueDates((prev) => {
-                      const copy = { ...prev };
-                      for (const flat of removed) delete copy[flat];
-                      return copy;
-                    });
-                  }
-                  if (useSameDateForSelectedFlats) {
-                    setFlatDueDates((prev) => {
-                      const next = { ...prev };
-                      for (const flat of nums) next[flat] = payForm.due_date;
-                      return next;
-                    });
-                  }
-                  setPayForm({ ...payForm, selected_flats: nums });
-                }}
-                onToggleFlat={(flatNumber, nextSelected) => {
-                  if (!nextSelected) return;
-                  if (useSameDateForSelectedFlats) {
-                    setFlatDueDates((prev) => ({ ...prev, [flatNumber]: payForm.due_date }));
-                    return;
-                  }
-                  openFlatDateModal(flatNumber, payForm.due_date);
-                }}
-                selectedBadgeByFlat={selectedFlatDateBadges}
+                onChange={(nums) => setPayForm({ ...payForm, selected_flats: nums })}
                 label="Flats (multi-select)"
               />
               )}
@@ -2509,26 +2564,6 @@ const FinanceManager = ({
                     <option value="include_vacant">Include vacant flats in equal split</option>
                   </select>
                 </label>
-              )}
-              {payForm.recordMode !== 'society_pool' && (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={useSameDateForSelectedFlats}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setUseSameDateForSelectedFlats(checked);
-                    if (checked) {
-                      setFlatDueDates((prev) => {
-                        const next = { ...prev };
-                        for (const flat of payForm.selected_flats) next[flat] = payForm.due_date;
-                        return next;
-                      });
-                    }
-                  }}
-                />
-                Use same due date for selected flats
-              </label>
               )}
               {(payForm.recordMode === 'flats_only' || payForm.recordMode === 'flats_plus_outsider') && (
                 <input
@@ -2549,22 +2584,6 @@ const FinanceManager = ({
               <input className="input-field" placeholder="Screenshot URL (paste link, optional)" value={payForm.screenshot_url} onChange={e => setPayForm({...payForm, screenshot_url: e.target.value})} />
               <label className="text-[10px] font-medium text-muted-foreground uppercase">Or upload receipt / bill</label>
               <input id="finance-payment-receipt" type="file" accept="image/*,application/pdf" className="text-xs" />
-              {payForm.recordMode !== 'society_pool' && !useSameDateForSelectedFlats && payForm.selected_flats.length > 0 && (
-                <div className="rounded-lg border border-border p-2 space-y-1.5">
-                  <p className="text-[10px] uppercase font-medium text-muted-foreground">Per-flat due dates</p>
-                  {payForm.selected_flats.map((flatNum) => (
-                    <button
-                      key={flatNum}
-                      type="button"
-                      className="w-full flex items-center justify-between text-xs px-2 py-1.5 rounded border border-border"
-                      onClick={() => openFlatDateModal(flatNum, payForm.due_date)}
-                    >
-                      <span>Flat {flatNum}</span>
-                      <span className="font-medium">{flatDueDates[flatNum] || 'Set date'}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
               <textarea className="input-field" placeholder="Notes" value={payForm.notes} onChange={capsFieldChange(setPayForm, 'notes')} />
 
               <div className="rounded-lg border border-border p-3 space-y-2 bg-muted/30">
@@ -2644,36 +2663,6 @@ const FinanceManager = ({
             Food / catering for functions → <span className="font-medium">Events &amp; food</span> (split by family). All other
             payments (vendors, utilities, repairs) → record here as society payment / expense.
           </p>
-
-          {flatDateModal.open && (
-            <div className="fixed inset-0 z-[60] bg-black/45 p-4 flex items-center justify-center">
-              <div className="w-full max-w-xs bg-card border border-border rounded-xl p-4">
-                <p className="text-sm font-semibold mb-1">Select due date</p>
-                <p className="text-xs text-muted-foreground mb-3">Flat {flatDateModal.flatNumber}</p>
-                <DateInput
-                  className="input-field"
-                  value={flatDateModal.date}
-                  onChange={(e) => setFlatDateModal((prev) => ({ ...prev, date: e.target.value }))}
-                />
-                <div className="flex gap-2 mt-3">
-                  <button
-                    type="button"
-                    className="btn-primary flex-1"
-                    onClick={saveFlatDateFromModal}
-                  >
-                    Save date
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary flex-1"
-                    onClick={() => setFlatDateModal({ open: false, flatNumber: '', date: payForm.due_date })}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -3345,7 +3334,7 @@ const FinanceManager = ({
                       <p><span className="text-muted-foreground">Status:</span> {selectedPayment.payment_status}</p>
                       <p><span className="text-muted-foreground">Payment month:</span> {paymentMonthLabel(selectedPayment)}</p>
                       <p>
-                        <span className="text-muted-foreground">Due date:</span>{' '}
+                        <span className="text-muted-foreground">Billing date:</span>{' '}
                         {selectedPayment.due_date ? fmtIsoDateToDisplay(selectedPayment.due_date) : '-'}
                       </p>
                       <p>

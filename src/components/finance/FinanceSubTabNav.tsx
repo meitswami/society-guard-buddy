@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 
 const CREATE_ITEMS: { id: FinanceSubTab; label: string }[] = [
   { id: 'maintenance', label: 'Receipt type' },
+  { id: 'create_payment', label: 'Payment type' },
 ];
 
 const RECORD_ITEMS: { id: FinanceSubTab; label: string }[] = [

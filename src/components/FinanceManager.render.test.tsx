@@ -52,6 +52,7 @@ vi.mock('@/hooks/useFinanceManagerData', () => ({
     paymentExpenseGroups: [],
     autoReminderEnabled: true,
     autoReminderSchedule: 'once_12pm',
+    reminderDueDay: 1,
     loadAll: vi.fn(),
   }),
 }));

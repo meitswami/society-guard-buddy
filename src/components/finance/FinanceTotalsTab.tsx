@@ -1,4 +1,3 @@
-import { Wallet } from 'lucide-react';
 import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
 import CashBankBreakdown from '@/components/CashBankBreakdown';
 import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
@@ -6,7 +5,6 @@ import {
   FINANCE_LEDGER_GROUP_METRICS,
   FINANCE_TOTALS_METRICS,
 } from '@/lib/descriptiveMetricCopy';
-import { FINANCE_REPORTING_EARLIEST_MONTH } from '@/lib/financePeriodReport';
 import type { ChannelTotals } from '@/lib/cashBankChannel';
 import type { FinanceLedgerRow } from '@/lib/financeManagerTypes';
 import type { TotalsInflowRow, TotalsOutflowRow } from '@/lib/financeTotalsBreakdown';
@@ -54,6 +52,7 @@ export function FinanceTotalsTab({
       <MonthlyOperatingFundPanel
         societyId={societyId}
         totalsMonth={totalsMonth}
+        onTotalsMonthChange={onTotalsMonthChange}
         ledgerEntries={ledgerEntries}
         societyLedgerEntries={societyLedgerEntries}
         payments={payments}
@@ -62,29 +61,6 @@ export function FinanceTotalsTab({
         adminName={adminName}
         onRefresh={onRefresh}
       />
-
-      <div className="card-section p-4 mb-4 flex flex-wrap items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-          <Wallet className="w-5 h-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-[180px]">
-          <p className="text-xs font-medium text-muted-foreground mb-1">Reporting month</p>
-          <input
-            type="month"
-            className="input-field"
-            min={FINANCE_REPORTING_EARLIEST_MONTH}
-            value={totalsMonth}
-            onChange={(e) => onTotalsMonthChange(e.target.value)}
-          />
-          <button
-            type="button"
-            className="btn-secondary text-[10px] px-2 py-1 mt-1.5"
-            onClick={() => onTotalsMonthChange(FINANCE_REPORTING_EARLIEST_MONTH)}
-          >
-            Feb 2026
-          </button>
-        </div>
-      </div>
 
       <CashBankBreakdown
         className="mb-4"

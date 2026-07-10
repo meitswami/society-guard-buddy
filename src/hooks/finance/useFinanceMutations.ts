@@ -5,6 +5,7 @@ import {
   deleteFinanceEntry,
   deleteMaintenanceCharge,
   deleteMaintenancePaymentRow,
+  deletePaymentExpenseGroup,
   distributePoolToAllFlats,
   insertMaintenanceCharge,
   insertNotificationRows,
@@ -20,8 +21,10 @@ import {
   updateMaintenanceCharge,
   updateMaintenancePayment,
   updateMaintenancePaymentStatus,
+  updatePaymentExpenseGroup,
   upsertFinanceReminderSettings,
   type CreateExpenseGroupInput,
+  type UpdateExpenseGroupInput,
   type DistributePoolInput,
   type MaintenanceChargeInput,
   type MaintenancePaymentDeleteRow,
@@ -55,6 +58,17 @@ export function useFinanceMutations(societyId: string | null) {
 
   const createExpenseGroup = useMutation(
     withInvalidate((input: CreateExpenseGroupInput) => createPaymentExpenseGroup(input)),
+  );
+
+  const saveExpenseGroup = useMutation(
+    withInvalidate((input: UpdateExpenseGroupInput) => updatePaymentExpenseGroup(input)),
+  );
+
+  const deleteExpenseGroup = useMutation(
+    withInvalidate((groupId: string) => {
+      if (!societyId) return Promise.resolve({ data: null, error: 'No society selected' });
+      return deletePaymentExpenseGroup(societyId, groupId);
+    }),
   );
 
   const saveCharge = useMutation(
@@ -123,9 +137,9 @@ export function useFinanceMutations(societyId: string | null) {
   );
 
   const saveReminderSettings = useMutation(
-    withInvalidate((input: { enabled: boolean; schedule: 'once_12pm' | 'twice_12pm_7pm' }) => {
+    withInvalidate((input: { enabled: boolean; schedule: 'once_12pm' | 'twice_12pm_7pm'; dueDay: number }) => {
       if (!societyId) return Promise.resolve({ data: null, error: 'No society selected' });
-      return upsertFinanceReminderSettings(societyId, input.enabled, input.schedule);
+      return upsertFinanceReminderSettings(societyId, input.enabled, input.schedule, input.dueDay);
     }),
   );
 
@@ -163,6 +177,8 @@ export function useFinanceMutations(societyId: string | null) {
   return {
     invalidateAll,
     createExpenseGroup: createExpenseGroup.mutateAsync,
+    saveExpenseGroup: saveExpenseGroup.mutateAsync,
+    deleteExpenseGroup: deleteExpenseGroup.mutateAsync,
     saveCharge: saveCharge.mutateAsync,
     deleteCharge: deleteCharge.mutateAsync,
     distributePool: distributePool.mutateAsync,
@@ -183,6 +199,8 @@ export function useFinanceMutations(societyId: string | null) {
     sendPushNotification,
     isPending:
       createExpenseGroup.isPending ||
+      saveExpenseGroup.isPending ||
+      deleteExpenseGroup.isPending ||
       saveCharge.isPending ||
       deleteCharge.isPending ||
       distributePool.isPending ||

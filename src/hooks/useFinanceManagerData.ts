@@ -29,13 +29,20 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
 
   const [autoReminderEnabled, setAutoReminderEnabled] = useState(true);
   const [autoReminderSchedule, setAutoReminderSchedule] = useState<'once_12pm' | 'twice_12pm_7pm'>('once_12pm');
+  const [reminderDueDay, setReminderDueDay] = useState(1);
 
   useEffect(() => {
     if (query.data) {
       setAutoReminderEnabled(query.data.autoReminderEnabled);
       setAutoReminderSchedule(query.data.autoReminderSchedule);
+      setReminderDueDay(query.data.reminderDueDay);
     }
-  }, [query.data?.autoReminderEnabled, query.data?.autoReminderSchedule, query.data]);
+  }, [
+    query.data?.autoReminderEnabled,
+    query.data?.autoReminderSchedule,
+    query.data?.reminderDueDay,
+    query.data,
+  ]);
 
   const loadAll = async () => {
     await invalidateFinanceQueries(queryClient, societyId);
@@ -60,6 +67,8 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
     setAutoReminderEnabled,
     autoReminderSchedule,
     setAutoReminderSchedule,
+    reminderDueDay,
+    setReminderDueDay,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,

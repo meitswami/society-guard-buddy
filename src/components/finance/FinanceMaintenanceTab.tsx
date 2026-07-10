@@ -79,15 +79,6 @@ export function FinanceMaintenanceTab({
             <option value="yearly">Yearly</option>
             <option value="one-time">One-time</option>
           </select>
-          <input
-            className="input-field"
-            placeholder="Due Day (1-28)"
-            type="number"
-            min="1"
-            max="28"
-            value={form.due_day}
-            onChange={(e) => onFormChange({ ...form, due_day: e.target.value })}
-          />
           <select
             className="input-field"
             value={form.major_head}
@@ -158,9 +149,7 @@ export function FinanceMaintenanceTab({
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold">{c.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {c.frequency} · Due on {c.due_day}th
-                    </p>
+                    <p className="text-xs text-muted-foreground">{c.frequency}</p>
                     {c.expense_group_id && (
                       <p className="text-[10px] text-muted-foreground mt-0.5">
                         Sub-head: {paymentGroupById.get(String(c.expense_group_id))?.name ?? 'Linked'}

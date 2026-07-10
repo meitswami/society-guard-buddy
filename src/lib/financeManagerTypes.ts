@@ -6,7 +6,6 @@ export type MaintenanceChargeFormState = {
   title: string;
   amount: string;
   frequency: string;
-  due_day: string;
   major_head: SocietyPaymentMajorHead | '';
   expense_group_id: string;
   new_sub_head: string;
@@ -16,7 +15,6 @@ export const emptyMaintenanceChargeForm = (): MaintenanceChargeFormState => ({
   title: '',
   amount: '',
   frequency: 'monthly',
-  due_day: '1',
   major_head: '',
   expense_group_id: '',
   new_sub_head: '',
@@ -47,10 +45,23 @@ export type FlatReportRow = {
 
 export type FinanceSubTab =
   | 'maintenance'
+  | 'create_payment'
   | 'payments'
   | 'record_payment'
   | 'receipts'
   | 'totals';
+
+export type PaymentHeadFormState = {
+  name: string;
+  description: string;
+  major_head: SocietyPaymentMajorHead | '';
+};
+
+export const emptyPaymentHeadForm = (): PaymentHeadFormState => ({
+  name: '',
+  description: '',
+  major_head: '',
+});
 
 export type FinanceLedgerRow = {
   id: string;

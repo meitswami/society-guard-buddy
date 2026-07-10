@@ -90,7 +90,7 @@ serve(async (req) => {
     const now = new Date();
     let settingsQuery = supabase
       .from('finance_reminder_settings')
-      .select('society_id, enabled, schedule, timezone')
+      .select('society_id, enabled, schedule, timezone, due_day')
       .eq('enabled', true);
     if (payload?.society_id) {
       settingsQuery = settingsQuery.eq('society_id', payload.society_id);
@@ -140,7 +140,7 @@ serve(async (req) => {
         monthlyMaint.find((c) => matchesCurrentMonthTitle(String(c.title || ''), zoned.year, zoned.month)) ??
         monthlyMaint[0];
 
-      const dueDay = Number(currentMonthCharge?.due_day || 1);
+      const dueDay = Math.min(28, Math.max(1, Number(setting.due_day || currentMonthCharge?.due_day || 1)));
       if (zoned.day < dueDay) continue;
 
       const { data: flats } = await supabase

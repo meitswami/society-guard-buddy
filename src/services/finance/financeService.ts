@@ -27,8 +27,9 @@ export type SocietyFinanceCoreData = {
   residentUsers: { id: string; name: string; flat_number: string; flat_id: string }[];
   autoReminderEnabled: boolean;
   autoReminderSchedule: FinanceReminderSchedule;
+  reminderDueDay: number;
   charges: unknown[];
-  paymentExpenseGroups: { id: string; name: string; major_head: string | null }[];
+  paymentExpenseGroups: { id: string; name: string; major_head: string | null; description?: string | null }[];
   payments: unknown[];
   ledgerEntries: FinanceLedgerRow[];
   expenseCategoryById: Record<string, string>;
@@ -59,6 +60,7 @@ const emptyCoreData = (): SocietyFinanceCoreData => ({
   residentUsers: [],
   autoReminderEnabled: true,
   autoReminderSchedule: 'once_12pm',
+  reminderDueDay: 1,
   charges: [],
   paymentExpenseGroups: [],
   payments: [],
@@ -116,14 +118,16 @@ export async function fetchSocietyFinanceCore(
 
   let autoReminderEnabled = true;
   let autoReminderSchedule: FinanceReminderSchedule = 'once_12pm';
+  let reminderDueDay = 1;
   const { data: reminderSetting } = await (supabase as any)
     .from('finance_reminder_settings')
-    .select('enabled, schedule')
+    .select('enabled, schedule, due_day')
     .eq('society_id', societyId)
     .maybeSingle();
   if (reminderSetting) {
     autoReminderEnabled = !!reminderSetting.enabled;
     autoReminderSchedule = reminderSetting.schedule === 'twice_12pm_7pm' ? 'twice_12pm_7pm' : 'once_12pm';
+    reminderDueDay = Math.min(28, Math.max(1, Number(reminderSetting.due_day) || 1));
   }
 
   const { data: chargeData } = await supabase
@@ -148,7 +152,7 @@ export async function fetchSocietyFinanceCore(
           title: currentTitle,
           amount: Number(templateCharge.amount) || 0,
           frequency: 'monthly',
-          due_day: Number(templateCharge.due_day) || 1,
+          due_day: reminderDueDay,
           created_by: adminName,
           society_id: societyId,
         },
@@ -166,7 +170,7 @@ export async function fetchSocietyFinanceCore(
 
   const { data: paymentGroups } = await supabase
     .from('expense_groups')
-    .select('id, name, major_head')
+    .select('id, name, major_head, description')
     .eq('society_id', societyId)
     .eq('group_kind', 'general')
     .order('name');
@@ -222,6 +226,7 @@ export async function fetchSocietyFinanceCore(
     residentUsers,
     autoReminderEnabled,
     autoReminderSchedule,
+    reminderDueDay,
     charges,
     paymentExpenseGroups,
     payments,

@@ -21,6 +21,7 @@ export type CreateExpenseGroupInput = {
   societyId: string;
   name: string;
   major_head: SocietyPaymentMajorHead;
+  description?: string | null;
   created_by: string;
 };
 
@@ -33,6 +34,7 @@ export async function createPaymentExpenseGroup(
       society_id: input.societyId,
       name: input.name,
       major_head: input.major_head,
+      description: input.description?.trim() || null,
       group_kind: 'general',
       created_by: input.created_by,
     })
@@ -40,6 +42,54 @@ export async function createPaymentExpenseGroup(
     .single();
   if (error || !data) return err(error?.message ?? 'Could not create payment sub-head');
   return { data: { id: data.id }, error: null };
+}
+
+export type UpdateExpenseGroupInput = {
+  societyId: string;
+  groupId: string;
+  name: string;
+  description: string | null;
+  major_head: SocietyPaymentMajorHead;
+};
+
+export async function updatePaymentExpenseGroup(input: UpdateExpenseGroupInput): Promise<MutationResult> {
+  const { error } = await supabase
+    .from('expense_groups')
+    .update({
+      name: input.name,
+      description: input.description,
+      major_head: input.major_head,
+      event_id: null,
+    })
+    .eq('id', input.groupId)
+    .eq('society_id', input.societyId);
+  if (error) return err(error.message);
+  return { data: undefined, error: null };
+}
+
+export async function deletePaymentExpenseGroup(societyId: string, groupId: string): Promise<MutationResult> {
+  const { count, error: countErr } = await supabase
+    .from('expenses')
+    .select('id', { count: 'exact', head: true })
+    .eq('group_id', groupId);
+  if (countErr) return err(countErr.message);
+  if ((count ?? 0) > 0) {
+    return err('Remove all recorded payments in this head before deleting it.');
+  }
+
+  const { count: chargeCount, error: chargeErr } = await supabase
+    .from('maintenance_charges')
+    .select('id', { count: 'exact', head: true })
+    .eq('expense_group_id', groupId)
+    .eq('society_id', societyId);
+  if (chargeErr) return err(chargeErr.message);
+  if ((chargeCount ?? 0) > 0) {
+    return err('Unlink or delete receipt types using this payment head first.');
+  }
+
+  const { error } = await supabase.from('expense_groups').delete().eq('id', groupId).eq('society_id', societyId);
+  if (error) return err(error.message);
+  return { data: undefined, error: null };
 }
 
 export async function updateMaintenanceCharge(
@@ -394,12 +444,15 @@ export async function upsertFinanceReminderSettings(
   societyId: string,
   enabled: boolean,
   schedule: FinanceReminderSchedule,
+  dueDay: number,
 ): Promise<MutationResult> {
+  const normalizedDueDay = Math.min(28, Math.max(1, Number(dueDay) || 1));
   const { error } = await (supabase as any).from('finance_reminder_settings').upsert(
     {
       society_id: societyId,
       enabled,
       schedule,
+      due_day: normalizedDueDay,
       timezone: 'Asia/Kolkata',
     },
     { onConflict: 'society_id' },

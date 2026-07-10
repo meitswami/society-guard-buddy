@@ -8,8 +8,10 @@ interface Props {
   onSendReminders: () => void;
   autoReminderEnabled: boolean;
   autoReminderSchedule: 'once_12pm' | 'twice_12pm_7pm';
+  reminderDueDay: number;
   onAutoReminderEnabledChange: (enabled: boolean) => void;
   onAutoReminderScheduleChange: (schedule: 'once_12pm' | 'twice_12pm_7pm') => void;
+  onReminderDueDayChange: (dueDay: number) => void;
   onSaveAutoReminderSettings: () => void;
   onTestAutoReminderNow: () => void;
   savingAutoReminder: boolean;
@@ -26,8 +28,10 @@ export function FinanceRemindersTab({
   onSendReminders,
   autoReminderEnabled,
   autoReminderSchedule,
+  reminderDueDay,
   onAutoReminderEnabledChange,
   onAutoReminderScheduleChange,
+  onReminderDueDayChange,
   onSaveAutoReminderSettings,
   onTestAutoReminderNow,
   savingAutoReminder,
@@ -60,6 +64,20 @@ export function FinanceRemindersTab({
 
         <div className="space-y-2 pt-1 border-t border-border/60">
           <p className="text-xs font-medium text-foreground">Automatic due reminders</p>
+          <label className="text-xs flex flex-col gap-1 max-w-xs">
+            <span className="text-muted-foreground">Monthly due day (1–28)</span>
+            <input
+              className="input-field"
+              type="number"
+              min={1}
+              max={28}
+              value={reminderDueDay}
+              onChange={(e) => onReminderDueDayChange(Number(e.target.value))}
+            />
+            <span className="text-[10px] text-muted-foreground">
+              Daily reminders start after this day each month for unpaid maintenance.
+            </span>
+          </label>
           <label className="flex items-center gap-2 text-xs">
             <input
               type="checkbox"
