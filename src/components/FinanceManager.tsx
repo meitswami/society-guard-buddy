@@ -14,7 +14,6 @@ import {
   flatOptionsWithPrimaryLabel,
   primaryFlatFromAllocations,
   residentLabelForFlatRow,
-  sortFlatsByNumber,
 } from '@/lib/flatMultiSelectOptions';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
 import { DateInput } from '@/components/DateInput';
@@ -59,6 +58,9 @@ import { FinanceTotalsTab } from '@/components/finance/FinanceTotalsTab';
 import { PeriodMetric } from '@/components/finance/PeriodMetric';
 import { UnpaidFlatGridTable } from '@/components/finance/UnpaidFlatGridTable';
 import { useFinanceManagerData } from '@/hooks/useFinanceManagerData';
+import { useFinanceFlatReport } from '@/hooks/finance/useFinanceFlatReport';
+import { useFinanceEventReference } from '@/hooks/finance/useFinanceEventReference';
+import { useFinancePeriodReportBatch } from '@/hooks/finance/useFinancePeriodReportBatch';
 import { useFinanceTotalsBreakdown } from '@/lib/financeTotalsBreakdown';
 import {
   buildCurrentMonthChargeTitle,
@@ -148,7 +150,6 @@ const FinanceManager = ({
     societyName,
     residentUsers,
     paymentExpenseGroups,
-    setPaymentExpenseGroups,
     autoReminderEnabled,
     setAutoReminderEnabled,
     autoReminderSchedule,
@@ -2326,86 +2327,14 @@ const FinanceManager = ({
 
   const currentHeadSummaryModal = headSummaryModalStack[headSummaryModalStack.length - 1];
 
-  const totalsBreakdown = useMemo(() => {
-    const map = new Map<string, { total: number; flatUnits: number; entries: number; byChannel: ChannelTotals }>();
-    for (const e of ledgerEntries) {
-      const m = ledgerMonthValue(e);
-      if (m !== totalsMonth) continue;
-      if (e.destination === 'separate_entry') continue;
-      const k = `${e.record_mode}||${e.destination}`;
-      const cur = map.get(k) ?? { total: 0, flatUnits: 0, entries: 0, byChannel: { cash: 0, bank: 0, other: 0 } };
-      const amt = Number(e.total_amount || 0);
-      cur.total += amt;
-      cur.flatUnits += Number(e.aggregate_flat_count || 0);
-      cur.entries += 1;
-      addToChannel(cur.byChannel, e.payment_method, amt);
-      map.set(k, cur);
-    }
-    return [...map.entries()]
-      .map(([k, v]) => {
-        const [mode, destination] = k.split('||');
-        return { mode, destination, ...v };
-      })
-      .sort((a, b) => `${a.mode}${a.destination}`.localeCompare(`${b.mode}${b.destination}`));
-  }, [ledgerEntries, totalsMonth]);
-
-  const totalsMonthReceiptChannels = useMemo(
-    () =>
-      totalsBreakdown.reduce(
-        (acc, r) => {
-          acc.cash += r.byChannel.cash;
-          acc.bank += r.byChannel.bank;
-          acc.other += r.byChannel.other;
-          return acc;
-        },
-        { cash: 0, bank: 0, other: 0 } as ChannelTotals,
-      ),
-    [totalsBreakdown],
-  );
-
-  const totalsMonthNet = useMemo(
-    () => totalsBreakdown.reduce((s, r) => s + r.total, 0),
-    [totalsBreakdown],
-  );
-
-  const totalsOutflowBreakdown = useMemo(() => {
-    const map = new Map<string, { total: number; flatUnits: number; entries: number; byChannel: ChannelTotals }>();
-    for (const e of societyLedgerEntries) {
-      const m = ledgerMonthValue(e);
-      if (m !== totalsMonth) continue;
-      if (e.destination !== 'separate_entry') continue;
-      const head = financeExpenseHeadFromLedgerEntry(e.title, e.expense_id ? expenseCategoryById.get(e.expense_id) : null);
-      const cur = map.get(head) ?? { total: 0, flatUnits: 0, entries: 0, byChannel: { cash: 0, bank: 0, other: 0 } };
-      const amt = Number(e.total_amount || 0);
-      cur.total += amt;
-      cur.flatUnits += Number(e.aggregate_flat_count || 0);
-      cur.entries += 1;
-      addToChannel(cur.byChannel, e.payment_method, amt);
-      map.set(head, cur);
-    }
-    return [...map.entries()]
-      .map(([head, v]) => ({ head, ...v }))
-      .sort((a, b) => a.head.localeCompare(b.head));
-  }, [societyLedgerEntries, totalsMonth, expenseCategoryById]);
-
-  const totalsMonthPaymentChannels = useMemo(
-    () =>
-      totalsOutflowBreakdown.reduce(
-        (acc, r) => {
-          acc.cash += r.byChannel.cash;
-          acc.bank += r.byChannel.bank;
-          acc.other += r.byChannel.other;
-          return acc;
-        },
-        { cash: 0, bank: 0, other: 0 } as ChannelTotals,
-      ),
-    [totalsOutflowBreakdown],
-  );
-
-  const totalsMonthOutflow = useMemo(
-    () => totalsOutflowBreakdown.reduce((s, r) => s + r.total, 0),
-    [totalsOutflowBreakdown],
-  );
+  const {
+    totalsBreakdown,
+    totalsMonthReceiptChannels,
+    totalsMonthNet,
+    totalsOutflowBreakdown,
+    totalsMonthPaymentChannels,
+    totalsMonthOutflow,
+  } = useFinanceTotalsBreakdown(ledgerEntries, societyLedgerEntries, totalsMonth, expenseCategoryById);
 
   const eventRefChannelTotals = useMemo(
     () => ({
