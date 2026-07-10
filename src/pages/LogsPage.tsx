@@ -10,9 +10,11 @@ import { DateInput } from '@/components/DateInput';
 const LogsPage = ({
   initialSearchQuery,
   onInitialSearchConsumed,
+  embedded = false,
 }: {
   initialSearchQuery?: string;
   onInitialSearchConsumed?: () => void;
+  embedded?: boolean;
 } = {}) => {
   const { visitors, markExit } = useStore();
   const { t } = useLanguage();
@@ -67,21 +69,30 @@ const LogsPage = ({
   };
 
   return (
-    <div className="page-container">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <FileText className="w-5 h-5 text-primary" />
+    <div className={embedded ? 'space-y-4' : 'page-container'}>
+      {!embedded && (
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="page-title">{t('logs.title')}</h1>
+              <p className="text-xs text-muted-foreground">{t('logs.subtitle')}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="page-title">{t('logs.title')}</h1>
-            <p className="text-xs text-muted-foreground">{t('logs.subtitle')}</p>
-          </div>
+          <button onClick={exportCSV} className="btn-secondary text-xs px-3 py-2 flex items-center gap-1">
+            <Download className="w-3.5 h-3.5" /> CSV
+          </button>
         </div>
-        <button onClick={exportCSV} className="btn-secondary text-xs px-3 py-2 flex items-center gap-1">
-          <Download className="w-3.5 h-3.5" /> CSV
-        </button>
-      </div>
+      )}
+      {embedded && (
+        <div className="flex justify-end">
+          <button onClick={exportCSV} className="btn-secondary text-xs px-3 py-2 flex items-center gap-1">
+            <Download className="w-3.5 h-3.5" /> CSV
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 mb-4">
         <div className="relative">
