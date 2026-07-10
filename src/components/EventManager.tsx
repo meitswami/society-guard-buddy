@@ -93,24 +93,23 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged,
 
   const addEvent = async () => {
     if (!societyId || !ef.title || !ef.event_date) return;
+    const { title: eventTitle, description, event_date, event_time, location, contribution_amount } = ef;
     await supabase.from('events').insert([{
-      title: ef.title, description: ef.description || null, event_date: ef.event_date,
-      event_time: ef.event_time || null, location: ef.location || null,
-      contribution_amount: Number(ef.contribution_amount) || 0, created_by: adminName, society_id: societyId,
+      title: eventTitle, description: description || null, event_date,
+      event_time: event_time || null, location: location || null,
+      contribution_amount: Number(contribution_amount) || 0, created_by: adminName, society_id: societyId,
     }]);
     setEf({ title: '', description: '', event_date: '', event_time: '', location: '', contribution_amount: '' });
     setShowForm(false); toast.success('Event created'); loadAll();
 
-    const title = `New Event: ${ef.title}`;
-    const message = `${ef.title} on ${fmtIsoDateToDisplay(ef.event_date)}${ef.location ? ' at ' + ef.location : ''}. ${ef.contribution_amount ? 'Contribution: ₹' + ef.contribution_amount : ''}`;
+    const title = `New Event: ${eventTitle}`;
+    const message = `${eventTitle} on ${fmtIsoDateToDisplay(event_date)}${location ? ' at ' + location : ''}. ${contribution_amount ? 'Contribution: ₹' + contribution_amount : ''}`;
     await supabase.from('notifications').insert([{
       title,
       message,
       type: 'event', target_type: 'all', created_by: adminName, society_id: societyId,
     }]);
-    if (societyId) {
-      await invokePushNotification({ title, message, target_type: 'all', society_id: societyId });
-    }
+    await invokePushNotification({ title, message, target_type: 'all', society_id: societyId });
   };
 
   const targetFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
