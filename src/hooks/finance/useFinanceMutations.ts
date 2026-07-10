@@ -13,6 +13,7 @@ import {
   persistFinanceRecord,
   recallFinancePeriodReportNotifications,
   sendMaintenanceReminders,
+  sendFinancePeriodReportToMembers,
   sendPushNotification,
   updateFinanceEntry,
   updateFinanceEntryStatus,
@@ -151,6 +152,14 @@ export function useFinanceMutations(societyId: string | null) {
     onSuccess: () => void invalidateAll(),
   });
 
+  const sendPeriodReportToMembers = useMutation({
+    mutationFn: async (input: Omit<Parameters<typeof sendFinancePeriodReportToMembers>[0], 'societyId'>) => {
+      if (!societyId) throw new Error('No society selected');
+      return assertNoError(await sendFinancePeriodReportToMembers({ ...input, societyId }));
+    },
+    onSuccess: () => void invalidateAll(),
+  });
+
   return {
     invalidateAll,
     createExpenseGroup: createExpenseGroup.mutateAsync,
@@ -170,6 +179,7 @@ export function useFinanceMutations(societyId: string | null) {
     notifyPayment: notifyPayment.mutateAsync,
     insertNotifications: insertNotifications.mutateAsync,
     recallPeriodReport: recallPeriodReport.mutateAsync,
+    sendPeriodReportToMembers: sendPeriodReportToMembers.mutateAsync,
     sendPushNotification,
     isPending:
       createExpenseGroup.isPending ||
@@ -186,6 +196,7 @@ export function useFinanceMutations(societyId: string | null) {
       sendReminders.isPending ||
       saveReminderSettings.isPending ||
       testReminder.isPending ||
-      recallPeriodReport.isPending,
+      recallPeriodReport.isPending ||
+      sendPeriodReportToMembers.isPending,
   };
 }

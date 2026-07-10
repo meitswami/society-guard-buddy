@@ -30,6 +30,7 @@ import {
 } from '@/lib/reportAggregations';
 import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
 import { REPORT_MAINTENANCE_METRICS, REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
+import FinancePeriodReportSendPanel from '@/components/FinancePeriodReportSendPanel';
 import ExportFormatMenu from '@/components/ExportFormatMenu';
 import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import { buildMonthlyReportPdfBlob, downloadMonthlyReport, type ReportExportContext } from '@/lib/monthlyReportExport';
@@ -62,9 +63,11 @@ const REPORT_TABS: { id: ReportTab; labelKey: string; icon: React.ElementType }[
 ];
 
 const ReportPage = ({
+  adminName = 'Admin',
   initialSearchQuery,
   onInitialSearchConsumed,
 }: {
+  adminName?: string;
   initialSearchQuery?: string;
   onInitialSearchConsumed?: () => void;
 } = {}) => {
@@ -579,6 +582,18 @@ const ReportPage = ({
       {/* ═══ FINANCIAL REPORTS TAB ═══ */}
       {activeTab === 'financial' && (
         <div>
+          {periodReport && societyId && (
+            <FinancePeriodReportSendPanel
+              societyId={societyId}
+              societyName={societyName}
+              adminName={adminName}
+              periodFrom={statementPeriodFrom}
+              periodTo={statementPeriodTo}
+              periodLabel={statementPeriodLabel}
+              periodReport={periodReport}
+              flatNumbers={flats.map((f) => f.flat_number)}
+            />
+          )}
           {periodReport && (
             <div className="mb-4">
               <p className="text-[11px] font-medium text-foreground mb-2">Head-wise breakdown</p>
