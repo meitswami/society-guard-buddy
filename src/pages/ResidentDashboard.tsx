@@ -1852,7 +1852,9 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 value={dirSearch} onChange={e => setDirSearch(e.target.value)} />
               <BookUser className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             </div>
-            <p className="text-[10px] text-muted-foreground">{filteredDirFlats.length} flats · You can only edit your own flat's data</p>
+            <p className="text-[10px] text-muted-foreground">
+              {filteredDirFlats.length} flats · Expand <span className="font-medium text-primary">My Flat</span> to manage your household
+            </p>
 
             {filteredDirFlats.map(flat => {
               const isMyFlat = flat.id === resident.flatId;
@@ -1879,6 +1881,24 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
                   {isExpanded && (
                     <div className="mt-3 pt-3 border-t border-border space-y-2">
+                      {isMyFlat && (
+                        <div className="flex flex-wrap gap-2 pb-2">
+                          <button
+                            type="button"
+                            onClick={() => setTab('family')}
+                            className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium flex items-center gap-1"
+                          >
+                            <Users className="w-3 h-3" /> Manage family & staff
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTab('vehicles')}
+                            className="text-xs bg-secondary text-secondary-foreground px-3 py-1.5 rounded-lg font-medium flex items-center gap-1"
+                          >
+                            <Car className="w-3 h-3" /> Manage vehicles
+                          </button>
+                        </div>
+                      )}
                       {flatMembers.map((m: any) => (
                         <div key={m.id} className="flex items-center gap-2 bg-secondary/50 rounded-lg px-2.5 py-1.5">
                           <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0 overflow-hidden">

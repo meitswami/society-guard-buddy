@@ -1,12 +1,18 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
-import { BookUser, Search, ChevronDown, ChevronUp, FileText, Home, Users, Car, Phone } from 'lucide-react';
+import { BookUser, Search, ChevronDown, ChevronUp, Home, Users, Car, Phone, Edit2 } from 'lucide-react';
 import { fmtDate } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 type ViewMode = 'flats' | 'visitors';
 
-const DirectoryPage = () => {
+type DirectoryPageProps = {
+  /** When true, flats show an Edit action (admin with Residents access). */
+  canEditResidents?: boolean;
+  onEditFlat?: (flatId: string) => void;
+};
+
+const DirectoryPage = ({ canEditResidents = false, onEditFlat }: DirectoryPageProps) => {
   const { visitors, flats, members, residentVehicles } = useStore();
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
@@ -123,6 +129,12 @@ const DirectoryPage = () => {
         <input className="input-field pl-9" placeholder={t('directory.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
+      {canEditResidents && viewMode === 'flats' && (
+        <p className="text-xs text-muted-foreground mb-3 -mt-2">
+          Tap <span className="font-medium text-foreground">Edit</span> on a flat to manage members, vehicles, and flat details.
+        </p>
+      )}
+
       {/* === FLATS VIEW === */}
       {viewMode === 'flats' && (
         filteredFlats.length === 0 ? (
@@ -147,7 +159,20 @@ const DirectoryPage = () => {
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{flat.ownerName || 'No owner'} · {flatMembers.length} members · {flatVehicles.length} vehicles</p>
                     </div>
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 flex items-center gap-1">
+                      {canEditResidents && onEditFlat && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditFlat(flat.id);
+                          }}
+                          className="p-1.5 rounded-lg text-primary hover:bg-primary/10"
+                          aria-label={`Edit flat ${flat.flatNumber}`}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
                       {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </button>

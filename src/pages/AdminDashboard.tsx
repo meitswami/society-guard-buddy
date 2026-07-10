@@ -57,6 +57,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const notificationFeedRevision = useNotificationsRealtimeRevision(true, `admin-${admin.id}`);
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [financeInitialSubTab, setFinanceInitialSubTab] = useState<FinanceSubTab | null>(null);
+  const [residentsExpandFlatId, setResidentsExpandFlatId] = useState<string | null>(null);
   const activeTabRef = useRef<AdminTab>('overview');
   const exitBackTsRef = useRef(0);
   const [stats, setStats] = useState({
@@ -497,7 +498,12 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     switch (activeTab) {
       case 'guards': return <AdminGuardManager />;
       case 'residents': return (
-        <AdminResidentManager verifyAdminId={admin.id} verifyAdminName={admin.name} />
+        <AdminResidentManager
+          verifyAdminId={admin.id}
+          verifyAdminName={admin.name}
+          initialExpandedFlatId={residentsExpandFlatId}
+          onExpandedFlatConsumed={() => setResidentsExpandFlatId(null)}
+        />
       );
       case 'geofence': return <GeofenceSetup adminName={admin.name} />;
       case 'password': return <AdminPasswordChange adminId={admin.id} />;
@@ -543,7 +549,15 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'delivery': return <DeliveryEntryPage onDone={() => goToTab('overview')} />;
       case 'vehicle': return <VehiclePage />;
       case 'blacklist': return <BlacklistPage />;
-      case 'directory': return <DirectoryPage />;
+      case 'directory': return (
+        <DirectoryPage
+          canEditResidents={!!admin.permissions.residents_rw}
+          onEditFlat={(flatId) => {
+            setResidentsExpandFlatId(flatId);
+            goToTab('residents');
+          }}
+        />
+      );
       case 'quick': return <QuickEntryPage />;
       case 'settings': return <SettingsPage />;
       case 'tour':

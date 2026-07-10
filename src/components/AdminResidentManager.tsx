@@ -75,12 +75,17 @@ interface AdminResidentManagerProps {
   verifyAdminName: string;
   /** When true, password/biometric step runs before mutating resident or flat records. */
   requireSensitiveVerify?: boolean;
+  /** Open Residents with this flat expanded (e.g. from Directory → Edit). */
+  initialExpandedFlatId?: string | null;
+  onExpandedFlatConsumed?: () => void;
 }
 
 const AdminResidentManager = ({
   verifyAdminId,
   verifyAdminName,
   requireSensitiveVerify = true,
+  initialExpandedFlatId = null,
+  onExpandedFlatConsumed,
 }: AdminResidentManagerProps) => {
   const { t } = useLanguage();
   const { flats, members, residentVehicles, loadFlats, loadMembers, loadResidentVehicles, societyId } = useStore();
@@ -150,6 +155,14 @@ const AdminResidentManager = ({
     })();
     return () => { cancelled = true; };
   }, [societyId]);
+
+  useEffect(() => {
+    if (!initialExpandedFlatId) return;
+    setExpandedFlat(initialExpandedFlatId);
+    setFlatDetailView('manage');
+    setViewTab('flats');
+    onExpandedFlatConsumed?.();
+  }, [initialExpandedFlatId, onExpandedFlatConsumed]);
 
   const loadResidentUsers = async () => {
     const flatIds = flats.map((f) => f.id);
