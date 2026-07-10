@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Wallet, ArrowRightLeft, AlertTriangle, PiggyBank } from 'lucide-react';
 import { toast } from 'sonner';
 import { DescriptiveStatSummary } from '@/components/DescriptiveStatCard';
+import { HoverInfoTip } from '@/components/HoverInfoTip';
 import {
   monthlyOperatingInflow,
   monthlyOperatingOutflow,
@@ -158,12 +159,12 @@ const MonthlyOperatingFundPanel = ({
           <Wallet className="w-4 h-4 text-primary" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold">Monthly operating fund &amp; reserve</p>
-          <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
-            Monthly maintenance from members is a temporary fund for that month’s operational expenses (unless a receipt
-            type is linked to a specific head). Surplus can move to the reserve fund for emergencies, fixed investments,
-            or to cover a future month’s shortfall.
-          </p>
+          <HoverInfoTip
+            title="Monthly operating fund & reserve"
+            description="Monthly maintenance from members is a temporary fund for that month's operational expenses (unless a receipt type is linked to a specific head). Surplus can move to the reserve fund for emergencies, fixed investments, or to cover a future month's shortfall."
+          >
+            <p className="text-sm font-semibold">Monthly operating fund &amp; reserve</p>
+          </HoverInfoTip>
         </div>
       </div>
 

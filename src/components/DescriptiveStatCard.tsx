@@ -1,13 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Info } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { HoverInfoTip } from '@/components/HoverInfoTip';
 import { cn } from '@/lib/utils';
 
 export type DescriptiveStatCardProps = {
@@ -34,94 +27,64 @@ export function DescriptiveStatCard({
   howCalculated,
   icon,
   onNavigate,
-  navigateLabel = 'Open related screen',
   className,
   valueClassName,
   variant = 'card',
   contentAlign = 'start',
   children,
 }: DescriptiveStatCardProps) {
-  const [open, setOpen] = useState(false);
-
   const shell =
     variant === 'stat'
-      ? 'stat-card flex flex-col gap-1 text-left cursor-pointer hover:ring-2 hover:ring-primary/25 transition-all w-full'
-      : 'card-section p-4 text-left cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all w-full';
+      ? 'stat-card flex flex-col gap-1 text-left w-full'
+      : 'card-section p-4 text-left w-full';
+
+  const valueNode = onNavigate ? (
+    <button
+      type="button"
+      onClick={onNavigate}
+      className={cn(
+        'text-left hover:underline underline-offset-2',
+        variant === 'stat' ? cn('text-lg font-bold font-mono block', valueClassName) : cn('text-2xl font-bold tabular-nums', valueClassName),
+      )}
+    >
+      {value}
+    </button>
+  ) : variant === 'stat' ? (
+    <span className={cn('text-lg font-bold font-mono block', valueClassName)}>{value}</span>
+  ) : (
+    <p className={cn('text-2xl font-bold tabular-nums', valueClassName)}>{value}</p>
+  );
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn(shell, contentAlign === 'center' && 'items-center text-center', className)}
-        aria-label={`${title}: view description`}
+    <HoverInfoTip title={title} description={description} howCalculated={howCalculated} className={cn('w-full', shell, contentAlign === 'center' && 'items-center text-center', className)}>
+      {icon ? <div className={variant === 'stat' ? 'mb-0' : 'mb-2'}>{icon}</div> : null}
+      <div
+        className={cn(
+          'flex gap-2 w-full',
+          contentAlign === 'center' ? 'flex-col items-center' : 'items-start justify-between',
+        )}
       >
-        {icon ? <div className={variant === 'stat' ? 'mb-0' : 'mb-2'}>{icon}</div> : null}
-        <div
-          className={cn(
-            'flex gap-2 w-full',
-            contentAlign === 'center' ? 'flex-col items-center' : 'items-start justify-between',
+        <div className={cn('min-w-0', contentAlign === 'center' ? 'flex flex-col items-center' : 'flex-1')}>
+          {variant === 'stat' ? (
+            <>
+              <span className="text-[10px] text-muted-foreground uppercase">{caption ?? title}</span>
+              {valueNode}
+            </>
+          ) : (
+            <>
+              {valueNode}
+              <p className="text-xs text-muted-foreground">{caption ?? title}</p>
+            </>
           )}
-        >
-          <div className={cn('min-w-0', contentAlign === 'center' ? 'flex flex-col items-center' : 'flex-1')}>
-            {variant === 'stat' ? (
-              <>
-                <span className="text-[10px] text-muted-foreground uppercase">{caption ?? title}</span>
-                <span className={cn('text-lg font-bold font-mono block', valueClassName)}>{value}</span>
-              </>
-            ) : (
-              <>
-                <p className={cn('text-2xl font-bold tabular-nums', valueClassName)}>{value}</p>
-                <p className="text-xs text-muted-foreground">{caption ?? title}</p>
-              </>
-            )}
-            {children}
-          </div>
-          <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" aria-hidden />
+          {children}
         </div>
-      </button>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-3 text-sm text-muted-foreground pt-1">
-                <p className="text-foreground font-semibold text-base tabular-nums">{value}</p>
-                <p>{description}</p>
-                {howCalculated ? (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
-                    <p className="text-[10px] font-medium uppercase text-foreground">How this is calculated</p>
-                    <p className="text-xs leading-relaxed">{howCalculated}</p>
-                  </div>
-                ) : null}
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            {onNavigate ? (
-              <button
-                type="button"
-                className="btn-primary w-full sm:w-auto"
-                onClick={() => {
-                  setOpen(false);
-                  onNavigate();
-                }}
-              >
-                {navigateLabel}
-              </button>
-            ) : null}
-            <button type="button" className="btn-secondary w-full sm:w-auto" onClick={() => setOpen(false)}>
-              Close
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5 opacity-60" aria-hidden />
+      </div>
+    </HoverInfoTip>
   );
 }
 
-/** Clickable calculated value (amount, count) — one tap shows what it means and how it is derived. */
+/** Calculated value with hover insight — no click dialog. */
 export function DescriptiveValueButton({
   title,
   value,
@@ -137,50 +100,17 @@ export function DescriptiveValueButton({
   className?: string;
   valueClassName?: string;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn(
-          'inline-flex items-center gap-1 rounded-md border border-transparent hover:border-border hover:bg-muted/30 px-1.5 py-0.5 transition-colors text-left',
-          className,
-        )}
-        aria-label={`${title}: view description`}
-      >
+    <HoverInfoTip title={title} description={description} howCalculated={howCalculated} className={cn('inline-flex', className)}>
+      <span className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5', className)}>
         <span className={cn('font-bold tabular-nums', valueClassName)}>{value}</span>
-        <Info className="w-3 h-3 text-muted-foreground shrink-0" aria-hidden />
-      </button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-3 text-sm text-muted-foreground pt-1">
-                <p className="text-foreground font-semibold text-base tabular-nums">{value}</p>
-                <p>{description}</p>
-                {howCalculated ? (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
-                    <p className="text-[10px] font-medium uppercase text-foreground">How this is calculated</p>
-                    <p className="text-xs leading-relaxed">{howCalculated}</p>
-                  </div>
-                ) : null}
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <button type="button" className="btn-secondary w-full sm:w-auto" onClick={() => setOpen(false)}>
-              Close
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        <Info className="w-3 h-3 text-muted-foreground shrink-0 opacity-60" aria-hidden />
+      </span>
+    </HoverInfoTip>
   );
 }
 
-/** Inline summary line (counts · totals) — tap opens the same descriptive dialog. */
+/** Inline summary line — hover for description. */
 export function DescriptiveStatSummary({
   label,
   description,
@@ -192,43 +122,17 @@ export function DescriptiveStatSummary({
   howCalculated?: string;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn(
-          'text-[10px] text-muted-foreground mb-2 text-left w-full rounded-lg border border-transparent hover:border-border hover:bg-muted/20 px-2 py-1.5 transition-colors',
-          className,
-        )}
-      >
-        <span className="inline-flex items-center gap-1.5">
-          <Info className="w-3 h-3 shrink-0" />
-          {label}
-        </span>
-      </button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Summary</DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-2 text-sm text-muted-foreground pt-1">
-                <div className="text-foreground text-xs">{label}</div>
-                <p>{description}</p>
-                {howCalculated ? (
-                  <p className="text-xs rounded-lg border border-border bg-muted/30 p-3">{howCalculated}</p>
-                ) : null}
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-    </>
+    <HoverInfoTip description={description} howCalculated={howCalculated} className={cn('text-[10px] text-muted-foreground mb-2 w-full rounded-lg px-2 py-1.5', className)}>
+      <span className="inline-flex items-center gap-1.5">
+        <Info className="w-3 h-3 shrink-0 opacity-60" />
+        {label}
+      </span>
+    </HoverInfoTip>
   );
 }
 
-/** Table cell or inline sum with tap-to-view insight dialog. */
+/** Table cell or inline sum with hover insight. */
 export function TableSumInsight({
   title,
   value,

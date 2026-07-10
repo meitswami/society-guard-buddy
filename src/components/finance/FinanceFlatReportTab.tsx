@@ -1,5 +1,6 @@
 import { IndianRupee } from 'lucide-react';
 import { DateInput } from '@/components/DateInput';
+import { HoverInfoTip } from '@/components/HoverInfoTip';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { FINANCE_FLAT_REPORT_METRICS } from '@/lib/descriptiveMetricCopy';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
@@ -38,11 +39,12 @@ export function FinanceFlatReportTab({
         </div>
         <div className="flex-1 min-w-[220px] space-y-3">
           <div>
-            <h3 className="text-sm font-semibold">Flat-wise Financial Report</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Per-flat breakdown of maintenance receipts and society payment splits for reporting &amp; visibility — not
-              for accounting.
-            </p>
+            <HoverInfoTip
+              title="Flat-wise Financial Report"
+              description="Per-flat breakdown of maintenance receipts and society payment splits for reporting & visibility — not for accounting."
+            >
+              <h3 className="text-sm font-semibold">Flat-wise Financial Report</h3>
+            </HoverInfoTip>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <label className="text-xs flex flex-col gap-1">

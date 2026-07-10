@@ -4,15 +4,6 @@ import { SOCIETY_PAYMENT_MAJOR_HEADS, type SocietyPaymentMajorHead } from '@/lib
 import type { MaintenanceChargeFormState } from '@/lib/financeManagerTypes';
 
 interface Props {
-  autoReminderEnabled: boolean;
-  autoReminderSchedule: 'once_12pm' | 'twice_12pm_7pm';
-  onAutoReminderEnabledChange: (enabled: boolean) => void;
-  onAutoReminderScheduleChange: (schedule: 'once_12pm' | 'twice_12pm_7pm') => void;
-  onSaveAutoReminderSettings: () => void;
-  onTestAutoReminderNow: () => void;
-  savingAutoReminder: boolean;
-  testingAutoReminder: boolean;
-  lastReminderTestStatus: string;
   showForm: boolean;
   editingChargeId: string | null;
   form: MaintenanceChargeFormState;
@@ -36,15 +27,6 @@ interface Props {
 }
 
 export function FinanceMaintenanceTab({
-  autoReminderEnabled,
-  autoReminderSchedule,
-  onAutoReminderEnabledChange,
-  onAutoReminderScheduleChange,
-  onSaveAutoReminderSettings,
-  onTestAutoReminderNow,
-  savingAutoReminder,
-  testingAutoReminder,
-  lastReminderTestStatus,
   showForm,
   editingChargeId,
   form,
@@ -61,49 +43,6 @@ export function FinanceMaintenanceTab({
 }: Props) {
   return (
     <div>
-      <div className="card-section p-3 mb-3 space-y-2">
-        <p className="text-xs font-medium text-foreground">Automatic due reminders</p>
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={autoReminderEnabled}
-            onChange={(e) => onAutoReminderEnabledChange(e.target.checked)}
-          />
-          Enable daily due reminders after monthly due date
-        </label>
-        <select
-          className="input-field"
-          value={autoReminderSchedule}
-          onChange={(e) => onAutoReminderScheduleChange(e.target.value as 'once_12pm' | 'twice_12pm_7pm')}
-          disabled={!autoReminderEnabled}
-        >
-          <option value="once_12pm">Once daily at 12:00 PM</option>
-          <option value="twice_12pm_7pm">Twice daily at 12:00 PM and 7:00 PM</option>
-        </select>
-        <button
-          type="button"
-          className="btn-secondary w-full"
-          onClick={onSaveAutoReminderSettings}
-          disabled={savingAutoReminder}
-        >
-          {savingAutoReminder ? 'Saving…' : 'Save reminder settings'}
-        </button>
-        <button
-          type="button"
-          className="btn-secondary w-full"
-          onClick={onTestAutoReminderNow}
-          disabled={testingAutoReminder}
-        >
-          {testingAutoReminder ? 'Testing…' : 'Test reminder now'}
-        </button>
-        {lastReminderTestStatus ? (
-          <p className="text-[10px] text-muted-foreground">{lastReminderTestStatus}</p>
-        ) : null}
-        <p className="text-[10px] text-muted-foreground leading-snug">
-          Auto-reminders are sent only to flats that have not paid the current month maintenance after the due day.
-        </p>
-      </div>
-
       <button
         type="button"
         onClick={onToggleForm}
@@ -193,9 +132,6 @@ export function FinanceMaintenanceTab({
               )}
             </>
           )}
-          <p className="text-[10px] text-muted-foreground leading-snug">
-            Each receipt type is grouped under one major head for head-fund reconciliation and payment recording.
-          </p>
           <div className="flex gap-2">
             <button type="button" onClick={onSaveCharge} className="btn-primary flex-1">
               {editingChargeId ? 'Update receipt type' : 'Save receipt type'}

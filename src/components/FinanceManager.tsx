@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } fro
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { IndianRupee, Check, X, Upload, AlertTriangle, Pencil, Trash2, Wallet, CalendarRange, Users, Calendar, UtensilsCrossed, ChevronRight, Undo2 } from 'lucide-react';
+import { IndianRupee, Check, X, Upload, AlertTriangle, Pencil, Trash2, Users, Calendar, UtensilsCrossed, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { format } from 'date-fns';
@@ -17,19 +17,14 @@ import {
 } from '@/lib/flatMultiSelectOptions';
 import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/adminRecordNotifications';
 import { DateInput } from '@/components/DateInput';
-import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
 import ExportFormatMenu from '@/components/ExportFormatMenu';
 import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
-import FinancePeriodHeadTables from '@/components/FinancePeriodHeadTables';
 import {
   buildTransactionExportRows,
-  downloadFinancePeriodReport,
   downloadTransactionStatement,
   getTransactionStatementPdfBlob,
 } from '@/lib/transactionStatementExport';
-import { buildFinancePeriodReportPdf, toFinancePeriodReportExportInput } from '@/lib/financePeriodReportExport';
 import type { ExportFormat } from '@/lib/reportExportUtils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
 import { DescriptiveStatCard, DescriptiveStatSummary, DescriptiveValueButton, TableSumInsight } from '@/components/DescriptiveStatCard';
 import { capsFieldChange } from '@/lib/entryCaps';
@@ -44,7 +39,6 @@ import {
 } from '@/lib/financeDates';
 import {
   FINANCE_LEDGER_GROUP_METRICS,
-  FINANCE_PERIOD_METRICS,
   FINANCE_TOTALS_METRICS,
   SUM_INSIGHT_METRICS,
 } from '@/lib/descriptiveMetricCopy';
@@ -54,17 +48,13 @@ import { sumByChannel } from '@/lib/cashBankChannel';
 import { FinanceRemindersTab } from '@/components/finance/FinanceRemindersTab';
 import { FinanceTotalsTab } from '@/components/finance/FinanceTotalsTab';
 import { FinanceMaintenanceTab } from '@/components/finance/FinanceMaintenanceTab';
-import { FinanceFlatReportTab } from '@/components/finance/FinanceFlatReportTab';
 import { FinanceRecordPaymentTab } from '@/components/finance/FinanceRecordPaymentTab';
 import { FinanceSubTabNav } from '@/components/finance/FinanceSubTabNav';
-import { PeriodMetric } from '@/components/finance/PeriodMetric';
 import { UnpaidFlatGridTable } from '@/components/finance/UnpaidFlatGridTable';
 import { useFinanceManagerData } from '@/hooks/useFinanceManagerData';
 import { useFinanceMutations } from '@/hooks/finance/useFinanceMutations';
-import { fetchNotificationReadStatus, updateMaintenancePaymentStatus } from '@/services/finance/financeMutations';
-import { useFinanceFlatReport } from '@/hooks/finance/useFinanceFlatReport';
+import { updateMaintenancePaymentStatus } from '@/services/finance/financeMutations';
 import { useFinanceEventReference } from '@/hooks/finance/useFinanceEventReference';
-import { useFinancePeriodReportBatch } from '@/hooks/finance/useFinancePeriodReportBatch';
 import { useFinanceTotalsBreakdown } from '@/lib/financeTotalsBreakdown';
 import {
   buildCurrentMonthChargeTitle,
@@ -88,7 +78,6 @@ import {
   paymentVerifiedAtOrDate,
   transactionHeadSummaryRows,
 } from '@/lib/financeLedgerDisplay';
-import { buildFlatReportRows } from '@/lib/financeFlatReport';
 import {
   emptyMaintenanceChargeForm,
   type EventContribRefRow,
@@ -100,20 +89,7 @@ import {
   type TransactionHeadSummaryRow,
   type UnpaidFlatGridRow,
 } from '@/lib/financeManagerTypes';
-import {
-  computeFinancePeriodReport,
-  createDefaultOpeningAnchorForm,
-  defaultFinanceFyPeriodFrom,
-  defaultFinancePeriodFrom,
-  defaultFinancePeriodTo,
-  filterSocietyLedgerEntries,
-  FINANCE_REPORTING_EARLIEST_MONTH,
-  financeReportingMonthRange,
-  isManualOpeningBalanceSetupPeriod,
-  openingAnchorRowToForm,
-  parseOptionalAnchorAmount,
-} from '@/lib/financePeriodReport';
-import { useSocietyOpeningBalanceAnchors } from '@/hooks/useSocietyOpeningBalanceAnchors';
+import { filterSocietyLedgerEntries } from '@/lib/financePeriodReport';
 import {
   financeExpenseHeadFromLedgerEntry,
   SOCIETY_PAYMENT_MAJOR_HEADS,
@@ -150,6 +126,7 @@ const FinanceManager = ({
   const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [subTab, setSubTab] = useState<FinanceSubTab>('maintenance');
+  const [showRemindersPanel, setShowRemindersPanel] = useState(false);
   const recordReceiptPanelRef = useRef<HTMLDivElement>(null);
   const [headReconciliationKey, setHeadReconciliationKey] = useState(0);
   const [showHeadFundRecon, setShowHeadFundRecon] = useState(false);
@@ -175,16 +152,10 @@ const FinanceManager = ({
   } = useFinanceManagerData(societyId, adminName);
   const financeMutations = useFinanceMutations(societyId);
   const {
-    expenses: flatReportExpenses,
-    splits: flatReportSplits,
-    isLoading: flatReportLoading,
-  } = useFinanceFlatReport(societyId, subTab === 'flat_report');
-  const {
     contributions: eventContribRef,
     foodExpenses: eventFoodRef,
     isLoading: eventRefLoading,
   } = useFinanceEventReference(societyId, subTab === 'receipts');
-  const { batchId: latestPeriodReportBatchId } = useFinancePeriodReportBatch(societyId, subTab === 'period');
 
   const isSocietyPaymentLedgerEntry = useCallback(
     (e: FinanceLedgerRow) => {
@@ -288,23 +259,13 @@ const FinanceManager = ({
     'all' | 'society_pool' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only'
   >('all');
   const [totalsMonth, setTotalsMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [periodFrom, setPeriodFrom] = useState(defaultFinancePeriodFrom);
-  const [periodTo, setPeriodTo] = useState(defaultFinancePeriodTo);
-  const [reportAudience, setReportAudience] = useState<'all' | 'flats' | 'picked'>('all');
-  const [reportFlats, setReportFlats] = useState<string[]>([]);
-  const [reportResidentIds, setReportResidentIds] = useState<string[]>([]);
-  const [reportPushBusy, setReportPushBusy] = useState(false);
-  const [lastDeliveryBatchId, setLastDeliveryBatchId] = useState<string | null>(null);
-  const [readStatusOpen, setReadStatusOpen] = useState(false);
-  const [readStatusBatchId, setReadStatusBatchId] = useState<string | null>(null);
-  const [readStatusRows, setReadStatusRows] = useState<{ id: string; target_id: string | null; is_read: boolean; read_at: string | null }[]>([]);
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
 
   useEffect(() => {
     if (!initialSearchQuery) return;
     setPaymentSearchQuery(initialSearchQuery);
-    setSubTab('transactions');
+    setSubTab('receipts');
     onInitialSearchConsumed?.();
   }, [initialSearchQuery, onInitialSearchConsumed]);
 
@@ -338,16 +299,6 @@ const FinanceManager = ({
   const [savingAutoReminder, setSavingAutoReminder] = useState(false);
   const [testingAutoReminder, setTestingAutoReminder] = useState(false);
   const [lastReminderTestStatus, setLastReminderTestStatus] = useState<string>('');
-  const [flatReportFrom, setFlatReportFrom] = useState(defaultFinancePeriodFrom);
-  const [flatReportTo, setFlatReportTo] = useState(defaultFinancePeriodTo);
-  const [flatReportSelectedFlat, setFlatReportSelectedFlat] = useState<string>('all');
-  const { anchors: openingBalanceAnchors, saveAnchor, deleteAnchor } = useSocietyOpeningBalanceAnchors(societyId);
-  const [anchorForm, setAnchorForm] = useState(createDefaultOpeningAnchorForm);
-  const [savingOpeningAnchor, setSavingOpeningAnchor] = useState(false);
-
-  useEffect(() => {
-    if (latestPeriodReportBatchId) setLastDeliveryBatchId(latestPeriodReportBatchId);
-  }, [latestPeriodReportBatchId]);
 
   useEffect(() => {
     if (!showPaymentForm || payForm.charge_id || charges.length === 0) return;
@@ -2047,333 +1998,6 @@ const FinanceManager = ({
     [eventContribRef, eventFoodRef],
   );
 
-  const flatReportData = useMemo(
-    () =>
-      subTab === 'flat_report'
-        ? buildFlatReportRows({
-            from: flatReportFrom,
-            to: flatReportTo,
-            selectedFlat: flatReportSelectedFlat,
-            payments,
-            ledgerEntries,
-            flatReportExpenses,
-            flatReportSplits,
-            flats,
-            primaryByFlatId,
-            charges,
-          })
-        : [],
-    [
-      subTab,
-      flatReportFrom,
-      flatReportTo,
-      flatReportSelectedFlat,
-      payments,
-      ledgerEntries,
-      flatReportExpenses,
-      flatReportSplits,
-      flats,
-      primaryByFlatId,
-      charges,
-    ],
-  );
-
-  const flatMultiOptions = useMemo(
-    () => flatOptionsWithPrimaryLabel(flats, primaryByFlatId),
-    [flats, primaryByFlatId],
-  );
-
-  const chargeMajorHeadById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const c of charges) {
-      map.set(c.id, majorHeadForCharge(c as { title: string; expense_group_id?: string | null }));
-    }
-    return map;
-  }, [charges, majorHeadForCharge]);
-
-  const financePeriodReport = useMemo(
-    () =>
-      computeFinancePeriodReport({
-        periodFrom,
-        periodTo,
-        payments,
-        ledgerEntries: societyLedgerEntries,
-        expenseCategoryById,
-        chargeMajorHeadById,
-        openingBalanceAnchors,
-      }),
-    [periodFrom, periodTo, payments, societyLedgerEntries, expenseCategoryById, chargeMajorHeadById, openingBalanceAnchors],
-  );
-
-  const showManualOpeningBalanceSetup = isManualOpeningBalanceSetupPeriod(periodFrom);
-
-  const parseOptionalAmount = parseOptionalAnchorAmount;
-
-  const saveOpeningBalanceAnchor = async () => {
-    if (!societyId) return;
-    setSavingOpeningAnchor(true);
-    try {
-      await saveAnchor({
-        id: anchorForm.id || undefined,
-        as_on_date: anchorForm.as_on_date,
-        cash_amount: parseOptionalAmount(anchorForm.cash_amount),
-        bank_amount: parseOptionalAmount(anchorForm.bank_amount),
-        other_amount: parseOptionalAmount(anchorForm.other_amount),
-        notes: anchorForm.notes,
-      });
-      toast.success('Opening balance anchor saved');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not save opening balance');
-    } finally {
-      setSavingOpeningAnchor(false);
-    }
-  };
-
-  const editOpeningBalanceAnchor = (row: (typeof openingBalanceAnchors)[number]) => {
-    setAnchorForm(openingAnchorRowToForm(row));
-  };
-
-  const resetOpeningBalanceAnchorForm = () => {
-    setAnchorForm(createDefaultOpeningAnchorForm());
-  };
-
-  const applyCashZeroFeb2026Preset = () => {
-    setAnchorForm((f) => ({
-      ...createDefaultOpeningAnchorForm(),
-      id: f.id,
-      bank_amount: f.bank_amount,
-      other_amount: f.other_amount,
-      notes: f.notes,
-    }));
-  };
-
-  const collectReportAudienceIds = (): string[] => {
-    if (reportAudience === 'all') return residentUsers.map((r) => r.id);
-    if (reportAudience === 'flats') {
-      const set = new Set<string>();
-      const nums = new Set(reportFlats.map((x) => String(x).trim()).filter(Boolean));
-      for (const r of residentUsers) {
-        if (nums.has(String(r.flat_number))) set.add(r.id);
-      }
-      return [...set];
-    }
-    return [...new Set(reportResidentIds.filter(Boolean))];
-  };
-
-  const periodReportExportInput = () =>
-    toFinancePeriodReportExportInput(financePeriodReport, {
-      societyName: societyName || 'Society',
-      periodFrom,
-      periodTo,
-    });
-
-  const exportPeriodReport = (format: ExportFormat) => {
-    if (periodFrom > periodTo) {
-      toast.error('Fix the date range first');
-      return;
-    }
-    downloadFinancePeriodReport(format, periodReportExportInput(), `finance-report-${periodFrom}-to-${periodTo}`);
-    toast.success(`${format.toUpperCase()} downloaded`);
-  };
-
-  const exportTransactionStatement = (format: ExportFormat) => {
-    if (filterStatus === 'unpaid') {
-      toast.error('Switch to a transaction status filter to export entries');
-      return;
-    }
-    const rows = buildTransactionExportRows({
-      items: receiptLineItems,
-      chargeTitleById: new Map([...chargeById.entries()].map(([id, ch]) => [id, ch.title])),
-    });
-    if (rows.length === 0) {
-      toast.error('No transactions match the current filters');
-      return;
-    }
-    downloadTransactionStatement(format, {
-      societyName: societyName || 'Society',
-      title: 'Transaction statement',
-      subtitle: `${receiptSummary.count} entries · ₹${receiptSummary.sum.toLocaleString('en-IN')} total · ${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
-      filenameBase: `transactions-${selectedReceiptMonthLabel.replace(/\s+/g, '-')}-${Date.now()}`,
-      rows,
-    });
-    toast.success(`${format.toUpperCase()} downloaded`);
-  };
-
-  const transactionStatementShare = useMemo(() => {
-    if (filterStatus === 'unpaid') return null;
-    const rows = buildTransactionExportRows({
-      items: receiptLineItems,
-      chargeTitleById: new Map([...chargeById.entries()].map(([id, ch]) => [id, ch.title])),
-    });
-    if (rows.length === 0) return null;
-    return {
-      societyName: societyName || 'Society',
-      title: 'Transaction statement',
-      subtitle: `${receiptSummary.count} entries · ₹${receiptSummary.sum.toLocaleString('en-IN')} total · ${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
-      filename: `transactions-${selectedReceiptMonthLabel.replace(/\s+/g, '-')}.pdf`,
-      message: `${societyName || 'Society'} — Transaction statement (${selectedReceiptMonthLabel})`,
-      rows,
-    };
-  }, [
-    filterStatus,
-    receiptLineItems,
-    chargeById,
-    receiptSummary.count,
-    receiptSummary.sum,
-    selectedReceiptTypeLabel,
-    selectedReceiptMonthLabel,
-    societyName,
-  ]);
-
-  const sendPeriodReportToMembers = async () => {
-    if (!societyId || periodFrom > periodTo) {
-      toast.error('Check society and date range');
-      return;
-    }
-    const ids = collectReportAudienceIds();
-    if (ids.length === 0) {
-      toast.error('No residents match this audience');
-      return;
-    }
-    setReportPushBusy(true);
-    try {
-      const blob = buildFinancePeriodReportPdfBlob(
-        toFinancePeriodReportExportInput(financePeriodReport, {
-          societyName: societyName || 'Society',
-          periodFrom,
-          periodTo,
-        }),
-      );
-      const batchId = crypto.randomUUID();
-      const path = `finance-reports/${societyId}/${batchId}.pdf`;
-      const pdfUrl = await uploadToNotificationMedia(path, blob, {
-        contentType: 'application/pdf',
-        upsert: true,
-        onError: (m) => toast.error(m),
-      });
-      if (!pdfUrl) return;
-      const title = `Finance report (${fmtIsoDateToDisplay(periodFrom)} → ${fmtIsoDateToDisplay(periodTo)})`;
-      const message = `Society finance period report is attached as PDF.\n\nTotal receipts: ₹${financePeriodReport.totalReceipts.toLocaleString('en-IN')}\nTotal expenses: ₹${financePeriodReport.totalExpenses.toLocaleString('en-IN')}\nBalance: ₹${financePeriodReport.totalBalance.toLocaleString('en-IN')}\n\nOpen PDF: ${pdfUrl}\n\nOpen the Alerts tab and tap this message — we record when you have seen it.`;
-      const chunk = 40;
-      for (let i = 0; i < ids.length; i += chunk) {
-        const slice = ids.slice(i, i + chunk);
-        const rows = slice.map((rid) => ({
-          title,
-          message,
-          type: 'finance_period_report',
-          target_type: 'user',
-          target_id: rid,
-          society_id: societyId,
-          created_by: adminName,
-          sound_key: 'digital',
-          sound_custom_url: null as string | null,
-          delivery_batch_id: batchId,
-          is_read: false,
-        }));
-        try {
-          await financeMutations.insertNotifications(rows);
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'Could not send notifications');
-          return;
-        }
-      }
-      await financeMutations.sendPushNotification({
-          body: {
-            title,
-            message: `Finance report ${fmtIsoDateToDisplay(periodFrom)}–${fmtIsoDateToDisplay(periodTo)}. Open Alerts in the app.`,
-            target_type: 'user',
-            target_ids: ids,
-            society_id: societyId,
-            sound_key: 'digital',
-            sound_custom_url: '',
-        },
-      });
-      setLastDeliveryBatchId(batchId);
-      toast.success(`Sent to ${ids.length} resident(s). Open “Read receipts” to see who opened it.`);
-    } finally {
-      setReportPushBusy(false);
-    }
-  };
-
-  const loadReadStatusForBatch = async (batchId: string) => {
-    setReadStatusBatchId(batchId);
-    const { data, error } = await fetchNotificationReadStatus(batchId);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    setReadStatusRows((data ?? []) as { id: string; target_id: string | null; is_read: boolean; read_at: string | null }[]);
-    setReadStatusOpen(true);
-  };
-
-  const recallPeriodReportSend = async (batchId: string) => {
-    if (!societyId) return;
-    const ok = await confirmAction(
-      'Recall this report?',
-      'This removes the finance report alerts from every recipient\'s inbox. Residents who already opened the PDF may still have a copy. You can send a corrected report afterward.',
-      'Recall send',
-      'Cancel',
-    );
-    if (!ok) return;
-    setReportPushBusy(true);
-    try {
-      let targetIds: string[] = [];
-      try {
-        const result = await financeMutations.recallPeriodReport(batchId);
-        targetIds = result.targetIds;
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Could not recall report');
-        return;
-      }
-
-      if (targetIds.length > 0) {
-        const title = 'Finance report withdrawn';
-        const message =
-          'The finance period report sent earlier was sent in error and has been removed. Please ignore the previous PDF link. A corrected report may follow.';
-        const chunk = 40;
-        for (let i = 0; i < targetIds.length; i += chunk) {
-          const slice = targetIds.slice(i, i + chunk);
-          const rows = slice.map((rid) => ({
-            title,
-            message,
-            type: 'general',
-            target_type: 'user',
-            target_id: rid,
-            society_id: societyId,
-            created_by: adminName,
-            sound_key: 'digital',
-            sound_custom_url: null as string | null,
-            is_read: false,
-          }));
-          try {
-            await financeMutations.insertNotifications(rows);
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Could not notify residents');
-            return;
-          }
-        }
-        await financeMutations.sendPushNotification({
-          title,
-          message: 'The finance report sent earlier was withdrawn. Please ignore it.',
-          target_type: 'user',
-          target_ids: targetIds,
-          society_id: societyId,
-          sound_key: 'digital',
-          sound_custom_url: '',
-        });
-      }
-
-      if (lastDeliveryBatchId === batchId) setLastDeliveryBatchId(null);
-      if (readStatusBatchId === batchId) {
-        setReadStatusOpen(false);
-        setReadStatusRows([]);
-        setReadStatusBatchId(null);
-      }
-      toast.success(targetIds.length > 0 ? `Recalled send for ${targetIds.length} resident(s)` : 'Report send recalled');
-    } finally {
-      setReportPushBusy(false);
-    }
-  };
 
   const sendReminders = async () => {
     if (!societyId) return;
@@ -2531,30 +2155,18 @@ const FinanceManager = ({
         <p className="text-[10px] text-muted-foreground mb-3 text-center">Refreshing finance data…</p>
       )}
 
-      <div className="card-section p-3 mb-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium text-foreground">Reminder base</p>
-            <p className="text-[10px] text-muted-foreground">
-              {includeVacantFlats
-                ? `Using all flats (${flats.length})`
-                : `Using occupied/sold flats (${targetFlats.length})`}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIncludeVacantFlats((v) => !v)}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-border"
-          >
-            {includeVacantFlats ? 'Include vacant: ON' : 'Include vacant: OFF'}
-          </button>
-        </div>
-      </div>
+      <FinanceSubTabNav
+        activeTab={subTab}
+        onTabChange={handleSubTabChange}
+        showReminders={showRemindersPanel}
+        onToggleReminders={() => setShowRemindersPanel((v) => !v)}
+      />
 
-      <FinanceSubTabNav activeTab={subTab} onTabChange={handleSubTabChange} />
-
-      {subTab === 'maintenance' && (
-        <FinanceMaintenanceTab
+      {showRemindersPanel && (
+        <FinanceRemindersTab
+          unpaidCount={unpaidFlats.length}
+          rows={unpaidReminderRows}
+          onSendReminders={() => void sendReminders()}
           autoReminderEnabled={autoReminderEnabled}
           autoReminderSchedule={autoReminderSchedule}
           onAutoReminderEnabledChange={setAutoReminderEnabled}
@@ -2564,6 +2176,18 @@ const FinanceManager = ({
           savingAutoReminder={savingAutoReminder}
           testingAutoReminder={testingAutoReminder}
           lastReminderTestStatus={lastReminderTestStatus}
+          includeVacantFlats={includeVacantFlats}
+          onIncludeVacantFlatsChange={setIncludeVacantFlats}
+          vacantScopeLabel={
+            includeVacantFlats
+              ? `Using all flats (${flats.length})`
+              : `Using occupied/sold flats (${targetFlats.length})`
+          }
+        />
+      )}
+
+      {subTab === 'maintenance' && (
+        <FinanceMaintenanceTab
           showForm={showForm}
           editingChargeId={editingChargeId}
           form={form}
@@ -2698,13 +2322,18 @@ const FinanceManager = ({
                 </div>
               )}
               {payForm.recordMode !== 'society_pool' && (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={payForm.allocationIncludeVacant}
-                  onChange={(e) => setPayForm({ ...payForm, allocationIncludeVacant: e.target.checked })}
-                />
-                Include vacant flats in this picker (allocation scope)
+              <label className="text-xs flex flex-col gap-1">
+                <span className="text-muted-foreground">Flat allocation scope</span>
+                <select
+                  className="input-field"
+                  value={payForm.allocationIncludeVacant ? 'include_vacant' : 'occupied_only'}
+                  onChange={(e) =>
+                    setPayForm({ ...payForm, allocationIncludeVacant: e.target.value === 'include_vacant' })
+                  }
+                >
+                  <option value="occupied_only">Occupied / sold flats only</option>
+                  <option value="include_vacant">Include vacant flats</option>
+                </select>
               </label>
               )}
               {(payForm.recordMode === 'outsider_only' || payForm.recordMode === 'flats_plus_outsider') && (
@@ -2819,13 +2448,18 @@ const FinanceManager = ({
               />
               )}
               {payForm.recordMode === 'society_pool' && (
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={payForm.allocationIncludeVacant}
-                    onChange={(e) => setPayForm({ ...payForm, allocationIncludeVacant: e.target.checked })}
-                  />
-                  When distributing later, include vacant flats in the equal split
+                <label className="text-xs flex flex-col gap-1">
+                  <span className="text-muted-foreground">Distribution scope (when splitting later)</span>
+                  <select
+                    className="input-field"
+                    value={payForm.allocationIncludeVacant ? 'include_vacant' : 'occupied_only'}
+                    onChange={(e) =>
+                      setPayForm({ ...payForm, allocationIncludeVacant: e.target.value === 'include_vacant' })
+                    }
+                  >
+                    <option value="occupied_only">Occupied / sold flats only</option>
+                    <option value="include_vacant">Include vacant flats in equal split</option>
+                  </select>
                 </label>
               )}
               {payForm.recordMode !== 'society_pool' && (
@@ -4083,447 +3717,6 @@ const FinanceManager = ({
         </div>
       )}
 
-      {subTab === 'period' && (
-        <div className="space-y-4">
-          <div className="card-section p-4 flex flex-wrap items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <CalendarRange className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-[220px] space-y-3">
-              <div>
-                <h3 className="text-sm font-semibold">Finance period report</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Collections from flat owners and outsiders (verified maintenance receipts), plus ledger-only inflows.
-                  Expenses are society payments (<span className="font-medium">separate entry</span>) — not event food bills.
-                  Event food and contribution receipts reconcile under <span className="font-medium">Events &amp; food</span>.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="text-xs flex flex-col gap-1">
-                  <span className="text-muted-foreground">Opening (from)</span>
-                  <DateInput className="input-field" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
-                </label>
-                <label className="text-xs flex flex-col gap-1">
-                  <span className="text-muted-foreground">Closing (to)</span>
-                  <DateInput className="input-field" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
-                </label>
-              </div>
-              {periodFrom > periodTo && (
-                <p className="text-xs text-destructive">Closing date must be on or after the opening date.</p>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="btn-secondary text-xs px-3 py-2"
-                  onClick={() => {
-                    const { from, to } = financeReportingMonthRange(FINANCE_REPORTING_EARLIEST_MONTH);
-                    setPeriodFrom(from);
-                    setPeriodTo(to);
-                  }}
-                >
-                  Feb 2026
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary text-xs px-3 py-2"
-                  onClick={() => {
-                    setPeriodFrom(defaultFinancePeriodFrom());
-                    setPeriodTo(defaultFinancePeriodTo());
-                  }}
-                >
-                  This month → today
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary text-xs px-3 py-2"
-                  onClick={() => {
-                    setPeriodFrom(defaultFinanceFyPeriodFrom());
-                    setPeriodTo(defaultFinancePeriodTo());
-                  }}
-                >
-                  Reset to FY (1 Apr → today)
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="card-section p-4 space-y-4">
-            <div className="flex flex-wrap gap-3 items-start justify-between">
-              <div className="min-w-[200px]">
-                <h3 className="text-sm font-semibold">Export & member delivery</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Download this period as PDF, Excel, Word, or CSV. Send one alert per resident with the PDF link — opening the alert records it as seen. Sent by mistake? Use <span className="font-medium">Recall send</span> to withdraw it.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 shrink-0">
-                <ExportFormatMenu
-                  label="Download report"
-                  className="btn-secondary text-xs px-3 py-2 flex items-center gap-1"
-                  disabled={periodFrom > periodTo}
-                  onExport={exportPeriodReport}
-                />
-                <SharePdfWhatsAppButton
-                  label="Share on WhatsApp"
-                  className="btn-secondary text-xs px-3 py-2 flex items-center gap-1 bg-[#25D366]/10 text-[#128C7E] border border-[#25D366]/30 hover:bg-[#25D366]/20"
-                  disabled={periodFrom > periodTo}
-                  filename={`finance-report-${periodFrom}-to-${periodTo}.pdf`}
-                  message={`${societyName || 'Society'} — Finance report (${fmtIsoDateToDisplay(periodFrom)} → ${fmtIsoDateToDisplay(periodTo)})`}
-                  getBlob={() => buildFinancePeriodReportPdf(periodReportExportInput())}
-                />
-                <button
-                  type="button"
-                  className="btn-primary text-xs px-3 py-2"
-                  onClick={() => void sendPeriodReportToMembers()}
-                  disabled={reportPushBusy || periodFrom > periodTo || !societyId}
-                >
-                  {reportPushBusy ? 'Sending…' : 'Send to members'}
-                </button>
-                {lastDeliveryBatchId && (
-                  <>
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs px-3 py-2"
-                      onClick={() => void loadReadStatusForBatch(lastDeliveryBatchId)}
-                    >
-                      Read receipts
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs px-3 py-2 flex items-center gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                      onClick={() => void recallPeriodReportSend(lastDeliveryBatchId)}
-                      disabled={reportPushBusy}
-                    >
-                      <Undo2 className="w-3.5 h-3.5" />
-                      Recall send
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="space-y-2 text-xs">
-              <p className="text-muted-foreground font-medium">Audience</p>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="finance-report-audience"
-                    checked={reportAudience === 'all'}
-                    onChange={() => setReportAudience('all')}
-                  />
-                  All residents
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="finance-report-audience"
-                    checked={reportAudience === 'flats'}
-                    onChange={() => setReportAudience('flats')}
-                  />
-                  Selected flats
-                </label>
-              </div>
-              {reportAudience === 'flats' && (
-                <FlatMultiSelect
-                  flats={flatMultiOptions}
-                  selected={reportFlats}
-                  onChange={setReportFlats}
-                  label="Flats to include"
-                  emptyHint="No flats match your search."
-                />
-              )}
-            </div>
-          </div>
-
-          <Dialog open={readStatusOpen} onOpenChange={setReadStatusOpen}>
-            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Who opened this report</DialogTitle>
-              </DialogHeader>
-              {readStatusBatchId && (
-                <div className="flex flex-wrap gap-2 pb-2 border-b border-border">
-                  <button
-                    type="button"
-                    className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                    onClick={() => void recallPeriodReportSend(readStatusBatchId)}
-                    disabled={reportPushBusy}
-                  >
-                    <Undo2 className="w-3.5 h-3.5" />
-                    Recall this send
-                  </button>
-                  <p className="text-[11px] text-muted-foreground self-center">
-                    Use if the wrong report was sent — removes alerts and notifies residents to ignore the PDF.
-                  </p>
-                </div>
-              )}
-              {readStatusRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No rows for this send.</p>
-              ) : (
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-left border-b border-border">
-                      <th className="p-2">Member</th>
-                      <th className="p-2">Flat</th>
-                      <th className="p-2">Seen</th>
-                      <th className="p-2">When</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {readStatusRows.map((row) => {
-                      const ru = residentUsers.find((u) => u.id === row.target_id);
-                      const seen = !!(row.is_read || row.read_at);
-                      return (
-                        <tr key={row.id} className="border-b border-border/60">
-                          <td className="p-2">{ru?.name?.trim() || '—'}</td>
-                          <td className="p-2 font-mono">{ru?.flat_number ?? '—'}</td>
-                          <td className="p-2">{seen ? 'Yes' : 'No'}</td>
-                          <td className="p-2 text-muted-foreground">
-                            {row.read_at ? fmtDateTimeFull(row.read_at) : '—'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </DialogContent>
-          </Dialog>
-
-          <FinancePeriodHeadTables report={financePeriodReport} className="space-y-3" />
-
-          {showManualOpeningBalanceSetup && (
-          <div className="card-section p-4 space-y-3">
-            <div>
-              <h3 className="text-sm font-semibold">Manual opening balances</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                One-time setup for the Feb–Mar 2026 go-live: set verified balances as on a cut-off date (default 28 Feb
-                2026). Later periods roll forward from transactions — change the period to March 2026 or earlier to
-                edit this anchor. Cash defaults to ₹0; leave blank to use transaction totals for that channel.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <label className="text-xs flex flex-col gap-1">
-                <span className="text-muted-foreground">As on date</span>
-                <DateInput
-                  className="input-field"
-                  value={anchorForm.as_on_date}
-                  onChange={(e) => setAnchorForm((f) => ({ ...f, as_on_date: e.target.value }))}
-                />
-              </label>
-              <label className="text-xs flex flex-col gap-1">
-                <span className="text-muted-foreground">Cash in hand (₹)</span>
-                <input
-                  className="input-field"
-                  type="number"
-                  step="0.01"
-                  placeholder="0 = no cash"
-                  value={anchorForm.cash_amount}
-                  onChange={(e) => setAnchorForm((f) => ({ ...f, cash_amount: e.target.value }))}
-                />
-              </label>
-              <label className="text-xs flex flex-col gap-1">
-                <span className="text-muted-foreground">Bank / UPI balance (₹)</span>
-                <input
-                  className="input-field"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g. 18145"
-                  value={anchorForm.bank_amount}
-                  onChange={(e) => setAnchorForm((f) => ({ ...f, bank_amount: e.target.value }))}
-                />
-              </label>
-              <label className="text-xs flex flex-col gap-1">
-                <span className="text-muted-foreground">Other channels (₹)</span>
-                <input
-                  className="input-field"
-                  type="number"
-                  step="0.01"
-                  placeholder="Leave blank for auto"
-                  value={anchorForm.other_amount}
-                  onChange={(e) => setAnchorForm((f) => ({ ...f, other_amount: e.target.value }))}
-                />
-              </label>
-            </div>
-            <input
-              className="input-field text-xs"
-              placeholder="Notes (optional)"
-              value={anchorForm.notes}
-              onChange={(e) => setAnchorForm((f) => ({ ...f, notes: e.target.value }))}
-            />
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn-primary text-xs px-3 py-2"
-                disabled={savingOpeningAnchor || !societyId}
-                onClick={() => void saveOpeningBalanceAnchor()}
-              >
-                {savingOpeningAnchor ? 'Saving…' : anchorForm.id ? 'Update anchor' : 'Save anchor'}
-              </button>
-              <button type="button" className="btn-secondary text-xs px-3 py-2" onClick={resetOpeningBalanceAnchorForm}>
-                Reset form
-              </button>
-              <button
-                type="button"
-                className="btn-secondary text-xs px-3 py-2"
-                onClick={applyCashZeroFeb2026Preset}
-              >
-                Cash ₹0 · 28 Feb 2026
-              </button>
-            </div>
-            {openingBalanceAnchors.length > 0 && (
-              <div className="overflow-x-auto border border-border rounded-md">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-muted/40 text-left">
-                      <th className="p-2">As on</th>
-                      <th className="p-2 text-right">Bank</th>
-                      <th className="p-2 text-right">Cash</th>
-                      <th className="p-2 text-right">Other</th>
-                      <th className="p-2">Notes</th>
-                      <th className="p-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {openingBalanceAnchors.map((row) => (
-                      <tr key={row.id} className="border-t border-border/60">
-                        <td className="p-2 font-mono">{fmtIsoDateToDisplay(row.as_on_date)}</td>
-                        <td className="p-2 text-right font-mono">
-                          {row.bank_amount == null ? '—' : `₹${row.bank_amount.toLocaleString('en-IN')}`}
-                        </td>
-                        <td className="p-2 text-right font-mono">
-                          {row.cash_amount == null ? '—' : `₹${row.cash_amount.toLocaleString('en-IN')}`}
-                        </td>
-                        <td className="p-2 text-right font-mono">
-                          {row.other_amount == null ? '—' : `₹${row.other_amount.toLocaleString('en-IN')}`}
-                        </td>
-                        <td className="p-2 text-muted-foreground max-w-[140px] truncate">{row.notes || '—'}</td>
-                        <td className="p-2 whitespace-nowrap">
-                          <button type="button" className="text-primary text-[10px] mr-2" onClick={() => editOpeningBalanceAnchor(row)}>
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="text-destructive text-[10px]"
-                            onClick={() => void deleteAnchor(row.id).then(() => toast.success('Anchor removed'))}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {financePeriodReport.appliedOpeningAnchor && (
-              <p className="text-[10px] text-muted-foreground">
-                This period uses anchor dated{' '}
-                <span className="font-medium text-foreground">
-                  {fmtIsoDateToDisplay(financePeriodReport.appliedOpeningAnchor.as_on_date)}
-                </span>
-                {financePeriodReport.openingCashFromManualAnchor ? ' · cash from manual anchor' : ''}
-                {financePeriodReport.openingBankFromManualAnchor ? ' · bank from manual anchor' : ''}
-                {financePeriodReport.openingOtherFromManualAnchor ? ' · other from manual anchor' : ''}
-              </p>
-            )}
-          </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            <PeriodMetric
-              metricKey="openingCash"
-              className="border-blue-500/20 bg-blue-500/5"
-              value={`₹${financePeriodReport.openingCash.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.openingCash >= 0 ? 'text-blue-600' : 'text-destructive'}
-            />
-            <PeriodMetric
-              metricKey="openingBank"
-              className="border-blue-500/20 bg-blue-500/5"
-              value={`₹${financePeriodReport.openingBank.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.openingBank >= 0 ? 'text-blue-600' : 'text-destructive'}
-            />
-            <PeriodMetric
-              metricKey="openingOther"
-              className="border-blue-500/20 bg-blue-500/5"
-              value={`₹${financePeriodReport.openingOther.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.openingOther >= 0 ? 'text-blue-600' : 'text-destructive'}
-            />
-            <PeriodMetric
-              metricKey="openingBalance"
-              className="border-blue-500/30 bg-blue-500/10"
-              value={`₹${financePeriodReport.openingBalance.toLocaleString('en-IN')}`}
-              valueClassName={`text-xl ${financePeriodReport.openingBalance >= 0 ? 'text-blue-700' : 'text-destructive'}`}
-            />
-            {showManualOpeningBalanceSetup && financePeriodReport.openingBankFromManualAnchor && (
-              <p className="sm:col-span-2 lg:col-span-4 text-[10px] text-primary -mt-1">
-                Bank opening includes manual anchor
-                {financePeriodReport.appliedOpeningAnchor
-                  ? ` (${fmtIsoDateToDisplay(financePeriodReport.appliedOpeningAnchor.as_on_date)})`
-                  : ''}
-              </p>
-            )}
-            {showManualOpeningBalanceSetup && financePeriodReport.openingCashFromManualAnchor && (
-              <p className="sm:col-span-2 lg:col-span-4 text-[10px] text-primary -mt-1">
-                Cash opening includes manual anchor
-                {financePeriodReport.appliedOpeningAnchor
-                  ? ` (${fmtIsoDateToDisplay(financePeriodReport.appliedOpeningAnchor.as_on_date)} · ₹${Number(financePeriodReport.appliedOpeningAnchor.cash_amount ?? 0).toLocaleString('en-IN')} base)`
-                  : ''}
-              </p>
-            )}
-          </div>
-
-          <p className="text-[10px] text-muted-foreground uppercase font-medium mt-3">Period movement (receipts − expenses)</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            <PeriodMetric
-              metricKey="cashInHand"
-              value={`₹${financePeriodReport.cashInHand.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.cashInHand >= 0 ? 'text-green-600' : 'text-destructive'}
-            />
-            <PeriodMetric
-              metricKey="cashInBank"
-              value={`₹${financePeriodReport.cashInBank.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.cashInBank >= 0 ? 'text-green-600' : 'text-destructive'}
-            />
-            <PeriodMetric
-              metricKey="otherNet"
-              value={`₹${financePeriodReport.otherNet.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.otherNet >= 0 ? 'text-green-600' : 'text-destructive'}
-            />
-            <PeriodMetric
-              metricKey="totalBalance"
-              value={`₹${financePeriodReport.totalBalance.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.totalBalance >= 0 ? 'text-green-600' : 'text-destructive'}
-            />
-          </div>
-
-          <p className="text-[10px] text-muted-foreground uppercase font-medium mt-3">Closing balances (opening + period)</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            <PeriodMetric
-              metricKey="closingCash"
-              className="border-primary/20 bg-primary/5"
-              value={`₹${financePeriodReport.closingCash.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.closingCash >= 0 ? 'text-primary' : 'text-destructive'}
-            />
-            <PeriodMetric
-              metricKey="closingBank"
-              className="border-primary/20 bg-primary/5"
-              value={`₹${financePeriodReport.closingBank.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.closingBank >= 0 ? 'text-primary' : 'text-destructive'}
-            />
-            <PeriodMetric
-              metricKey="closingOther"
-              className="border-primary/20 bg-primary/5"
-              value={`₹${financePeriodReport.closingOther.toLocaleString('en-IN')}`}
-              valueClassName={financePeriodReport.closingOther >= 0 ? 'text-primary' : 'text-destructive'}
-            />
-            <PeriodMetric
-              metricKey="closingBalance"
-              className="border-primary/30 bg-primary/10"
-              value={`₹${financePeriodReport.closingBalance.toLocaleString('en-IN')}`}
-              valueClassName={`text-xl ${financePeriodReport.closingBalance >= 0 ? 'text-primary' : 'text-destructive'}`}
-            />
-          </div>
-        </div>
-      )}
 
       {subTab === 'totals' && (
         <FinanceTotalsTab
@@ -4543,29 +3736,6 @@ const FinanceManager = ({
           totalsOutflowBreakdown={totalsOutflowBreakdown}
           totalsMonthPaymentChannels={totalsMonthPaymentChannels}
           totalsMonthOutflow={totalsMonthOutflow}
-        />
-      )}
-
-      {subTab === 'flat_report' && (
-        <FinanceFlatReportTab
-          from={flatReportFrom}
-          to={flatReportTo}
-          selectedFlat={flatReportSelectedFlat}
-          onFromChange={setFlatReportFrom}
-          onToChange={setFlatReportTo}
-          onSelectedFlatChange={setFlatReportSelectedFlat}
-          flats={flats}
-          primaryByFlatId={primaryByFlatId}
-          isLoading={flatReportLoading}
-          rows={flatReportData}
-        />
-      )}
-
-      {subTab === 'reminders' && (
-        <FinanceRemindersTab
-          unpaidCount={unpaidFlats.length}
-          rows={unpaidReminderRows}
-          onSendReminders={() => void sendReminders()}
         />
       )}
 

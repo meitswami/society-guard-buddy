@@ -50,10 +50,7 @@ export type FinanceSubTab =
   | 'payments'
   | 'record_payment'
   | 'receipts'
-  | 'period'
-  | 'totals'
-  | 'reminders'
-  | 'flat_report';
+  | 'totals';
 
 export type FinanceLedgerRow = {
   id: string;

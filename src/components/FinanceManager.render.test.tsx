@@ -59,24 +59,8 @@ vi.mock('@/hooks/finance/useFinanceMutations', () => ({
   useFinanceMutations: () => ({}),
 }));
 
-vi.mock('@/hooks/finance/useFinanceFlatReport', () => ({
-  useFinanceFlatReport: () => ({ expenses: [], splits: [], isLoading: false }),
-}));
-
 vi.mock('@/hooks/finance/useFinanceEventReference', () => ({
   useFinanceEventReference: () => ({ contributions: [], foodExpenses: [], isLoading: false }),
-}));
-
-vi.mock('@/hooks/finance/useFinancePeriodReportBatch', () => ({
-  useFinancePeriodReportBatch: () => ({ batchId: null }),
-}));
-
-vi.mock('@/hooks/useSocietyOpeningBalanceAnchors', () => ({
-  useSocietyOpeningBalanceAnchors: () => ({
-    anchors: [],
-    saveAnchor: vi.fn(),
-    deleteAnchor: vi.fn(),
-  }),
 }));
 
 function renderFinance() {
@@ -94,9 +78,10 @@ describe('FinanceManager render', () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  it('renders Record receipt tab', () => {
+  it('renders Record receipt via Record dropdown', () => {
     renderFinance();
-    fireEvent.click(screen.getByRole('button', { name: 'Record receipt' }));
+    fireEvent.click(screen.getByRole('button', { name: /Record/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Record receipt' }));
     expect(screen.getByText('Recording style')).toBeInTheDocument();
   });
 

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart3, Calendar, CalendarRange, Users, Car, Truck, Shield, IndianRupee, Heart, Split, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench, Search } from 'lucide-react';
@@ -8,9 +9,14 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import ReportDetailModal, { type ReportDetailRow } from '@/components/ReportDetailModal';
 import CashFlowStatement from '@/components/CashFlowStatement';
 import FinancePeriodHeadTables from '@/components/FinancePeriodHeadTables';
+import { FinanceFlatReportTab } from '@/components/finance/FinanceFlatReportTab';
 import { DateInput } from '@/components/DateInput';
 import { useSocietyFinanceReportData } from '@/hooks/useSocietyFinanceReportData';
 import { useSocietyOpeningBalanceAnchors } from '@/hooks/useSocietyOpeningBalanceAnchors';
+import { useFinanceFlatReport } from '@/hooks/finance/useFinanceFlatReport';
+import { financeQueryKeys } from '@/hooks/finance/financeQueryKeys';
+import { fetchSocietyFinanceCoreSafe } from '@/services/finance/financeService';
+import { buildFlatReportRows } from '@/lib/financeFlatReport';
 import {
   computeFinancePeriodReport,
   defaultFinancePeriodFrom,
@@ -84,6 +90,9 @@ const ReportPage = ({
   const [donationStatuses, setDonationStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
   const [splitStatuses, setSplitStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
   const [societyName, setSocietyName] = useState('Society');
+  const [flatReportFrom, setFlatReportFrom] = useState(defaultFinancePeriodFrom);
+  const [flatReportTo, setFlatReportTo] = useState(defaultFinancePeriodTo);
+  const [flatReportSelectedFlat, setFlatReportSelectedFlat] = useState('all');
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -95,6 +104,20 @@ const ReportPage = ({
   const { payments, societyLedgerEntries, expenseCategoryById, reserveTransfers, loading: financeLoading } =
     useSocietyFinanceReportData(societyId);
   const { anchors: openingBalanceAnchors } = useSocietyOpeningBalanceAnchors(societyId);
+  const financeCore = useQuery({
+    queryKey: financeQueryKeys.core(societyId),
+    queryFn: () => fetchSocietyFinanceCoreSafe(societyId, 'Report'),
+    enabled: Boolean(societyId) && activeTab === 'financial',
+  });
+  const {
+    expenses: flatReportExpenses,
+    splits: flatReportSplits,
+    isLoading: flatReportLoading,
+  } = useFinanceFlatReport(societyId, activeTab === 'financial');
+  const primaryByFlatId = useMemo(
+    () => new Map(Object.entries(financeCore.data?.primaryByFlatId ?? {})),
+    [financeCore.data?.primaryByFlatId],
+  );
 
   // Derived date range from month
   const monthDate = useMemo(() => parse(`${reportMonth}-01`, 'yyyy-MM-dd', new Date()), [reportMonth]);
@@ -107,6 +130,11 @@ const ReportPage = ({
     statementPeriodMode === 'monthly'
       ? fmtIsoMonthToDisplay(reportMonth)
       : `${fmtIsoDateToDisplay(statementPeriodFrom)} – ${fmtIsoDateToDisplay(statementPeriodTo)}`;
+
+  useEffect(() => {
+    setFlatReportFrom(statementPeriodFrom);
+    setFlatReportTo(statementPeriodTo);
+  }, [statementPeriodFrom, statementPeriodTo]);
 
   useEffect(() => {
     const loadShifts = async () => {
@@ -241,6 +269,35 @@ const ReportPage = ({
             openingBalanceAnchors,
           }),
     [statementPeriodFrom, statementPeriodTo, payments, societyLedgerEntries, expenseCategoryById, openingBalanceAnchors],
+  );
+
+  const flatReportRows = useMemo(
+    () =>
+      activeTab === 'financial' && financeCore.data
+        ? buildFlatReportRows({
+            from: flatReportFrom,
+            to: flatReportTo,
+            selectedFlat: flatReportSelectedFlat,
+            payments,
+            ledgerEntries: financeCore.data.ledgerEntries,
+            flatReportExpenses,
+            flatReportSplits,
+            flats: financeCore.data.flats,
+            primaryByFlatId,
+            charges: financeCore.data.charges,
+          })
+        : [],
+    [
+      activeTab,
+      financeCore.data,
+      flatReportFrom,
+      flatReportTo,
+      flatReportSelectedFlat,
+      payments,
+      flatReportExpenses,
+      flatReportSplits,
+      primaryByFlatId,
+    ],
   );
 
   const periodStatementEntries = useMemo(
@@ -706,7 +763,7 @@ const ReportPage = ({
           <div className="mb-4 rounded-lg border border-border bg-card/40 p-3">
             <p className="text-[11px] font-medium text-foreground mb-2">{t('report.financeNetTitle')}</p>
             <p className="text-[10px] text-muted-foreground mb-2">
-              Period net for {fmtIsoMonthToDisplay(reportMonth)} — synced with Finance → Period report
+              Period net for {fmtIsoMonthToDisplay(reportMonth)} — same range as head-wise and flat reports below
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <DescriptiveStatCard
@@ -752,9 +809,26 @@ const ReportPage = ({
             <div className="mb-4">
               <p className="text-[11px] font-medium text-foreground mb-2">Head-wise breakdown</p>
               <p className="text-[10px] text-muted-foreground mb-3">
-                {statementPeriodLabel} — same columnar layout as Finance → Period report
+                {statementPeriodLabel} — period totals and head-wise columns in one place
               </p>
               <FinancePeriodHeadTables report={periodReport} />
+            </div>
+          )}
+
+          {activeTab === 'financial' && financeCore.data && (
+            <div className="mb-4">
+              <FinanceFlatReportTab
+                from={flatReportFrom}
+                to={flatReportTo}
+                selectedFlat={flatReportSelectedFlat}
+                onFromChange={setFlatReportFrom}
+                onToChange={setFlatReportTo}
+                onSelectedFlatChange={setFlatReportSelectedFlat}
+                flats={financeCore.data.flats}
+                primaryByFlatId={primaryByFlatId}
+                isLoading={flatReportLoading || financeCore.isLoading}
+                rows={flatReportRows}
+              />
             </div>
           )}
 
