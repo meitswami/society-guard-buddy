@@ -22,6 +22,7 @@ export const ADMIN_SEARCH_ROUTES: AdminSearchRoute[] = [
   { tab: 'residents', label: 'Residents', keywords: ['flat', 'owner', 'phone', 'member', 'resident'], hint: 'Flat, owner, phone' },
   { tab: 'directory', label: 'Directory', keywords: ['directory', 'contact', 'flat', 'phone'], hint: 'Flat, name, phone' },
   { tab: 'finance', label: 'Finance', keywords: ['payment', 'receipt', 'maintenance', 'charge', 'ledger', 'txn'], hint: 'Flat, charge, txn' },
+  { tab: 'fixed_assets', label: 'Fixed Assets', keywords: ['asset', 'fixed', 'dg', 'lift', 'gym', 'warranty', 'amc', 'equipment'], hint: 'Asset register' },
   { tab: 'report', label: 'Reports', keywords: ['report', 'visitor', 'vehicle', 'ledger', 'shift'], hint: 'Cross-report search' },
   { tab: 'audit', label: 'Audit', keywords: ['audit', 'login', 'ip', 'log'], hint: 'Name, ID, IP' },
   { tab: 'guards', label: 'Guards', keywords: ['guard', 'kyc', 'security'], hint: 'Guard name or ID' },

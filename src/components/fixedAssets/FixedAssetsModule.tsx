@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Building2, ClipboardList, BarChart3, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import {
   useFixedAssetExpenseGroups,
@@ -25,9 +26,22 @@ const SUB_TABS: { id: SubTab; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function FixedAssetsModule({ adminName = 'Admin', onNavigateTab }: Props) {
-  const societyName = useStore((s) => s.societyName) ?? 'Society';
+  const societyId = useStore((s) => s.societyId);
+  const [societyName, setSocietyName] = useState('Society');
   const [subTab, setSubTab] = useState<SubTab>('register');
   const [seeded, setSeeded] = useState(false);
+
+  useEffect(() => {
+    if (!societyId) return;
+    supabase
+      .from('societies')
+      .select('name')
+      .eq('id', societyId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.name) setSocietyName(data.name);
+      });
+  }, [societyId]);
 
   const { data: assets = [], isLoading, refetch } = useFixedAssets();
   const { data: expenseGroups = [] } = useFixedAssetExpenseGroups();

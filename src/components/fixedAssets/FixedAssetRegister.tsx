@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import {
-  FIXED_ASSET_SOURCE_LABELS,
   FIXED_ASSET_STATUS_LABELS,
   isAmcExpired,
   isAmcExpiringSoon,

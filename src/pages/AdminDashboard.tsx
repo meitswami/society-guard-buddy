@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, IndianRupee, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench, Landmark, X, FolderLock } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, IndianRupee, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench, Landmark, X, FolderLock, Building2 } from 'lucide-react';
 import { confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
 import DashboardPage from '@/pages/DashboardPage';
@@ -30,6 +30,7 @@ import MeetingManager from '@/components/MeetingManager';
 import SocietyDocumentsManager from '@/components/SocietyDocumentsManager';
 import CommitteeManager from '@/components/CommitteeManager';
 import ParkingManager from '@/components/ParkingManager';
+import FixedAssetsModule from '@/components/fixedAssets/FixedAssetsModule';
 import NotificationCenter from '@/components/NotificationCenter';
 import { useNotificationsRealtimeRevision } from '@/hooks/useNotificationsRealtimeRevision';
 import { auditLogout } from '@/lib/auditLogger';
@@ -447,6 +448,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     { id: 'geofence', label: 'Geofence', icon: MapPin, group: 'manage' },
     // Finance
     { id: 'finance', label: 'Finance', icon: IndianRupee, group: 'finance' },
+    { id: 'fixed_assets', label: 'Fixed Assets', icon: Building2, group: 'finance' },
     { id: 'meetings', label: 'Meetings', icon: ScrollText, group: 'meetings' },
     { id: 'documents', label: 'Documents', icon: FolderLock, group: 'meetings' },
     { id: 'committee', label: 'Committee', icon: Landmark, group: 'meetings' },
@@ -571,6 +573,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
             />
           </ErrorBoundary>
         );
+      case 'fixed_assets':
+        return <FixedAssetsModule adminName={admin.name} onNavigateTab={goToTab} />;
       case 'donations': return <DonationManager adminName={admin.name} />;
       case 'events':
         return <EventsModule adminName={admin.name} onNavigateTab={goToTab} />;
