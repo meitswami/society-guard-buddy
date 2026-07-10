@@ -114,6 +114,8 @@ Migration: `20260602100000_finance_society_pool.sql`
 | **EventFoodReconciliation** | Event contributions vs food bills |
 | **MonthlyOperatingFundPanel** | Operating surplus/deficit vs reserve transfers |
 
+**V3 extensions** (bank statement matching, statutory fund registry, compliance obligations): see **[PRODUCT-V3-ACCOUNTING.md](../PRODUCT-V3-ACCOUNTING.md)**.
+
 ---
 
 ## Traceability gaps (V2)

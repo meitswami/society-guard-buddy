@@ -89,7 +89,7 @@ These are **optional** backlog items that fit “evolving tech” without all be
 | **WhatsApp / SMS** | Outbound OTP and visitor alerts where societies already live. | Adoption in India-heavy workflows. |
 | **Hardware** | QR at gate, NFC badges, ANPR camera integration (partners). | Throughput at peak hours. |
 | **Analytics** | Peak visitor times, guard response times, repeat vendors. | Committee reporting. |
-| **Compliance pack** | Data retention settings, export/delete requests, consent logs. | Societies and RWA legal comfort. |
+| **Compliance pack** | Data retention settings, export/delete requests, consent logs. | Societies and RWA legal comfort. See **[PRODUCT-V3-ACCOUNTING.md](./PRODUCT-V3-ACCOUNTING.md)** for full compliance dashboard spec. |
 
 ---
 

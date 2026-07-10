@@ -214,7 +214,7 @@ See README **Getting started** for `VITE_*` variables and Edge Function secrets.
 - Society-admin in-app **role editor** (V2.1)
 - Action-level CRUD permissions + hardened RLS (V2.1)
 - Guard voice wizard / AI slot-fill (V2.2–V2.3)
-- Advanced analytics, compliance pack, multi-org federation (V3)
+- Advanced analytics, compliance pack, multi-org federation (V3) — accounting & governance detail in **[PRODUCT-V3-ACCOUNTING.md](./PRODUCT-V3-ACCOUNTING.md)**
 
 ---
 
@@ -223,6 +223,7 @@ See README **Getting started** for `VITE_*` variables and Edge Function secrets.
 - **[README.md](../README.md)** — main readme (overview + setup).
 - **[CHANGELOG.md](../CHANGELOG.md)** — Keep a Changelog `[Unreleased]` entries.
 - **[PRODUCT-V2.md](./PRODUCT-V2.md)** — **future** roadmap; distinguish from shipped V2 above.
+- **[PRODUCT-V3-ACCOUNTING.md](./PRODUCT-V3-ACCOUNTING.md)** — V3 accounting & governance module spec.
 - **[mobile/README.md](../mobile/README.md)** — Flutter setup & build.
 - **[mobile/PARITY-ROADMAP.md](./mobile/PARITY-ROADMAP.md)** · **[mobile/FIREBASE-NATIVE-SETUP.md](./mobile/FIREBASE-NATIVE-SETUP.md)** · **[mobile/API-STRATEGY.md](./mobile/API-STRATEGY.md)** — mobile guides.
 

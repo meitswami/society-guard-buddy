@@ -125,6 +125,7 @@ Remove dev `server.url` from `capacitor.config.ts` before production builds.
 | **[docs/VERSION-2-RELEASE.md](./docs/VERSION-2-RELEASE.md)** | V2 features & migration index |
 | **[CHANGELOG.md](./CHANGELOG.md)** | Release history |
 | **[docs/PRODUCT-V2.md](./docs/PRODUCT-V2.md)** | Future roadmap (V2.1–V3) |
+| **[docs/PRODUCT-V3-ACCOUNTING.md](./docs/PRODUCT-V3-ACCOUNTING.md)** | V3 accounting & governance modules (spec) |
 | **[docs/architecture/OVERVIEW.md](./docs/architecture/OVERVIEW.md)** | Architecture & diagrams |
 | **[docs/architecture/FINANCIAL-DATA-FLOW.md](./docs/architecture/FINANCIAL-DATA-FLOW.md)** | Finance traceability |
 | **[docs/architecture/USER-ROLE-MATRIX.md](./docs/architecture/USER-ROLE-MATRIX.md)** | Role × module access |
