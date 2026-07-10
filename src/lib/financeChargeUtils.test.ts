@@ -3,13 +3,13 @@ import {
   buildCurrentMonthChargeTitle,
   isCurrentMonthChargeTitle,
   isMonthlyMaintenanceCharge,
-  normalizeChargeTitle,
+  normalizeTitle,
   paymentMonthValue,
-} from '@/lib/financeChargeUtils';
-import { eventContribRefLabel, isLedgerInSocietyPool } from '@/lib/financeLedgerUtils';
-import type { FinanceLedgerRow } from '@/services/finance/types';
+} from '@/lib/financeChargeHelpers';
+import { eventContribRefLabel, isLedgerInSocietyPool } from '@/lib/financeLedgerDisplay';
+import type { FinanceLedgerRow } from '@/lib/financeManagerTypes';
 
-describe('financeChargeUtils', () => {
+describe('financeChargeHelpers', () => {
   it('detects monthly maintenance charges', () => {
     expect(isMonthlyMaintenanceCharge({ title: 'April Monthly Maintenance', frequency: 'monthly' })).toBe(true);
     expect(isMonthlyMaintenanceCharge({ title: 'Lift repair', frequency: 'once' })).toBe(false);
@@ -22,15 +22,15 @@ describe('financeChargeUtils', () => {
   });
 
   it('normalizes charge titles', () => {
-    expect(normalizeChargeTitle('  Hello World ')).toBe('hello world');
+    expect(normalizeTitle('  Hello World ')).toBe('hello world');
   });
 
   it('derives payment month value from billing date', () => {
-    expect(paymentMonthValue({ due_date: '2026-03-10', created_at: '2026-01-01' })).toBe('2026-03');
+    expect(paymentMonthValue({ due_date: '2026-03-10' })).toBe('2026-03');
   });
 });
 
-describe('financeLedgerUtils', () => {
+describe('financeLedgerDisplay', () => {
   const baseLedger = {
     id: '1',
     society_id: 's1',

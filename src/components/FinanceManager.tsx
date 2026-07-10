@@ -138,10 +138,23 @@ const FinanceManager = ({
   const [headReconciliationKey, setHeadReconciliationKey] = useState(0);
   const [showHeadFundRecon, setShowHeadFundRecon] = useState(false);
   const bumpHeadReconciliation = useCallback(() => setHeadReconciliationKey((k) => k + 1), []);
-  const [expenseCategoryById, setExpenseCategoryById] = useState<Map<string, string>>(new Map());
-  const [charges, setCharges] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [ledgerEntries, setLedgerEntries] = useState<FinanceLedgerRow[]>([]);
+  const {
+    charges,
+    payments,
+    ledgerEntries,
+    expenseCategoryById,
+    flats,
+    primaryByFlatId,
+    societyName,
+    residentUsers,
+    paymentExpenseGroups,
+    setPaymentExpenseGroups,
+    autoReminderEnabled,
+    setAutoReminderEnabled,
+    autoReminderSchedule,
+    setAutoReminderSchedule,
+    loadAll,
+  } = useFinanceManagerData(societyId, adminName);
 
   useEffect(() => {
     if (!initialSubTab) return;
@@ -176,9 +189,7 @@ const FinanceManager = ({
     },
     [expenseCategoryById],
   );
-  const [flats, setFlats] = useState<{ id: string; flat_number: string; owner_name: string | null; is_occupied: boolean | null }[]>([]);
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
-  const [primaryByFlatId, setPrimaryByFlatId] = useState<Map<string, string>>(new Map());
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [form, setForm] = useState({
@@ -190,9 +201,6 @@ const FinanceManager = ({
     expense_group_id: '',
     new_sub_head: '',
   });
-  const [paymentExpenseGroups, setPaymentExpenseGroups] = useState<
-    { id: string; name: string; major_head: string | null }[]
-  >([]);
   const [distributingPoolEntryId, setDistributingPoolEntryId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({
     recordMode: 'flats_only' as 'society_pool' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only',
@@ -232,8 +240,6 @@ const FinanceManager = ({
   const [totalsMonth, setTotalsMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [periodFrom, setPeriodFrom] = useState(defaultFinancePeriodFrom);
   const [periodTo, setPeriodTo] = useState(defaultFinancePeriodTo);
-  const [societyName, setSocietyName] = useState('');
-  const [residentUsers, setResidentUsers] = useState<{ id: string; name: string; flat_number: string; flat_id: string }[]>([]);
   const [reportAudience, setReportAudience] = useState<'all' | 'flats' | 'picked'>('all');
   const [reportFlats, setReportFlats] = useState<string[]>([]);
   const [reportResidentIds, setReportResidentIds] = useState<string[]>([]);
@@ -271,8 +277,6 @@ const FinanceManager = ({
     entry_month: string;
     transaction_date: string;
   } | null>(null);
-  const [autoReminderEnabled, setAutoReminderEnabled] = useState(true);
-  const [autoReminderSchedule, setAutoReminderSchedule] = useState<'once_12pm' | 'twice_12pm_7pm'>('once_12pm');
   const [savingAutoReminder, setSavingAutoReminder] = useState(false);
   const [testingAutoReminder, setTestingAutoReminder] = useState(false);
   const [lastReminderTestStatus, setLastReminderTestStatus] = useState<string>('');
@@ -290,7 +294,7 @@ const FinanceManager = ({
   const [savingOpeningAnchor, setSavingOpeningAnchor] = useState(false);
   useEffect(() => {
     void loadAll();
-  }, [societyId]);
+  }, [loadAll]);
 
   useEffect(() => {
     if (!societyId || subTab !== 'period') return;
@@ -308,143 +312,6 @@ const FinanceManager = ({
     };
     void loadLatestReportBatch();
   }, [societyId, subTab]);
-
-  const loadAll = async () => {
-    if (!societyId) {
-      setCharges([]);
-      setPayments([]);
-      setFlats([]);
-      setPrimaryByFlatId(new Map());
-      setSocietyName('');
-      setResidentUsers([]);
-      return;
-    }
-    const { data: f } = await supabase
-      .from('flats')
-      .select('flat_number, id, owner_name, is_occupied')
-      .eq('society_id', societyId)
-      .order('flat_number');
-    if (f) setFlats(sortFlatsByNumber(f));
-    const flatIds = (f ?? []).map((x) => x.id);
-    const mRes =
-      flatIds.length > 0
-        ? await supabase.from('members').select('flat_id, name').eq('is_primary', true).in('flat_id', flatIds)
-        : { data: [] as { flat_id: string; name: string }[] };
-    const map = new Map<string, string>();
-    for (const row of mRes.data ?? []) {
-      if (row.flat_id && row.name?.trim()) map.set(row.flat_id, row.name.trim());
-    }
-    setPrimaryByFlatId(map);
-
-    const { data: soc } = await supabase.from('societies').select('name').eq('id', societyId).maybeSingle();
-    setSocietyName((soc as { name?: string } | null)?.name ?? '');
-
-    const ruRes =
-      flatIds.length > 0
-        ? await supabase.from('resident_users').select('id, name, flat_number, flat_id').in('flat_id', flatIds).order('flat_number')
-        : { data: [] as { id: string; name: string; flat_number: string; flat_id: string }[] };
-    setResidentUsers((ruRes.data ?? []) as { id: string; name: string; flat_number: string; flat_id: string }[]);
-
-    const { data: reminderSetting } = await (supabase as any)
-      .from('finance_reminder_settings')
-      .select('enabled, schedule')
-      .eq('society_id', societyId)
-      .maybeSingle();
-    if (reminderSetting) {
-      setAutoReminderEnabled(!!reminderSetting.enabled);
-      setAutoReminderSchedule(
-        reminderSetting.schedule === 'twice_12pm_7pm' ? 'twice_12pm_7pm' : 'once_12pm',
-      );
-    } else {
-      setAutoReminderEnabled(true);
-      setAutoReminderSchedule('once_12pm');
-    }
-
-    const { data: c } = await supabase
-      .from('maintenance_charges')
-      .select('*')
-      .eq('society_id', societyId)
-      .order('created_at', { ascending: false });
-    let chargeRows = c ?? [];
-
-    const monthlyMaintenanceCharges = chargeRows.filter(isMonthlyMaintenanceCharge);
-    const hasCurrentMonthCharge = monthlyMaintenanceCharges.some((row) => isCurrentMonthChargeTitle(row.title));
-    const templateCharge = monthlyMaintenanceCharges[0];
-
-    if (!hasCurrentMonthCharge && templateCharge) {
-      const currentTitle = buildCurrentMonthChargeTitle();
-      const looksLikeCurrentChargeAlreadyExists = chargeRows.some(
-        (row) => normalizeTitle(row.title) === normalizeTitle(currentTitle),
-      );
-      if (!looksLikeCurrentChargeAlreadyExists) {
-        const { error: createMonthErr } = await supabase.from('maintenance_charges').insert([
-          {
-            title: currentTitle,
-            amount: Number(templateCharge.amount) || 0,
-            frequency: 'monthly',
-            due_day: Number(templateCharge.due_day) || 1,
-            created_by: adminName,
-            society_id: societyId,
-          },
-        ]);
-        if (!createMonthErr) {
-          const { data: refreshedCharges } = await supabase
-            .from('maintenance_charges')
-            .select('*')
-            .eq('society_id', societyId)
-            .order('created_at', { ascending: false });
-          chargeRows = refreshedCharges ?? chargeRows;
-        }
-      }
-    }
-
-    setCharges(chargeRows);
-
-    const { data: pGroups } = await supabase
-      .from('expense_groups')
-      .select('id, name, major_head')
-      .eq('society_id', societyId)
-      .eq('group_kind', 'general')
-      .order('name');
-    setPaymentExpenseGroups((pGroups ?? []) as { id: string; name: string; major_head: string | null }[]);
-
-    const chargeIds = chargeRows.map((x) => x.id);
-    let payRows: any[] = [];
-    if (chargeIds.length > 0) {
-      const { data: p } = await supabase
-        .from('maintenance_payments')
-        .select('*')
-        .in('charge_id', chargeIds)
-        .order('created_at', { ascending: false })
-        .limit(2500);
-      payRows = p ?? [];
-    }
-    setPayments(payRows);
-
-    const { data: led } = await supabase
-      .from('finance_entries')
-      .select(
-        '*, finance_entry_counterparties(*), finance_entry_allocations(*)',
-      )
-      .eq('society_id', societyId)
-      .order('created_at', { ascending: false })
-      .limit(2500);
-    const ledRows = (led as FinanceLedgerRow[]) ?? [];
-    setLedgerEntries(ledRows);
-
-    const linkedExpenseIds = ledRows.map((e) => e.expense_id).filter((id): id is string => Boolean(id));
-    if (linkedExpenseIds.length > 0) {
-      const { data: expCats } = await supabase
-        .from('expenses')
-        .select('id, expense_category')
-        .in('id', linkedExpenseIds);
-      setExpenseCategoryById(
-        new Map((expCats ?? []).map((row) => [String((row as { id: string }).id), String((row as { expense_category?: string }).expense_category ?? '')])),
-      );
-    } else {
-      setExpenseCategoryById(new Map());
-    }
-  };
 
   const loadFlatReportData = async () => {
     if (!societyId) return;

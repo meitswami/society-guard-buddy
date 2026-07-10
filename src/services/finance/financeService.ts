@@ -1,23 +1,55 @@
 import { supabase } from '@/integrations/supabase/client';
-import { sortFlatsByNumber } from '@/lib/flatMultiSelectOptions';
 import {
   buildCurrentMonthChargeTitle,
   isCurrentMonthChargeTitle,
   isMonthlyMaintenanceCharge,
-  normalizeChargeTitle,
-} from '@/lib/financeChargeUtils';
+  normalizeTitle,
+} from '@/lib/financeChargeHelpers';
 import type {
-  FinanceFlatReportData,
-  FinanceEventReferenceData,
-  FinanceReminderSchedule,
-  MaintenanceChargeRow,
-  SocietyFinanceCoreData,
-} from './types';
+  EventContribRefRow,
+  EventFoodRefRow,
+  FinanceLedgerRow,
+  SocietyFlatRow,
+} from '@/lib/financeManagerTypes';
 import type {
   FinancePeriodLedgerEntry,
   FinancePeriodPayment,
   FinancePeriodReserveTransfer,
 } from '@/lib/financePeriodReport';
+import { sortFlatsByNumber } from '@/lib/flatMultiSelectOptions';
+
+export type FinanceReminderSchedule = 'once_12pm' | 'twice_12pm_7pm';
+
+export type SocietyFinanceCoreData = {
+  flats: SocietyFlatRow[];
+  primaryByFlatId: Record<string, string>;
+  societyName: string;
+  residentUsers: { id: string; name: string; flat_number: string; flat_id: string }[];
+  autoReminderEnabled: boolean;
+  autoReminderSchedule: FinanceReminderSchedule;
+  charges: unknown[];
+  paymentExpenseGroups: { id: string; name: string; major_head: string | null }[];
+  payments: unknown[];
+  ledgerEntries: FinanceLedgerRow[];
+  expenseCategoryById: Record<string, string>;
+};
+
+export type FinanceFlatReportData = {
+  expenses: Array<Record<string, unknown> & { group_name: string }>;
+  splits: Array<Record<string, unknown>>;
+};
+
+export type FinanceEventReferenceData = {
+  contributions: EventContribRefRow[];
+  foodExpenses: EventFoodRefRow[];
+};
+
+export type SocietyFinanceReportData = {
+  payments: FinancePeriodPayment[];
+  ledgerEntries: FinancePeriodLedgerEntry[];
+  expenseCategoryById: Record<string, string>;
+  reserveTransfers: FinancePeriodReserveTransfer[];
+};
 
 const emptyCoreData = (): SocietyFinanceCoreData => ({
   flats: [],
@@ -87,7 +119,7 @@ export async function fetchSocietyFinanceCore(
     .select('*')
     .eq('society_id', societyId)
     .order('created_at', { ascending: false });
-  let charges = (chargeData ?? []) as MaintenanceChargeRow[];
+  let charges = chargeData ?? [];
 
   const monthlyMaintenanceCharges = charges.filter(isMonthlyMaintenanceCharge);
   const hasCurrentMonthCharge = monthlyMaintenanceCharges.some((row) => isCurrentMonthChargeTitle(row.title));
@@ -96,7 +128,7 @@ export async function fetchSocietyFinanceCore(
   if (!hasCurrentMonthCharge && templateCharge) {
     const currentTitle = buildCurrentMonthChargeTitle();
     const looksLikeCurrentChargeAlreadyExists = charges.some(
-      (row) => normalizeChargeTitle(row.title) === normalizeChargeTitle(currentTitle),
+      (row) => normalizeTitle(row.title) === normalizeTitle(currentTitle),
     );
     if (!looksLikeCurrentChargeAlreadyExists) {
       const { error: createMonthErr } = await supabase.from('maintenance_charges').insert([
@@ -115,7 +147,7 @@ export async function fetchSocietyFinanceCore(
           .select('*')
           .eq('society_id', societyId)
           .order('created_at', { ascending: false });
-        charges = (refreshedCharges ?? charges) as MaintenanceChargeRow[];
+        charges = refreshedCharges ?? charges;
       }
     }
   }
@@ -129,7 +161,7 @@ export async function fetchSocietyFinanceCore(
   const paymentExpenseGroups = (paymentGroups ?? []) as SocietyFinanceCoreData['paymentExpenseGroups'];
 
   const chargeIds = charges.map((x) => x.id);
-  let payments: SocietyFinanceCoreData['payments'] = [];
+  let payments: unknown[] = [];
   if (chargeIds.length > 0) {
     const { data: paymentRows, error: paymentError } = await supabase
       .from('maintenance_payments')
@@ -148,7 +180,7 @@ export async function fetchSocietyFinanceCore(
     .order('created_at', { ascending: false })
     .limit(2500);
   if (ledgerError) throw new Error(ledgerError.message);
-  const ledgerEntries = (ledgerRows ?? []) as SocietyFinanceCoreData['ledgerEntries'];
+  const ledgerEntries = (ledgerRows ?? []) as FinanceLedgerRow[];
 
   const expenseCategoryById: Record<string, string> = {};
   const linkedExpenseIds = ledgerEntries.map((e) => e.expense_id).filter((id): id is string => Boolean(id));
@@ -276,14 +308,14 @@ export async function fetchFinanceEventReference(societyId: string): Promise<Fin
   if (expRes.error) throw new Error(expRes.error.message);
 
   const contributions = (contribRes.data ?? []).map((c) => ({
-    ...(c as FinanceEventReferenceData['contributions'][number]),
+    ...(c as EventContribRefRow),
     event_title: eventTitleById.get(String((c as { event_id: string }).event_id)) ?? 'Event',
   }));
 
   const foodExpenses = (expRes.data ?? []).map((ex) => {
     const g = groupById.get(String(ex.group_id));
     return {
-      ...(ex as Omit<FinanceEventReferenceData['foodExpenses'][number], 'group_name' | 'event_title'>),
+      ...(ex as Omit<EventFoodRefRow, 'group_name' | 'event_title'>),
       group_name: g?.name ?? 'Food group',
       event_title: g?.event_id ? eventTitleById.get(String(g.event_id)) ?? null : null,
     };
@@ -291,13 +323,6 @@ export async function fetchFinanceEventReference(societyId: string): Promise<Fin
 
   return { contributions, foodExpenses };
 }
-
-export type SocietyFinanceReportData = {
-  payments: FinancePeriodPayment[];
-  ledgerEntries: FinancePeriodLedgerEntry[];
-  expenseCategoryById: Record<string, string>;
-  reserveTransfers: FinancePeriodReserveTransfer[];
-};
 
 export async function fetchSocietyFinanceReportData(societyId: string): Promise<SocietyFinanceReportData> {
   const { data: chargeRows, error: chargeError } = await supabase
