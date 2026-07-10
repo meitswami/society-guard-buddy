@@ -156,6 +156,21 @@ const FinanceManager = ({
     setAutoReminderSchedule,
     loadAll,
   } = useFinanceManagerData(societyId, adminName);
+  const {
+    expenses: flatReportExpenses,
+    splits: flatReportSplits,
+    isLoading: flatReportLoading,
+  } = useFinanceFlatReport(societyId, subTab === 'flat_report');
+  const {
+    contributions: eventContribRef,
+    foodExpenses: eventFoodRef,
+    isLoading: eventRefLoading,
+  } = useFinanceEventReference(societyId, subTab === 'receipts');
+  const { batchId: latestPeriodReportBatchId } = useFinancePeriodReportBatch(societyId, subTab === 'period');
+
+  useEffect(() => {
+    if (latestPeriodReportBatchId) setLastDeliveryBatchId(latestPeriodReportBatchId);
+  }, [latestPeriodReportBatchId]);
 
   useEffect(() => {
     if (!initialSubTab) return;
