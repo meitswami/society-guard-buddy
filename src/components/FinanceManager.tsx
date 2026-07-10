@@ -48,6 +48,7 @@ import {
   FINANCE_TOTALS_METRICS,
   SUM_INSIGHT_METRICS,
 } from '@/lib/descriptiveMetricCopy';
+import { uploadMaintenanceReceipt, uploadToNotificationMedia } from '@/lib/notificationMediaStorage';
 import ExpenseSplitter from '@/components/ExpenseSplitter';
 import HeadFundReconciliation from '@/components/HeadFundReconciliation';
 import MonthlyOperatingFundPanel from '@/components/MonthlyOperatingFundPanel';
@@ -410,7 +411,7 @@ const ledgerMonthValue = (e: FinanceLedgerRow) => billingMonthFromDate(ledgerTra
 
 const ledgerMonthDisplay = (e: FinanceLedgerRow) => fmtIsoMonthToDisplay(ledgerMonthValue(e));
 
-import { uploadMaintenanceReceipt, uploadToNotificationMedia } from '@/lib/notificationMediaStorage';
+function PeriodMetric({
   metricKey,
   value,
   valueClassName,

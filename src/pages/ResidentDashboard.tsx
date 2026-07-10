@@ -23,6 +23,7 @@ import { useStore } from '@/store/useStore';
 import { isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
 import { useNotificationsRealtimeRevision } from '@/hooks/useNotificationsRealtimeRevision';
 import { notificationVisibleToResident } from '@/lib/notificationAudience';
+import { uploadMaintenanceReceipt } from '@/lib/notificationMediaStorage';
 import { useBiometric } from '@/hooks/useBiometric';
 import { playNotificationAlert } from '@/lib/notificationSounds';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
@@ -82,8 +83,6 @@ const notificationSound = () => {
     }, 350);
   } catch {}
 };
-
-import { uploadMaintenanceReceipt } from '@/lib/notificationMediaStorage';
 
 const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const { t } = useLanguage();

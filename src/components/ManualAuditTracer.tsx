@@ -48,6 +48,8 @@ interface TraceFinding {
 }
 
 import { normalizePaymentChannel } from '@/lib/cashBankChannel';
+
+const ManualAuditTracer = ({ onNavigate }: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [expectedAmount, setExpectedAmount] = useState('');

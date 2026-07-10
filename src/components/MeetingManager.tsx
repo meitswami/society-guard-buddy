@@ -46,6 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { uploadMeetingFile } from '@/lib/notificationMediaStorage';
 
 type MeetingRow = {
   id: string;
@@ -160,7 +161,7 @@ function combineDateAndTimeToIso(dateStr: string, timeStr: string): string {
   return dt.toISOString();
 }
 
-import { uploadMeetingFile } from '@/lib/notificationMediaStorage';
+/** File picker `accept` — images + PDFs (multiple selection in file manager). */
 const MEETING_DOC_ACCEPT =
   'image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.heic,.heif,.tif,.tiff';
 
