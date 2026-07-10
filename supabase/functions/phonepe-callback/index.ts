@@ -31,7 +31,7 @@ function makeReferralCode(name: string, societyId: string): string {
 }
 
 const FULL_ADMIN_PERMS =
-  '{"residents_rw":true,"guards_rw":true,"geofence_rw":true,"finance":true,"donations":true,"splits":true,"events":true,"polls":true,"notifications":true,"parking":true,"visitor":true,"delivery":true,"vehicle":true,"blacklist":true,"directory":true,"quick":true,"report":true,"logs":true,"audit":true,"settings":true,"password":true,"biometric":true}'
+  '{"residents_rw":true,"guards_rw":true,"geofence_rw":true,"finance":true,"fixed_assets":true,"donations":true,"splits":true,"events":true,"meetings":true,"documents":true,"committee":true,"polls":true,"notifications":true,"parking":true,"visitor":true,"delivery":true,"vehicle":true,"blacklist":true,"directory":true,"quick":true,"report":true,"logs":true,"audit":true,"settings":true,"password":true,"biometric":true}'
 
 const SEEDED_ROLES: { role_name: string; slug: string; permissions: string }[] = [
   { role_name: 'Admin', slug: 'admin', permissions: FULL_ADMIN_PERMS },
@@ -39,25 +39,25 @@ const SEEDED_ROLES: { role_name: string; slug: string; permissions: string }[] =
     role_name: 'Treasurer',
     slug: 'treasurer',
     permissions:
-      '{"residents_rw":false,"guards_rw":false,"geofence_rw":false,"finance":true,"donations":true,"splits":true,"events":true,"polls":false,"notifications":true,"parking":false,"visitor":false,"delivery":false,"vehicle":false,"blacklist":false,"directory":true,"quick":false,"report":true,"logs":false,"audit":false,"settings":false,"password":true,"biometric":true}',
+      '{"residents_rw":false,"guards_rw":false,"geofence_rw":false,"finance":true,"fixed_assets":true,"donations":true,"splits":true,"events":true,"meetings":false,"documents":false,"committee":false,"polls":false,"notifications":true,"parking":false,"visitor":false,"delivery":false,"vehicle":false,"blacklist":false,"directory":true,"quick":false,"report":true,"logs":false,"audit":false,"settings":false,"password":true,"biometric":true}',
   },
   {
     role_name: 'President',
     slug: 'president',
     permissions:
-      '{"residents_rw":false,"guards_rw":false,"geofence_rw":false,"finance":false,"donations":false,"splits":false,"events":true,"polls":true,"notifications":true,"parking":true,"visitor":false,"delivery":false,"vehicle":false,"blacklist":false,"directory":true,"quick":false,"report":true,"logs":true,"audit":true,"settings":false,"password":true,"biometric":true}',
+      '{"residents_rw":false,"guards_rw":false,"geofence_rw":false,"finance":false,"fixed_assets":false,"donations":false,"splits":false,"events":true,"meetings":true,"documents":true,"committee":true,"polls":true,"notifications":true,"parking":true,"visitor":false,"delivery":false,"vehicle":false,"blacklist":false,"directory":true,"quick":false,"report":true,"logs":true,"audit":true,"settings":false,"password":true,"biometric":true}',
   },
   {
     role_name: 'Vice-President',
     slug: 'vice_president',
     permissions:
-      '{"residents_rw":false,"guards_rw":false,"geofence_rw":false,"finance":false,"donations":false,"splits":false,"events":true,"polls":true,"notifications":true,"parking":true,"visitor":false,"delivery":false,"vehicle":false,"blacklist":false,"directory":true,"quick":false,"report":true,"logs":true,"audit":false,"settings":false,"password":true,"biometric":true}',
+      '{"residents_rw":false,"guards_rw":false,"geofence_rw":false,"finance":false,"fixed_assets":false,"donations":false,"splits":false,"events":true,"meetings":true,"documents":true,"committee":true,"polls":true,"notifications":true,"parking":true,"visitor":false,"delivery":false,"vehicle":false,"blacklist":false,"directory":true,"quick":false,"report":true,"logs":true,"audit":false,"settings":false,"password":true,"biometric":true}',
   },
   {
     role_name: 'Secretary',
     slug: 'secretary',
     permissions:
-      '{"residents_rw":false,"guards_rw":false,"geofence_rw":false,"finance":false,"donations":false,"splits":false,"events":true,"polls":true,"notifications":true,"parking":false,"visitor":false,"delivery":false,"vehicle":false,"blacklist":false,"directory":true,"quick":false,"report":false,"logs":false,"audit":false,"settings":false,"password":true,"biometric":true}',
+      '{"residents_rw":false,"guards_rw":false,"geofence_rw":false,"finance":false,"fixed_assets":false,"donations":false,"splits":false,"events":true,"meetings":true,"documents":true,"committee":true,"polls":true,"notifications":true,"parking":false,"visitor":false,"delivery":false,"vehicle":false,"blacklist":false,"directory":true,"quick":false,"report":false,"logs":false,"audit":false,"settings":false,"password":true,"biometric":true}',
   },
 ]
 
