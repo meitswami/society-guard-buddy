@@ -10,7 +10,7 @@ export async function invalidateFinanceQueries(
     queryClient.invalidateQueries({ queryKey: financeQueryKeys.core(societyId) }),
     queryClient.invalidateQueries({ queryKey: financeQueryKeys.flatReport(societyId) }),
     queryClient.invalidateQueries({ queryKey: financeQueryKeys.eventReference(societyId) }),
-    queryClient.invalidateQueries({ queryKey: financeQueryKeys.periodReport(societyId) }),
+    queryClient.invalidateQueries({ queryKey: [...financeQueryKeys.all, 'module-aggregations', societyId] }),
     queryClient.invalidateQueries({ queryKey: financeQueryKeys.periodReportBatch(societyId) }),
   ]);
   await queryClient.refetchQueries({ queryKey: financeQueryKeys.all, type: 'active' });

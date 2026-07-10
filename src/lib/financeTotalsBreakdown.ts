@@ -3,6 +3,7 @@ import { addToChannel, type ChannelTotals } from '@/lib/cashBankChannel';
 import { financeExpenseHeadFromLedgerEntry } from '@/lib/financeExpenseHead';
 import { ledgerMonthValue } from '@/lib/financeLedgerDisplay';
 import type { FinanceLedgerRow } from '@/lib/financeManagerTypes';
+import { computeLedgerInflowGroups } from '@/lib/reportAggregations';
 
 export type TotalsInflowRow = {
   mode: string;
@@ -25,25 +26,24 @@ export function computeTotalsInflowBreakdown(
   ledgerEntries: FinanceLedgerRow[],
   totalsMonth: string,
 ): TotalsInflowRow[] {
-  const map = new Map<string, { total: number; flatUnits: number; entries: number; byChannel: ChannelTotals }>();
-  for (const e of ledgerEntries) {
-    const m = ledgerMonthValue(e);
-    if (m !== totalsMonth) continue;
-    if (e.destination === 'separate_entry') continue;
-    const k = `${e.record_mode}||${e.destination}`;
-    const cur = map.get(k) ?? { total: 0, flatUnits: 0, entries: 0, byChannel: { cash: 0, bank: 0, other: 0 } };
-    const amt = Number(e.total_amount || 0);
-    cur.total += amt;
-    cur.flatUnits += Number(e.aggregate_flat_count || 0);
-    cur.entries += 1;
-    addToChannel(cur.byChannel, e.payment_method, amt);
-    map.set(k, cur);
-  }
-  return [...map.entries()]
-    .map(([k, v]) => {
-      const [mode, destination] = k.split('||');
-      return { mode, destination, ...v };
-    })
+  const filtered = ledgerEntries.filter((e) => ledgerMonthValue(e) === totalsMonth);
+  return computeLedgerInflowGroups(filtered, { excludeSeparateEntry: true })
+    .map((g) => ({
+      mode: g.record_mode,
+      destination: g.destination,
+      total: g.total,
+      flatUnits: g.flatUnits,
+      entries: g.count,
+      byChannel: filtered
+        .filter((e) => `${e.record_mode}||${e.destination}` === `${g.record_mode}||${g.destination}`)
+        .reduce(
+          (acc, e) => {
+            addToChannel(acc, e.payment_method, Number(e.total_amount || 0));
+            return acc;
+          },
+          { cash: 0, bank: 0, other: 0 } as ChannelTotals,
+        ),
+    }))
     .sort((a, b) => `${a.mode}${a.destination}`.localeCompare(`${b.mode}${b.destination}`));
 }
 

@@ -55,6 +55,7 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
     societyName: query.data?.societyName ?? '',
     residentUsers: query.data?.residentUsers ?? [],
     paymentExpenseGroups: query.data?.paymentExpenseGroups ?? [],
+    reserveTransfers: query.data?.reserveTransfers ?? [],
     autoReminderEnabled,
     setAutoReminderEnabled,
     autoReminderSchedule,

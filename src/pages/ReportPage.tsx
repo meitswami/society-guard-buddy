@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart3, Calendar, CalendarRange, Users, Car, Truck, Shield, IndianRupee, Heart, Split, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench, Search } from 'lucide-react';
@@ -11,11 +10,10 @@ import CashFlowStatement from '@/components/CashFlowStatement';
 import FinancePeriodHeadTables from '@/components/FinancePeriodHeadTables';
 import { FinanceFlatReportTab } from '@/components/finance/FinanceFlatReportTab';
 import { DateInput } from '@/components/DateInput';
-import { useSocietyFinanceReportData } from '@/hooks/useSocietyFinanceReportData';
+import { useSocietyFinanceData } from '@/hooks/useSocietyFinanceData';
+import { useReportModuleAggregations } from '@/hooks/useReportModuleAggregations';
 import { useSocietyOpeningBalanceAnchors } from '@/hooks/useSocietyOpeningBalanceAnchors';
 import { useFinanceFlatReport } from '@/hooks/finance/useFinanceFlatReport';
-import { financeQueryKeys } from '@/hooks/finance/financeQueryKeys';
-import { fetchSocietyFinanceCoreSafe } from '@/services/finance/financeService';
 import { buildFlatReportRows } from '@/lib/financeFlatReport';
 import {
   computeFinancePeriodReport,
@@ -23,9 +21,13 @@ import {
   defaultFinancePeriodTo,
   FINANCE_REPORTING_EARLIEST_MONTH,
 } from '@/lib/financePeriodReport';
-import { buildPeriodStatementEntries, filterStatementByChannel } from '@/lib/cashFlowStatement';
 import { dateInInclusiveRange, ledgerTransactionDate } from '@/lib/financeDates';
 import { formatLedgerFieldLabel } from '@/lib/financeLedgerDisplay';
+import {
+  computeLedgerInflowGroups,
+  computeLedgerStatusBuckets,
+  filterLedgerByTransactionDateRange,
+} from '@/lib/reportAggregations';
 import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
 import { REPORT_MAINTENANCE_METRICS, REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
 import ExportFormatMenu from '@/components/ExportFormatMenu';
@@ -81,15 +83,6 @@ const ReportPage = ({
   const [customPeriodFrom, setCustomPeriodFrom] = useState(defaultFinancePeriodFrom);
   const [customPeriodTo, setCustomPeriodTo] = useState(defaultFinancePeriodTo);
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
-  const [ledgerStatuses, setLedgerStatuses] = useState<{ payment_status: string; count: number; total: number }[]>([]);
-  const [maintenanceStatuses, setMaintenanceStatuses] = useState<{ payment_status: string; count: number; total: number }[]>([]);
-  const [maintenanceLinkSummary, setMaintenanceLinkSummary] = useState<{
-    linked: { count: number; total: number };
-    unlinked: { count: number; total: number };
-  } | null>(null);
-  const [donationStatuses, setDonationStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
-  const [splitStatuses, setSplitStatuses] = useState<{ status: string; count: number; total: number }[]>([]);
-  const [societyName, setSocietyName] = useState('Society');
   const [flatReportFrom, setFlatReportFrom] = useState(defaultFinancePeriodFrom);
   const [flatReportTo, setFlatReportTo] = useState(defaultFinancePeriodTo);
   const [flatReportSelectedFlat, setFlatReportSelectedFlat] = useState('all');
@@ -100,24 +93,6 @@ const ReportPage = ({
   const [modalSubtitle, setModalSubtitle] = useState('');
   const [modalTotal, setModalTotal] = useState<number | undefined>(undefined);
   const [modalRows, setModalRows] = useState<ReportDetailRow[]>([]);
-
-  const { payments, societyLedgerEntries, expenseCategoryById, reserveTransfers, loading: financeLoading } =
-    useSocietyFinanceReportData(societyId);
-  const { anchors: openingBalanceAnchors } = useSocietyOpeningBalanceAnchors(societyId);
-  const financeCore = useQuery({
-    queryKey: financeQueryKeys.core(societyId),
-    queryFn: () => fetchSocietyFinanceCoreSafe(societyId, 'Report'),
-    enabled: Boolean(societyId) && activeTab === 'financial',
-  });
-  const {
-    expenses: flatReportExpenses,
-    splits: flatReportSplits,
-    isLoading: flatReportLoading,
-  } = useFinanceFlatReport(societyId, activeTab === 'financial');
-  const primaryByFlatId = useMemo(
-    () => new Map(Object.entries(financeCore.data?.primaryByFlatId ?? {})),
-    [financeCore.data?.primaryByFlatId],
-  );
 
   // Derived date range from month
   const monthDate = useMemo(() => parse(`${reportMonth}-01`, 'yyyy-MM-dd', new Date()), [reportMonth]);
@@ -130,6 +105,32 @@ const ReportPage = ({
     statementPeriodMode === 'monthly'
       ? fmtIsoMonthToDisplay(reportMonth)
       : `${fmtIsoDateToDisplay(statementPeriodFrom)} – ${fmtIsoDateToDisplay(statementPeriodTo)}`;
+
+  const {
+    payments,
+    societyLedgerEntries,
+    expenseCategoryById,
+    reserveTransfers,
+    loading: financeLoading,
+    societyName,
+    flats,
+    charges,
+    ledgerEntries,
+    primaryByFlatId,
+    isLoading: financeCoreLoading,
+  } = useSocietyFinanceData(societyId, 'Report');
+  const { anchors: openingBalanceAnchors } = useSocietyOpeningBalanceAnchors(societyId);
+  const {
+    maintenanceStatuses,
+    maintenanceLinkSummary,
+    donationStatuses,
+    splitStatuses,
+  } = useReportModuleAggregations(societyId, statementPeriodFrom, statementPeriodTo, activeTab === 'financial');
+  const {
+    expenses: flatReportExpenses,
+    splits: flatReportSplits,
+    isLoading: flatReportLoading,
+  } = useFinanceFlatReport(societyId, activeTab === 'financial');
 
   useEffect(() => {
     setFlatReportFrom(statementPeriodFrom);
@@ -148,105 +149,6 @@ const ReportPage = ({
     };
     loadShifts();
   }, [monthFrom, monthTo, societyId]);
-
-  useEffect(() => {
-    const loadSocietyName = async () => {
-      if (!societyId) {
-        setSocietyName('Society');
-        return;
-      }
-      const { data } = await supabase.from('societies').select('name').eq('id', societyId).maybeSingle();
-      setSocietyName(data?.name?.trim() || 'Society');
-    };
-    void loadSocietyName();
-  }, [societyId]);
-
-  useEffect(() => {
-    const loadFinance = async () => {
-      if (!societyId || statementPeriodFrom > statementPeriodTo) {
-        setLedgerStatuses([]); setMaintenanceStatuses([]);
-        setMaintenanceLinkSummary(null); setDonationStatuses([]); setSplitStatuses([]);
-        return;
-      }
-      const from = `${statementPeriodFrom}T00:00:00`;
-      const to = `${statementPeriodTo}T23:59:59`;
-
-      // Maintenance
-      const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', societyId);
-      const chargeIds = (chargeRows as { id: string }[] | null)?.map((c) => c.id) ?? [];
-      if (!chargeIds.length) {
-        setMaintenanceStatuses([]); setMaintenanceLinkSummary(null);
-      } else {
-        const { data: mpRows } = await supabase
-          .from('maintenance_payments')
-          .select('payment_status, amount, finance_entry_id')
-          .in('charge_id', chargeIds)
-          .gte('due_date', statementPeriodFrom)
-          .lte('due_date', statementPeriodTo);
-        const maintMap = new Map<string, { count: number; total: number }>();
-        let linkedCount = 0, linkedTotal = 0, unlinkedCount = 0, unlinkedTotal = 0;
-        for (const p of (mpRows as { payment_status?: string; amount: number; finance_entry_id: string | null }[] | null) ?? []) {
-          const st = String(p.payment_status ?? 'pending');
-          const amt = Number(p.amount || 0);
-          const cur = maintMap.get(st) ?? { count: 0, total: 0 };
-          cur.count += 1; cur.total += amt; maintMap.set(st, cur);
-          if (p.finance_entry_id) { linkedCount += 1; linkedTotal += amt; }
-          else { unlinkedCount += 1; unlinkedTotal += amt; }
-        }
-        setMaintenanceStatuses([...maintMap.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
-        const n = (mpRows ?? []).length;
-        setMaintenanceLinkSummary(n > 0 ? { linked: { count: linkedCount, total: linkedTotal }, unlinked: { count: unlinkedCount, total: unlinkedTotal } } : null);
-      }
-
-      // Donations
-      const { data: campRows } = await supabase.from('donation_campaigns').select('id').eq('society_id', societyId);
-      const campIds = (campRows as { id: string }[] | null)?.map((c) => c.id) ?? [];
-      if (!campIds.length) { setDonationStatuses([]); }
-      else {
-        const { data: dp } = await supabase
-          .from('donation_payments')
-          .select('amount, verified_at, created_at')
-          .in('campaign_id', campIds)
-          .gte('created_at', from).lte('created_at', to);
-        const dMap = new Map<string, { count: number; total: number }>();
-        for (const p of (dp as { amount: number; verified_at: string | null }[] | null) ?? []) {
-          const st = p.verified_at ? 'verified' : 'pending';
-          const cur = dMap.get(st) ?? { count: 0, total: 0 };
-          cur.count += 1; cur.total += Number(p.amount || 0); dMap.set(st, cur);
-        }
-        setDonationStatuses([...dMap.entries()].map(([status, v]) => ({ status, ...v })));
-      }
-
-      // Society payments (Record payment) — not event food
-      const { data: groups } = await supabase
-        .from('expense_groups')
-        .select('id')
-        .eq('society_id', societyId)
-        .eq('group_kind', 'general');
-      const groupIds = (groups as { id: string }[] | null)?.map((g) => g.id) ?? [];
-      if (!groupIds.length) { setSplitStatuses([]); }
-      else {
-        const { data: ex } = await supabase
-          .from('expenses').select('id, expense_date, record_status, group_id')
-          .in('group_id', groupIds).eq('record_status', 'active').eq('expense_category', 'payment')
-          .gte('expense_date', statementPeriodFrom).lte('expense_date', statementPeriodTo);
-        const expIds = (ex as { id: string }[] | null)?.map((x) => x.id) ?? [];
-        if (!expIds.length) { setSplitStatuses([]); }
-        else {
-          const { data: splits } = await supabase
-            .from('expense_splits').select('amount, is_settled').in('expense_id', expIds);
-          const sMap = new Map<string, { count: number; total: number }>();
-          for (const s of (splits as { amount: number; is_settled: boolean }[] | null) ?? []) {
-            const st = s.is_settled ? 'settled' : 'pending';
-            const cur = sMap.get(st) ?? { count: 0, total: 0 };
-            cur.count += 1; cur.total += Number(s.amount || 0); sMap.set(st, cur);
-          }
-          setSplitStatuses([...sMap.entries()].map(([status, v]) => ({ status, ...v })));
-        }
-      }
-    };
-    void loadFinance();
-  }, [societyId, statementPeriodFrom, statementPeriodTo]);
 
   // Visitors for the selected month
   const monthVisitors = useMemo(() => visitors.filter(v => v.entryTime.startsWith(reportMonth)), [visitors, reportMonth]);
@@ -273,23 +175,25 @@ const ReportPage = ({
 
   const flatReportRows = useMemo(
     () =>
-      activeTab === 'financial' && financeCore.data
+      activeTab === 'financial' && flats.length > 0
         ? buildFlatReportRows({
             from: flatReportFrom,
             to: flatReportTo,
             selectedFlat: flatReportSelectedFlat,
             payments,
-            ledgerEntries: financeCore.data.ledgerEntries,
+            ledgerEntries,
             flatReportExpenses,
             flatReportSplits,
-            flats: financeCore.data.flats,
+            flats,
             primaryByFlatId,
-            charges: financeCore.data.charges,
+            charges,
           })
         : [],
     [
       activeTab,
-      financeCore.data,
+      flats,
+      charges,
+      ledgerEntries,
       flatReportFrom,
       flatReportTo,
       flatReportSelectedFlat,
@@ -300,60 +204,28 @@ const ReportPage = ({
     ],
   );
 
-  const periodStatementEntries = useMemo(
+  const periodFinanceEntries = useMemo(
     () =>
       statementPeriodFrom > statementPeriodTo
         ? []
-        : buildPeriodStatementEntries({
-            periodFrom: statementPeriodFrom,
-            periodTo: statementPeriodTo,
-            payments,
-            ledgerEntries: societyLedgerEntries,
-            reserveTransfers,
-            expenseCategoryById,
-          }),
-    [statementPeriodFrom, statementPeriodTo, payments, societyLedgerEntries, reserveTransfers, expenseCategoryById],
+        : filterLedgerByTransactionDateRange(societyLedgerEntries, statementPeriodFrom, statementPeriodTo),
+    [societyLedgerEntries, statementPeriodFrom, statementPeriodTo],
   );
-
-  const periodFinanceEntries = useMemo(() => {
-    if (statementPeriodFrom > statementPeriodTo) return [];
-    return societyLedgerEntries.filter((e) =>
-      dateInInclusiveRange(ledgerTransactionDate(e), statementPeriodFrom, statementPeriodTo),
-    );
-  }, [societyLedgerEntries, statementPeriodFrom, statementPeriodTo]);
 
   const searchedPeriodFinanceEntries = useMemo(
     () => filterLedgerEntries(periodFinanceEntries, searchQuery),
     [periodFinanceEntries, searchQuery],
   );
 
-  useEffect(() => {
-    const map = new Map<string, { count: number; total: number }>();
-    for (const e of searchedPeriodFinanceEntries) {
-      const st = String(e.payment_status ?? 'verified');
-      const cur = map.get(st) ?? { count: 0, total: 0 };
-      cur.count += 1;
-      cur.total += Number(e.total_amount || 0);
-      map.set(st, cur);
-    }
-    setLedgerStatuses([...map.entries()].map(([payment_status, v]) => ({ payment_status, ...v })));
-  }, [searchedPeriodFinanceEntries]);
+  const ledgerStatuses = useMemo(
+    () => computeLedgerStatusBuckets(searchedPeriodFinanceEntries),
+    [searchedPeriodFinanceEntries],
+  );
 
-  const financeGroups = useMemo(() => {
-    const map = new Map<string, { total: number; flatUnits: number; count: number }>();
-    for (const e of searchedPeriodFinanceEntries) {
-      const key = `${e.record_mode}||${e.destination}`;
-      const cur = map.get(key) ?? { total: 0, flatUnits: 0, count: 0 };
-      cur.total += Number(e.total_amount || 0);
-      cur.flatUnits += Number(e.aggregate_flat_count || 0);
-      cur.count += 1;
-      map.set(key, cur);
-    }
-    return [...map.entries()].map(([k, v]) => {
-      const [record_mode, destination] = k.split('||');
-      return { record_mode, destination, ...v };
-    });
-  }, [searchedPeriodFinanceEntries]);
+  const financeGroups = useMemo(
+    () => computeLedgerInflowGroups(searchedPeriodFinanceEntries),
+    [searchedPeriodFinanceEntries],
+  );
 
   const financePeriodTotal = useMemo(() => financeGroups.reduce((s, g) => s + g.total, 0), [financeGroups]);
 
@@ -402,58 +274,6 @@ const ReportPage = ({
         return t('report.searchPlaceholderAll');
     }
   }, [activeTab, t]);
-
-  const statementEntriesToRows = (entries: ReturnType<typeof buildPeriodStatementEntries>): ReportDetailRow[] =>
-    entries.map((e) => ({
-      id: e.id,
-      label: e.label,
-      sublabel: e.sublabel,
-      amount: e.amount,
-      date: fmtDate(e.date),
-      dateIso: e.date,
-      status: e.type === 'expense' ? 'expense' : 'receipt',
-    }));
-
-  // Modal openers — same entry sources as Finance → Period report
-  const openCashInHandModal = () => {
-    if (!periodReport) return;
-    const rows = statementEntriesToRows(filterStatementByChannel(periodStatementEntries, 'cash'));
-    setModalTitle('Cash In Hand — Breakdown');
-    setModalSubtitle(`Verified transactions for ${statementPeriodLabel}`);
-    setModalTotal(periodReport.cashInHand);
-    setModalRows(rows);
-    setModalOpen(true);
-  };
-
-  const openBankBalanceModal = () => {
-    if (!periodReport) return;
-    const rows = statementEntriesToRows(filterStatementByChannel(periodStatementEntries, 'bank'));
-    setModalTitle('Balance In Bank — Breakdown');
-    setModalSubtitle(`Verified bank/UPI transactions for ${statementPeriodLabel}`);
-    setModalTotal(periodReport.cashInBank);
-    setModalRows(rows);
-    setModalOpen(true);
-  };
-
-  const openOtherNetModal = () => {
-    if (!periodReport) return;
-    const rows = statementEntriesToRows(filterStatementByChannel(periodStatementEntries, 'other'));
-    setModalTitle('Other Net — Breakdown');
-    setModalSubtitle(`Other payment channel transactions for ${statementPeriodLabel}`);
-    setModalTotal(periodReport.otherNet);
-    setModalRows(rows);
-    setModalOpen(true);
-  };
-
-  const openTotalBalanceModal = () => {
-    if (!periodReport) return;
-    const rows = statementEntriesToRows(periodStatementEntries);
-    setModalTitle('Total Balance — All Verified');
-    setModalSubtitle(`All verified entries for ${statementPeriodLabel}`);
-    setModalTotal(periodReport.totalBalance);
-    setModalRows(rows);
-    setModalOpen(true);
-  };
 
   const openMonthFinanceModal = () => {
     const rows: ReportDetailRow[] = searchedMonthFinanceEntries.map((e) => ({
@@ -759,52 +579,6 @@ const ReportPage = ({
       {/* ═══ FINANCIAL REPORTS TAB ═══ */}
       {activeTab === 'financial' && (
         <div>
-          {/* Net Summary - Clickable Boxes */}
-          <div className="mb-4 rounded-lg border border-border bg-card/40 p-3">
-            <p className="text-[11px] font-medium text-foreground mb-2">{t('report.financeNetTitle')}</p>
-            <p className="text-[10px] text-muted-foreground mb-2">
-              Period net for {fmtIsoMonthToDisplay(reportMonth)} — same range as head-wise and flat reports below
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <DescriptiveStatCard
-                {...REPORT_PAGE_METRICS.reportCashInHand}
-                caption={t('report.cashInHand')}
-                value={`₹${periodReport.cashInHand.toLocaleString('en-IN')}`}
-                valueClassName="text-sm font-mono"
-                onNavigate={openCashInHandModal}
-                navigateLabel="View entries"
-                className="!p-2.5 rounded-md border border-border/80 bg-background/60 shadow-none"
-              />
-              <DescriptiveStatCard
-                {...REPORT_PAGE_METRICS.reportCashInBank}
-                caption={t('report.balanceInBank')}
-                value={`₹${periodReport.cashInBank.toLocaleString('en-IN')}`}
-                valueClassName="text-sm font-mono"
-                onNavigate={openBankBalanceModal}
-                navigateLabel="View entries"
-                className="!p-2.5 rounded-md border border-border/80 bg-background/60 shadow-none"
-              />
-              <DescriptiveStatCard
-                {...REPORT_PAGE_METRICS.reportOtherNet}
-                caption={t('report.otherNet')}
-                value={`₹${periodReport.otherNet.toLocaleString('en-IN')}`}
-                valueClassName="text-sm font-mono"
-                onNavigate={openOtherNetModal}
-                navigateLabel="View entries"
-                className="!p-2.5 rounded-md border border-border/80 bg-background/60 shadow-none"
-              />
-              <DescriptiveStatCard
-                {...REPORT_PAGE_METRICS.reportTotalBalance}
-                caption={t('report.totalBalance')}
-                value={`₹${periodReport.totalBalance.toLocaleString('en-IN')}`}
-                valueClassName="text-sm font-mono text-primary"
-                onNavigate={openTotalBalanceModal}
-                navigateLabel="View entries"
-                className="!p-2.5 rounded-md border border-primary/30 bg-primary/5 shadow-none"
-              />
-            </div>
-          </div>
-
           {periodReport && (
             <div className="mb-4">
               <p className="text-[11px] font-medium text-foreground mb-2">Head-wise breakdown</p>
@@ -815,7 +589,7 @@ const ReportPage = ({
             </div>
           )}
 
-          {activeTab === 'financial' && financeCore.data && (
+          {flats.length > 0 && (
             <div className="mb-4">
               <FinanceFlatReportTab
                 from={flatReportFrom}
@@ -824,9 +598,9 @@ const ReportPage = ({
                 onFromChange={setFlatReportFrom}
                 onToChange={setFlatReportTo}
                 onSelectedFlatChange={setFlatReportSelectedFlat}
-                flats={financeCore.data.flats}
+                flats={flats}
                 primaryByFlatId={primaryByFlatId}
-                isLoading={flatReportLoading || financeCore.isLoading}
+                isLoading={flatReportLoading || financeCoreLoading}
                 rows={flatReportRows}
               />
             </div>
