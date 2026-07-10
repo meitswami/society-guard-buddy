@@ -86,11 +86,14 @@ import {
   paymentVerifiedAtOrDate,
   transactionHeadSummaryRows,
 } from '@/lib/financeLedgerDisplay';
+import { buildFlatReportRows } from '@/lib/financeFlatReport';
 import {
+  emptyMaintenanceChargeForm,
   type EventContribRefRow,
   type EventFoodRefRow,
   type FinanceLedgerRow,
   type FinanceSubTab,
+  type MaintenanceChargeFormState,
   type TransactionHeadModalLayer,
   type TransactionHeadSummaryRow,
   type UnpaidFlatGridRow,
@@ -208,15 +211,7 @@ const FinanceManager = ({
   const [includeVacantFlats, setIncludeVacantFlats] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [form, setForm] = useState({
-    title: '',
-    amount: '',
-    frequency: 'monthly',
-    due_day: '1',
-    major_head: '' as SocietyPaymentMajorHead | '',
-    expense_group_id: '',
-    new_sub_head: '',
-  });
+  const [form, setForm] = useState<MaintenanceChargeFormState>(emptyMaintenanceChargeForm);
   const [distributingPoolEntryId, setDistributingPoolEntryId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({
     recordMode: 'flats_only' as 'society_pool' | 'flats_only' | 'flats_plus_outsider' | 'outsider_only',
