@@ -22,6 +22,7 @@ import AdminPasswordChange from '@/components/AdminPasswordChange';
 import BiometricSetup from '@/components/BiometricSetup';
 import AuditLogViewer from '@/components/AuditLogViewer';
 import FinanceManager, { type FinanceSubTab } from '@/components/FinanceManager';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import DonationManager from '@/components/DonationManager';
 import EventsModule from '@/components/EventsModule';
 import PollManager from '@/components/PollManager';
@@ -509,12 +510,14 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'audit': return <AuditLogViewer onNavigate={setActiveTab} adminName={admin.name} />;
       case 'finance':
         return (
-          <FinanceManager
-            adminName={admin.name}
-            adminId={admin.id}
-            initialSubTab={financeInitialSubTab ?? undefined}
-            onInitialSubTabConsumed={() => setFinanceInitialSubTab(null)}
-          />
+          <ErrorBoundary title="Finance module error" onReset={() => setFinanceInitialSubTab(null)}>
+            <FinanceManager
+              adminName={admin.name}
+              adminId={admin.id}
+              initialSubTab={financeInitialSubTab ?? undefined}
+              onInitialSubTabConsumed={() => setFinanceInitialSubTab(null)}
+            />
+          </ErrorBoundary>
         );
       case 'donations': return <DonationManager adminName={admin.name} />;
       case 'events':

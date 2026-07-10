@@ -79,6 +79,7 @@ import {
   dateInInclusiveRange,
   eventContribRefLabel,
   isLedgerInSocietyPool,
+  formatLedgerFieldLabel,
   ledgerMonthDisplay,
   ledgerMonthValue,
   paymentMonthLabel,
@@ -208,10 +209,7 @@ const FinanceManager = ({
   const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   const scrollToRecordReceiptPanel = useCallback(() => {
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      recordReceiptPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }));
   }, []);
 
   useEffect(() => {
@@ -1792,7 +1790,7 @@ const FinanceManager = ({
           row: {
             id: `ledger-${e.id}`,
             label: e.title || 'Finance entry',
-            sublabel: `${e.record_mode.replace(/_/g, ' ')} · ${e.destination.replace(/_/g, ' ')}`,
+            sublabel: `${formatLedgerFieldLabel(e.record_mode)} · ${formatLedgerFieldLabel(e.destination)}`,
             amount: Number(e.total_amount || 0),
             date: fmtDate(e.created_at),
             dateIso: String(e.created_at ?? ''),
@@ -1844,7 +1842,7 @@ const FinanceManager = ({
           row: {
             id: `ledger-${e.id}`,
             label: e.title || 'Society payment',
-            sublabel: `${e.record_mode.replace(/_/g, ' ')} · ${e.destination.replace(/_/g, ' ')}`,
+            sublabel: `${formatLedgerFieldLabel(e.record_mode)} · ${formatLedgerFieldLabel(e.destination)}`,
             amount: Number(e.total_amount || 0),
             date: fmtDate(e.created_at),
             dateIso: String(e.created_at ?? ''),
@@ -1899,8 +1897,8 @@ const FinanceManager = ({
         const cp = Array.isArray(rawCp) ? rawCp[0] : rawCp;
         const detailRows: ReportDetailRow[] = [
           { id: 'd-title', label: 'Title', sublabel: e.title || '—' },
-          { id: 'd-mode', label: 'Record mode', sublabel: e.record_mode.replace(/_/g, ' ') },
-          { id: 'd-dest', label: 'Destination', sublabel: e.destination.replace(/_/g, ' ') },
+          { id: 'd-mode', label: 'Record mode', sublabel: formatLedgerFieldLabel(e.record_mode) },
+          { id: 'd-dest', label: 'Destination', sublabel: formatLedgerFieldLabel(e.destination) },
           { id: 'd-amt', label: 'Amount', amount: Number(e.total_amount || 0) },
           { id: 'd-month', label: 'Entry month', sublabel: ledgerMonthDisplay(e) },
           { id: 'd-flats', label: 'Flats in entry', sublabel: String(e.aggregate_flat_count) },
@@ -3496,7 +3494,7 @@ const FinanceManager = ({
                             </p>
                             <p className="text-sm font-semibold truncate">{item.e.title || 'Finance entry'}</p>
                             <p className="text-[10px] text-muted-foreground">
-                              {item.e.record_mode.replace(/_/g, ' ')} · {item.e.destination.replace(/_/g, ' ')}
+                              {formatLedgerFieldLabel(item.e.record_mode)} · {formatLedgerFieldLabel(item.e.destination)}
                             </p>
                             {(() => {
                               const rawCp = item.e.finance_entry_counterparties;

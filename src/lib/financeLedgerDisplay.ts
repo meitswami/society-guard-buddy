@@ -11,6 +11,12 @@ export const ledgerMonthValue = (e: FinanceLedgerRow) => billingMonthFromDate(le
 
 export const ledgerMonthDisplay = (e: FinanceLedgerRow) => fmtIsoMonthToDisplay(ledgerMonthValue(e));
 
+/** Human-readable ledger enum (record_mode, destination, etc.) — safe when DB value is null. */
+export function formatLedgerFieldLabel(value?: string | null, fallback = '—'): string {
+  if (!value) return fallback;
+  return value.replace(/_/g, ' ');
+}
+
 export const paymentMonthLabel = (payment: { payment_date?: string; verified_at?: string; created_at?: string }) => {
   const raw = paymentBillingDate(payment);
   if (!raw) return 'Unknown month';
