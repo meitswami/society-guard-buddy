@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Bell,
   Calendar,
@@ -61,6 +61,10 @@ const DEFAULT_DISPLAY_LIMIT = 50;
 const Flat360ProfilePanel = ({ params, className, compact = false }: Flat360ProfilePanelProps) => {
   const [displayLimit, setDisplayLimit] = useState(DEFAULT_DISPLAY_LIMIT);
   const { profile, loading, error, reload } = useFlat360Profile(params);
+
+  useEffect(() => {
+    setDisplayLimit(DEFAULT_DISPLAY_LIMIT);
+  }, [params.societyId, params.flatId, params.flatNumber]);
 
   if (loading && !profile) {
     return (

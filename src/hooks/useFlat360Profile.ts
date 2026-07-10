@@ -28,7 +28,6 @@ export function useFlat360Profile(params: Flat360FetchParams | null) {
     params?.flatId,
     params?.flatNumber,
     params?.monthsBack,
-    params?.timelineLimit,
     params?.includeVisitors,
     params?.residentContext?.id,
     params?.residentContext?.name,
