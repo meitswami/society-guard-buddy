@@ -101,4 +101,5 @@ export type TabType =
   | 'report'
   | 'settings'
   | 'tour'
-  | 'emergency';
+  | 'emergency'
+  | 'duty';
