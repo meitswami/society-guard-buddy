@@ -39,7 +39,8 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
 
   const loadAll = async () => {
     await invalidateFinanceQueries(queryClient, societyId);
-    await query.refetch();
+    // Keep every mounted finance tab in sync after manual refreshes and mutations.
+    await queryClient.refetchQueries({ queryKey: financeQueryKeys.all, type: 'active' });
   };
 
   const invalidate = () => {
