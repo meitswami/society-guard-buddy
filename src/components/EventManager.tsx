@@ -10,6 +10,7 @@ import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { DateInput } from '@/components/DateInput';
 import EventContributionEditModal from '@/components/EventContributionEditModal';
 import { uploadContributionReceipt } from '@/lib/notificationMediaStorage';
+import { invokePushNotification } from '@/lib/pushNotification';
 
 interface Props {
   adminName?: string;
@@ -100,11 +101,16 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged,
     setEf({ title: '', description: '', event_date: '', event_time: '', location: '', contribution_amount: '' });
     setShowForm(false); toast.success('Event created'); loadAll();
 
+    const title = `New Event: ${ef.title}`;
+    const message = `${ef.title} on ${fmtIsoDateToDisplay(ef.event_date)}${ef.location ? ' at ' + ef.location : ''}. ${ef.contribution_amount ? 'Contribution: ₹' + ef.contribution_amount : ''}`;
     await supabase.from('notifications').insert([{
-      title: `New Event: ${ef.title}`,
-      message: `${ef.title} on ${fmtIsoDateToDisplay(ef.event_date)}${ef.location ? ' at ' + ef.location : ''}. ${ef.contribution_amount ? 'Contribution: ₹' + ef.contribution_amount : ''}`,
+      title,
+      message,
       type: 'event', target_type: 'all', created_by: adminName, society_id: societyId,
     }]);
+    if (societyId) {
+      await invokePushNotification({ title, message, target_type: 'all', society_id: societyId });
+    }
   };
 
   const targetFlats = includeVacantFlats ? flats : flats.filter((f) => f.is_occupied);
@@ -351,12 +357,27 @@ const EventManager = ({ adminName = 'Admin', embedded = false, onRecordsChanged,
       .filter((c) => c.event_id === event.id && c.receipt_basis !== 'non_flat' && c.flat_number)
       .map((c) => c.flat_number as string);
     const unpaid = targetFlats.filter(f => !paidFlats.includes(f.flat_number));
+    if (unpaid.length === 0) {
+      toast.success('All flats have paid');
+      return;
+    }
+    const title = `Payment Due: ${event.title}`;
     for (const flat of unpaid) {
       await supabase.from('notifications').insert([{
-        title: `Payment Due: ${event.title}`,
+        title,
         message: `Flat ${flat.flat_number}, your contribution of ₹${event.contribution_amount} for ${event.title} is pending.`,
         type: 'event_reminder', target_type: 'flat', target_id: flat.flat_number, created_by: adminName, society_id: societyId,
       }]);
+    }
+    if (societyId) {
+      const sampleMessage = `Your contribution of ₹${event.contribution_amount} for ${event.title} is pending.`;
+      await invokePushNotification({
+        title,
+        message: sampleMessage,
+        target_type: 'flat',
+        society_id: societyId,
+        target_flat_numbers: unpaid.map((f) => f.flat_number),
+      });
     }
     toast.success(`Reminders sent to ${unpaid.length} flats`);
   };

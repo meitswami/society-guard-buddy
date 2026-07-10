@@ -9,7 +9,6 @@ import {
   SYSTEM_CHECKS,
   type GuardDutyBundle,
 } from '@/lib/guardDutyTypes';
-import { cn } from '@/lib/utils';
 
 function DutyCard({ bundle }: { bundle: GuardDutyBundle }) {
   const { t } = useLanguage();

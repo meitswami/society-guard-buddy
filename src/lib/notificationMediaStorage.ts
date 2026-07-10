@@ -49,6 +49,20 @@ export async function uploadContributionReceipt(file: File, onError?: (m: string
   return uploadToNotificationMedia(path, file, { onError });
 }
 
+export async function uploadFinancePeriodReportPdf(
+  societyId: string,
+  batchId: string,
+  blob: Blob,
+  onError?: (m: string) => void,
+): Promise<string | null> {
+  const path = `finance-reports/${societyId}/${batchId}.pdf`;
+  return uploadToNotificationMedia(path, blob, {
+    contentType: 'application/pdf',
+    upsert: true,
+    onError,
+  });
+}
+
 export async function uploadMeetingFile(
   societyId: string,
   meetingId: string,
