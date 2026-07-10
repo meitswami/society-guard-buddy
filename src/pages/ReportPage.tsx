@@ -23,7 +23,8 @@ import { formatLedgerFieldLabel } from '@/lib/financeLedgerDisplay';
 import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
 import { REPORT_MAINTENANCE_METRICS, REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
 import ExportFormatMenu from '@/components/ExportFormatMenu';
-import { downloadMonthlyReport } from '@/lib/monthlyReportExport';
+import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
+import { buildMonthlyReportPdfBlob, downloadMonthlyReport, type ReportExportContext } from '@/lib/monthlyReportExport';
 import type { ExportFormat } from '@/lib/reportExportUtils';
 import { filterLedgerEntries, filterShiftRows, filterVisitorRows } from '@/lib/reportQueryFilter';
 import { toast } from 'sonner';
@@ -540,43 +541,55 @@ const ReportPage = () => {
     setModalOpen(true);
   };
 
+  const reportExportContext = useMemo((): ReportExportContext => ({
+    societyName,
+    reportMonth: statementPeriodLabel,
+    tab: activeTab,
+    financeEntries: searchedPeriodFinanceEntries.map((e) => ({
+      record_mode: String(e.record_mode ?? ''),
+      destination: e.destination,
+      total_amount: Number(e.total_amount || 0),
+      aggregate_flat_count: Number(e.aggregate_flat_count || 0),
+      payment_status: String(e.payment_status ?? 'verified'),
+      payment_method: e.payment_method,
+      created_at: ledgerTransactionDate(e),
+    })),
+    financeGroups,
+    financeMonthTotal: financePeriodTotal,
+    reportMonthNet: periodReport
+      ? {
+          cashInHand: periodReport.cashInHand,
+          cashInBank: periodReport.cashInBank,
+          otherNet: periodReport.otherNet,
+          totalBalance: periodReport.totalBalance,
+        }
+      : undefined,
+    periodHeadWise: periodReport
+      ? {
+          receiptByHead: periodReport.receiptByHead,
+          expenseByHead: periodReport.expenseByHead,
+          receiptByMethod: periodReport.receiptByMethod,
+          expenseByMethod: periodReport.expenseByMethod,
+          totalReceipts: periodReport.totalReceipts,
+          totalExpenses: periodReport.totalExpenses,
+        }
+      : undefined,
+    visitors: displayVisitors,
+    visitorStats,
+  }), [
+    societyName,
+    statementPeriodLabel,
+    activeTab,
+    searchedPeriodFinanceEntries,
+    financeGroups,
+    financePeriodTotal,
+    periodReport,
+    displayVisitors,
+    visitorStats,
+  ]);
+
   const exportReport = (format: ExportFormat) => {
-    downloadMonthlyReport(format, {
-      societyName,
-      reportMonth: statementPeriodLabel,
-      tab: activeTab,
-      financeEntries: searchedPeriodFinanceEntries.map((e) => ({
-        record_mode: String(e.record_mode ?? ''),
-        destination: e.destination,
-        total_amount: Number(e.total_amount || 0),
-        aggregate_flat_count: Number(e.aggregate_flat_count || 0),
-        payment_status: String(e.payment_status ?? 'verified'),
-        payment_method: e.payment_method,
-        created_at: ledgerTransactionDate(e),
-      })),
-      financeGroups,
-      financeMonthTotal: financePeriodTotal,
-      reportMonthNet: periodReport
-        ? {
-            cashInHand: periodReport.cashInHand,
-            cashInBank: periodReport.cashInBank,
-            otherNet: periodReport.otherNet,
-            totalBalance: periodReport.totalBalance,
-          }
-        : undefined,
-      periodHeadWise: periodReport
-        ? {
-            receiptByHead: periodReport.receiptByHead,
-            expenseByHead: periodReport.expenseByHead,
-            receiptByMethod: periodReport.receiptByMethod,
-            expenseByMethod: periodReport.expenseByMethod,
-            totalReceipts: periodReport.totalReceipts,
-            totalExpenses: periodReport.totalExpenses,
-          }
-        : undefined,
-      visitors: displayVisitors,
-      visitorStats,
-    });
+    downloadMonthlyReport(format, reportExportContext);
     toast.success(`${format.toUpperCase()} downloaded`);
   };
 
@@ -595,7 +608,15 @@ const ReportPage = () => {
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <ExportFormatMenu label="Export" onExport={exportReport} />
+          <div className="flex flex-wrap gap-2 justify-end">
+            <ExportFormatMenu label="Export" onExport={exportReport} />
+            <SharePdfWhatsAppButton
+              label="Share on WhatsApp"
+              filename={`${activeTab}-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
+              message={`${societyName} — ${statementPeriodLabel} report`}
+              getBlob={() => buildMonthlyReportPdfBlob(reportExportContext)}
+            />
+          </div>
           <label className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1.5 cursor-pointer">
             <Calendar className="w-3.5 h-3.5" />
             <span>{fmtIsoMonthToDisplay(reportMonth)}</span>
@@ -783,6 +804,7 @@ const ReportPage = () => {
             periodFrom={statementPeriodFrom}
             periodTo={statementPeriodTo}
             periodLabel={statementPeriodLabel}
+            societyName={societyName}
             loading={financeLoading}
             payments={payments}
             societyLedgerEntries={societyLedgerEntries}
@@ -1279,6 +1301,7 @@ const ReportPage = () => {
         totalAmount={modalTotal}
         rows={modalRows}
         initialSearchQuery={searchQuery}
+        societyName={societyName}
       />
     </div>
   );

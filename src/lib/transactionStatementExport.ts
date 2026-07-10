@@ -145,6 +145,28 @@ export function buildTransactionStatementCsv(rows: TransactionExportRow[]): Blob
   return rowsToCsvBlob(TXN_HEADERS, dataRows);
 }
 
+export function getTransactionStatementPdfBlob(opts: {
+  societyName: string;
+  title: string;
+  subtitle: string;
+  rows: TransactionExportRow[];
+}): Blob {
+  const generatedAt = new Date().toISOString();
+  const cellRows = opts.rows.map(transactionRowToCells);
+  const monthly = monthlyAmountTotals(opts.rows);
+  const transactionTotal = sumAmountRows(opts.rows);
+  return buildTransactionStatementPdfBlob({
+    societyName: opts.societyName,
+    title: opts.title,
+    subtitle: opts.subtitle,
+    generatedAt,
+    headers: TXN_HEADERS,
+    rows: [...cellRows, ['', '', '', '', '', '', 'Total', moneyInr(transactionTotal), '', '']],
+    monthlyTotals: monthly,
+    transactionTotal,
+  });
+}
+
 export function downloadTransactionStatement(
   format: ExportFormat,
   opts: {
@@ -156,27 +178,12 @@ export function downloadTransactionStatement(
   },
 ) {
   const generatedAt = new Date().toISOString();
-  const cellRows = opts.rows.map(transactionRowToCells);
-  const monthly = monthlyAmountTotals(opts.rows);
-  const transactionTotal = sumAmountRows(opts.rows);
   let blob: Blob;
   let ext: string;
 
   switch (format) {
     case 'pdf':
-      blob = buildTransactionStatementPdfBlob({
-        societyName: opts.societyName,
-        title: opts.title,
-        subtitle: opts.subtitle,
-        generatedAt,
-        headers: TXN_HEADERS,
-        rows: [
-          ...cellRows,
-          ['', '', '', '', '', '', 'Total', moneyInr(transactionTotal), '', ''],
-        ],
-        monthlyTotals: monthly,
-        transactionTotal,
-      });
+      blob = getTransactionStatementPdfBlob(opts);
       ext = 'pdf';
       break;
     case 'excel':

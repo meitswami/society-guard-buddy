@@ -18,6 +18,7 @@ interface Props {
   periodFrom: string;
   periodTo: string;
   periodLabel?: string;
+  societyName?: string;
   loading?: boolean;
   payments: FinancePeriodPayment[];
   societyLedgerEntries: FinancePeriodLedgerEntry[];
@@ -44,6 +45,7 @@ const CashFlowStatement = ({
   periodFrom,
   periodTo,
   periodLabel,
+  societyName,
   loading = false,
   payments,
   societyLedgerEntries,
@@ -385,6 +387,7 @@ const CashFlowStatement = ({
           rows={currentModal.rows}
           drillable={currentModal.drillable}
           onRowClick={currentModal.drillable ? openEntryDetail : undefined}
+          societyName={societyName}
         />
       )}
     </div>

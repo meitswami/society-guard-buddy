@@ -19,12 +19,15 @@ import { notifyResidentsOfRecord, type AdminRecordNotifyAudience } from '@/lib/a
 import { DateInput } from '@/components/DateInput';
 import { buildFinancePeriodReportPdfBlob } from '@/lib/financePeriodReportPdf';
 import ExportFormatMenu from '@/components/ExportFormatMenu';
+import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import FinancePeriodHeadTables from '@/components/FinancePeriodHeadTables';
 import {
   buildTransactionExportRows,
   downloadFinancePeriodReport,
   downloadTransactionStatement,
+  getTransactionStatementPdfBlob,
 } from '@/lib/transactionStatementExport';
+import { buildFinancePeriodReportPdf } from '@/lib/financePeriodReportExport';
 import { toFinancePeriodReportExportInput } from '@/lib/financePeriodReportExport';
 import type { ExportFormat } from '@/lib/reportExportUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -2185,6 +2188,23 @@ const FinanceManager = ({
     toast.success(`${format.toUpperCase()} downloaded`);
   };
 
+  const transactionStatementShareOpts = () => {
+    if (filterStatus === 'unpaid') return null;
+    const rows = buildTransactionExportRows({
+      items: receiptLineItems,
+      chargeTitleById: new Map([...chargeById.entries()].map(([id, ch]) => [id, ch.title])),
+    });
+    if (rows.length === 0) return null;
+    return {
+      societyName: societyName || 'Society',
+      title: 'Transaction statement',
+      subtitle: `${receiptSummary.count} entries · ₹${receiptSummary.sum.toLocaleString('en-IN')} total · ${selectedReceiptTypeLabel} · ${selectedReceiptMonthLabel}`,
+      filename: `transactions-${selectedReceiptMonthLabel.replace(/\s+/g, '-')}.pdf`,
+      message: `${societyName || 'Society'} — Transaction statement (${selectedReceiptMonthLabel})`,
+      rows,
+    };
+  };
+
   const sendPeriodReportToMembers = async () => {
     if (!societyId || periodFrom > periodTo) {
       toast.error('Check society and date range');
@@ -3069,11 +3089,25 @@ const FinanceManager = ({
                 description="Totals for the current transaction list after filters (status, type, month, mode)."
                 howCalculated="Count and sum of visible maintenance_payment rows plus ledger-only rows in scopedLedgerOnly."
               />
-              <ExportFormatMenu
-                label="Export statement"
-                className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1 shrink-0"
-                onExport={exportTransactionStatement}
-              />
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <ExportFormatMenu
+                  label="Export statement"
+                  className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1 shrink-0"
+                  onExport={exportTransactionStatement}
+                />
+                {transactionStatementShareOpts() && (
+                  <SharePdfWhatsAppButton
+                    label="Share on WhatsApp"
+                    className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1 shrink-0 bg-[#25D366]/10 text-[#128C7E] border border-[#25D366]/30 hover:bg-[#25D366]/20"
+                    filename={transactionStatementShareOpts()!.filename}
+                    message={transactionStatementShareOpts()!.message}
+                    getBlob={() => {
+                      const opts = transactionStatementShareOpts()!;
+                      return getTransactionStatementPdfBlob(opts);
+                    }}
+                  />
+                )}
+              </div>
             </div>
           )}
 
@@ -4111,6 +4145,14 @@ const FinanceManager = ({
                   disabled={periodFrom > periodTo}
                   onExport={exportPeriodReport}
                 />
+                <SharePdfWhatsAppButton
+                  label="Share on WhatsApp"
+                  className="btn-secondary text-xs px-3 py-2 flex items-center gap-1 bg-[#25D366]/10 text-[#128C7E] border border-[#25D366]/30 hover:bg-[#25D366]/20"
+                  disabled={periodFrom > periodTo}
+                  filename={`finance-report-${periodFrom}-to-${periodTo}.pdf`}
+                  message={`${societyName || 'Society'} — Finance report (${fmtIsoDateToDisplay(periodFrom)} → ${fmtIsoDateToDisplay(periodTo)})`}
+                  getBlob={() => buildFinancePeriodReportPdf(periodReportExportInput())}
+                />
                 <button
                   type="button"
                   className="btn-primary text-xs px-3 py-2"
@@ -4521,6 +4563,7 @@ const FinanceManager = ({
           drillable={currentHeadSummaryModal.drillable}
           onRowClick={currentHeadSummaryModal.drillable ? openHeadSummaryEntryDetail : undefined}
           onBack={headSummaryModalStack.length > 1 ? headSummaryModalBack : undefined}
+          societyName={societyName}
         />
       )}
     </div>

@@ -56,7 +56,7 @@ type VisitorRow = {
   guardName: string;
 };
 
-type ReportExportContext = {
+export type ReportExportContext = {
   societyName: string;
   reportMonth: string;
   tab: 'financial' | 'visitor' | 'vehicle' | 'all_modules';
@@ -251,7 +251,7 @@ function sheetsForTab(ctx: ReportExportContext) {
   }
 }
 
-function buildReportPdf(ctx: ReportExportContext): Blob {
+export function buildMonthlyReportPdfBlob(ctx: ReportExportContext): Blob {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const margin = 14;
   let y = margin;
@@ -331,7 +331,7 @@ export function downloadMonthlyReport(format: ExportFormat, ctx: ReportExportCon
 
   switch (format) {
     case 'pdf':
-      blob = buildReportPdf(ctx);
+      blob = buildMonthlyReportPdfBlob(ctx);
       ext = 'pdf';
       break;
     case 'excel':

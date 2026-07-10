@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
+import { triggerDownload } from '@/lib/reportExportUtils';
 
 export type PdfMember = {
   flat_id: string;
@@ -57,7 +58,7 @@ function newPageIfNeeded(doc: jsPDF, y: number, need: number, margin: number): n
 }
 
 /** Multi-page PDF: one section per flat, member details + ID thumbnails. */
-export function exportResidentsDirectoryPdf(societyName: string, flats: PdfFlat[], members: PdfMember[]): void {
+export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFlat[], members: PdfMember[]): Blob {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 14;
@@ -138,5 +139,14 @@ export function exportResidentsDirectoryPdf(societyName: string, flats: PdfFlat[
     y += 4;
   }
 
-  doc.save(`${(societyName || 'society').replace(/\s+/g, '_')}_residents_${new Date().toISOString().slice(0, 10)}.pdf`);
+  return doc.output('blob');
+}
+
+export function residentsDirectoryPdfFilename(societyName: string): string {
+  return `${(societyName || 'society').replace(/\s+/g, '_')}_residents_${new Date().toISOString().slice(0, 10)}.pdf`;
+}
+
+export function exportResidentsDirectoryPdf(societyName: string, flats: PdfFlat[], members: PdfMember[]): void {
+  const blob = buildResidentsDirectoryPdfBlob(societyName, flats, members);
+  triggerDownload(blob, residentsDirectoryPdfFilename(societyName));
 }

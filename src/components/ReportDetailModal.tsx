@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import { filterReportDetailRows } from '@/lib/reportQueryFilter';
+import { buildReportDetailPdfBlob, reportDetailPdfFilename } from '@/lib/sharePdfWhatsApp';
 import { monthlyAmountTotals, sumAmountRows } from '@/lib/statementAmountTotals';
 
 export interface ReportDetailRow {
@@ -35,6 +37,8 @@ interface Props {
   initialSearchQuery?: string;
   /** Show in-modal search to refine rows */
   searchable?: boolean;
+  /** Society name shown on shared PDF */
+  societyName?: string;
 }
 
 const ReportDetailModal = ({
@@ -50,6 +54,7 @@ const ReportDetailModal = ({
   footerActions,
   initialSearchQuery = '',
   searchable = true,
+  societyName,
 }: Props) => {
   const [modalSearch, setModalSearch] = useState(initialSearchQuery);
 
@@ -191,6 +196,24 @@ const ReportDetailModal = ({
         {/* Footer */}
         <div className="p-3 border-t border-border">
           {footerActions && <div className="mb-2 flex gap-2 flex-wrap">{footerActions}</div>}
+          {filteredRows.length > 0 && (
+            <div className="mb-2 flex gap-2 flex-wrap">
+              <SharePdfWhatsAppButton
+                label="Share on WhatsApp"
+                filename={reportDetailPdfFilename(title)}
+                message={[societyName, title, subtitle].filter(Boolean).join(' — ')}
+                getBlob={() =>
+                  buildReportDetailPdfBlob({
+                    societyName,
+                    title,
+                    subtitle,
+                    totalAmount,
+                    rows: filteredRows,
+                  })
+                }
+              />
+            </div>
+          )}
           {hasAmounts && monthlyTotals.length > 0 && (
             <div className="mb-2 rounded-lg border border-border/60 bg-muted/20 p-2.5 space-y-1">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
