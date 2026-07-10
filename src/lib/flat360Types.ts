@@ -54,7 +54,6 @@ export type Flat360Profile = {
   parking: Flat360ParkingSlot[];
   summary: Flat360Summary;
   timeline: Flat360TimelineItem[];
-  hasMoreTimeline: boolean;
 };
 
 export type Flat360FetchParams = {
@@ -62,7 +61,6 @@ export type Flat360FetchParams = {
   flatId: string;
   flatNumber: string;
   monthsBack?: number;
-  timelineLimit?: number;
   /** When set, notifications are filtered for resident visibility. */
   residentContext?: { id: string; name: string };
   /** Admin-only: include recent gate visitors in timeline. */

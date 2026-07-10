@@ -12,7 +12,7 @@ import type {
 import { notificationVisibleToResident } from '@/lib/notificationAudience';
 
 const DEFAULT_MONTHS_BACK = 12;
-const DEFAULT_TIMELINE_LIMIT = 50;
+const MAX_TIMELINE_ITEMS = 500;
 
 function cutoffIso(monthsBack: number): string {
   return subMonths(new Date(), monthsBack).toISOString();
@@ -32,7 +32,6 @@ export async function fetchFlat360Profile(params: Flat360FetchParams): Promise<F
     flatId,
     flatNumber,
     monthsBack = DEFAULT_MONTHS_BACK,
-    timelineLimit = DEFAULT_TIMELINE_LIMIT,
     residentContext,
     includeVisitors = false,
   } = params;
@@ -65,7 +64,7 @@ export async function fetchFlat360Profile(params: Flat360FetchParams): Promise<F
     supabase
       .from('maintenance_payments')
       .select('id, amount, payment_status, payment_method, payment_date, created_at, due_date, transaction_id, notes, charge_id')
-      .eq('flat_id', flatId)
+      .or(`flat_id.eq.${flatId},flat_number.eq.${flatNumber}`)
       .gte('created_at', cutoff)
       .order('created_at', { ascending: false })
       .limit(100),
@@ -104,8 +103,8 @@ export async function fetchFlat360Profile(params: Flat360FetchParams): Promise<F
     supabase
       .from('event_contributions')
       .select('id, amount, payment_method, created_at, verified_at, events!inner(id, title, society_id)')
-      .eq('flat_id', flatId)
       .eq('events.society_id', societyId)
+      .or(`flat_id.eq.${flatId},flat_number.eq.${flatNumber}`)
       .gte('created_at', cutoff)
       .order('created_at', { ascending: false })
       .limit(30),
