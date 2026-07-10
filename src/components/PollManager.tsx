@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { ElectionResultsBanner } from '@/components/ElectionResultsBanner';
 import ElectionModule from '@/components/ElectionModule';
+import { invokePushNotification } from '@/lib/pushNotification';
 
 interface Props {
   adminName?: string;
@@ -167,6 +168,14 @@ const PollManager = ({
         society_id: societyId,
       },
     ]);
+    if (societyId) {
+      await invokePushNotification({
+        title: 'New Poll',
+        message: `Vote now: ${notifyTitle}`,
+        target_type: 'all',
+        society_id: societyId,
+      });
+    }
   };
 
   const castVote = async (pollId: string, optionId: string) => {

@@ -23,6 +23,7 @@ import {
   type ElectionPhase,
 } from '@/lib/electionGovernance';
 import { applyElectionToCommittee } from '@/lib/electionApply';
+import { invokePushNotification } from '@/lib/pushNotification';
 import { capsFieldChange } from '@/lib/entryCaps';
 
 type VoterProfile = { name: string; flatNumber: string };
@@ -183,6 +184,14 @@ const ElectionModule = ({
         society_id: societyId,
       },
     ]);
+    if (societyId) {
+      await invokePushNotification({
+        title: 'Society election — nomination open',
+        message: `Propose yourself for posts: ${ef.question.trim()}`,
+        target_type: 'all',
+        society_id: societyId,
+      });
+    }
   };
 
   const selfNominate = async (poll: any, post: ElectionPost) => {
