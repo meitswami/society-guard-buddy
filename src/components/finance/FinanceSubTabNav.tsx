@@ -21,6 +21,7 @@ const RECORD_ITEMS: { id: FinanceSubTab; label: string }[] = [
 const STANDALONE_TABS: { id: FinanceSubTab; label: string }[] = [
   { id: 'receipts', label: 'Transactions' },
   { id: 'totals', label: 'Totals' },
+  { id: 'datewise_report', label: 'Datewise Report' },
 ];
 
 interface Props {

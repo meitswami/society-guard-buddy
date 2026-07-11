@@ -49,7 +49,8 @@ export type FinanceSubTab =
   | 'payments'
   | 'record_payment'
   | 'receipts'
-  | 'totals';
+  | 'totals'
+  | 'datewise_report';
 
 export type PaymentHeadFormState = {
   name: string;

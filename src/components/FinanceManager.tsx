@@ -49,6 +49,7 @@ import { FinanceRemindersTab } from '@/components/finance/FinanceRemindersTab';
 import { FinanceTotalsTab } from '@/components/finance/FinanceTotalsTab';
 import { FinanceMaintenanceTab } from '@/components/finance/FinanceMaintenanceTab';
 import { FinanceCreatePaymentTab } from '@/components/finance/FinanceCreatePaymentTab';
+import DatewiseTransactionReportTab from '@/components/finance/DatewiseTransactionReportTab';
 import { FinanceRecordPaymentTab } from '@/components/finance/FinanceRecordPaymentTab';
 import { FinanceSubTabNav } from '@/components/finance/FinanceSubTabNav';
 import { UnpaidFlatGridTable } from '@/components/finance/UnpaidFlatGridTable';
@@ -3775,6 +3776,8 @@ const FinanceManager = ({
           totalsMonthOutflow={totalsMonthOutflow}
         />
       )}
+
+      {subTab === 'datewise_report' && <DatewiseTransactionReportTab />}
 
       {currentHeadSummaryModal && (
         <ReportDetailModal
