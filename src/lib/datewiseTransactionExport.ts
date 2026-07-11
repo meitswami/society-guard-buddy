@@ -109,9 +109,9 @@ export async function buildDatewiseTransactionPdf(
   // Table header
   doc.setFontSize(7);
   doc.setTextColor(0);
-  const colX = [margin, margin + 18, margin + 28, margin + 38, margin + 95, margin + 110];
+  const colX = [margin, margin + 20, margin + 35, margin + 50, margin + 110];
   doc.text('Date', colX[0], currentY);
-  doc.text('Acct', colX[1], currentY);
+  doc.text('Account', colX[1], currentY);
   doc.text('Type', colX[2], currentY);
   doc.text('Description', colX[3], currentY);
   doc.text('Amount', colX[4], currentY, { align: 'right' });
@@ -128,9 +128,9 @@ export async function buildDatewiseTransactionPdf(
     }
 
     doc.text(row.date, colX[0], currentY);
-    doc.text(row.account.substring(0, 5), colX[1], currentY);
+    doc.text(row.account.substring(0, 10), colX[1], currentY);
     doc.text(row.type.substring(0, 4), colX[2], currentY);
-    doc.text(row.description.substring(0, 40), colX[3], currentY);
+    doc.text(row.description.substring(0, 50), colX[3], currentY);
     doc.text(moneyInr(row.amount), colX[4], currentY, { align: 'right' });
     currentY += 2.5;
   }
@@ -257,8 +257,8 @@ export function buildDatewiseTransactionExcel(
   // Sheet 1: All transactions
   sheets.push({
     name: 'All Transactions',
-    headers: ['Date', 'Account', 'Type', 'Description', 'Amount', 'Status', 'Notes'],
-    rows: rows.map((r) => [r.date, r.account, r.type, r.description, r.amount, r.status, r.notes]),
+    headers: ['Date', 'Account', 'Type', 'Description', 'Amount'],
+    rows: rows.map((r) => [r.date, r.account, r.type, r.description, r.amount]),
   });
 
   // Sheet 2: Monthly summaries
@@ -301,8 +301,8 @@ export function buildDatewiseTransactionExcel(
 }
 
 export function buildDatewiseTransactionCsv(rows: DatewiseTransactionRow[]): Blob {
-  const headers = ['Date', 'Account', 'Type', 'Description', 'Amount', 'Status', 'Notes'];
-  const csvRows = rows.map((r) => [r.date, r.account, r.type, r.description, r.amount, r.status, r.notes]);
+  const headers = ['Date', 'Account', 'Type', 'Description', 'Amount'];
+  const csvRows = rows.map((r) => [r.date, r.account, r.type, r.description, r.amount]);
 
   return rowsToCsvBlob(headers, csvRows);
 }
