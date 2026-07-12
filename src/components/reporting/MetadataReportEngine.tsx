@@ -1,8 +1,6 @@
-import { useMemo } from 'react';
-import { Bookmark, ChevronLeft, ChevronRight, Layers, Play, Search, Trash2 } from 'lucide-react';
-import ExportFormatMenu from '@/components/ExportFormatMenu';
-import { DateInput } from '@/components/DateInput';
-import { moneyInr } from '@/lib/reportExportUtils';
+import { useEffect, useMemo } from 'react';
+import { Bookmark, ChevronLeft, ChevronRight, Layers, Trash2 } from 'lucide-react';
+import { moneyInr, type ExportFormat } from '@/lib/reportExportUtils';
 import type { AdminPanelPermissions } from '@/lib/adminPermissions';
 import { FULL_ADMIN_PERMISSIONS } from '@/lib/adminPermissions';
 import { useMetadataReport } from '@/hooks/useMetadataReport';
@@ -13,6 +11,13 @@ type Props = {
   societyName?: string;
   adminName?: string;
   permissions?: AdminPanelPermissions;
+  /** Shared from ReportPage month / custom period. */
+  periodFrom: string;
+  periodTo: string;
+  /** Shared ReportPage search. */
+  searchQuery?: string;
+  /** Register export handler with parent header Export menu. */
+  onExportReady?: (exporter: ((format: ExportFormat) => Promise<void>) | null) => void;
 };
 
 function formatCell(format: string | undefined, type: string, value: unknown): string {
@@ -29,28 +34,40 @@ function formatCell(format: string | undefined, type: string, value: unknown): s
 
 /**
  * Generic metadata-driven report UI.
- * Report-specific logic lives in metadata + ReportService — not here.
+ * Period + search come from ReportPage so all report tabs stay synchronized.
  */
 export default function MetadataReportEngine({
   societyId,
   societyName,
   adminName = 'Admin',
   permissions = FULL_ADMIN_PERMISSIONS,
+  periodFrom,
+  periodTo,
+  searchQuery = '',
+  onExportReady,
 }: Props) {
-  const engine = useMetadataReport({ societyId, permissions, societyName, adminName });
-  const rangeFilters = useMemo(
-    () => (engine.definition?.filters ?? []).filter((f) => f.type === 'date_range'),
-    [engine.definition],
-  );
+  const engine = useMetadataReport({
+    societyId,
+    permissions,
+    societyName,
+    adminName,
+    periodFrom,
+    periodTo,
+    searchQuery,
+  });
 
-  const onExport = async (format: Parameters<typeof engine.exportReport>[0]) => {
-    try {
-      await engine.exportReport(format);
-      toast.success(`${format.toUpperCase()} downloaded`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Export failed');
-    }
-  };
+  useEffect(() => {
+    onExportReady?.(engine.exportReport);
+    return () => onExportReady?.(null);
+  }, [onExportReady, engine.exportReport]);
+
+  const extraFilters = useMemo(
+    () =>
+      (engine.definition?.filters ?? []).filter(
+        (f) => f.type !== 'date_range' || f.key !== engine.syncedDateRangeKey,
+      ),
+    [engine.definition, engine.syncedDateRangeKey],
+  );
 
   const onSave = async () => {
     try {
@@ -63,7 +80,7 @@ export default function MetadataReportEngine({
 
   if (!engine.catalog.length) {
     return (
-      <div className="card-section text-sm text-muted-foreground">
+      <div className="rounded-lg border border-border bg-card/40 p-3 text-sm text-muted-foreground">
         No reports available for your role.
       </div>
     );
@@ -86,58 +103,52 @@ export default function MetadataReportEngine({
             ))}
           </select>
         </label>
-        <button
-          type="button"
-          className="btn-primary text-xs px-3 py-2 flex items-center gap-1"
-          onClick={() => void engine.run()}
-          disabled={engine.loading}
-        >
-          <Play className="w-3.5 h-3.5" />
-          {engine.loading ? 'Running…' : 'Run'}
-        </button>
-        <ExportFormatMenu
-          onExport={(f) => void onExport(f)}
-          disabled={!engine.result || engine.loading}
-          formats={['excel', 'csv', 'pdf', 'word']}
-        />
+        {engine.loading && (
+          <span className="text-[11px] text-muted-foreground pb-2">Updating…</span>
+        )}
       </div>
 
       {engine.definition?.description && (
-        <p className="text-xs text-muted-foreground">{engine.definition.description}</p>
+        <p className="text-xs text-muted-foreground">
+          {engine.definition.description}
+          {' · '}
+          Period synced with report month above
+        </p>
       )}
 
-      {/* Filters */}
-      {engine.definition && (
+      {/* Non-period filters only — dates/search come from ReportPage */}
+      {extraFilters.length > 0 && (
         <div className="rounded-lg border border-border bg-card/40 p-3 space-y-3">
           <p className="text-[11px] font-medium text-foreground">Filters</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {rangeFilters.map((f) => {
-              const val = (engine.filters[f.key] as { from?: string; to?: string } | undefined) ?? {};
+            {extraFilters.map((f) => {
+              if (f.type === 'date_range') {
+                const val = (engine.filters[f.key] as { from?: string; to?: string } | undefined) ?? {};
+                return (
+                  <label key={f.key} className="flex flex-col gap-1">
+                    <span className="text-[11px] text-muted-foreground">{f.label}</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        className="input-field text-xs flex-1"
+                        value={val.from ?? ''}
+                        onChange={(e) =>
+                          engine.setFilterValue(f.key, { ...val, from: e.target.value })
+                        }
+                      />
+                      <input
+                        type="date"
+                        className="input-field text-xs flex-1"
+                        value={val.to ?? ''}
+                        onChange={(e) =>
+                          engine.setFilterValue(f.key, { ...val, to: e.target.value })
+                        }
+                      />
+                    </div>
+                  </label>
+                );
+              }
               return (
-                <div key={f.key} className="space-y-1">
-                  <span className="text-[11px] text-muted-foreground">{f.label}</span>
-                  <div className="flex gap-2">
-                    <DateInput
-                      value={val.from ?? ''}
-                      onChange={(e) =>
-                        engine.setFilterValue(f.key, { ...val, from: e.target.value })
-                      }
-                      className="input-field text-xs flex-1"
-                    />
-                    <DateInput
-                      value={val.to ?? ''}
-                      onChange={(e) =>
-                        engine.setFilterValue(f.key, { ...val, to: e.target.value })
-                      }
-                      className="input-field text-xs flex-1"
-                    />
-                  </div>
-                </div>
-              );
-            })}
-            {engine.definition.filters
-              .filter((f) => f.type !== 'date_range')
-              .map((f) => (
                 <label key={f.key} className="flex flex-col gap-1">
                   <span className="text-[11px] text-muted-foreground">{f.label}</span>
                   {f.type === 'select' ? (
@@ -165,10 +176,7 @@ export default function MetadataReportEngine({
                       }
                       onChange={(e) => {
                         const v = e.target.value;
-                        engine.setFilterValue(
-                          f.key,
-                          v === '' ? undefined : v === 'true',
-                        );
+                        engine.setFilterValue(f.key, v === '' ? undefined : v === 'true');
                       }}
                     >
                       <option value="">All</option>
@@ -184,70 +192,61 @@ export default function MetadataReportEngine({
                     />
                   )}
                 </label>
-              ))}
-          </div>
-
-          <div className="relative max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              className="input-field pl-9 text-sm"
-              placeholder="Search visible columns…"
-              value={engine.search}
-              onChange={(e) => engine.setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void engine.run();
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Columns + group by */}
-      {engine.definition && (
-        <div className="rounded-lg border border-border bg-card/40 p-3 space-y-3">
-          <p className="text-[11px] font-medium text-foreground">Columns</p>
-          <div className="flex flex-wrap gap-2">
-            {engine.definition.columns.map((c) => {
-              const on = engine.selectedColumns.includes(c.key);
-              return (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={() => engine.toggleColumn(c.key)}
-                  className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
-                    on
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-secondary text-secondary-foreground border-border'
-                  }`}
-                >
-                  {c.label}
-                </button>
               );
             })}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-[11px] text-muted-foreground">Group by</span>
-            <select
-              className="input-field text-xs max-w-[180px]"
-              value={engine.groupBy[0] ?? ''}
-              onChange={(e) => engine.setGroupBy(e.target.value ? [e.target.value] : [])}
-            >
-              <option value="">None</option>
-              {engine.definition.columns.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       )}
 
-      {/* Saved definitions */}
+      {engine.definition && (
+        <div className="rounded-lg border border-border bg-card/40 p-3 space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex flex-col gap-1 min-w-[160px]">
+              <span className="text-[11px] text-muted-foreground">Columns</span>
+              <select
+                className="input-field text-xs"
+                value=""
+                onChange={(e) => {
+                  const key = e.target.value;
+                  if (key) engine.toggleColumn(key);
+                }}
+              >
+                <option value="">Toggle column…</option>
+                {engine.definition.columns.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {engine.selectedColumns.includes(c.key) ? '✓ ' : ''}
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 min-w-[160px]">
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <Layers className="w-3 h-3" /> Group by
+              </span>
+              <select
+                className="input-field text-xs"
+                value={engine.groupBy[0] ?? ''}
+                onChange={(e) => engine.setGroupBy(e.target.value ? [e.target.value] : [])}
+              >
+                <option value="">None</option>
+                {engine.definition.columns.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Showing: {engine.selectedColumns.map((k) => engine.definition?.columns.find((c) => c.key === k)?.label ?? k).join(', ')}
+          </p>
+        </div>
+      )}
+
       <div className="rounded-lg border border-border bg-card/40 p-3 space-y-2">
         <p className="text-[11px] font-medium text-foreground flex items-center gap-1">
-          <Bookmark className="w-3.5 h-3.5" /> Saved definitions
+          <Bookmark className="w-3.5 h-3.5" /> Saved views
         </p>
         <div className="flex flex-wrap gap-2">
           <input
@@ -278,7 +277,6 @@ export default function MetadataReportEngine({
                   onClick={() => engine.loadSaved(s)}
                 >
                   {s.name}
-                  <span className="text-muted-foreground ml-1">({s.report_id})</span>
                 </button>
                 <button
                   type="button"
@@ -300,7 +298,6 @@ export default function MetadataReportEngine({
         </p>
       )}
 
-      {/* Results */}
       {engine.result && (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -310,9 +307,7 @@ export default function MetadataReportEngine({
               {engine.result.totals.length > 0 && (
                 <>
                   {' · '}
-                  {engine.result.totals
-                    .map((t) => `${t.label} ${moneyInr(t.value)}`)
-                    .join(' · ')}
+                  {engine.result.totals.map((t) => `${t.label} ${moneyInr(t.value)}`).join(' · ')}
                 </>
               )}
             </p>
