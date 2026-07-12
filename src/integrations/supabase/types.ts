@@ -3113,6 +3113,59 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_report_definitions: {
+        Row: {
+          id: string
+          society_id: string
+          report_id: string
+          name: string
+          description: string | null
+          columns: Json | null
+          filters: Json
+          sort: Json | null
+          group_by: Json | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          society_id: string
+          report_id: string
+          name: string
+          description?: string | null
+          columns?: Json | null
+          filters?: Json
+          sort?: Json | null
+          group_by?: Json | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          society_id?: string
+          report_id?: string
+          name?: string
+          description?: string | null
+          columns?: Json | null
+          filters?: Json
+          sort?: Json | null
+          group_by?: Json | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_report_definitions_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       society_dashboard_banners: {
         Row: {
           created_at: string

@@ -596,6 +596,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'report': return (
         <ReportPage
           adminName={admin.name}
+          permissions={admin.permissions}
           initialSearchQuery={pendingSearchFor('report')}
           onInitialSearchConsumed={() => clearModuleSearchFor('report')}
         />

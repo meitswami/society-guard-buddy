@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, Calendar, CalendarRange, Users, Car, Truck, Shield, IndianRupee, Heart, Split, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench, Search } from 'lucide-react';
+import { BarChart3, Calendar, CalendarRange, Users, Car, Truck, Shield, IndianRupee, Heart, Split, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench, Search, Table2 } from 'lucide-react';
+import MetadataReportEngine from '@/components/reporting/MetadataReportEngine';
+import type { AdminPanelPermissions } from '@/lib/adminPermissions';
+import { FULL_ADMIN_PERMISSIONS } from '@/lib/adminPermissions';
 import { format, parse, endOfMonth } from 'date-fns';
 import { fmtDate, fmtDateTime, fmtIsoDateToDisplay, fmtIsoMonthToDisplay } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -52,7 +55,7 @@ interface FinanceEntrySummaryRow {
   payment_method: string;
 }
 
-type ReportTab = 'financial' | 'visitor' | 'vehicle' | 'all_modules';
+type ReportTab = 'financial' | 'visitor' | 'vehicle' | 'all_modules' | 'engine';
 type StatementPeriodMode = 'monthly' | 'custom';
 
 const REPORT_TABS: { id: ReportTab; labelKey: string; icon: React.ElementType }[] = [
@@ -60,14 +63,17 @@ const REPORT_TABS: { id: ReportTab; labelKey: string; icon: React.ElementType }[
   { id: 'visitor', labelKey: 'Visitor Reports', icon: Users },
   { id: 'vehicle', labelKey: 'Vehicle Reports', icon: Car },
   { id: 'all_modules', labelKey: 'All Modules', icon: ClipboardList },
+  { id: 'engine', labelKey: 'Custom Reports', icon: Table2 },
 ];
 
 const ReportPage = ({
   adminName = 'Admin',
+  permissions = FULL_ADMIN_PERMISSIONS,
   initialSearchQuery,
   onInitialSearchConsumed,
 }: {
   adminName?: string;
+  permissions?: AdminPanelPermissions;
   initialSearchQuery?: string;
   onInitialSearchConsumed?: () => void;
 } = {}) => {
@@ -436,7 +442,7 @@ const ReportPage = ({
   const reportExportContext = useMemo((): ReportExportContext => ({
     societyName,
     reportMonth: statementPeriodLabel,
-    tab: activeTab,
+    tab: activeTab === 'engine' ? 'all_modules' : activeTab,
     financeEntries: searchedPeriodFinanceEntries.map((e) => ({
       record_mode: String(e.record_mode ?? ''),
       destination: e.destination,
@@ -500,30 +506,35 @@ const ReportPage = ({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="flex flex-wrap gap-2 justify-end">
-            <ExportFormatMenu label="Export" onExport={exportReport} />
-            <SharePdfWhatsAppButton
-              label="Share on WhatsApp"
-              filename={`${activeTab}-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
-              message={`${societyName} — ${statementPeriodLabel} report`}
-              getBlob={() => buildMonthlyReportPdfBlob(reportExportContext)}
-            />
-          </div>
-          <label className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1.5 cursor-pointer">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>{fmtIsoMonthToDisplay(reportMonth)}</span>
-            <input
-              type="month"
-              className="sr-only"
-              min={FINANCE_REPORTING_EARLIEST_MONTH}
-              value={reportMonth}
-              onChange={(e) => setReportMonth(e.target.value)}
-            />
-          </label>
+          {activeTab !== 'engine' && (
+            <>
+              <div className="flex flex-wrap gap-2 justify-end">
+                <ExportFormatMenu label="Export" onExport={exportReport} />
+                <SharePdfWhatsAppButton
+                  label="Share on WhatsApp"
+                  filename={`${activeTab}-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
+                  message={`${societyName} — ${statementPeriodLabel} report`}
+                  getBlob={() => buildMonthlyReportPdfBlob(reportExportContext)}
+                />
+              </div>
+              <label className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1.5 cursor-pointer">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>{fmtIsoMonthToDisplay(reportMonth)}</span>
+                <input
+                  type="month"
+                  className="sr-only"
+                  min={FINANCE_REPORTING_EARLIEST_MONTH}
+                  value={reportMonth}
+                  onChange={(e) => setReportMonth(e.target.value)}
+                />
+              </label>
+            </>
+          )}
         </div>
       </div>
 
       {/* On-demand search */}
+      {activeTab !== 'engine' && (
       <div className="mb-4 rounded-lg border border-border bg-card/40 p-3">
         <p className="text-[11px] font-medium text-foreground mb-2">{t('report.searchTitle')}</p>
         <div className="relative">
@@ -560,6 +571,7 @@ const ReportPage = ({
           </p>
         )}
       </div>
+      )}
 
       {/* Report Type Tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 scrollbar-hide">
@@ -1165,6 +1177,16 @@ const ReportPage = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ═══ METADATA-DRIVEN CUSTOM REPORTS ═══ */}
+      {activeTab === 'engine' && societyId && (
+        <MetadataReportEngine
+          societyId={societyId}
+          societyName={societyName}
+          adminName={adminName}
+          permissions={permissions}
+        />
       )}
 
       {/* Detail Modal */}

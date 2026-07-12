@@ -1,0 +1,57 @@
+import type { ReportDefinition } from '../types';
+
+export const fixedAssetsReport: ReportDefinition = {
+  id: 'fixed_assets',
+  title: 'Fixed Assets Register',
+  description: 'Society fixed assets by status, sub-head, and acquisition date.',
+  permission: 'report',
+  baseTable: 'fixed_assets',
+  societyColumn: 'society_id',
+  defaultSort: { field: 'asset_name', direction: 'asc' },
+  defaultPageSize: 50,
+  rowLimit: 1000,
+  columns: [
+    { key: 'asset_name', label: 'Asset', type: 'string', field: 'asset_name', searchable: true, sortable: true },
+    { key: 'sub_head', label: 'Sub-head', type: 'string', field: 'sub_head', searchable: true, sortable: true },
+    { key: 'status', label: 'Status', type: 'string', field: 'status', searchable: true, sortable: true },
+    { key: 'location', label: 'Location', type: 'string', field: 'location', searchable: true },
+    { key: 'vendor_name', label: 'Vendor', type: 'string', field: 'vendor_name', searchable: true, defaultVisible: false },
+    {
+      key: 'acquisition_date',
+      label: 'Acquired',
+      type: 'date',
+      field: 'acquisition_date',
+      format: 'date',
+      sortable: true,
+    },
+    {
+      key: 'bill_value',
+      label: 'Bill value',
+      type: 'number',
+      field: 'bill_value',
+      format: 'money',
+      sortable: true,
+      aggregate: 'sum',
+    },
+    { key: 'asset_tag', label: 'Tag', type: 'string', field: 'asset_tag', searchable: true, defaultVisible: false },
+    { key: 'serial_number', label: 'Serial', type: 'string', field: 'serial_number', searchable: true, defaultVisible: false },
+  ],
+  filters: [
+    { key: 'period', label: 'Acquisition period', type: 'date_range', field: 'acquisition_date' },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select',
+      field: 'status',
+      operator: 'eq',
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'under_repair', label: 'Under repair' },
+        { value: 'disposed', label: 'Disposed' },
+        { value: 'written_off', label: 'Written off' },
+        { value: 'placeholder', label: 'Placeholder' },
+      ],
+    },
+    { key: 'sub_head', label: 'Sub-head', type: 'text', field: 'sub_head', operator: 'ilike' },
+  ],
+};
