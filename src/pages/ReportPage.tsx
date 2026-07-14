@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, Calendar, CalendarRange, Users, Car, Truck, Shield, IndianRupee, Heart, Split, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench, Search, Table2 } from 'lucide-react';
+import { BarChart3, Calendar, CalendarRange, ChevronDown, Users, Car, Truck, Shield, IndianRupee, Heart, ClipboardList, DoorOpen, ParkingSquare, Vote, Wrench, Search, Table2 } from 'lucide-react';
 import MetadataReportEngine from '@/components/reporting/MetadataReportEngine';
 import type { AdminPanelPermissions } from '@/lib/adminPermissions';
 import { FULL_ADMIN_PERMISSIONS } from '@/lib/adminPermissions';
@@ -28,17 +28,22 @@ import { dateInInclusiveRange, ledgerTransactionDate } from '@/lib/financeDates'
 import { formatLedgerFieldLabel } from '@/lib/financeLedgerDisplay';
 import {
   computeLedgerInflowGroups,
-  computeLedgerStatusBuckets,
   filterLedgerByTransactionDateRange,
 } from '@/lib/reportAggregations';
-import { DescriptiveStatCard, DescriptiveValueButton } from '@/components/DescriptiveStatCard';
-import { REPORT_MAINTENANCE_METRICS, REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
+import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
+import { REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
 import FinancePeriodReportSendPanel from '@/components/FinancePeriodReportSendPanel';
 import ExportFormatMenu from '@/components/ExportFormatMenu';
 import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import { buildMonthlyReportPdfBlob, downloadMonthlyReport, type ReportExportContext } from '@/lib/monthlyReportExport';
 import type { ExportFormat } from '@/lib/reportExportUtils';
 import { filterLedgerEntries, filterShiftRows, filterVisitorRows } from '@/lib/reportQueryFilter';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }
@@ -57,9 +62,22 @@ interface FinanceEntrySummaryRow {
 
 type ReportTab = 'financial' | 'visitor' | 'vehicle' | 'all_modules' | 'engine';
 type StatementPeriodMode = 'monthly' | 'custom';
+type FinancialReportKind =
+  | 'collection_receipts'
+  | 'expenses'
+  | 'flat_wise'
+  | 'cash_flow'
+  | 'donation_statuses';
 
-const REPORT_TABS: { id: ReportTab; labelKey: string; icon: React.ElementType }[] = [
-  { id: 'financial', labelKey: 'Financial Reports', icon: IndianRupee },
+const FINANCIAL_REPORT_OPTIONS: { id: FinancialReportKind; label: string }[] = [
+  { id: 'collection_receipts', label: 'Collection receipts (Head wise)' },
+  { id: 'expenses', label: 'Expenses (Head wise)' },
+  { id: 'flat_wise', label: 'Flat wise Financial Report' },
+  { id: 'cash_flow', label: 'Cash Flow Statement' },
+  { id: 'donation_statuses', label: 'Donation statuses' },
+];
+
+const REPORT_TABS: { id: Exclude<ReportTab, 'financial'>; labelKey: string; icon: React.ElementType }[] = [
   { id: 'visitor', labelKey: 'Visitor Reports', icon: Users },
   { id: 'vehicle', labelKey: 'Vehicle Reports', icon: Car },
   { id: 'all_modules', labelKey: 'All Modules', icon: ClipboardList },
@@ -80,6 +98,7 @@ const ReportPage = ({
   const { visitors, societyId } = useStore();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<ReportTab>('financial');
+  const [financialReportKind, setFinancialReportKind] = useState<FinancialReportKind>('collection_receipts');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -130,16 +149,18 @@ const ReportPage = ({
   } = useSocietyFinanceData(societyId, 'Report');
   const { anchors: openingBalanceAnchors } = useSocietyOpeningBalanceAnchors(societyId);
   const {
-    maintenanceStatuses,
-    maintenanceLinkSummary,
     donationStatuses,
-    splitStatuses,
-  } = useReportModuleAggregations(societyId, statementPeriodFrom, statementPeriodTo, activeTab === 'financial');
+  } = useReportModuleAggregations(
+    societyId,
+    statementPeriodFrom,
+    statementPeriodTo,
+    activeTab === 'financial' || activeTab === 'all_modules',
+  );
   const {
     expenses: flatReportExpenses,
     splits: flatReportSplits,
     isLoading: flatReportLoading,
-  } = useFinanceFlatReport(societyId, activeTab === 'financial');
+  } = useFinanceFlatReport(societyId, activeTab === 'financial' && financialReportKind === 'flat_wise');
 
   useEffect(() => {
     setFlatReportFrom(statementPeriodFrom);
@@ -226,11 +247,6 @@ const ReportPage = ({
     [periodFinanceEntries, searchQuery],
   );
 
-  const ledgerStatuses = useMemo(
-    () => computeLedgerStatusBuckets(searchedPeriodFinanceEntries),
-    [searchedPeriodFinanceEntries],
-  );
-
   const financeGroups = useMemo(
     () => computeLedgerInflowGroups(searchedPeriodFinanceEntries),
     [searchedPeriodFinanceEntries],
@@ -304,42 +320,6 @@ const ReportPage = ({
     setModalTitle('Finance — All Entries');
     setModalSubtitle(`All finance entries for ${fmtIsoMonthToDisplay(reportMonth)}`);
     setModalTotal(monthFinanceTotal);
-    setModalRows(rows);
-    setModalOpen(true);
-  };
-
-  const openGrossAmountModal = () => {
-    const rows: ReportDetailRow[] = searchedPeriodFinanceEntries.map((e) => ({
-      id: e.id,
-      label: `${formatLedgerFieldLabel(e.record_mode)} → ${formatLedgerFieldLabel(e.destination)}`,
-      sublabel: `Flats: ${e.aggregate_flat_count ?? 0} | Method: ${e.payment_method || 'N/A'}`,
-      amount: Number(e.total_amount || 0),
-      date: fmtDate(ledgerTransactionDate(e)),
-      dateIso: ledgerTransactionDate(e),
-      status: e.payment_status,
-    }));
-    setModalTitle('Gross Amount — All Entries');
-    setModalSubtitle(`All finance entries for ${statementPeriodLabel}`);
-    setModalTotal(financePeriodTotal);
-    setModalRows(rows);
-    setModalOpen(true);
-  };
-
-  const openLedgerStatusModal = (status: string, count: number, total: number) => {
-    const rows: ReportDetailRow[] = searchedPeriodFinanceEntries
-      .filter((e) => String(e.payment_status ?? 'verified') === status)
-      .map((e) => ({
-        id: e.id,
-        label: `${formatLedgerFieldLabel(e.record_mode)} → ${formatLedgerFieldLabel(e.destination)}`,
-        sublabel: `Method: ${e.payment_method || 'N/A'}`,
-        amount: Number(e.total_amount || 0),
-        date: fmtDate(ledgerTransactionDate(e)),
-        dateIso: ledgerTransactionDate(e),
-        status: e.payment_status,
-      }));
-    setModalTitle(`Ledger — ${status}`);
-    setModalSubtitle(`${count} entries with status "${status}"`);
-    setModalTotal(total);
     setModalRows(rows);
     setModalOpen(true);
   };
@@ -430,22 +410,6 @@ const ReportPage = ({
     setModalOpen(true);
   };
 
-  const openSplitModal = () => {
-    const total = splitStatuses.reduce((s, d) => s + d.total, 0);
-    const rows: ReportDetailRow[] = splitStatuses.map((s, i) => ({
-      id: `split-${i}`,
-      label: `Splits — ${s.status}`,
-      sublabel: `${s.count} split(s)`,
-      amount: s.total,
-      status: s.status,
-    }));
-    setModalTitle('Society payment splits — Summary');
-    setModalSubtitle(`Record payment entries for ${statementPeriodLabel}`);
-    setModalTotal(total);
-    setModalRows(rows);
-    setModalOpen(true);
-  };
-
   const reportExportContext = useMemo((): ReportExportContext => ({
     societyName,
     reportMonth: statementPeriodLabel,
@@ -524,32 +488,36 @@ const ReportPage = ({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="flex flex-wrap gap-2 justify-end">
-            <ExportFormatMenu
-              label="Export"
-              onExport={exportReport}
-              formats={activeTab === 'engine' ? ['excel', 'csv', 'pdf'] : undefined}
-            />
-            {activeTab !== 'engine' && (
-              <SharePdfWhatsAppButton
-                label="Share on WhatsApp"
-                filename={`${activeTab}-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
-                message={`${societyName} — ${statementPeriodLabel} report`}
-                getBlob={() => buildMonthlyReportPdfBlob(reportExportContext)}
-              />
-            )}
-          </div>
-          <label className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1.5 cursor-pointer">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>{fmtIsoMonthToDisplay(reportMonth)}</span>
-            <input
-              type="month"
-              className="sr-only"
-              min={FINANCE_REPORTING_EARLIEST_MONTH}
-              value={reportMonth}
-              onChange={(e) => setReportMonth(e.target.value)}
-            />
-          </label>
+          {activeTab !== 'financial' && (
+            <>
+              <div className="flex flex-wrap gap-2 justify-end">
+                <ExportFormatMenu
+                  label="Export"
+                  onExport={exportReport}
+                  formats={activeTab === 'engine' ? ['excel', 'csv', 'pdf'] : undefined}
+                />
+                {activeTab !== 'engine' && (
+                  <SharePdfWhatsAppButton
+                    label="Share on WhatsApp"
+                    filename={`${activeTab}-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
+                    message={`${societyName} — ${statementPeriodLabel} report`}
+                    getBlob={() => buildMonthlyReportPdfBlob(reportExportContext)}
+                  />
+                )}
+              </div>
+              <label className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1.5 cursor-pointer">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>{fmtIsoMonthToDisplay(reportMonth)}</span>
+                <input
+                  type="month"
+                  className="sr-only"
+                  min={FINANCE_REPORTING_EARLIEST_MONTH}
+                  value={reportMonth}
+                  onChange={(e) => setReportMonth(e.target.value)}
+                />
+              </label>
+            </>
+          )}
         </div>
       </div>
 
@@ -594,6 +562,38 @@ const ReportPage = ({
 
       {/* Report Type Tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 scrollbar-hide">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                activeTab === 'financial'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-secondary text-secondary-foreground hover:bg-muted'
+              }`}
+            >
+              <IndianRupee className="w-3.5 h-3.5" />
+              {activeTab === 'financial'
+                ? `Financial Reports: ${FINANCIAL_REPORT_OPTIONS.find((o) => o.id === financialReportKind)?.label ?? ''}`
+                : 'Financial Reports'}
+              <ChevronDown className="w-3 h-3 opacity-70" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-[14rem]">
+            {FINANCIAL_REPORT_OPTIONS.map((opt) => (
+              <DropdownMenuItem
+                key={opt.id}
+                className="text-xs cursor-pointer"
+                onClick={() => {
+                  setActiveTab('financial');
+                  setFinancialReportKind(opt.id);
+                }}
+              >
+                {opt.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         {REPORT_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -613,52 +613,28 @@ const ReportPage = ({
       {/* ═══ FINANCIAL REPORTS TAB ═══ */}
       {activeTab === 'financial' && (
         <div>
-          {periodReport && societyId && (
-            <FinancePeriodReportSendPanel
-              societyId={societyId}
-              societyName={societyName}
-              adminName={adminName}
-              periodFrom={statementPeriodFrom}
-              periodTo={statementPeriodTo}
-              periodLabel={statementPeriodLabel}
-              periodReport={periodReport}
-              flatNumbers={flats.map((f) => f.flat_number)}
-            />
-          )}
-          {periodReport && (
-            <div className="mb-4">
-              <p className="text-[11px] font-medium text-foreground mb-2">Head-wise breakdown</p>
-              <p className="text-[10px] text-muted-foreground mb-3">
-                {statementPeriodLabel} — period totals and head-wise columns in one place
-              </p>
-              <FinancePeriodHeadTables report={periodReport} />
-            </div>
-          )}
-
-          {flats.length > 0 && (
-            <div className="mb-4">
-              <FinanceFlatReportTab
-                from={flatReportFrom}
-                to={flatReportTo}
-                selectedFlat={flatReportSelectedFlat}
-                onFromChange={setFlatReportFrom}
-                onToChange={setFlatReportTo}
-                onSelectedFlatChange={setFlatReportSelectedFlat}
-                flats={flats}
-                primaryByFlatId={primaryByFlatId}
-                isLoading={flatReportLoading || financeCoreLoading}
-                rows={flatReportRows}
-              />
-            </div>
-          )}
-
-          {/* Cash Flow Statement with drill-down to cash/bank statements */}
-          <div className="mb-4 rounded-lg border border-border bg-card/40 p-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-3">
+          {/* Export, share, and period controls above the selected report */}
+          <div className="mb-4 rounded-lg border border-border bg-card/40 p-3 space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] font-medium text-foreground">Statement period</p>
-                <p className="text-[10px] text-muted-foreground">Cash flow, cash & bank statements use this range</p>
+                <p className="text-[11px] font-medium text-foreground">
+                  {FINANCIAL_REPORT_OPTIONS.find((o) => o.id === financialReportKind)?.label}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {statementPeriodLabel} — export, share, or change the reporting period
+                </p>
               </div>
+              <div className="flex flex-wrap gap-2">
+                <ExportFormatMenu label="Export" onExport={exportReport} />
+                <SharePdfWhatsAppButton
+                  label="Share on WhatsApp"
+                  filename={`financial-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
+                  message={`${societyName} — ${statementPeriodLabel} report`}
+                  getBlob={() => buildMonthlyReportPdfBlob(reportExportContext)}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex gap-1.5">
                 <button
                   type="button"
@@ -685,166 +661,88 @@ const ReportPage = ({
                   Date range
                 </button>
               </div>
+              {statementPeriodMode === 'monthly' ? (
+                <label className="btn-secondary text-xs px-2.5 py-2 flex items-center gap-1.5 cursor-pointer w-fit">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{fmtIsoMonthToDisplay(reportMonth)}</span>
+                  <input
+                    type="month"
+                    className="sr-only"
+                    min={FINANCE_REPORTING_EARLIEST_MONTH}
+                    value={reportMonth}
+                    onChange={(e) => setReportMonth(e.target.value)}
+                  />
+                </label>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 sm:max-w-xs">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground mb-1 block">From</label>
+                    <DateInput className="input-field text-sm w-full" value={customPeriodFrom} onChange={(e) => setCustomPeriodFrom(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground mb-1 block">To</label>
+                    <DateInput className="input-field text-sm w-full" value={customPeriodTo} onChange={(e) => setCustomPeriodTo(e.target.value)} />
+                  </div>
+                </div>
+              )}
             </div>
-            {statementPeriodMode === 'monthly' ? (
-              <p className="text-[10px] text-muted-foreground">
-                Uses report month {fmtIsoMonthToDisplay(reportMonth)} from the selector above.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block">From</label>
-                  <DateInput className="input-field text-sm w-full" value={customPeriodFrom} onChange={(e) => setCustomPeriodFrom(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block">To</label>
-                  <DateInput className="input-field text-sm w-full" value={customPeriodTo} onChange={(e) => setCustomPeriodTo(e.target.value)} />
-                </div>
-              </div>
-            )}
             {statementPeriodFrom > statementPeriodTo && (
-              <p className="text-[10px] text-destructive mt-2">End date must be on or after start date.</p>
+              <p className="text-[10px] text-destructive">End date must be on or after start date.</p>
             )}
           </div>
-          <CashFlowStatement
-            periodFrom={statementPeriodFrom}
-            periodTo={statementPeriodTo}
-            periodLabel={statementPeriodLabel}
-            societyName={societyName}
-            loading={financeLoading}
-            payments={payments}
-            societyLedgerEntries={societyLedgerEntries}
-            expenseCategoryById={expenseCategoryById}
-            reserveTransfers={reserveTransfers}
-            openingBalanceAnchors={openingBalanceAnchors}
-          />
 
-          {/* Gross clickable */}
-          <DescriptiveStatCard
-            {...REPORT_PAGE_METRICS.financeGross}
-            caption={t('report.financeGross')}
-            className="w-full mb-4 rounded-lg border border-border bg-muted/20 !p-3 shadow-none"
-            value={
-              <span className="text-sm font-mono font-semibold">
-                ₹{financePeriodTotal.toLocaleString('en-IN')} · {searchedPeriodFinanceEntries.length} {t('report.entryCountLabel')}
-              </span>
-            }
-            valueClassName="text-sm"
-            onNavigate={openGrossAmountModal}
-            navigateLabel="View ledger entries"
-          />
-
-          {/* Ledger Table */}
-          {financeGroups.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">{t('report.noLedgerRows')}</p>
-          ) : (
-            <div className="overflow-x-auto mb-5 border border-border rounded-xl p-3">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-2 pr-2">{t('report.colMode')}</th>
-                    <th className="py-2 pr-2">{t('report.colDestination')}</th>
-                    <th className="py-2 pr-2">{t('report.colEntries')}</th>
-                    <th className="py-2 pr-2">{t('report.colAmount')}</th>
-                    <th className="py-2">{t('report.colFlatUnits')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {financeGroups.map((g) => (
-                    <tr key={`${g.record_mode}-${g.destination}`} className="border-b border-border/60">
-                      <td className="py-2 pr-2 capitalize">{formatLedgerFieldLabel(g.record_mode)}</td>
-                      <td className="py-2 pr-2 capitalize">{formatLedgerFieldLabel(g.destination)}</td>
-                      <td className="py-2 pr-2 font-mono">{g.count}</td>
-                      <td className="py-2 pr-2 font-mono">₹{g.total.toLocaleString('en-IN')}</td>
-                      <td className="py-2 font-mono">{g.flatUnits}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {periodReport && societyId && (
+            <FinancePeriodReportSendPanel
+              societyId={societyId}
+              societyName={societyName}
+              adminName={adminName}
+              periodFrom={statementPeriodFrom}
+              periodTo={statementPeriodTo}
+              periodLabel={statementPeriodLabel}
+              periodReport={periodReport}
+              flatNumbers={flats.map((f) => f.flat_number)}
+            />
           )}
 
-          {/* Ledger & Maintenance Status Cards - Clickable */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-            <div className="border border-border rounded-xl p-4 bg-card/50">
-              <div className="flex items-center gap-2 mb-2">
-                <IndianRupee className="w-4 h-4 text-green-600" />
-                <h2 className="text-sm font-semibold">{t('report.receiptsLedgerStatus')}</h2>
-              </div>
-              {ledgerStatuses.length === 0 ? (
-                <p className="text-xs text-muted-foreground">{t('report.noLedgerRows')}</p>
-              ) : (
-                <div className="space-y-2">
-                  {ledgerStatuses.map((s) => (
-                    <button key={s.payment_status} onClick={() => openLedgerStatusModal(s.payment_status, s.count, s.total)} className="w-full flex items-center justify-between text-xs p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                      <span className="capitalize">{s.payment_status}</span>
-                      <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          {financialReportKind === 'collection_receipts' && periodReport && (
+            <FinancePeriodHeadTables report={periodReport} section="receipts" />
+          )}
 
-            <div className="border border-border rounded-xl p-4 bg-card/50">
-              <div className="flex items-center gap-2 mb-1">
-                <IndianRupee className="w-4 h-4 text-purple-600" />
-                <h2 className="text-sm font-semibold">{t('report.maintenanceFromLedger')}</h2>
-              </div>
-              <p className="text-[10px] text-muted-foreground mb-2">{t('report.maintenanceFromLedgerHint')}</p>
-              {maintenanceStatuses.length === 0 ? (
-                <p className="text-xs text-muted-foreground">{t('report.noMaintenanceLedgerRows')}</p>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    {maintenanceStatuses.map((s) => (
-                      <div key={s.payment_status} className="flex items-center justify-between text-xs gap-2">
-                        <span className="capitalize">{s.payment_status}</span>
-                        <DescriptiveValueButton
-                          {...REPORT_MAINTENANCE_METRICS.maintenanceStatus}
-                          title={`Maintenance — ${s.payment_status}`}
-                          description={`${REPORT_MAINTENANCE_METRICS.maintenanceStatus.description} Status: ${s.payment_status}.`}
-                          howCalculated={`${REPORT_MAINTENANCE_METRICS.maintenanceStatus.howCalculated} This row: ${s.count} payment(s).`}
-                          value={<span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>}
-                          valueClassName="font-mono text-xs font-semibold"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {maintenanceLinkSummary && (
-                    <div className="mt-3 pt-2 border-t border-border/60 text-[10px] text-muted-foreground space-y-1 font-mono">
-                      <div className="flex justify-between gap-2 items-center">
-                        <span>{t('report.maintenanceLinkedToLedger')}</span>
-                        <DescriptiveValueButton
-                          {...REPORT_MAINTENANCE_METRICS.maintenanceLinked}
-                          value={
-                            <span>
-                              {maintenanceLinkSummary.linked.count} · ₹{maintenanceLinkSummary.linked.total.toLocaleString('en-IN')}
-                            </span>
-                          }
-                          valueClassName="font-mono text-[10px] font-semibold"
-                        />
-                      </div>
-                      <div className="flex justify-between gap-2 items-center">
-                        <span>{t('report.maintenanceNotLinkedToLedger')}</span>
-                        <DescriptiveValueButton
-                          {...REPORT_MAINTENANCE_METRICS.maintenanceUnlinked}
-                          value={
-                            <span>
-                              {maintenanceLinkSummary.unlinked.count} · ₹{maintenanceLinkSummary.unlinked.total.toLocaleString('en-IN')}
-                            </span>
-                          }
-                          valueClassName="font-mono text-[10px] font-semibold"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
+          {financialReportKind === 'expenses' && periodReport && (
+            <FinancePeriodHeadTables report={periodReport} section="expenses" />
+          )}
 
-          {/* Donations & Splits - Clickable */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {financialReportKind === 'flat_wise' && flats.length > 0 && (
+            <FinanceFlatReportTab
+              from={flatReportFrom}
+              to={flatReportTo}
+              selectedFlat={flatReportSelectedFlat}
+              onFromChange={setFlatReportFrom}
+              onToChange={setFlatReportTo}
+              onSelectedFlatChange={setFlatReportSelectedFlat}
+              flats={flats}
+              primaryByFlatId={primaryByFlatId}
+              isLoading={flatReportLoading || financeCoreLoading}
+              rows={flatReportRows}
+            />
+          )}
+
+          {financialReportKind === 'cash_flow' && (
+            <CashFlowStatement
+              periodFrom={statementPeriodFrom}
+              periodTo={statementPeriodTo}
+              periodLabel={statementPeriodLabel}
+              societyName={societyName}
+              loading={financeLoading}
+              payments={payments}
+              societyLedgerEntries={societyLedgerEntries}
+              expenseCategoryById={expenseCategoryById}
+              reserveTransfers={reserveTransfers}
+              openingBalanceAnchors={openingBalanceAnchors}
+            />
+          )}
+
+          {financialReportKind === 'donation_statuses' && (
             <DescriptiveStatCard
               {...REPORT_PAGE_METRICS.moduleDonations}
               title={t('report.donationsStatuses')}
@@ -861,7 +759,7 @@ const ReportPage = ({
               className="border border-border rounded-xl bg-card/50 shadow-none"
             >
               {donationStatuses.length === 0 ? (
-                <p className="text-xs text-muted-foreground mt-2">No donations for this month.</p>
+                <p className="text-xs text-muted-foreground mt-2">No donations for this period.</p>
               ) : (
                 <div className="space-y-2 mt-2 w-full">
                   {donationStatuses.map((s) => (
@@ -873,37 +771,7 @@ const ReportPage = ({
                 </div>
               )}
             </DescriptiveStatCard>
-
-            <DescriptiveStatCard
-              {...REPORT_PAGE_METRICS.moduleExpenseSplits}
-              title={t('report.splitwiseFromGroups')}
-              caption={t('report.splitwiseFromGroups')}
-              icon={
-                <div className="flex items-center gap-2">
-                  <Split className="w-4 h-4 text-amber-600" />
-                  <h2 className="text-sm font-semibold">{t('report.splitwiseFromGroups')}</h2>
-                </div>
-              }
-              value={splitStatuses.reduce((s, d) => s + d.count, 0)}
-              onNavigate={openSplitModal}
-              navigateLabel="View split detail"
-              className="border border-border rounded-xl bg-card/50 shadow-none"
-            >
-              <p className="text-[10px] text-muted-foreground mt-1">{t('report.splitwiseFromGroupsHint')}</p>
-              {splitStatuses.length === 0 ? (
-                <p className="text-xs text-muted-foreground mt-2">{t('report.noSplitwiseSplits')}</p>
-              ) : (
-                <div className="space-y-2 mt-2 w-full">
-                  {splitStatuses.map((s) => (
-                    <div key={s.status} className="flex items-center justify-between text-xs">
-                      <span className="capitalize">{s.status}</span>
-                      <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </DescriptiveStatCard>
-          </div>
+          )}
         </div>
       )}
 
@@ -1145,26 +1013,6 @@ const ReportPage = ({
             >
               <p className="text-[10px] text-muted-foreground mt-1">
                 ₹{donationStatuses.reduce((s, d) => s + d.total, 0).toLocaleString('en-IN')}
-              </p>
-            </DescriptiveStatCard>
-
-            <DescriptiveStatCard
-              {...REPORT_PAGE_METRICS.moduleExpenseSplits}
-              title="Expense Splits"
-              caption="Expense Splits"
-              icon={
-                <div className="flex items-center gap-2">
-                  <Split className="w-4 h-4 text-amber-600" />
-                  <span className="text-xs font-semibold">Expense Splits</span>
-                </div>
-              }
-              value={splitStatuses.reduce((s, d) => s + d.count, 0)}
-              onNavigate={openSplitModal}
-              navigateLabel="View splits"
-              className="border border-border rounded-xl bg-card/50 shadow-none"
-            >
-              <p className="text-[10px] text-muted-foreground mt-1">
-                ₹{splitStatuses.reduce((s, d) => s + d.total, 0).toLocaleString('en-IN')}
               </p>
             </DescriptiveStatCard>
 
