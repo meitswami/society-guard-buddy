@@ -3758,7 +3758,9 @@ const FinanceManager = ({
       {subTab === 'totals' && (
         <FinanceTotalsTab
           societyId={societyId}
+          societyName={societyName || 'Society'}
           adminName={adminName}
+          flats={flats}
           totalsMonth={totalsMonth}
           onTotalsMonthChange={setTotalsMonth}
           ledgerEntries={ledgerEntries}
