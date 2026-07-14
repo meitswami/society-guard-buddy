@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Bell, Eye, Send, Undo2 } from 'lucide-react';
+import { Bell, Send, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction } from '@/lib/swal';
-import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import {
   buildFinancePeriodReportPdf,
   toFinancePeriodReportExportInput,
@@ -10,13 +9,6 @@ import {
 import type { FinancePeriodReportResult } from '@/lib/financePeriodReport';
 import { useFinanceMutations } from '@/hooks/finance/useFinanceMutations';
 import { useFinancePeriodReportBatch } from '@/hooks/finance/useFinancePeriodReportBatch';
-import { fetchNotificationReadStatus } from '@/services/finance/financeMutations';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 type Props = {
   societyId: string | null;
@@ -43,9 +35,6 @@ export default function FinancePeriodReportSendPanel({
   const { batchId, reload: reloadBatch } = useFinancePeriodReportBatch(societyId);
   const [sendPush, setSendPush] = useState(true);
   const [sending, setSending] = useState(false);
-  const [readOpen, setReadOpen] = useState(false);
-  const [readRows, setReadRows] = useState<{ flat: string; read: boolean; readAt: string | null }[]>([]);
-  const [loadingRead, setLoadingRead] = useState(false);
 
   const summaryMessage = `Receipts ₹${periodReport.totalReceipts.toLocaleString('en-IN')} · Expenses ₹${periodReport.totalExpenses.toLocaleString('en-IN')} · Net ₹${periodReport.totalBalance.toLocaleString('en-IN')} for ${periodLabel}.`;
 
@@ -108,26 +97,6 @@ export default function FinancePeriodReportSendPanel({
     }
   };
 
-  const openReadReceipts = async () => {
-    if (!batchId) return;
-    setLoadingRead(true);
-    setReadOpen(true);
-    const { data, error } = await fetchNotificationReadStatus(batchId);
-    setLoadingRead(false);
-    if (error) {
-      toast.error(error.message);
-      setReadRows([]);
-      return;
-    }
-    setReadRows(
-      (data ?? []).map((row) => ({
-        flat: String(row.target_id ?? '—'),
-        read: Boolean(row.is_read),
-        readAt: row.read_at,
-      })),
-    );
-  };
-
   if (!societyId) return null;
 
   return (
@@ -162,51 +131,17 @@ export default function FinancePeriodReportSendPanel({
             {sending ? 'Sending…' : 'Send'}
           </button>
           {batchId && (
-            <>
-              <button
-                type="button"
-                className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1"
-                onClick={() => void openReadReceipts()}
-              >
-                <Eye className="w-3.5 h-3.5" />
-                Read receipts
-              </button>
-              <button
-                type="button"
-                className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1"
-                onClick={() => void recallLast()}
-              >
-                <Undo2 className="w-3.5 h-3.5" />
-                Recall
-              </button>
-            </>
+            <button
+              type="button"
+              className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1"
+              onClick={() => void recallLast()}
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              Recall
+            </button>
           )}
         </div>
       </div>
-
-      <Dialog open={readOpen} onOpenChange={setReadOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Read receipts — {periodLabel}</DialogTitle>
-          </DialogHeader>
-          {loadingRead ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : readRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No delivery rows for the latest batch.</p>
-          ) : (
-            <ul className="max-h-64 overflow-y-auto text-sm space-y-1">
-              {readRows.map((row) => (
-                <li key={row.flat} className="flex justify-between gap-2 border-b border-border/50 py-1">
-                  <span>Flat {row.flat}</span>
-                  <span className={row.read ? 'text-emerald-600' : 'text-muted-foreground'}>
-                    {row.read ? (row.readAt ? fmtIsoDateToDisplay(row.readAt.slice(0, 10)) : 'Read') : 'Unread'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
