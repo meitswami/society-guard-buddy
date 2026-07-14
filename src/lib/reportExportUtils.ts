@@ -11,6 +11,20 @@ export function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Open a blob (e.g. PDF) in a new browser tab for viewing. */
+export function openBlobInNewTab(blob: Blob, filename = 'report.pdf') {
+  const url = URL.createObjectURL(blob);
+  const opened = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!opened) {
+    // Popup blocked — fall back to download so the user still gets the file.
+    triggerDownload(blob, filename);
+    URL.revokeObjectURL(url);
+    return;
+  }
+  // Revoke after the tab has had time to load the blob URL.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 function escapeCsvCell(value: unknown): string {
   const s = value == null ? '' : String(value);
   if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;

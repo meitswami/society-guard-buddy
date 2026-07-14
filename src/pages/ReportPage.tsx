@@ -40,10 +40,11 @@ import type { ExportFormat } from '@/lib/reportExportUtils';
 import { filterLedgerEntries, filterShiftRows, filterVisitorRows } from '@/lib/reportQueryFilter';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { openBlobInNewTab } from '@/lib/reportExportUtils';
 import { toast } from 'sonner';
 
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }
@@ -98,8 +99,24 @@ const ReportPage = ({
   const { visitors, societyId } = useStore();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<ReportTab>('financial');
-  const [financialReportKind, setFinancialReportKind] = useState<FinancialReportKind>('collection_receipts');
+  const [selectedFinancialReports, setSelectedFinancialReports] = useState<FinancialReportKind[]>([
+    'collection_receipts',
+  ]);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const toggleFinancialReport = (id: FinancialReportKind) => {
+    setSelectedFinancialReports((prev) => {
+      if (prev.includes(id)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((k) => k !== id);
+      }
+      return FINANCIAL_REPORT_OPTIONS.map((o) => o.id).filter((k) => k === id || prev.includes(k));
+    });
+  };
+
+  const selectedFinancialLabels = FINANCIAL_REPORT_OPTIONS.filter((o) =>
+    selectedFinancialReports.includes(o.id),
+  ).map((o) => o.label);
 
   useEffect(() => {
     if (!initialSearchQuery) return;
@@ -160,7 +177,10 @@ const ReportPage = ({
     expenses: flatReportExpenses,
     splits: flatReportSplits,
     isLoading: flatReportLoading,
-  } = useFinanceFlatReport(societyId, activeTab === 'financial' && financialReportKind === 'flat_wise');
+  } = useFinanceFlatReport(
+    societyId,
+    activeTab === 'financial' && selectedFinancialReports.includes('flat_wise'),
+  );
 
   useEffect(() => {
     setFlatReportFrom(statementPeriodFrom);
@@ -469,6 +489,13 @@ const ReportPage = ({
       })();
       return;
     }
+    // Financial PDFs open in a new tab for viewing; other formats download.
+    if (format === 'pdf' && activeTab === 'financial') {
+      const filename = `financial-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`;
+      openBlobInNewTab(buildMonthlyReportPdfBlob(reportExportContext), filename);
+      toast.success('PDF opened to view');
+      return;
+    }
     downloadMonthlyReport(format, reportExportContext);
     toast.success(`${format.toUpperCase()} downloaded`);
   };
@@ -566,6 +593,7 @@ const ReportPage = ({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              onClick={() => setActiveTab('financial')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
                 activeTab === 'financial'
                   ? 'bg-primary text-primary-foreground shadow-sm'
@@ -574,23 +602,27 @@ const ReportPage = ({
             >
               <IndianRupee className="w-3.5 h-3.5" />
               {activeTab === 'financial'
-                ? `Financial Reports: ${FINANCIAL_REPORT_OPTIONS.find((o) => o.id === financialReportKind)?.label ?? ''}`
+                ? selectedFinancialLabels.length === 1
+                  ? `Financial Reports: ${selectedFinancialLabels[0]}`
+                  : `Financial Reports (${selectedFinancialLabels.length})`
                 : 'Financial Reports'}
               <ChevronDown className="w-3 h-3 opacity-70" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-[14rem]">
+          <DropdownMenuContent align="start" className="min-w-[16rem]" onCloseAutoFocus={(e) => e.preventDefault()}>
             {FINANCIAL_REPORT_OPTIONS.map((opt) => (
-              <DropdownMenuItem
+              <DropdownMenuCheckboxItem
                 key={opt.id}
                 className="text-xs cursor-pointer"
-                onClick={() => {
+                checked={selectedFinancialReports.includes(opt.id)}
+                onSelect={(e) => {
+                  e.preventDefault();
                   setActiveTab('financial');
-                  setFinancialReportKind(opt.id);
+                  toggleFinancialReport(opt.id);
                 }}
               >
                 {opt.label}
-              </DropdownMenuItem>
+              </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -618,18 +650,24 @@ const ReportPage = ({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[11px] font-medium text-foreground">
-                  {FINANCIAL_REPORT_OPTIONS.find((o) => o.id === financialReportKind)?.label}
+                  {selectedFinancialLabels.length === 1
+                    ? selectedFinancialLabels[0]
+                    : `${selectedFinancialLabels.length} reports selected`}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  {statementPeriodLabel} — export, share, or change the reporting period
+                  {selectedFinancialLabels.length > 1
+                    ? `${selectedFinancialLabels.join(' · ')} · ${statementPeriodLabel}`
+                    : statementPeriodLabel}
+                  {' — '}
+                  PDF opens to view; Share opens WhatsApp
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ExportFormatMenu label="Export" onExport={exportReport} />
+                <ExportFormatMenu label="Download / View" onExport={exportReport} />
                 <SharePdfWhatsAppButton
                   label="Share on WhatsApp"
                   filename={`financial-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
-                  message={`${societyName} — ${statementPeriodLabel} report`}
+                  message={`${societyName} — ${statementPeriodLabel} financial report (${selectedFinancialLabels.join(', ')})`}
                   getBlob={() => buildMonthlyReportPdfBlob(reportExportContext)}
                 />
               </div>
@@ -704,74 +742,76 @@ const ReportPage = ({
             />
           )}
 
-          {financialReportKind === 'collection_receipts' && periodReport && (
-            <FinancePeriodHeadTables report={periodReport} section="receipts" />
-          )}
+          <div className="space-y-5">
+            {selectedFinancialReports.includes('collection_receipts') && periodReport && (
+              <FinancePeriodHeadTables report={periodReport} section="receipts" />
+            )}
 
-          {financialReportKind === 'expenses' && periodReport && (
-            <FinancePeriodHeadTables report={periodReport} section="expenses" />
-          )}
+            {selectedFinancialReports.includes('expenses') && periodReport && (
+              <FinancePeriodHeadTables report={periodReport} section="expenses" />
+            )}
 
-          {financialReportKind === 'flat_wise' && flats.length > 0 && (
-            <FinanceFlatReportTab
-              from={flatReportFrom}
-              to={flatReportTo}
-              selectedFlat={flatReportSelectedFlat}
-              onFromChange={setFlatReportFrom}
-              onToChange={setFlatReportTo}
-              onSelectedFlatChange={setFlatReportSelectedFlat}
-              flats={flats}
-              primaryByFlatId={primaryByFlatId}
-              isLoading={flatReportLoading || financeCoreLoading}
-              rows={flatReportRows}
-            />
-          )}
+            {selectedFinancialReports.includes('flat_wise') && flats.length > 0 && (
+              <FinanceFlatReportTab
+                from={flatReportFrom}
+                to={flatReportTo}
+                selectedFlat={flatReportSelectedFlat}
+                onFromChange={setFlatReportFrom}
+                onToChange={setFlatReportTo}
+                onSelectedFlatChange={setFlatReportSelectedFlat}
+                flats={flats}
+                primaryByFlatId={primaryByFlatId}
+                isLoading={flatReportLoading || financeCoreLoading}
+                rows={flatReportRows}
+              />
+            )}
 
-          {financialReportKind === 'cash_flow' && (
-            <CashFlowStatement
-              periodFrom={statementPeriodFrom}
-              periodTo={statementPeriodTo}
-              periodLabel={statementPeriodLabel}
-              societyName={societyName}
-              loading={financeLoading}
-              payments={payments}
-              societyLedgerEntries={societyLedgerEntries}
-              expenseCategoryById={expenseCategoryById}
-              reserveTransfers={reserveTransfers}
-              openingBalanceAnchors={openingBalanceAnchors}
-            />
-          )}
+            {selectedFinancialReports.includes('cash_flow') && (
+              <CashFlowStatement
+                periodFrom={statementPeriodFrom}
+                periodTo={statementPeriodTo}
+                periodLabel={statementPeriodLabel}
+                societyName={societyName}
+                loading={financeLoading}
+                payments={payments}
+                societyLedgerEntries={societyLedgerEntries}
+                expenseCategoryById={expenseCategoryById}
+                reserveTransfers={reserveTransfers}
+                openingBalanceAnchors={openingBalanceAnchors}
+              />
+            )}
 
-          {financialReportKind === 'donation_statuses' && (
-            <DescriptiveStatCard
-              {...REPORT_PAGE_METRICS.moduleDonations}
-              title={t('report.donationsStatuses')}
-              caption={t('report.donationsStatuses')}
-              icon={
-                <div className="flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-rose-500" />
-                  <h2 className="text-sm font-semibold">{t('report.donationsStatuses')}</h2>
-                </div>
-              }
-              value={donationStatuses.reduce((s, d) => s + d.count, 0)}
-              onNavigate={openDonationModal}
-              navigateLabel="View donation detail"
-              className="border border-border rounded-xl bg-card/50 shadow-none"
-            >
-              {donationStatuses.length === 0 ? (
-                <p className="text-xs text-muted-foreground mt-2">No donations for this period.</p>
-              ) : (
-                <div className="space-y-2 mt-2 w-full">
-                  {donationStatuses.map((s) => (
-                    <div key={s.status} className="flex items-center justify-between text-xs">
-                      <span className="capitalize">{s.status}</span>
-                      <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </DescriptiveStatCard>
-          )}
+            {selectedFinancialReports.includes('donation_statuses') && (
+              <DescriptiveStatCard
+                {...REPORT_PAGE_METRICS.moduleDonations}
+                title={t('report.donationsStatuses')}
+                caption={t('report.donationsStatuses')}
+                icon={
+                  <div className="flex items-center gap-2">
+                    <Heart className="w-4 h-4 text-rose-500" />
+                    <h2 className="text-sm font-semibold">{t('report.donationsStatuses')}</h2>
+                  </div>
+                }
+                value={donationStatuses.reduce((s, d) => s + d.count, 0)}
+                onNavigate={openDonationModal}
+                navigateLabel="View donation detail"
+                className="border border-border rounded-xl bg-card/50 shadow-none"
+              >
+                {donationStatuses.length === 0 ? (
+                  <p className="text-xs text-muted-foreground mt-2">No donations for this period.</p>
+                ) : (
+                  <div className="space-y-2 mt-2 w-full">
+                    {donationStatuses.map((s) => (
+                      <div key={s.status} className="flex items-center justify-between text-xs">
+                        <span className="capitalize">{s.status}</span>
+                        <span className="font-mono">{s.count} · ₹{s.total.toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </DescriptiveStatCard>
+            )}
+          </div>
         </div>
       )}
 
