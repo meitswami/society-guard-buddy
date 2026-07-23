@@ -60,6 +60,7 @@ import { useFinanceTotalsBreakdown } from '@/lib/financeTotalsBreakdown';
 import {
   buildCurrentMonthChargeTitle,
   chargeForUnpaidFilters,
+  chargeTitleMatchesBillingMonth,
   isCurrentMonthChargeTitle,
   isMonthlyMaintenanceCharge,
   normalizeTitle,
@@ -102,6 +103,7 @@ import {
   type SocietyPaymentMajorHead,
 } from '@/lib/financeExpenseHead';
 import {
+  findMonthlyMaintenanceMonthConflicts,
   findReceiptHeadConflicts,
   type AuditPaymentRow,
 } from '@/lib/financeAuditDetection';
@@ -277,6 +279,7 @@ const FinanceManager = ({
   const [selectedReceiptKeys, setSelectedReceiptKeys] = useState<Set<string>>(new Set());
   const [paymentEdit, setPaymentEdit] = useState<{
     id: string;
+    flat_number: string;
     charge_id: string;
     amount: string;
     payment_method: string;
@@ -621,15 +624,17 @@ const FinanceManager = ({
       if (entry.destination === 'current_month_maintenance' && entry.charge_id) {
         const billingDate = ledgerTransactionDate(entry);
         const targets = scopeFlats.map((f) => ({ flatNumber: f.flat_number, dueDate: billingDate }));
+        const monthlyChargeIds = charges.filter(isMonthlyMaintenanceCharge).map((c) => c.id as string);
         const conflicts = await queryReceiptHeadConflicts(supabase, {
           chargeId: entry.charge_id,
           paymentMethod: entry.payment_method,
           targets,
+          monthlyMaintenanceChargeIds: monthlyChargeIds,
         });
         if (conflicts.length > 0) {
           const flatList = [...new Set(conflicts.map((c) => c.flat_number))].join(', ');
           toast.error(
-            `Cannot distribute — receipt head already recorded for Flat ${flatList} (${chargeTitle || 'maintenance'}). Edit or delete in Audit → Finance Alarms.`,
+            `Cannot distribute — monthly maintenance already recorded for Flat ${flatList} in ${billingDate.slice(0, 7)}. Edit or delete in Audit → Finance Alarms.`,
             { duration: 8000 },
           );
           return;
@@ -736,20 +741,30 @@ const FinanceManager = ({
 
     if (mode !== 'society_pool' && (mode === 'flats_only' || mode === 'flats_plus_outsider')) {
       if (payForm.charge_id && payForm.selected_flats.length > 0) {
+        const selectedCharge = charges.find((c) => c.id === payForm.charge_id);
+        if (selectedCharge && !chargeTitleMatchesBillingMonth(selectedCharge.title ?? '', payForm.due_date)) {
+          toast.error(
+            `Billing date must fall in the month named by the receipt type ("${selectedCharge.title}"). Change the billing date or select the matching month's receipt type.`,
+            { duration: 8000 },
+          );
+          return;
+        }
         const targets = payForm.selected_flats.map((flatNum) => ({
           flatNumber: flatNum,
           dueDate: payForm.due_date,
         }));
+        const monthlyChargeIds = charges.filter(isMonthlyMaintenanceCharge).map((c) => c.id as string);
         const conflicts = await queryReceiptHeadConflicts(supabase, {
           chargeId: payForm.charge_id,
           paymentMethod: payForm.payment_method,
           targets,
+          monthlyMaintenanceChargeIds: monthlyChargeIds,
         });
         if (conflicts.length > 0) {
-          const chargeTitle = charges.find((c) => c.id === payForm.charge_id)?.title ?? 'Receipt head';
+          const chargeTitle = selectedCharge?.title ?? 'Receipt head';
           const flatList = [...new Set(conflicts.map((c) => c.flat_number))].join(', ');
           toast.error(
-            `Receipt head already recorded for Flat ${flatList} (${chargeTitle}). Edit or delete the existing entry in Audit → Finance Alarms before recording again.`,
+            `Receipt already recorded for Flat ${flatList} in ${payForm.due_date.slice(0, 7)} (${chargeTitle}). Double entry for the same month is not allowed — edit or delete the existing entry in Audit → Finance Alarms.`,
             { duration: 8000 },
           );
           return;
@@ -1186,6 +1201,34 @@ const FinanceManager = ({
 
   const savePaymentEdit = async () => {
     if (!paymentEdit || !societyId) return;
+    const editCharge = charges.find((c) => c.id === paymentEdit.charge_id);
+    if (editCharge && !chargeTitleMatchesBillingMonth(editCharge.title ?? '', paymentEdit.due_date)) {
+      toast.error(
+        `Billing date must fall in the month named by the receipt type ("${editCharge.title}").`,
+        { duration: 8000 },
+      );
+      return;
+    }
+    if (
+      editCharge &&
+      isMonthlyMaintenanceCharge(editCharge) &&
+      (paymentEdit.payment_status === 'verified' || paymentEdit.payment_status === 'pending')
+    ) {
+      const monthlyIds = charges.filter(isMonthlyMaintenanceCharge).map((c) => c.id as string);
+      const conflicts = await queryReceiptHeadConflicts(supabase, {
+        chargeId: paymentEdit.charge_id,
+        targets: [{ flatNumber: paymentEdit.flat_number, dueDate: paymentEdit.due_date }],
+        monthlyMaintenanceChargeIds: monthlyIds,
+      });
+      const other = conflicts.filter((c) => c.id !== paymentEdit.id);
+      if (other.length > 0) {
+        toast.error(
+          `Flat ${paymentEdit.flat_number} already has monthly maintenance for ${paymentEdit.due_date.slice(0, 7)}. Double entry for the same month is not allowed.`,
+          { duration: 8000 },
+        );
+        return;
+      }
+    }
     const reviewedAt = new Date().toISOString();
     const payload: Record<string, unknown> = {
       charge_id: paymentEdit.charge_id || null,
@@ -1336,6 +1379,7 @@ const FinanceManager = ({
   const openPaymentEdit = (p: any) => {
     setPaymentEdit({
       id: p.id,
+      flat_number: String(p.flat_number ?? ''),
       charge_id: p.charge_id ?? '',
       amount: String(p.amount ?? ''),
       payment_method: p.payment_method ?? 'cash',
@@ -1369,6 +1413,11 @@ const FinanceManager = ({
     [flats, payForm.allocationIncludeVacant],
   );
 
+  const monthlyMaintenanceChargeIds = useMemo(
+    () => new Set(charges.filter(isMonthlyMaintenanceCharge).map((c) => c.id as string)),
+    [charges],
+  );
+
   const receiptHeadConflictsPreview = useMemo(() => {
     if (
       !payForm.charge_id ||
@@ -1386,6 +1435,13 @@ const FinanceManager = ({
         paymentMethod: payForm.payment_method,
       }))
       .filter((t) => t.dueDate);
+    if (monthlyMaintenanceChargeIds.has(payForm.charge_id)) {
+      return findMonthlyMaintenanceMonthConflicts(
+        payments as AuditPaymentRow[],
+        monthlyMaintenanceChargeIds,
+        targets,
+      );
+    }
     return findReceiptHeadConflicts(payments as AuditPaymentRow[], targets);
   }, [
     payForm.charge_id,
@@ -1394,9 +1450,23 @@ const FinanceManager = ({
     payForm.due_date,
     payForm.payment_method,
     payments,
+    monthlyMaintenanceChargeIds,
   ]);
 
-  const unpaidFlats = targetFlats.filter((f) =>
+  /** Occupied flats with one row per flat_number (duplicate flat rows must not inflate unpaid). */
+  const uniqueTargetFlats = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: typeof targetFlats = [];
+    for (const f of targetFlats) {
+      const key = String(f.flat_number);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      rows.push(f);
+    }
+    return rows;
+  }, [targetFlats]);
+
+  const unpaidFlats = uniqueTargetFlats.filter((f) =>
     !payments.some((p) => p.flat_number === f.flat_number && p.payment_status === 'verified'),
   );
 
@@ -1658,7 +1728,7 @@ const FinanceManager = ({
       pendingByFlat.set(fn, p.payment_status);
     }
     const q = paymentSearchQuery.trim().toLowerCase();
-    return targetFlats
+    return uniqueTargetFlats
       .filter((f) => !paidSet.has(String(f.flat_number)))
       .map((f) => ({
         flat_number: f.flat_number,
@@ -1676,7 +1746,7 @@ const FinanceManager = ({
   }, [
     filterStatus,
     scopedReceiptPayments,
-    targetFlats,
+    uniqueTargetFlats,
     paymentSearchQuery,
     primaryByFlatId,
     unpaidChargeContext,
@@ -2631,11 +2701,12 @@ const FinanceManager = ({
                 <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-1.5">
                   <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    Receipt head already recorded — cannot save
+                    Receipt already recorded for this month — cannot save
                   </p>
                   <p className="text-[10px] text-muted-foreground leading-snug">
-                    These flats already have this receipt head for the selected month and payment channel. Edit or delete
-                    the existing entry in <span className="font-medium">Audit → Finance Alarms</span> before recording again.
+                    These flats already have monthly maintenance for the selected billing month (any payment mode). Double
+                    entry is blocked. Edit or delete the existing entry in{' '}
+                    <span className="font-medium">Audit → Finance Alarms</span> before recording again.
                   </p>
                   <ul className="text-[10px] text-foreground space-y-0.5 pt-1">
                     {receiptHeadConflictsPreview.map((p) => (

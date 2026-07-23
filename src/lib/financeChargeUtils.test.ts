@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildCurrentMonthChargeTitle,
+  chargeTitleMatchesBillingMonth,
   isCurrentMonthChargeTitle,
   isMonthlyMaintenanceCharge,
+  monthNameFromChargeTitle,
   normalizeTitle,
   paymentMonthValue,
 } from '@/lib/financeChargeHelpers';
@@ -27,6 +29,13 @@ describe('financeChargeHelpers', () => {
 
   it('derives payment month value from billing date', () => {
     expect(paymentMonthValue({ due_date: '2026-03-10' })).toBe('2026-03');
+  });
+
+  it('requires billing month to match month named in receipt type', () => {
+    expect(monthNameFromChargeTitle('June Monthly Maintenance')).toBe('june');
+    expect(chargeTitleMatchesBillingMonth('June Monthly Maintenance', '2026-06-19')).toBe(true);
+    expect(chargeTitleMatchesBillingMonth('June Monthly Maintenance', '2026-07-19')).toBe(false);
+    expect(chargeTitleMatchesBillingMonth('Water Softner Installation', '2026-07-19')).toBe(true);
   });
 });
 

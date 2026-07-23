@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { format } from 'date-fns';
 import {
+  findMonthlyMaintenanceMonthConflicts,
   findReceiptHeadConflicts,
   type AuditPaymentRow,
   type ReceiptHeadRecordingTarget,
@@ -11,23 +12,37 @@ export async function queryReceiptHeadConflicts(
   client: SupabaseClient,
   opts: {
     chargeId: string;
-    paymentMethod: string;
+    paymentMethod?: string;
     targets: { flatNumber: string; dueDate: string }[];
+    /** When recording a monthly maintenance charge, pass all monthly-maint charge ids. */
+    monthlyMaintenanceChargeIds?: string[];
   },
 ): Promise<AuditPaymentRow[]> {
   const flatNumbers = [...new Set(opts.targets.map((t) => t.flatNumber))];
   if (flatNumbers.length === 0 || !opts.chargeId) return [];
+
+  const monthlyIds = opts.monthlyMaintenanceChargeIds ?? [];
+  const isMonthlyMaint = monthlyIds.includes(opts.chargeId);
+  const chargeIds = isMonthlyMaint ? [...new Set(monthlyIds)] : [opts.chargeId];
 
   const { data, error } = await client
     .from('maintenance_payments')
     .select(
       'id, charge_id, flat_number, amount, payment_method, due_date, payment_date, created_at, payment_status, transaction_id, notes, finance_entry_id',
     )
-    .eq('charge_id', opts.chargeId)
+    .in('charge_id', chargeIds)
     .in('flat_number', flatNumbers)
     .in('payment_status', ['verified', 'pending']);
 
   if (error || !data) return [];
+
+  if (isMonthlyMaint) {
+    return findMonthlyMaintenanceMonthConflicts(
+      data as AuditPaymentRow[],
+      chargeIds,
+      opts.targets,
+    );
+  }
 
   const recordingTargets: ReceiptHeadRecordingTarget[] = opts.targets.map((t) => ({
     flatNumber: t.flatNumber,

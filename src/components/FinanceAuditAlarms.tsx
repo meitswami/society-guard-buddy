@@ -293,7 +293,10 @@ const FinanceAuditAlarms = () => {
     setAllPayments(rows);
 
     const titleMap = new Map(charges.map((c) => [c.id, c.title]));
-    const duplicates = findDuplicatePaymentGroups(rows, titleMap, { chargeIds });
+    const duplicates = findDuplicatePaymentGroups(rows, titleMap, {
+      chargeIds,
+      groupAcrossCharges: true,
+    });
     setAlarms(duplicates);
     setLoading(false);
   }, [societyId, refreshKey]);

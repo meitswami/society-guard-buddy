@@ -1,7 +1,22 @@
-import { format } from 'date-fns';
+import { format, isValid, parse } from 'date-fns';
 import { billingMonthFromDate, paymentBillingDate } from '@/lib/financeDates';
 
 export const normalizeTitle = (value: unknown) => String(value ?? '').trim().toLowerCase();
+
+const MONTH_NAMES = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+] as const;
 
 export const isMonthlyMaintenanceCharge = (charge: { title?: unknown; frequency?: unknown }) => {
   const title = normalizeTitle(charge?.title);
@@ -16,6 +31,27 @@ export const isCurrentMonthChargeTitle = (title: string, date = new Date()) => {
 };
 
 export const buildCurrentMonthChargeTitle = (date = new Date()) => `${format(date, 'MMMM')} Monthly Maintenance`;
+
+/** Month name embedded in a charge title (e.g. "June Monthly Maintenance" → "june"), else null. */
+export const monthNameFromChargeTitle = (title: string): (typeof MONTH_NAMES)[number] | null => {
+  const lower = normalizeTitle(title);
+  for (const month of MONTH_NAMES) {
+    if (lower.includes(month)) return month;
+  }
+  return null;
+};
+
+/**
+ * When a receipt type names a calendar month, billing date must fall in that month.
+ * Returns true when the title has no month name (no constraint).
+ */
+export const chargeTitleMatchesBillingMonth = (title: string, dueDateYmd: string): boolean => {
+  const named = monthNameFromChargeTitle(title);
+  if (!named) return true;
+  const d = parse(dueDateYmd.slice(0, 10), 'yyyy-MM-dd', new Date());
+  if (!isValid(d)) return false;
+  return format(d, 'MMMM').toLowerCase() === named;
+};
 
 export const paymentMonthValue = (payment: { due_date?: string | null }) => {
   const raw = paymentBillingDate(payment);

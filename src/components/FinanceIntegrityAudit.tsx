@@ -270,6 +270,7 @@ const FinanceIntegrityAudit = () => {
       /* ─── 3. DUPLICATE PAYMENT DETECTION (monthly charges — same as alarm panel) ─── */
       duplicateGroups = findDuplicatePaymentGroups(allPayments, chargeTitleById, {
         chargeIds: monthlyChargeIds,
+        groupAcrossCharges: true,
       });
 
       if (duplicateGroups.length > 0) {
@@ -290,7 +291,7 @@ const FinanceIntegrityAudit = () => {
           severity: 'critical',
           kind: 'duplicate_payments',
           title: `${duplicateGroups.length} Duplicate Payment Group${duplicateGroups.length > 1 ? 's' : ''} Found`,
-          description: `Duplicate rows in month(s): ${monthSummary}. Same flat + monthly charge + month + channel has multiple maintenance_payments rows.`,
+          description: `Duplicate rows in month(s): ${monthSummary}. Same flat + billing month has multiple monthly maintenance receipts (any charge / cash / UPI).`,
           reason:
             'Two or more payment rows exist for the same flat and month. This is different from ledger double-count (an extra finance_entries receipt without duplicate payments).',
           faultTrace: `Affected months: ${monthSummary}\nDuplicate groups:\n${sampleGroups}`,
@@ -305,7 +306,7 @@ const FinanceIntegrityAudit = () => {
         addFinding({
           severity: 'pass',
           title: 'No Duplicate Payment Rows',
-          description: 'Each flat has at most one monthly maintenance payment per month per channel.',
+          description: 'Each flat has at most one monthly maintenance payment per billing month.',
           reason: '',
           rectification: '',
         });

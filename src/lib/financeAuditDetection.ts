@@ -50,25 +50,29 @@ export type DuplicatePaymentGroup = {
   charge_id: string;
   charge_title: string;
   month: string;
-  payment_method: PaymentChannel;
+  payment_method: PaymentChannel | 'mixed';
   count: number;
   total_amount: number;
   payments: AuditPaymentRow[];
 };
 
-/** Same flat + charge + calendar month + channel (verified or pending). */
+/** Same flat + charge + calendar month (verified or pending). Channel must not allow a second receipt. */
 export function paymentDuplicateGroupKey(p: AuditPaymentRow): string {
   const dateStr = paymentBillingDate(p) || '';
   const month = dateStr ? format(new Date(dateStr), 'yyyy-MM') : 'unknown';
-  const channel = normalizePaymentChannel(p.payment_method);
-  return `${p.flat_number}||${p.charge_id}||${month}||${channel}`;
+  return `${p.flat_number}||${p.charge_id}||${month}`;
+}
+
+/** Same flat + billing month for any monthly-maintenance charge. */
+export function monthlyMaintenanceMonthKey(flatNumber: string, dueDateYmd: string): string {
+  return `${flatNumber}||${dueDateYmd.slice(0, 7)}`;
 }
 
 export type ReceiptHeadRecordingTarget = {
   flatNumber: string;
   dueDate: string;
   chargeId: string;
-  paymentMethod: string;
+  paymentMethod?: string;
 };
 
 /** Key used to block a new payment when the receipt head is already recorded. */
@@ -76,10 +80,10 @@ export function receiptHeadKeyFromRecording(
   flatNumber: string,
   chargeId: string,
   dueDate: string,
-  paymentMethod: string,
+  _paymentMethod?: string,
 ): string {
   const month = dueDate.slice(0, 7);
-  return `${flatNumber}||${chargeId}||${month}||${normalizePaymentChannel(paymentMethod)}`;
+  return `${flatNumber}||${chargeId}||${month}`;
 }
 
 /** Find verified/pending payments that already occupy the same receipt head slot. */
@@ -96,6 +100,36 @@ export function findReceiptHeadConflicts(
   for (const p of existingPayments) {
     if (p.payment_status !== 'verified' && p.payment_status !== 'pending') continue;
     const key = paymentDuplicateGroupKey(p);
+    if (!targetKeys.has(key) || seen.has(p.id)) continue;
+    seen.add(p.id);
+    conflicts.push(p);
+  }
+
+  return conflicts;
+}
+
+/**
+ * Block a second monthly-maintenance receipt for the same flat + billing month
+ * across all monthly maintenance charge types (cash/UPI/title variants).
+ */
+export function findMonthlyMaintenanceMonthConflicts(
+  existingPayments: AuditPaymentRow[],
+  monthlyChargeIds: Set<string> | string[],
+  targets: { flatNumber: string; dueDate: string }[],
+): AuditPaymentRow[] {
+  const monthlyIds = monthlyChargeIds instanceof Set ? monthlyChargeIds : new Set(monthlyChargeIds);
+  if (monthlyIds.size === 0 || targets.length === 0) return [];
+
+  const targetKeys = new Set(targets.map((t) => monthlyMaintenanceMonthKey(t.flatNumber, t.dueDate)));
+  const seen = new Set<string>();
+  const conflicts: AuditPaymentRow[] = [];
+
+  for (const p of existingPayments) {
+    if (p.payment_status !== 'verified' && p.payment_status !== 'pending') continue;
+    if (!monthlyIds.has(p.charge_id)) continue;
+    const dateStr = paymentBillingDate(p);
+    if (!dateStr) continue;
+    const key = monthlyMaintenanceMonthKey(p.flat_number, dateStr);
     if (!targetKeys.has(key) || seen.has(p.id)) continue;
     seen.add(p.id);
     conflicts.push(p);
@@ -134,18 +168,14 @@ export function findReceiptHeadLookupGroups(
 
   const results: DuplicatePaymentGroup[] = [];
   for (const [key, group] of groups) {
-    const [flat_number, charge_id, groupMonth, payment_method] = key.split('||') as [
-      string,
-      string,
-      string,
-      PaymentChannel,
-    ];
+    const [flat_number, charge_id, groupMonth] = key.split('||') as [string, string, string];
+    const channels = new Set(group.map((row) => normalizePaymentChannel(row.payment_method)));
     results.push({
       flat_number,
       charge_id,
       charge_title: chargeTitleById.get(charge_id) ?? 'Unknown receipt head',
       month: groupMonth,
-      payment_method,
+      payment_method: channels.size === 1 ? [...channels][0]! : 'mixed',
       count: group.length,
       total_amount: group.reduce((sum, row) => sum + Number(row.amount || 0), 0),
       payments: group,
@@ -163,15 +193,20 @@ export function findReceiptHeadLookupGroups(
 export function findDuplicatePaymentGroups(
   payments: AuditPaymentRow[],
   chargeTitleById: Map<string, string>,
-  options?: { chargeIds?: string[] },
+  options?: { chargeIds?: string[]; /** When true, one group per flat+month across all allowed charges. */ groupAcrossCharges?: boolean },
 ): DuplicatePaymentGroup[] {
   const allowed = options?.chargeIds ? new Set(options.chargeIds) : null;
+  const acrossCharges = Boolean(options?.groupAcrossCharges);
   const groups = new Map<string, AuditPaymentRow[]>();
 
   for (const p of payments) {
     if (p.payment_status !== 'verified' && p.payment_status !== 'pending') continue;
     if (allowed && !allowed.has(p.charge_id)) continue;
-    const key = paymentDuplicateGroupKey(p);
+    const dateStr = paymentBillingDate(p) || '';
+    const month = dateStr ? format(new Date(dateStr), 'yyyy-MM') : 'unknown';
+    const key = acrossCharges
+      ? `${p.flat_number}||${month}`
+      : paymentDuplicateGroupKey(p);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(p);
   }
@@ -179,7 +214,27 @@ export function findDuplicatePaymentGroups(
   const duplicates: DuplicatePaymentGroup[] = [];
   for (const [key, group] of groups) {
     if (group.length <= 1) continue;
-    const [flat_number, charge_id, month, payment_method] = key.split('||') as [string, string, string, PaymentChannel];
+    const channels = new Set(group.map((row) => normalizePaymentChannel(row.payment_method)));
+    const payment_method: PaymentChannel | 'mixed' = channels.size === 1 ? [...channels][0]! : 'mixed';
+    if (acrossCharges) {
+      const [flat_number, month] = key.split('||') as [string, string];
+      const chargeIds = [...new Set(group.map((row) => row.charge_id))];
+      duplicates.push({
+        flat_number,
+        charge_id: chargeIds[0] ?? '',
+        charge_title:
+          chargeIds.length === 1
+            ? chargeTitleById.get(chargeIds[0]!) ?? 'Unknown charge'
+            : chargeIds.map((id) => chargeTitleById.get(id) ?? id).join(' + '),
+        month,
+        payment_method,
+        count: group.length,
+        total_amount: group.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+        payments: group,
+      });
+      continue;
+    }
+    const [flat_number, charge_id, month] = key.split('||') as [string, string, string];
     duplicates.push({
       flat_number,
       charge_id,
@@ -736,7 +791,7 @@ export function buildAuditFixQueue(input: AuditFixQueueInput): AuditFixQueueItem
         detail: `${group.payment_method.toUpperCase()} · ${fmtIsoMonthToDisplay(group.month)} · ${group.count} rows for same receipt head`,
         action: isExtra ? 'delete' : 'review',
         actionHint: isExtra
-          ? 'Delete this extra duplicate — keep one verified row per flat/month/channel'
+          ? 'Delete this extra duplicate — keep one verified row per flat per billing month'
           : 'Keep this entry — delete the newer duplicate(s) for this flat/month',
         severity: 'critical',
         findingKind: 'duplicate_payments',
