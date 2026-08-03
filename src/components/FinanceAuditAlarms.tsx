@@ -13,6 +13,7 @@ import {
 } from '@/lib/financeAuditDetection';
 import { deleteMaintenancePayment } from '@/lib/financeAuditRemediation';
 import FinanceLedgerOvercountPanel from '@/components/FinanceLedgerOvercountPanel';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 type PaymentRow = AuditPaymentRow & {
   transaction_id: string | null;
@@ -234,6 +235,7 @@ const ReceiptHeadGroupCard = ({
 );
 
 const FinanceAuditAlarms = () => {
+  const { t } = useLanguage();
   const [refreshKey, setRefreshKey] = useState(0);
   const societyId = useStore((s) => s.societyId);
   const [alarms, setAlarms] = useState<DuplicatePaymentGroup[]>([]);
@@ -364,7 +366,7 @@ const FinanceAuditAlarms = () => {
 
   const runLookup = () => {
     if (!lookupFlat.trim() && !lookupChargeId && !lookupMonth.trim()) {
-      toast.error('Enter at least one filter — flat, receipt head, or month (YYYY-MM)');
+      toast.error(t('finance.filterNeedOne'));
       return;
     }
     const results = findReceiptHeadLookupGroups(allPayments, chargeTitleById, {
@@ -397,16 +399,16 @@ const FinanceAuditAlarms = () => {
         <div className="flex items-center gap-2">
           <Search className="w-4 h-4 text-primary" />
           <div>
-            <h3 className="text-sm font-semibold">Find recorded receipt head</h3>
+            <h3 className="text-sm font-semibold">{t('finance.findReceiptHeadTitle')}</h3>
             <p className="text-[10px] text-muted-foreground">
-              When Finance blocks a duplicate, look up the existing entry here to edit or delete it.
+              {t('finance.findReceiptHeadHint')}
             </p>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <input
             className="input-field text-sm"
-            placeholder="Flat (e.g. A-101)"
+            placeholder={t('finance.flatPlaceholder')}
             value={lookupFlat}
             onChange={(e) => setLookupFlat(e.target.value)}
           />
@@ -415,7 +417,7 @@ const FinanceAuditAlarms = () => {
             value={lookupChargeId}
             onChange={(e) => setLookupChargeId(e.target.value)}
           >
-            <option value="">All receipt heads</option>
+            <option value="">{t('finance.allReceiptHeads')}</option>
             {chargeOptions.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.title}
@@ -424,17 +426,17 @@ const FinanceAuditAlarms = () => {
           </select>
           <input
             className="input-field text-sm font-mono"
-            placeholder="Month (YYYY-MM)"
+            placeholder={t('finance.monthPlaceholder')}
             value={lookupMonth}
             onChange={(e) => setLookupMonth(e.target.value)}
           />
         </div>
         <button type="button" onClick={runLookup} className="btn-primary text-sm w-full sm:w-auto">
-          Search recorded entries
+          {t('finance.searchRecorded')}
         </button>
 
         {lookupSearched && lookupResults.length === 0 && (
-          <p className="text-xs text-muted-foreground">No matching receipt-head entries found.</p>
+          <p className="text-xs text-muted-foreground">{t('finance.noMatchingReceiptHeads')}</p>
         )}
 
         {lookupResults.length > 0 && (
@@ -454,19 +456,18 @@ const FinanceAuditAlarms = () => {
 
       {loading ? (
         <div className="card-section p-4">
-          <p className="text-sm text-muted-foreground">Scanning for duplicate receipt-head entries…</p>
+          <p className="text-sm text-muted-foreground">{t('finance.scanningDuplicates')}</p>
         </div>
       ) : alarms.length === 0 ? (
         <div className="card-section p-4 border-green-500/30 bg-green-500/5">
           <div className="flex items-center gap-2">
             <IndianRupee className="w-4 h-4 text-green-600" />
             <p className="text-sm font-medium text-green-700 dark:text-green-400">
-              No duplicate receipt-head entries
+              {t('finance.noDuplicateTitle')}
             </p>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            No flat has two verified/pending payments for the same receipt head, month, and channel. Finance → Record
-            receipt blocks a second entry automatically. Use the search above to edit or delete an existing entry.
+            {t('finance.noDuplicateBody')}
           </p>
         </div>
       ) : (
@@ -477,9 +478,9 @@ const FinanceAuditAlarms = () => {
                 <AlertTriangle className="w-4 h-4 text-destructive animate-pulse" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-destructive">Duplicate receipt heads detected</h3>
+                <h3 className="text-sm font-semibold text-destructive">{t('finance.duplicateDetectedTitle')}</h3>
                 <p className="text-[10px] text-muted-foreground">
-                  {alarms.length} group{alarms.length > 1 ? 's' : ''} — same flat + receipt head + month + channel twice
+                  {t('finance.duplicateDetectedBody', { count: alarms.length })}
                 </p>
               </div>
             </div>

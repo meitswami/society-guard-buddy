@@ -10,6 +10,7 @@ import '../../services/auth_service.dart';
 import '../../services/biometric_login_service.dart';
 import '../../services/geofence_service.dart';
 import '../../services/flat_service.dart';
+import '../../services/login_remember.dart';
 import '../../services/resident_login_service.dart';
 import '../../services/society_service.dart';
 import '../shared/widgets/branded_background.dart';
@@ -41,6 +42,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _loading = false;
   bool _obscure = true;
   String? _error;
+  String _rememberedPhone = '';
+  bool _prefsRestored = false;
   final _residentLogin = ResidentLoginService();
   final _geofence = GeofenceService();
 
@@ -48,10 +51,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void initState() {
     super.initState();
     _loadSocieties();
+    _identifierController.addListener(_onIdentifierChanged);
+  }
+
+  void _onIdentifierChanged() {
+    if (_role != LoginRole.resident) return;
+    final digits = _identifierController.text.replaceAll(RegExp(r'\D'), '');
+    final phone = digits.length > 10 ? digits.substring(digits.length - 10) : digits;
+    _rememberedPhone = phone;
+    LoginRemember.write(
+      societyId: _societyId,
+      role: 'resident',
+      flatId: _flatId,
+      phone: phone,
+    );
   }
 
   @override
   void dispose() {
+    _identifierController.removeListener(_onIdentifierChanged);
     _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -61,18 +79,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final rows = await ref.read(societyServiceProvider).fetchActiveSocieties();
     if (!mounted) return;
     setState(() => _societies = rows);
+    await _restoreRemembered();
   }
 
-  Future<void> _loadFlats() async {
+  Future<void> _restoreRemembered() async {
+    if (_prefsRestored || _societies.isEmpty) return;
+    _prefsRestored = true;
+    final rem = await LoginRemember.read();
+    if (rem == null || !mounted) return;
+    setState(() {
+      if (rem.societyId != null && _societies.any((s) => s.id == rem.societyId)) {
+        _societyId = rem.societyId;
+      }
+      switch (rem.role) {
+        case 'guard':
+          _role = LoginRole.guard;
+        case 'admin':
+          _role = LoginRole.admin;
+          _loginMode = LoginMode.credentials;
+        case 'resident':
+          _role = LoginRole.resident;
+        default:
+          break;
+      }
+      if (rem.phone != null && rem.phone!.isNotEmpty) {
+        _rememberedPhone = rem.phone!;
+        _identifierController.text = rem.phone!;
+      }
+    });
+    if (_role == LoginRole.resident && _societyId != null) {
+      await _loadFlats(restoreFlatId: rem.flatId);
+    }
+  }
+
+  Future<void> _loadFlats({String? restoreFlatId}) async {
     if (_societyId == null || _role != LoginRole.resident) {
-      setState(() => _flats = const []);
+      setState(() {
+        _flats = const [];
+        _flatId = null;
+      });
       return;
     }
     final rows = await FlatService().fetchFlatsForSociety(_societyId!);
     if (!mounted) return;
     setState(() {
       _flats = rows;
-      _flatId = null;
+      if (restoreFlatId != null && rows.any((f) => f.id == restoreFlatId)) {
+        _flatId = restoreFlatId;
+      } else {
+        _flatId = null;
+      }
     });
   }
 
@@ -106,6 +162,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             flatId: _flatId!,
             identifier: id,
             password: password,
+          );
+          await LoginRemember.write(
+            societyId: _societyId,
+            role: 'resident',
+            flatId: _flatId,
+            phone: id,
           );
           await session.loginResident(
             societyId: _societyId!,
@@ -173,6 +235,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             guard: guard,
           );
       if (shiftId == null) throw AuthFailure('Could not start guard shift');
+      await LoginRemember.write(
+        societyId: _societyId,
+        role: 'guard',
+        phone: phone,
+      );
       await session.loginGuard(
         societyId: _societyId!,
         societyName: _societyName,
@@ -204,6 +271,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       residentUser = onboarded;
     }
 
+    await LoginRemember.write(
+      societyId: _societyId,
+      role: 'resident',
+      flatId: _flatId,
+      phone: phone,
+    );
     await session.loginResident(
       societyId: _societyId!,
       societyName: _societyName,
@@ -338,7 +411,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name)))
                     .toList(),
                 onChanged: (v) {
-                  setState(() => _societyId = v);
+                  setState(() {
+                    _societyId = v;
+                    _role = null;
+                    _flatId = null;
+                  });
+                  LoginRemember.write(societyId: v, clearRole: true, clearFlat: true);
                   _loadFlats();
                 },
               ),
@@ -357,8 +435,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 onChanged: (v) {
                   setState(() {
                     _role = v;
+                    _flatId = null;
                     if (v == LoginRole.admin) _loginMode = LoginMode.credentials;
                   });
+                  LoginRemember.write(
+                    societyId: _societyId,
+                    role: v?.name,
+                    clearFlat: true,
+                  );
                   _loadFlats();
                 },
               ),
@@ -387,7 +471,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: Text(f.flatNumber),
                           ))
                       .toList(),
-                  onChanged: (v) => setState(() => _flatId = v),
+                  onChanged: (v) {
+                    setState(() => _flatId = v);
+                    LoginRemember.write(
+                      societyId: _societyId,
+                      role: 'resident',
+                      flatId: v,
+                    );
+                  },
                 ),
               ],
               const SizedBox(height: 16),
@@ -407,6 +498,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 OtpLoginPanel(
                   enabled: _societyId != null &&
                       (_role != LoginRole.resident || _flatId != null),
+                  initialPhone: _rememberedPhone,
+                  onPhoneChanged: (phone) {
+                    _rememberedPhone = phone;
+                    LoginRemember.write(
+                      societyId: _societyId,
+                      role: _role?.name,
+                      flatId: _flatId,
+                      phone: phone,
+                    );
+                  },
                   onVerified: (phone) async {
                     setState(() {
                       _error = null;

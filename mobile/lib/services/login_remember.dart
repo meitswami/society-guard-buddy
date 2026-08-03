@@ -31,13 +31,14 @@ class LoginRemember {
     String? role,
     String? flatId,
     String? phone,
+    bool clearRole = false,
     bool clearFlat = false,
     bool clearPhone = false,
   }) async {
     final prev = await read();
     final next = LoginRememberData(
       societyId: societyId ?? prev?.societyId,
-      role: role ?? prev?.role,
+      role: clearRole ? null : (role ?? prev?.role),
       flatId: clearFlat ? null : (flatId ?? prev?.flatId),
       phone: clearPhone ? null : _normalizePhone(phone ?? prev?.phone),
     );

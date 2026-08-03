@@ -1165,6 +1165,134 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'No passkey saved for this app yet. Log in once with OTP or password, then enable biometric in Profile.',
     hi: 'इस ऐप के लिए अभी तक कोई पासकी सहेजा नहीं है। एक बार OTP या पासवर्ड से लॉगिन करें, फिर प्रोफ़ाइल में बायोमेट्रिक सक्षम करें।',
   },
+
+  // Voting charter (member-facing; overridable per society)
+  'votingCharter.title': { en: 'Voting Charter', hi: 'मतदान चार्टर' },
+  'votingCharter.eligibility.heading': { en: 'Eligibility', hi: 'पात्रता' },
+  'votingCharter.eligibility.p1': {
+    en: 'Every registered owner and their spouse may cast one ranked ballot each.',
+    hi: 'प्रत्येक पंजीकृत मालिक और उनके जीवनसाथी एक-एक क्रमबद्ध मतपत्र डाल सकते हैं।',
+  },
+  'votingCharter.eligibility.p2': {
+    en: 'One vote per person — even if you own more than one flat, you vote only once (matched by login / phone).',
+    hi: 'प्रति व्यक्ति एक वोट — एक से अधिक फ्लैट होने पर भी आप केवल एक बार मतदान करते हैं (लॉगिन / फोन से मिलाया जाता है)।',
+  },
+  'votingCharter.eligibility.p3': {
+    en: 'Up to two ballots may come from the same flat when both spouses vote separately.',
+    hi: 'जब दोनों जीवनसाथी अलग-अलग मतदान करें तो एक ही फ्लैट से अधिकतम दो मतपत्र आ सकते हैं।',
+  },
+  'votingCharter.nomination.heading': { en: 'Nomination', hi: 'नामांकन' },
+  'votingCharter.nomination.p1': {
+    en: 'When the admin opens the nomination window, members may propose themselves for three executive posts: President, Secretary, or Treasurer.',
+    hi: 'जब एडमिन नामांकन विंडो खोलता है, सदस्य तीन कार्यकारी पदों — अध्यक्ष, सचिव या कोषाध्यक्ष — के लिए स्वयं को प्रस्तावित कर सकते हैं।',
+  },
+  'votingCharter.nomination.p2': {
+    en: 'Each nominee must write a short statement explaining why they should be chosen or given preference.',
+    hi: 'प्रत्येक नामांकित को यह बताते हुए एक संक्षिप्त विवरण लिखना होगा कि उन्हें क्यों चुना जाए या प्राथमिकता दी जाए।',
+  },
+  'votingCharter.nomination.p3': {
+    en: 'Self-nomination is only allowed inside the admin-set nomination open and close dates.',
+    hi: 'स्व-नामांकन केवल एडमिन द्वारा निर्धारित नामांकन आरंभ और समाप्ति तिथियों के बीच ही अनुमत है।',
+  },
+  'votingCharter.method.heading': { en: 'Voting method', hi: 'मतदान विधि' },
+  'votingCharter.method.p1': {
+    en: 'Rank every candidate in each post — 1 = highest preference (maximum rating).',
+    hi: 'प्रत्येक पद में सभी उम्मीदवारों को रैंक दें — 1 = उच्चतम प्राथमिकता (अधिकतम रेटिंग)।',
+  },
+  'votingCharter.method.p2': {
+    en: 'You must rank all candidates in a post; duplicate ranks are not allowed.',
+    hi: 'एक पद में सभी उम्मीदवारों को रैंक देना अनिवार्य है; समान रैंक की अनुमति नहीं है।',
+  },
+  'votingCharter.method.p3': {
+    en: 'Scores use Borda priority points: top rank gets the highest score; the candidate with the highest total is elected if they meet the admin’s minimum winning score for that post.',
+    hi: 'अंक बोर्डा प्राथमिकता पद्धति से मिलते हैं: शीर्ष रैंक को सर्वाधिक अंक; सबसे अधिक कुल अंक वाला उम्मीदवार चुना जाता है यदि वह उस पद के लिए एडमिन की न्यूनतम जीत अंक सीमा पूरी करता है।',
+  },
+  'votingCharter.method.p4': {
+    en: 'You may include yourself in your rankings.',
+    hi: 'आप अपनी रैंकिंग में स्वयं को भी शामिल कर सकते हैं।',
+  },
+  'votingCharter.method.p5': {
+    en: 'Voting is only allowed inside the admin-set voting open and close dates.',
+    hi: 'मतदान केवल एडमिन द्वारा निर्धारित मतदान आरंभ और समाप्ति तिथियों के बीच ही अनुमत है।',
+  },
+  'votingCharter.docs.heading': { en: 'Documents & results', hi: 'दस्तावेज़ और परिणाम' },
+  'votingCharter.docs.p1': {
+    en: 'Admin may attach circulars, letters, or other society/personal documents to the election; members can open them from the poll.',
+    hi: 'एडमिन चुनाव में परिपत्र, पत्र या अन्य सोसाइटी/व्यक्तिगत दस्तावेज़ संलग्न कर सकता है; सदस्य उन्हें पोल से खोल सकते हैं।',
+  },
+  'votingCharter.docs.p2': {
+    en: 'After the voting window closes, the admin tallies results. Winners are visible in the admin portal first.',
+    hi: 'मतदान विंडो बंद होने के बाद एडमिन परिणाम गिनता है। विजेता पहले एडमिन पोर्टल में दिखते हैं।',
+  },
+  'votingCharter.docs.p3': {
+    en: 'Elected names appear in the residents’ Committee module only after the admin publishes them to the roster.',
+    hi: 'निर्वाचित नाम निवासी समिति मॉड्यूल में तभी दिखते हैं जब एडमिन उन्हें रोस्टर पर प्रकाशित करता है।',
+  },
+
+  // Finance UI / audit (overridable for member-facing notices)
+  'finance.receiptHead': { en: 'Receipt head', hi: 'रसीद शीर्ष' },
+  'finance.allReceiptHeads': { en: 'All receipt heads', hi: 'सभी रसीद शीर्ष' },
+  'finance.allReceiptHeadsCash': { en: 'All receipt heads — cash', hi: 'सभी रसीद शीर्ष — नकद' },
+  'finance.allReceiptHeadsBank': { en: 'All receipt heads — bank / UPI', hi: 'सभी रसीद शीर्ष — बैंक / यूपीआई' },
+  'finance.allReceiptHeadsOther': { en: 'All receipt heads — other', hi: 'सभी रसीद शीर्ष — अन्य' },
+  'finance.findReceiptHeadTitle': { en: 'Find recorded receipt head', hi: 'दर्ज रसीद शीर्ष खोजें' },
+  'finance.findReceiptHeadHint': {
+    en: 'When Finance blocks a duplicate, look up the existing entry here to edit or delete it.',
+    hi: 'जब वित्त डुप्लिकेट रोकता है, यहाँ मौजूदा प्रविष्टि खोजकर संपादित या हटाएँ।',
+  },
+  'finance.searchRecorded': { en: 'Search recorded entries', hi: 'दर्ज प्रविष्टियाँ खोजें' },
+  'finance.noMatchingReceiptHeads': {
+    en: 'No matching receipt-head entries found.',
+    hi: 'कोई मिलती-जुलती रसीद-शीर्ष प्रविष्टि नहीं मिली।',
+  },
+  'finance.scanningDuplicates': {
+    en: 'Scanning for duplicate receipt-head entries…',
+    hi: 'डुप्लिकेट रसीद-शीर्ष प्रविष्टियाँ जाँची जा रही हैं…',
+  },
+  'finance.noDuplicateTitle': {
+    en: 'No duplicate receipt-head entries',
+    hi: 'कोई डुप्लिकेट रसीद-शीर्ष प्रविष्टि नहीं',
+  },
+  'finance.noDuplicateBody': {
+    en: 'No flat has two verified/pending payments for the same receipt head, month, and channel. Finance → Record receipt blocks a second entry automatically. Use the search above to edit or delete an existing entry.',
+    hi: 'किसी फ्लैट के पास समान रसीद शीर्ष, माह और माध्यम के लिए दो सत्यापित/लंबित भुगतान नहीं हैं। वित्त → रसीद दर्ज करें दूसरी प्रविष्टि को स्वतः रोकता है। मौजूदा प्रविष्टि संपादित या हटाने के लिए ऊपर खोज का उपयोग करें।',
+  },
+  'finance.duplicateDetectedTitle': {
+    en: 'Duplicate receipt heads detected',
+    hi: 'डुप्लिकेट रसीद शीर्ष मिले',
+  },
+  'finance.duplicateDetectedBody': {
+    en: '{count} group(s) — same flat + receipt head + month + channel twice',
+    hi: '{count} समूह — समान फ्लैट + रसीद शीर्ष + माह + माध्यम दो बार',
+  },
+  'finance.filterNeedOne': {
+    en: 'Enter at least one filter — flat, receipt head, or month (YYYY-MM)',
+    hi: 'कम से कम एक फ़िल्टर भरें — फ्लैट, रसीद शीर्ष, या माह (YYYY-MM)',
+  },
+  'finance.flatPlaceholder': { en: 'Flat (e.g. A-101)', hi: 'फ्लैट (जैसे A-101)' },
+  'finance.monthPlaceholder': { en: 'Month (YYYY-MM)', hi: 'माह (YYYY-MM)' },
+  'finance.receiptAlreadyRecorded': {
+    en: 'Receipt already recorded for this month — cannot save',
+    hi: 'इस माह की रसीद पहले से दर्ज है — सहेजा नहीं जा सकता',
+  },
+  'finance.receiptAlreadyRecordedDetail': {
+    en: 'Receipt already recorded for Flat {flat} in {month} ({head}). Double entry for the same month is not allowed — edit or delete the existing entry in Audit → Finance Alarms.',
+    hi: 'फ्लैट {flat} के लिए {month} में ({head}) रसीद पहले से दर्ज है। उसी माह की दोहरी प्रविष्टि अनुमत नहीं — ऑडिट → वित्त अलार्म में मौजूदा प्रविष्टि संपादित या हटाएँ।',
+  },
+  'finance.unknownReceiptHead': { en: 'Unknown receipt head', hi: 'अज्ञात रसीद शीर्ष' },
+
+  // Admin content translation editor
+  'contentEditor.title': { en: 'Member content (Hindi / English)', hi: 'सदस्य सामग्री (हिंदी / अंग्रेज़ी)' },
+  'contentEditor.subtitle': {
+    en: 'Edit translations saved for your society. Members see the language they selected; empty fields keep the app default.',
+    hi: 'अपनी सोसाइटी के लिए अनुवाद संपादित करें। सदस्य चुनी भाषा देखेंगे; खाली फ़ील्ड ऐप की डिफ़ॉल्ट भाषा रखती हैं।',
+  },
+  'contentEditor.save': { en: 'Save translations', hi: 'अनुवाद सहेजें' },
+  'contentEditor.saved': { en: 'Translations saved for members', hi: 'सदस्यों के लिए अनुवाद सहेजे गए' },
+  'contentEditor.resetDefaults': { en: 'Reset to app defaults', hi: 'ऐप डिफ़ॉल्ट पर रीसेट' },
+  'contentEditor.english': { en: 'English', hi: 'अंग्रेज़ी' },
+  'contentEditor.hindi': { en: 'Hindi', hi: 'हिंदी' },
+  'contentEditor.defaultHint': { en: 'App default', hi: 'ऐप डिफ़ॉल्ट' },
 };
 
 export default translations;

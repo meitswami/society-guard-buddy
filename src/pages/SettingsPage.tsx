@@ -3,13 +3,14 @@ import { Settings, Shield, ImagePlus, Trash2, ChevronLeft, ChevronRight } from '
 import { useLanguage } from '@/i18n/LanguageContext';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
+import SocietyContentEditor from '@/components/SocietyContentEditor';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { ADMIN_HOME_METRICS } from '@/lib/descriptiveMetricCopy';
 
-const SettingsPage = () => {
+const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean } = {}) => {
   const { visitors, flats, members, residentVehicles, blacklist, societyId, entryCapsMode, setEntryCapsMode } = useStore();
   const { t } = useLanguage();
   const [banners, setBanners] = useState<any[]>([]);
@@ -145,6 +146,8 @@ const SettingsPage = () => {
           </button>
         </div>
       </div>
+
+      {allowContentEdit && canManageSociety && <SocietyContentEditor />}
 
       {/* Data summary */}
       <div className="card-section mb-4">

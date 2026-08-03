@@ -1,40 +1,40 @@
-/** Society election & voting charter — shown at top of the Elections module. */
+/** Society election & voting charter — keys resolve via useLanguage().t() (static + society overrides). */
 
-export const VOTING_CHARTER_TITLE = 'Voting Charter';
+export const VOTING_CHARTER_TITLE_KEY = 'votingCharter.title';
 
 export const VOTING_CHARTER_SECTIONS = [
   {
-    heading: 'Eligibility',
-    points: [
-      'Every registered owner and their spouse may cast one ranked ballot each.',
-      'One vote per person — even if you own more than one flat, you vote only once (matched by login / phone).',
-      'Up to two ballots may come from the same flat when both spouses vote separately.',
+    headingKey: 'votingCharter.eligibility.heading',
+    pointKeys: [
+      'votingCharter.eligibility.p1',
+      'votingCharter.eligibility.p2',
+      'votingCharter.eligibility.p3',
     ],
   },
   {
-    heading: 'Nomination',
-    points: [
-      'When the admin opens the nomination window, members may propose themselves for three executive posts: President, Secretary, or Treasurer.',
-      'Each nominee must write a short statement explaining why they should be chosen or given preference.',
-      'Self-nomination is only allowed inside the admin-set nomination open and close dates.',
+    headingKey: 'votingCharter.nomination.heading',
+    pointKeys: [
+      'votingCharter.nomination.p1',
+      'votingCharter.nomination.p2',
+      'votingCharter.nomination.p3',
     ],
   },
   {
-    heading: 'Voting method',
-    points: [
-      'Rank every candidate in each post — 1 = highest preference (maximum rating).',
-      'You must rank all candidates in a post; duplicate ranks are not allowed.',
-      'Scores use Borda priority points: top rank gets the highest score; the candidate with the highest total is elected if they meet the admin’s minimum winning score for that post.',
-      'You may include yourself in your rankings.',
-      'Voting is only allowed inside the admin-set voting open and close dates.',
+    headingKey: 'votingCharter.method.heading',
+    pointKeys: [
+      'votingCharter.method.p1',
+      'votingCharter.method.p2',
+      'votingCharter.method.p3',
+      'votingCharter.method.p4',
+      'votingCharter.method.p5',
     ],
   },
   {
-    heading: 'Documents & results',
-    points: [
-      'Admin may attach circulars, letters, or other society/personal documents to the election; members can open them from the poll.',
-      'After the voting window closes, the admin tallies results. Winners are visible in the admin portal first.',
-      'Elected names appear in the residents’ Committee module only after the admin publishes them to the roster.',
+    headingKey: 'votingCharter.docs.heading',
+    pointKeys: [
+      'votingCharter.docs.p1',
+      'votingCharter.docs.p2',
+      'votingCharter.docs.p3',
     ],
   },
 ] as const;

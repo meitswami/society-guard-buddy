@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Building2, Shield, Eye, EyeOff, Fingerprint, Phone, Sparkles } from 'lucide-react';
 import SuperadminLoginForm from '@/components/SuperadminLoginForm';
@@ -20,6 +20,7 @@ import { useShowSuperadminLogin } from '@/hooks/use-show-superadmin-login';
 import { completeResidentOtpOnboarding, normalizeLoginPhone } from '@/lib/residentLoginOnboarding';
 import { findGuardForOtpLogin } from '@/lib/guardOtpLogin';
 import GuardLoginPreview from '@/components/GuardLoginPreview';
+import { readLoginRemember, writeLoginRemember, type LoginRememberRole } from '@/lib/loginRemember';
 
 interface Props {
   onGuardLogin: () => void;
@@ -56,6 +57,8 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
   const [showResetFlow, setShowResetFlow] = useState(false);
   const { isAvailable, authenticate, loading: bioLoading } = useBiometric();
   const [bioAvailable, setBioAvailable] = useState(false);
+  const [rememberedPhone, setRememberedPhone] = useState('');
+  const prefsRestoredRef = useRef(false);
 
   useEffect(() => {
     isAvailable().then(setBioAvailable);
@@ -72,6 +75,24 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     };
   }, []);
 
+  // Autofill last society / role / flat / mobile (all remain editable).
+  useEffect(() => {
+    if (societies.length === 0 || prefsRestoredRef.current) return;
+    prefsRestoredRef.current = true;
+    const rem = readLoginRemember();
+    if (!rem) return;
+    if (rem.societyId && societies.some((s) => s.id === rem.societyId)) {
+      setSelectedSocietyId(rem.societyId);
+    }
+    if (rem.role === 'guard' || rem.role === 'admin' || rem.role === 'resident') {
+      setLoginRole(rem.role);
+    }
+    if (rem.phone) {
+      setIdentifier(rem.phone);
+      setRememberedPhone(rem.phone);
+    }
+  }, [societies]);
+
   useEffect(() => {
     if (!selectedSocietyId || loginRole !== 'resident') {
       setSocietyFlats([]);
@@ -81,16 +102,25 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     }
     let cancelled = false;
     setFlatsLoading(true);
-    setSelectedFlatId('');
     (async () => {
       const { data } = await supabase
         .from('flats')
         .select('id, flat_number')
         .eq('society_id', selectedSocietyId)
         .order('flat_number', { ascending: true });
-      if (!cancelled) {
-        setSocietyFlats(data ?? []);
-        setFlatsLoading(false);
+      if (cancelled) return;
+      const flats = data ?? [];
+      setSocietyFlats(flats);
+      setFlatsLoading(false);
+      const rem = readLoginRemember();
+      if (
+        rem?.societyId === selectedSocietyId &&
+        rem.flatId &&
+        flats.some((f) => f.id === rem.flatId)
+      ) {
+        setSelectedFlatId(rem.flatId);
+      } else {
+        setSelectedFlatId('');
       }
     })();
     return () => {
@@ -98,6 +128,19 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     };
   }, [selectedSocietyId, loginRole]);
 
+  const persistLoginRemember = (patch: {
+    societyId?: string;
+    role?: LoginRememberRole | '';
+    flatId?: string;
+    phone?: string;
+  }) => {
+    const out: Parameters<typeof writeLoginRemember>[0] = {};
+    if ('societyId' in patch) out.societyId = patch.societyId;
+    if ('role' in patch) out.role = patch.role === '' ? undefined : patch.role;
+    if ('flatId' in patch) out.flatId = patch.flatId;
+    if ('phone' in patch) out.phone = patch.phone;
+    writeLoginRemember(out);
+  };
   const checkGeofence = async (): Promise<boolean> => {
     const result = await checkSocietyGeofence(selectedSocietyId, 'permissive');
     return result.ok;
@@ -149,6 +192,11 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
           societyId: selectedSocietyId,
           method: 'otp',
         });
+        persistLoginRemember({
+          societyId: selectedSocietyId,
+          role: 'guard',
+          phone: normalized,
+        });
         onGuardLogin();
       } else {
         setError(t('login.invalidCredentials'));
@@ -190,6 +238,12 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
         societyId: selectedSocietyId,
       });
       setSocietyId(selectedSocietyId);
+      persistLoginRemember({
+        societyId: selectedSocietyId,
+        role: 'resident',
+        flatId: selectedFlatId,
+        phone: normalized,
+      });
       onResidentLogin({
         id: resident.id,
         name: resident.name,
@@ -225,6 +279,12 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       societyId: selectedSocietyId,
     });
     setSocietyId(selectedSocietyId);
+    persistLoginRemember({
+      societyId: selectedSocietyId,
+      role: 'resident',
+      flatId: selectedFlatId,
+      phone: normalized,
+    });
     onResidentLogin({
       id: onboarded.id,
       name: onboarded.name,
@@ -370,6 +430,12 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
       });
       setSocietyId(selectedSocietyId);
       setLoading(false);
+      persistLoginRemember({
+        societyId: selectedSocietyId,
+        role: 'resident',
+        flatId: selectedFlatId,
+        phone: id,
+      });
       onResidentLogin({
         id: resident.id,
         name: resident.name,
@@ -431,6 +497,12 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
     });
     setSocietyId(selectedSocietyId);
     setLoading(false);
+    persistLoginRemember({
+      societyId: selectedSocietyId,
+      role: 'resident',
+      flatId: selectedFlatId,
+      phone: id,
+    });
     onResidentLogin({
       id: onboarded.id,
       name: onboarded.name,
@@ -571,10 +643,12 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                 className="input-field w-full"
                 value={selectedSocietyId}
                 onChange={(e) => {
-                  setSelectedSocietyId(e.target.value);
+                  const next = e.target.value;
+                  setSelectedSocietyId(next);
                   setLoginRole('');
                   setSelectedFlatId('');
                   setError('');
+                  persistLoginRemember({ societyId: next, role: '', flatId: '' });
                 }}
               >
                 <option value="">{t('login.societyPlaceholder')}</option>
@@ -616,9 +690,15 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                     className="input-field w-full"
                     value={loginRole}
                     onChange={(e) => {
-                      setLoginRole(e.target.value as LoginRole);
+                      const next = e.target.value as LoginRole;
+                      setLoginRole(next);
                       setSelectedFlatId('');
                       setError('');
+                      persistLoginRemember({
+                        societyId: selectedSocietyId,
+                        role: next,
+                        flatId: '',
+                      });
                     }}
                   >
                     <option value="">{t('login.rolePlaceholder')}</option>
@@ -638,8 +718,14 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                       disabled={flatsLoading || societyFlats.length === 0}
                       value={selectedFlatId}
                       onChange={(e) => {
-                        setSelectedFlatId(e.target.value);
+                        const next = e.target.value;
+                        setSelectedFlatId(next);
                         setError('');
+                        persistLoginRemember({
+                          societyId: selectedSocietyId,
+                          role: 'resident',
+                          flatId: next,
+                        });
                       }}
                     >
                       <option value="">
@@ -714,6 +800,20 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                     )}
                     <OTPLoginFlow
                       embedded
+                      initialPhone={rememberedPhone}
+                      onPhoneChange={(phone) => {
+                        setRememberedPhone(phone);
+                        const patch: {
+                          societyId?: string;
+                          role?: LoginRememberRole | '';
+                          flatId?: string;
+                          phone?: string;
+                        } = { phone };
+                        if (selectedSocietyId) patch.societyId = selectedSocietyId;
+                        if (loginRole) patch.role = loginRole;
+                        if (selectedFlatId) patch.flatId = selectedFlatId;
+                        persistLoginRemember(patch);
+                      }}
                       onVerified={handleOtpVerified}
                       title="Login with OTP"
                       subtitle={loginRole === 'resident' ? t('resident.loginSubtitle') : t('login.guardLogin')}
@@ -754,7 +854,24 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                                 : t('login.guardIdPlaceholder')
                           }
                           value={identifier}
-                          onChange={(e) => setIdentifier(e.target.value)}
+                          autoComplete={loginRole === 'resident' ? 'tel' : 'username'}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            setIdentifier(next);
+                            if (loginRole === 'resident') {
+                              const digits = next.replace(/\D/g, '').slice(0, 10);
+                              setRememberedPhone(digits);
+                              const patch: {
+                                societyId?: string;
+                                role?: LoginRememberRole | '';
+                                flatId?: string;
+                                phone?: string;
+                              } = { role: 'resident', phone: digits };
+                              if (selectedSocietyId) patch.societyId = selectedSocietyId;
+                              if (selectedFlatId) patch.flatId = selectedFlatId;
+                              persistLoginRemember(patch);
+                            }
+                          }}
                         />
                       </div>
                       <div>

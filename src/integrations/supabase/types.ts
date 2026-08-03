@@ -3235,6 +3235,47 @@ export type Database = {
           },
         ]
       }
+      society_content_translations: {
+        Row: {
+          content_key: string
+          created_at: string
+          id: string
+          society_id: string
+          text_en: string
+          text_hi: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content_key: string
+          created_at?: string
+          id?: string
+          society_id: string
+          text_en?: string
+          text_hi?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content_key?: string
+          created_at?: string
+          id?: string
+          society_id?: string
+          text_en?: string
+          text_hi?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "society_content_translations_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       society_dashboard_banners: {
         Row: {
           created_at: string

@@ -1,16 +1,23 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import translations, { type Lang } from './translations';
+import { applyVars, type ContentOverrideMap } from '@/lib/contentTranslationCatalog';
+import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/store/useStore';
 
 interface LanguageContextType {
   lang: Lang;
   setLang: (lang: Lang) => void;
-  t: (key: string) => string;
+  /** Resolve UI / member copy. Optional vars replace `{name}` placeholders. Society overrides win over static defaults. */
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  /** Reload society content overrides (e.g. after admin save). */
+  reloadContentOverrides: () => Promise<void>;
 }
 
 const LanguageContext = createContext<LanguageContextType>({
   lang: 'hi',
   setLang: () => {},
   t: (key) => key,
+  reloadContentOverrides: async () => {},
 });
 
 const readStoredLang = (): Lang => {
@@ -21,19 +28,55 @@ const readStoredLang = (): Lang => {
 };
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
+  const societyId = useStore((s) => s.societyId);
   const [lang, setLangState] = useState<Lang>(readStoredLang);
+  const [overrides, setOverrides] = useState<ContentOverrideMap>({});
 
   const setLang = useCallback((l: Lang) => {
     localStorage.setItem('app-lang', l);
     setLangState(l);
   }, []);
 
-  const t = useCallback((key: string) => {
-    return translations[key]?.[lang] || translations[key]?.['en'] || key;
-  }, [lang]);
+  const reloadContentOverrides = useCallback(async () => {
+    if (!societyId) {
+      setOverrides({});
+      return;
+    }
+    const { data, error } = await supabase
+      .from('society_content_translations')
+      .select('content_key, text_en, text_hi')
+      .eq('society_id', societyId);
+    if (error) {
+      console.warn('society_content_translations load failed', error.message);
+      return;
+    }
+    const next: ContentOverrideMap = {};
+    for (const row of data || []) {
+      next[row.content_key] = {
+        en: row.text_en || '',
+        hi: row.text_hi || '',
+      };
+    }
+    setOverrides(next);
+  }, [societyId]);
+
+  useEffect(() => {
+    void reloadContentOverrides();
+  }, [reloadContentOverrides]);
+
+  const t = useCallback(
+    (key: string, vars?: Record<string, string | number>) => {
+      const override = overrides[key];
+      const fromOverride = override?.[lang]?.trim() || override?.en?.trim();
+      const fromStatic = translations[key]?.[lang] || translations[key]?.en;
+      const raw = fromOverride || fromStatic || key;
+      return applyVars(raw, vars);
+    },
+    [lang, overrides],
+  );
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t }}>
+    <LanguageContext.Provider value={{ lang, setLang, t, reloadContentOverrides }}>
       {children}
     </LanguageContext.Provider>
   );

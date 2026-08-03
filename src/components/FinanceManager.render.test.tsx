@@ -36,7 +36,7 @@ vi.mock('@/store/useStore', () => ({
 }));
 
 vi.mock('@/i18n/LanguageContext', () => ({
-  useLanguage: () => ({ t: (k: string) => k }),
+  useLanguage: () => ({ t: (k: string) => k, reloadContentOverrides: async () => {} }),
 }));
 
 vi.mock('@/hooks/useFinanceManagerData', () => ({

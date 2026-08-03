@@ -12,17 +12,21 @@ class OtpLoginPanel extends StatefulWidget {
     super.key,
     required this.onVerified,
     this.enabled = true,
+    this.initialPhone = '',
+    this.onPhoneChanged,
   });
 
   final Future<void> Function(String normalizedPhone) onVerified;
   final bool enabled;
+  final String initialPhone;
+  final ValueChanged<String>? onPhoneChanged;
 
   @override
   State<OtpLoginPanel> createState() => _OtpLoginPanelState();
 }
 
 class _OtpLoginPanelState extends State<OtpLoginPanel> {
-  final _phoneController = TextEditingController();
+  late final TextEditingController _phoneController;
   final _otpController = TextEditingController();
   final _otpService = FirebaseOtpService();
 
@@ -31,7 +35,34 @@ class _OtpLoginPanelState extends State<OtpLoginPanel> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    final digits = widget.initialPhone.replaceAll(RegExp(r'\D'), '');
+    _phoneController = TextEditingController(
+      text: digits.length > 10 ? digits.substring(digits.length - 10) : digits,
+    );
+    _phoneController.addListener(_emitPhone);
+  }
+
+  void _emitPhone() {
+    widget.onPhoneChanged?.call(_phoneController.text.trim());
+  }
+
+  @override
+  void didUpdateWidget(covariant OtpLoginPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialPhone != oldWidget.initialPhone &&
+        _phoneController.text.isEmpty &&
+        widget.initialPhone.isNotEmpty) {
+      final digits = widget.initialPhone.replaceAll(RegExp(r'\D'), '');
+      _phoneController.text =
+          digits.length > 10 ? digits.substring(digits.length - 10) : digits;
+    }
+  }
+
+  @override
   void dispose() {
+    _phoneController.removeListener(_emitPhone);
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -102,6 +133,8 @@ class _OtpLoginPanelState extends State<OtpLoginPanel> {
           keyboardType: TextInputType.phone,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           maxLength: 10,
+          // Autofilled value stays editable until OTP is sent (then use Change phone).
+          autofillHints: const [AutofillHints.telephoneNumber],
         ),
         if (_codeSent) ...[
           const SizedBox(height: 12),

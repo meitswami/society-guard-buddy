@@ -761,10 +761,14 @@ const FinanceManager = ({
           monthlyMaintenanceChargeIds: monthlyChargeIds,
         });
         if (conflicts.length > 0) {
-          const chargeTitle = selectedCharge?.title ?? 'Receipt head';
+          const chargeTitle = selectedCharge?.title ?? t('finance.receiptHead');
           const flatList = [...new Set(conflicts.map((c) => c.flat_number))].join(', ');
           toast.error(
-            `Receipt already recorded for Flat ${flatList} in ${payForm.due_date.slice(0, 7)} (${chargeTitle}). Double entry for the same month is not allowed — edit or delete the existing entry in Audit → Finance Alarms.`,
+            t('finance.receiptAlreadyRecordedDetail', {
+              flat: flatList,
+              month: payForm.due_date.slice(0, 7),
+              head: chargeTitle,
+            }),
             { duration: 8000 },
           );
           return;
@@ -2701,7 +2705,7 @@ const FinanceManager = ({
                 <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-1.5">
                   <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    Receipt already recorded for this month — cannot save
+                    {t('finance.receiptAlreadyRecorded')}
                   </p>
                   <p className="text-[10px] text-muted-foreground leading-snug">
                     These flats already have monthly maintenance for the selected billing month (any payment mode). Double
@@ -2954,27 +2958,27 @@ const FinanceManager = ({
                         </tbody>
                         <tfoot>
                           <tr className="bg-muted/30 font-semibold">
-                            <td className="p-1.5">All receipt heads</td>
+                            <td className="p-1.5">{t('finance.allReceiptHeads')}</td>
                             <td className="p-1.5 text-right">
                               {transactionReceiptHeadSummary.reduce((s, r) => s + r.entries, 0)}
                             </td>
                             <TableSumInsight
                               {...SUM_INSIGHT_METRICS.channelCash}
-                              title="All receipt heads — cash"
+                              title={t('finance.allReceiptHeadsCash')}
                               value={`₹${transactionReceiptChannelTotals.cash.toLocaleString('en-IN')}`}
                               valueClassName="text-[10px] font-mono font-semibold"
                               cellClassName="p-1.5"
                             />
                             <TableSumInsight
                               {...SUM_INSIGHT_METRICS.channelBank}
-                              title="All receipt heads — bank / UPI"
+                              title={t('finance.allReceiptHeadsBank')}
                               value={`₹${transactionReceiptChannelTotals.bank.toLocaleString('en-IN')}`}
                               valueClassName="text-[10px] font-mono font-semibold"
                               cellClassName="p-1.5"
                             />
                             <TableSumInsight
                               {...SUM_INSIGHT_METRICS.channelOther}
-                              title="All receipt heads — other"
+                              title={t('finance.allReceiptHeadsOther')}
                               value={`₹${transactionReceiptChannelTotals.other.toLocaleString('en-IN')}`}
                               valueClassName="text-[10px] font-mono font-semibold"
                               cellClassName="p-1.5"

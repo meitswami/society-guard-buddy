@@ -638,7 +638,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           onInitialSearchConsumed={() => clearModuleSearchFor('quick')}
         />
       );
-      case 'settings': return <SettingsPage />;
+      case 'settings': return <SettingsPage allowContentEdit />;
       case 'tour':
         return <TourGuideHub role="admin" adminPermissions={admin.permissions} t={t} />;
       default: return (
