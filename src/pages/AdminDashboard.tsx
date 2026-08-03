@@ -441,38 +441,38 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   };
 
   const tabs: AdminTabDef[] = [
-    { id: 'overview', label: 'Home', icon: Home, group: 'main' },
+    { id: 'overview', label: t('adminNav.home'), icon: Home, group: 'main' },
     // Management
-    { id: 'guards', label: 'Guards', icon: Shield, group: 'manage' },
-    { id: 'residents', label: 'Residents', icon: UserCheck, group: 'manage' },
-    { id: 'geofence', label: 'Geofence', icon: MapPin, group: 'manage' },
+    { id: 'guards', label: t('adminNav.guards'), icon: Shield, group: 'manage' },
+    { id: 'residents', label: t('adminNav.residents'), icon: UserCheck, group: 'manage' },
+    { id: 'geofence', label: t('adminNav.geofence'), icon: MapPin, group: 'manage' },
     // Finance
-    { id: 'finance', label: 'Finance', icon: IndianRupee, group: 'finance' },
-    { id: 'fixed_assets', label: 'Fixed Assets', icon: Building2, group: 'finance' },
-    { id: 'meetings', label: 'Meetings', icon: ScrollText, group: 'meetings' },
-    { id: 'documents', label: 'Documents', icon: FolderLock, group: 'meetings' },
-    { id: 'committee', label: 'Committee', icon: Landmark, group: 'meetings' },
-    { id: 'donations', label: 'Donations', icon: Heart, group: 'finance' },
+    { id: 'finance', label: t('adminNav.finance'), icon: IndianRupee, group: 'finance' },
+    { id: 'fixed_assets', label: t('adminNav.fixedAssets'), icon: Building2, group: 'finance' },
+    { id: 'meetings', label: t('adminNav.meetings'), icon: ScrollText, group: 'meetings' },
+    { id: 'documents', label: t('adminNav.documents'), icon: FolderLock, group: 'meetings' },
+    { id: 'committee', label: t('adminNav.committee'), icon: Landmark, group: 'meetings' },
+    { id: 'donations', label: t('adminNav.donations'), icon: Heart, group: 'finance' },
     // Community — events + food catering splits (one module)
-    { id: 'events', label: 'Events & food', icon: Calendar, group: 'community' },
-    { id: 'polls', label: 'Polls & Elections', icon: Vote, group: 'community' },
-    { id: 'notifications', label: 'Notify', icon: Bell, group: 'community' },
-    { id: 'parking', label: 'Parking', icon: ParkingSquare, group: 'community' },
+    { id: 'events', label: t('adminNav.events'), icon: Calendar, group: 'community' },
+    { id: 'polls', label: t('adminNav.polls'), icon: Vote, group: 'community' },
+    { id: 'notifications', label: t('adminNav.notify'), icon: Bell, group: 'community' },
+    { id: 'parking', label: t('adminNav.parking'), icon: ParkingSquare, group: 'community' },
     // Operations
-    { id: 'visitor', label: 'Visitor', icon: UserPlus, group: 'ops' },
-    { id: 'delivery', label: 'Delivery', icon: Truck, group: 'ops' },
-    { id: 'vehicle', label: 'Vehicles', icon: Car, group: 'ops' },
-    { id: 'blacklist', label: 'Blacklist', icon: ShieldAlert, group: 'ops' },
-    { id: 'directory', label: 'Directory', icon: BookUser, group: 'ops' },
-    { id: 'quick', label: 'Quick', icon: Zap, group: 'ops' },
+    { id: 'visitor', label: t('adminNav.visitor'), icon: UserPlus, group: 'ops' },
+    { id: 'delivery', label: t('adminNav.delivery'), icon: Truck, group: 'ops' },
+    { id: 'vehicle', label: t('adminNav.vehicles'), icon: Car, group: 'ops' },
+    { id: 'blacklist', label: t('adminNav.blacklist'), icon: ShieldAlert, group: 'ops' },
+    { id: 'directory', label: t('adminNav.directory'), icon: BookUser, group: 'ops' },
+    { id: 'quick', label: t('adminNav.quick'), icon: Zap, group: 'ops' },
     // Reports & Settings
-    { id: 'report', label: 'REPORTS', icon: BarChart3, group: 'system' },
-    { id: 'logs', label: 'Logs', icon: FileText, group: 'system' },
-    { id: 'audit', label: 'Audit', icon: ClipboardList, group: 'system' },
-    { id: 'password', label: 'Password', icon: Lock, group: 'system' },
-    { id: 'biometric', label: 'Biometric', icon: Fingerprint, group: 'system' },
-    { id: 'settings', label: 'Settings', icon: Settings, group: 'system' },
-    { id: 'tour', label: t('nav.tour'), icon: Sparkles, group: 'system' },
+    { id: 'report', label: t('adminNav.reports'), icon: BarChart3, group: 'system' },
+    { id: 'logs', label: t('adminNav.logs'), icon: FileText, group: 'system' },
+    { id: 'audit', label: t('adminNav.audit'), icon: ClipboardList, group: 'system' },
+    { id: 'password', label: t('adminNav.password'), icon: Lock, group: 'system' },
+    { id: 'biometric', label: t('adminNav.biometric'), icon: Fingerprint, group: 'system' },
+    { id: 'settings', label: t('adminNav.settings'), icon: Settings, group: 'system' },
+    { id: 'tour', label: t('adminNav.tour'), icon: Sparkles, group: 'system' },
   ];
 
   const visibleTabs = tabs.filter((tab) => isAdminTabAllowed(tab.id, admin.permissions));
@@ -773,7 +773,7 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           )}
 
           {/* Quick access — 6 most used + last visited */}
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Quick access</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('adminNav.quickAccess')}</p>
           <p className="text-[10px] text-muted-foreground mb-2">Six most used modules plus your last visit</p>
           <div className="grid grid-cols-3 gap-2 mb-4">
             {quickAccessTabs.map((tab) => {
@@ -920,12 +920,11 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
           {bottomNavTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
-            const label = tab.id === 'report' ? 'Reports' : tab.label;
             return (
               <button key={tab.id} type="button" onClick={() => goToTab(tab.id)}
                 className={`${isActive ? 'nav-item-active' : 'nav-item'} flex-1 max-w-[5rem]`}>
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium leading-tight">{label}</span>
+                <span className="text-[10px] font-medium leading-tight">{tab.label}</span>
               </button>
             );
           })}

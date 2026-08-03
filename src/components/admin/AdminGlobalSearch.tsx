@@ -7,6 +7,7 @@ import {
   searchRoutesForQuery,
   type AdminSearchRoute,
 } from '@/lib/adminNavigation';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
   open: boolean;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 const AdminGlobalSearch = ({ open, onClose, allowedTabs, onNavigate }: Props) => {
+  const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -106,7 +108,7 @@ const AdminGlobalSearch = ({ open, onClose, allowedTabs, onNavigate }: Props) =>
                       className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg hover:bg-primary/10 text-left group"
                     >
                       <div>
-                        <p className="text-sm font-medium">{route.label}</p>
+                        <p className="text-sm font-medium">{t(route.labelKey)}</p>
                         <p className="text-[10px] text-muted-foreground">Searches: {route.hint}</p>
                       </div>
                       <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0" />
@@ -128,7 +130,7 @@ const AdminGlobalSearch = ({ open, onClose, allowedTabs, onNavigate }: Props) =>
                       onClick={() => handleSelect(route)}
                       className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-muted/50 text-left text-sm"
                     >
-                      <span>{route.label}</span>
+                      <span>{t(route.labelKey)}</span>
                       <span className="text-[10px] text-muted-foreground">{route.hint}</span>
                     </button>
                   </li>

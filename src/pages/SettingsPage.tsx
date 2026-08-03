@@ -111,26 +111,26 @@ const SettingsPage = () => {
           <Settings className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="page-title">Settings</h1>
-          <p className="text-xs text-muted-foreground">App configuration</p>
+          <h1 className="page-title">{t('settings.title')}</h1>
+          <p className="text-xs text-muted-foreground">{t('settings.subtitle')}</p>
         </div>
       </div>
 
       {/* Appearance */}
       <div className="card-section mb-4">
-        <h2 className="text-sm font-semibold mb-3">Appearance</h2>
+        <h2 className="text-sm font-semibold mb-3">{t('settings.appearance')}</h2>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Theme</span>
+          <span className="text-xs text-muted-foreground">{t('settings.theme')}</span>
           <ThemeToggle />
         </div>
         <div className="flex items-center justify-between mt-3">
-          <span className="text-xs text-muted-foreground">Language</span>
+          <span className="text-xs text-muted-foreground">{t('settings.language')}</span>
           <LanguageToggle />
         </div>
         <div className="flex items-center justify-between mt-3">
           <div>
-            <span className="text-xs text-muted-foreground">Auto CAPS for entries</span>
-            <p className="text-[10px] text-muted-foreground/80 mt-0.5">Names, titles, notes — phone &amp; passwords stay as typed</p>
+            <span className="text-xs text-muted-foreground">{t('settings.autoCaps')}</span>
+            <p className="text-[10px] text-muted-foreground/80 mt-0.5">{t('settings.autoCapsHint')}</p>
           </div>
           <button
             type="button"
@@ -149,7 +149,7 @@ const SettingsPage = () => {
       {/* Data summary */}
       <div className="card-section mb-4">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-          <Shield className="w-4 h-4 text-primary" /> Data Summary
+          <Shield className="w-4 h-4 text-primary" /> {t('settings.dataSummary')}
         </h2>
         <div className="grid grid-cols-2 gap-2">
           <DescriptiveStatCard
@@ -188,9 +188,9 @@ const SettingsPage = () => {
       {/* Admin society banner settings */}
       {canManageSociety && (
         <div className="card-section mb-4">
-          <h2 className="text-sm font-semibold mb-2">Dashboard login banners</h2>
+          <h2 className="text-sm font-semibold mb-2">{t('settings.banners')}</h2>
           <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">
-            These images show as a popup carousel on the resident dashboard when a user logs in (dashboard only).
+            {t('settings.bannersHint')}
           </p>
           <div className="flex gap-2 items-center mb-3">
             <input

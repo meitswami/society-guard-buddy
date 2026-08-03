@@ -12,36 +12,37 @@ export type AdminTabDef = {
 
 export type AdminSearchRoute = {
   tab: AdminTab;
-  label: string;
+  /** i18n key under adminNav.* */
+  labelKey: string;
   keywords: string[];
   hint: string;
 };
 
 /** Modules reachable via global search with query passed into the module filter. */
 export const ADMIN_SEARCH_ROUTES: AdminSearchRoute[] = [
-  { tab: 'residents', label: 'Residents', keywords: ['flat', 'owner', 'phone', 'member', 'resident'], hint: 'Flat, owner, phone' },
-  { tab: 'directory', label: 'Directory', keywords: ['directory', 'contact', 'flat', 'phone'], hint: 'Flat, name, phone' },
-  { tab: 'finance', label: 'Finance', keywords: ['payment', 'receipt', 'maintenance', 'charge', 'ledger', 'txn'], hint: 'Flat, charge, txn' },
-  { tab: 'fixed_assets', label: 'Fixed Assets', keywords: ['asset', 'fixed', 'dg', 'lift', 'gym', 'warranty', 'amc', 'equipment'], hint: 'Asset register' },
-  { tab: 'report', label: 'Reports', keywords: ['report', 'visitor', 'vehicle', 'ledger', 'shift'], hint: 'Cross-report search' },
-  { tab: 'audit', label: 'Audit', keywords: ['audit', 'login', 'ip', 'log'], hint: 'Name, ID, IP' },
-  { tab: 'guards', label: 'Guards', keywords: ['guard', 'kyc', 'security'], hint: 'Guard name or ID' },
-  { tab: 'vehicle', label: 'Vehicles', keywords: ['vehicle', 'car', 'bike', 'number plate'], hint: 'Plate or owner' },
-  { tab: 'visitor', label: 'Visitor', keywords: ['visitor', 'guest', 'entry'], hint: 'Visitor name or flat' },
-  { tab: 'delivery', label: 'Delivery', keywords: ['delivery', 'courier', 'parcel'], hint: 'Delivery entry' },
-  { tab: 'blacklist', label: 'Blacklist', keywords: ['blacklist', 'blocked'], hint: 'Name or reason' },
-  { tab: 'logs', label: 'Logs', keywords: ['log', 'shift', 'guard log'], hint: 'Guard or shift' },
-  { tab: 'quick', label: 'Quick entry', keywords: ['quick', 'entry'], hint: 'Quick log search' },
-  { tab: 'committee', label: 'Committee', keywords: ['committee', 'mc', 'member'], hint: 'Flat or owner' },
-  { tab: 'events', label: 'Events & food', keywords: ['event', 'food', 'catering', 'split'], hint: 'Event expenses' },
-  { tab: 'meetings', label: 'Meetings', keywords: ['meeting', 'minutes', 'agenda'], hint: 'Meeting records' },
-  { tab: 'documents', label: 'Documents', keywords: ['document', 'file', 'society doc'], hint: 'Society documents' },
-  { tab: 'polls', label: 'Polls & Elections', keywords: ['poll', 'election', 'vote'], hint: 'Polls' },
-  { tab: 'parking', label: 'Parking', keywords: ['parking', 'slot', 'sticker'], hint: 'Parking slots' },
-  { tab: 'notifications', label: 'Notify', keywords: ['notify', 'notification', 'broadcast'], hint: 'Notifications' },
-  { tab: 'donations', label: 'Donations', keywords: ['donation', 'charity'], hint: 'Donations' },
-  { tab: 'geofence', label: 'Geofence', keywords: ['geofence', 'location', 'gps'], hint: 'Geofence setup' },
-  { tab: 'settings', label: 'Settings', keywords: ['settings', 'theme', 'language'], hint: 'App settings' },
+  { tab: 'residents', labelKey: 'adminNav.residents', keywords: ['flat', 'owner', 'phone', 'member', 'resident', 'निवासी'], hint: 'Flat, owner, phone' },
+  { tab: 'directory', labelKey: 'adminNav.directory', keywords: ['directory', 'contact', 'flat', 'phone', 'निर्देशिका'], hint: 'Flat, name, phone' },
+  { tab: 'finance', labelKey: 'adminNav.finance', keywords: ['payment', 'receipt', 'maintenance', 'charge', 'ledger', 'txn', 'वित्त'], hint: 'Flat, charge, txn' },
+  { tab: 'fixed_assets', labelKey: 'adminNav.fixedAssets', keywords: ['asset', 'fixed', 'dg', 'lift', 'gym', 'warranty', 'amc', 'equipment'], hint: 'Asset register' },
+  { tab: 'report', labelKey: 'adminNav.reports', keywords: ['report', 'visitor', 'vehicle', 'ledger', 'shift', 'रिपोर्ट'], hint: 'Cross-report search' },
+  { tab: 'audit', labelKey: 'adminNav.audit', keywords: ['audit', 'login', 'ip', 'log', 'ऑडिट'], hint: 'Name, ID, IP' },
+  { tab: 'guards', labelKey: 'adminNav.guards', keywords: ['guard', 'kyc', 'security', 'गार्ड'], hint: 'Guard name or ID' },
+  { tab: 'vehicle', labelKey: 'adminNav.vehicles', keywords: ['vehicle', 'car', 'bike', 'number plate', 'वाहन'], hint: 'Plate or owner' },
+  { tab: 'visitor', labelKey: 'adminNav.visitor', keywords: ['visitor', 'guest', 'entry', 'विज़िटर'], hint: 'Visitor name or flat' },
+  { tab: 'delivery', labelKey: 'adminNav.delivery', keywords: ['delivery', 'courier', 'parcel', 'डिलीवरी'], hint: 'Delivery entry' },
+  { tab: 'blacklist', labelKey: 'adminNav.blacklist', keywords: ['blacklist', 'blocked', 'ब्लैकलिस्ट'], hint: 'Name or reason' },
+  { tab: 'logs', labelKey: 'adminNav.logs', keywords: ['log', 'shift', 'guard log', 'लॉग'], hint: 'Guard or shift' },
+  { tab: 'quick', labelKey: 'adminNav.quick', keywords: ['quick', 'entry', 'क्विक'], hint: 'Quick log search' },
+  { tab: 'committee', labelKey: 'adminNav.committee', keywords: ['committee', 'mc', 'member', 'समिति'], hint: 'Flat or owner' },
+  { tab: 'events', labelKey: 'adminNav.events', keywords: ['event', 'food', 'catering', 'split', 'इवेंट'], hint: 'Event expenses' },
+  { tab: 'meetings', labelKey: 'adminNav.meetings', keywords: ['meeting', 'minutes', 'agenda', 'मीटिंग'], hint: 'Meeting records' },
+  { tab: 'documents', labelKey: 'adminNav.documents', keywords: ['document', 'file', 'society doc', 'दस्तावेज़'], hint: 'Society documents' },
+  { tab: 'polls', labelKey: 'adminNav.polls', keywords: ['poll', 'election', 'vote', 'पोल', 'चुनाव'], hint: 'Polls' },
+  { tab: 'parking', labelKey: 'adminNav.parking', keywords: ['parking', 'slot', 'sticker', 'पार्किंग'], hint: 'Parking slots' },
+  { tab: 'notifications', labelKey: 'adminNav.notify', keywords: ['notify', 'notification', 'broadcast', 'सूचना'], hint: 'Notifications' },
+  { tab: 'donations', labelKey: 'adminNav.donations', keywords: ['donation', 'charity', 'दान'], hint: 'Donations' },
+  { tab: 'geofence', labelKey: 'adminNav.geofence', keywords: ['geofence', 'location', 'gps', 'जियोफ़ेंस'], hint: 'Geofence setup' },
+  { tab: 'settings', labelKey: 'adminNav.settings', keywords: ['settings', 'theme', 'language', 'सेटिंग', 'भाषा'], hint: 'App settings' },
 ];
 
 export function tabUsageStorageKey(societyId: string): string {
@@ -116,7 +117,10 @@ export function scoreSearchRoute(route: AdminSearchRoute, query: string): number
   const q = query.trim().toLowerCase();
   if (!q) return 0;
   let score = 0;
-  if (route.label.toLowerCase().includes(q)) score += 8;
+  if (route.labelKey.toLowerCase().includes(q)) score += 4;
+  // Match against English/Hindi keyword fragments already on the route
+  const labelHint = route.labelKey.replace(/^adminNav\./, '').toLowerCase();
+  if (labelHint.includes(q) || q.includes(labelHint)) score += 6;
   for (const kw of route.keywords) {
     if (kw.includes(q) || q.includes(kw)) score += 4;
     if (kw.startsWith(q) || q.startsWith(kw)) score += 2;

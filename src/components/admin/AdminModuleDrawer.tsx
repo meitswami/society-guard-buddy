@@ -3,6 +3,7 @@ import { LayoutGrid, List, ChevronRight } from 'lucide-react';
 import type { AdminTab } from '@/lib/adminPermissions';
 import type { AdminTabDef } from '@/lib/adminNavigation';
 import { ADMIN_BOTTOM_NAV_TABS } from '@/lib/adminNavigation';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 type ViewMode = 'list' | 'grid';
 
@@ -13,11 +14,12 @@ interface Props {
 }
 
 const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const drawerTabs = tabs.filter((t) => !ADMIN_BOTTOM_NAV_TABS.includes(t.id));
+  const drawerTabs = tabs.filter((tab) => !ADMIN_BOTTOM_NAV_TABS.includes(tab.id));
 
   const handleEnter = useCallback(() => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -46,7 +48,7 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
         aria-hidden
         onClick={() => setOpen((v) => !v)}
         role="button"
-        aria-label="Show all modules"
+        aria-label={t('adminNav.allModules')}
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((v) => !v); } }}
       >
@@ -64,12 +66,12 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
         className={`bg-card border-r border-border shadow-xl transition-all duration-200 overflow-hidden ${
           open ? 'w-56 opacity-100' : 'w-0 opacity-0 pointer-events-none'
         }`}
-        aria-label="All modules"
+        aria-label={t('adminNav.allModules')}
         aria-hidden={!open}
       >
         <div className="w-56 h-full flex flex-col pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
           <div className="px-3 py-2 border-b border-border flex items-center justify-between gap-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">All modules</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">{t('adminNav.allModules')}</p>
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button
                 type="button"

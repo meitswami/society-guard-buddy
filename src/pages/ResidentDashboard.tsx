@@ -1060,18 +1060,18 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const tabItems = [
     { id: 'approvals' as const, label: t('resident.approvals'), icon: Bell, badge: pendingRequests.length },
     { id: 'passes' as const, label: t('resident.passes'), icon: KeyRound },
-    { id: 'family' as const, label: 'Family', icon: Users },
-    { id: 'vehicles' as const, label: 'Vehicles', icon: Car },
-    { id: 'directory' as const, label: 'Directory', icon: BookUser },
-    { id: 'notifications' as const, label: 'Alerts', icon: Bell },
-    { id: 'polls' as const, label: 'Polls', icon: Vote },
-    { id: 'meetings' as const, label: 'Meetings', icon: ScrollText },
+    { id: 'family' as const, label: t('resident.family'), icon: Users },
+    { id: 'vehicles' as const, label: t('resident.vehicles'), icon: Car },
+    { id: 'directory' as const, label: t('resident.directory'), icon: BookUser },
+    { id: 'notifications' as const, label: t('resident.alerts'), icon: Bell },
+    { id: 'polls' as const, label: t('resident.polls'), icon: Vote },
+    { id: 'meetings' as const, label: t('resident.meetings'), icon: ScrollText },
     { id: 'documents' as const, label: t('resident.documents'), icon: FolderLock },
-    { id: 'committee' as const, label: 'Committee', icon: Landmark },
-    { id: 'payments' as const, label: 'Payments', icon: IndianRupee },
-    { id: 'profile' as const, label: 'Profile', icon: User },
+    { id: 'committee' as const, label: t('resident.committee'), icon: Landmark },
+    { id: 'payments' as const, label: t('resident.payments'), icon: IndianRupee },
+    { id: 'profile' as const, label: t('resident.profile'), icon: User },
     { id: 'tour' as const, label: t('nav.tour'), icon: Sparkles },
-    { id: 'feedback' as const, label: 'Feedback', icon: MessageSquare },
+    { id: 'feedback' as const, label: t('resident.feedback'), icon: MessageSquare },
   ];
 
   return (

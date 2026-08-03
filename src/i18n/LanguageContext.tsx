@@ -8,15 +8,20 @@ interface LanguageContextType {
 }
 
 const LanguageContext = createContext<LanguageContextType>({
-  lang: 'en',
+  lang: 'hi',
   setLang: () => {},
   t: (key) => key,
 });
 
+const readStoredLang = (): Lang => {
+  const stored = localStorage.getItem('app-lang');
+  if (stored === 'en' || stored === 'hi') return stored;
+  localStorage.setItem('app-lang', 'hi');
+  return 'hi';
+};
+
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  const [lang, setLangState] = useState<Lang>(
-    () => (localStorage.getItem('app-lang') as Lang) || 'en'
-  );
+  const [lang, setLangState] = useState<Lang>(readStoredLang);
 
   const setLang = useCallback((l: Lang) => {
     localStorage.setItem('app-lang', l);
