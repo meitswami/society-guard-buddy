@@ -46,6 +46,9 @@ interface Props {
   subtitle?: string;
   /** When true, skip the inner icon/title/subtitle on the phone step (parent page already shows them). */
   embedded?: boolean;
+  /** Prefill from remembered login; field stays editable. */
+  initialPhone?: string;
+  onPhoneChange?: (phone: string) => void;
 }
 
 function formatFirebaseAuthError(err: unknown): string {
@@ -109,9 +112,11 @@ const OTPLoginFlow = ({
   title = 'Login with OTP',
   subtitle = 'Enter your registered phone number',
   embedded = false,
+  initialPhone = '',
+  onPhoneChange,
 }: Props) => {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(() => initialPhone.replace(/\D/g, '').slice(0, 10));
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -119,6 +124,12 @@ const OTPLoginFlow = ({
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const confirmationRef = useRef<ConfirmationResult | null>(null);
   const recaptchaContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const digits = initialPhone.replace(/\D/g, '').slice(0, 10);
+    if (!digits) return;
+    setPhone((prev) => (prev ? prev : digits));
+  }, [initialPhone]);
 
   const handleVerifyOtp = useCallback(
     async (otpCode: string) => {
@@ -350,8 +361,13 @@ const OTPLoginFlow = ({
                 type="tel"
                 maxLength={10}
                 value={phone}
-                onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setPhone(next);
+                  onPhoneChange?.(next);
+                }}
                 autoComplete="tel"
+                name="tel"
               />
             </div>
           </div>
