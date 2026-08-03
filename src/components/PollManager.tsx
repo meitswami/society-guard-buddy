@@ -13,7 +13,9 @@ import {
 } from '@/components/ui/dialog';
 import { ElectionResultsBanner } from '@/components/ElectionResultsBanner';
 import ElectionModule from '@/components/ElectionModule';
+import PollDocumentsPanel from '@/components/PollDocumentsPanel';
 import { invokePushNotification } from '@/lib/pushNotification';
+import { fetchPollDocuments, type PollDocumentRow } from '@/lib/pollDocuments';
 
 interface Props {
   adminName?: string;
@@ -48,6 +50,7 @@ const PollManager = ({
   const [options, setOptions] = useState<any[]>([]);
   const [votes, setVotes] = useState<any[]>([]);
   const [ballots, setBallots] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<PollDocumentRow[]>([]);
   const [voterProfiles, setVoterProfiles] = useState<Record<string, VoterProfile>>({});
   const [voteDetailOption, setVoteDetailOption] = useState<{ optionId: string; optionText: string } | null>(null);
   const [sectionTab, setSectionTab] = useState<'elections' | 'polls'>('elections');
@@ -64,6 +67,7 @@ const PollManager = ({
       setOptions([]);
       setVotes([]);
       setBallots([]);
+      setDocuments([]);
       setVoterProfiles({});
       return;
     }
@@ -77,12 +81,13 @@ const PollManager = ({
     const pollIds = pollRows.map((row) => row.id);
     const electionIds = pollRows.filter((row) => normKind(row) === 'election').map((row) => row.id);
 
-    const [o, v, b] = await Promise.all([
+    const [o, v, b, docs] = await Promise.all([
       pollIds.length ? supabase.from('poll_options').select('*').in('poll_id', pollIds) : Promise.resolve({ data: [] as any[] }),
       pollIds.length ? supabase.from('poll_votes').select('*').in('poll_id', pollIds) : Promise.resolve({ data: [] as any[] }),
       electionIds.length
         ? supabase.from('poll_election_ballots').select('*').in('poll_id', electionIds)
         : Promise.resolve({ data: [] as any[] }),
+      pollIds.length ? fetchPollDocuments(pollIds).catch(() => [] as PollDocumentRow[]) : Promise.resolve([] as PollDocumentRow[]),
     ]);
     if (o.data) setOptions(o.data);
     if (v.data) {
@@ -90,6 +95,7 @@ const PollManager = ({
     } else {
       setVotes([]);
     }
+    setDocuments(docs);
     const ballotVoterIds = (b.data ?? []).map((row: { voter_id: string }) => row.voter_id).filter(Boolean);
     const voteVoterIds = (v.data ?? []).map((row: { voter_id: string }) => row.voter_id).filter(Boolean);
     const ids = [...new Set([...voteVoterIds, ...ballotVoterIds])] as string[];
@@ -321,6 +327,7 @@ const PollManager = ({
             electionPolls={electionPolls}
             options={options}
             ballots={ballots}
+            documents={documents}
             voterProfiles={voterProfiles}
             onReload={loadAll}
           />
@@ -453,6 +460,15 @@ const PollManager = ({
                 );
               })}
             </div>
+
+            <PollDocumentsPanel
+              pollId={poll.id}
+              societyId={societyId}
+              isAdmin={!isResident}
+              documents={documents}
+              createdBy={adminName}
+              onChanged={loadAll}
+            />
 
             {!isResident && poll.is_active && (
               <button type="button" onClick={() => void closePoll(poll)} className="text-xs text-destructive underline mt-2">

@@ -1,6 +1,7 @@
 import '../core/config/env.dart';
 import '../core/supabase/supabase_bootstrap.dart';
 import '../models/poll_models.dart';
+import '../utils/election_governance.dart';
 import '../utils/election_tally.dart';
 
 class ElectionBundle {
@@ -8,11 +9,13 @@ class ElectionBundle {
     required this.elections,
     required this.options,
     required this.ballots,
+    this.documents = const [],
   });
 
   final List<SocietyPoll> elections;
   final List<Map<String, dynamic>> options;
   final List<Map<String, dynamic>> ballots;
+  final List<Map<String, dynamic>> documents;
 }
 
 class ElectionService {
@@ -45,11 +48,17 @@ class ElectionService {
         .from('poll_election_ballots')
         .select('*')
         .inFilter('poll_id', ids);
+    final docRows = await SupabaseBootstrap.client
+        .from('poll_documents')
+        .select('*')
+        .inFilter('poll_id', ids)
+        .order('sort_order', ascending: true);
 
     return ElectionBundle(
       elections: elections,
       options: (optionRows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList(),
       ballots: (ballotRows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList(),
+      documents: (docRows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList(),
     );
   }
 
@@ -108,9 +117,15 @@ class ElectionService {
     required String flatId,
     required String flatNumber,
     required String nominatedBy,
+    required String nominationStatement,
     required List<Map<String, dynamic>> existingOptions,
   }) async {
     if (!Env.isConfigured) return;
+
+    final statement = nominationStatement.trim();
+    if (statement.length < 20) {
+      throw StateError('Write at least 20 characters explaining why you should be chosen');
+    }
 
     final dup = existingOptions.any(
       (o) => o['poll_id'] == pollId && o['election_post'] == post && o['member_id'] == memberId,
@@ -126,6 +141,7 @@ class ElectionService {
       'flat_id': flatId,
       'flat_number': flatNumber,
       'nominated_by': nominatedBy,
+      'nomination_statement': statement,
     });
   }
 
@@ -134,16 +150,17 @@ class ElectionService {
     required String adminName,
     required String question,
     String? description,
-    int committeeSeats = 5,
+    DateTime? nominationStarts,
+    DateTime? nominationEnds,
     DateTime? votingStarts,
     DateTime? votingEnds,
     String? termFrom,
     String? termTo,
+    Map<String, int>? winningVotes,
     Map<String, bool>? openPosts,
   }) async {
     if (!Env.isConfigured) throw StateError('Not configured');
 
-    final seats = committeeSeats.clamp(5, 20);
     final row = await SupabaseBootstrap.client
         .from('polls')
         .insert({
@@ -152,20 +169,21 @@ class ElectionService {
           'created_by': adminName,
           'society_id': societyId,
           'poll_kind': 'election',
-          'election_committee_seats': seats,
+          'election_committee_seats': 0,
           'election_phase': 'nomination',
           'is_active': true,
+          'nomination_starts_at': nominationStarts?.toIso8601String(),
+          'nomination_ends_at': nominationEnds?.toIso8601String(),
           'voting_starts_at': votingStarts?.toIso8601String(),
           'voting_ends_at': votingEnds?.toIso8601String(),
           'election_term_from': termFrom,
           'election_term_to': termTo,
-          'open_posts': openPosts ??
+          'open_posts': openPosts ?? defaultOpenPosts,
+          'winning_votes': winningVotes ??
               {
-                'president': true,
-                'vice_president': true,
-                'secretary': true,
-                'treasurer': true,
-                'committee': true,
+                'president': 0,
+                'secretary': 0,
+                'treasurer': 0,
               },
         })
         .select('id')
@@ -175,7 +193,7 @@ class ElectionService {
 
     await SupabaseBootstrap.client.from('notifications').insert({
       'title': 'Society election — nomination open',
-      'message': 'Propose yourself for posts: ${question.trim()}',
+      'message': 'Propose yourself for President, Secretary or Treasurer: ${question.trim()}',
       'type': 'poll',
       'target_type': 'all',
       'created_by': adminName,
@@ -185,12 +203,41 @@ class ElectionService {
     return pollId;
   }
 
-  Future<void> startVoting(String pollId) async {
+  Future<void> updateSchedule({
+    required String pollId,
+    required DateTime nominationStarts,
+    required DateTime nominationEnds,
+    required DateTime votingStarts,
+    required DateTime votingEnds,
+    required Map<String, int> winningVotes,
+  }) async {
+    if (!Env.isConfigured) return;
+    await SupabaseBootstrap.client.from('polls').update({
+      'nomination_starts_at': nominationStarts.toIso8601String(),
+      'nomination_ends_at': nominationEnds.toIso8601String(),
+      'voting_starts_at': votingStarts.toIso8601String(),
+      'voting_ends_at': votingEnds.toIso8601String(),
+      'winning_votes': winningVotes,
+    }).eq('id', pollId);
+  }
+
+  Future<void> startVoting(String pollId, {String? societyId, String? adminName, String? title}) async {
     if (!Env.isConfigured) return;
     await SupabaseBootstrap.client.from('polls').update({
       'election_phase': 'voting',
       'is_active': true,
     }).eq('id', pollId);
+
+    if (societyId != null && adminName != null && title != null) {
+      await SupabaseBootstrap.client.from('notifications').insert({
+        'title': 'Society election — voting open',
+        'message': 'Cast your ranked ballot: $title',
+        'type': 'poll',
+        'target_type': 'all',
+        'created_by': adminName,
+        'society_id': societyId,
+      });
+    }
   }
 
   Future<ElectionResultsPayload> closeAndTally({
@@ -198,6 +245,10 @@ class ElectionService {
     required List<Map<String, dynamic>> options,
     required List<Map<String, dynamic>> ballots,
     required int committeeSeats,
+    Map<String, int> winningVotes = const {},
+    String? societyId,
+    String? adminName,
+    String? title,
   }) async {
     if (!Env.isConfigured) throw StateError('Not configured');
 
@@ -207,6 +258,7 @@ class ElectionService {
       options: pollOpts,
       ballots: pollBallots,
       committeeSeats: committeeSeats,
+      winningVotes: winningVotes,
     );
 
     await SupabaseBootstrap.client.from('polls').update({
@@ -214,6 +266,17 @@ class ElectionService {
       'election_phase': 'closed',
       'election_results': results.toJson(),
     }).eq('id', pollId);
+
+    if (societyId != null && adminName != null && title != null) {
+      await SupabaseBootstrap.client.from('notifications').insert({
+        'title': 'Society election closed',
+        'message': 'Voting has closed for: $title',
+        'type': 'poll',
+        'target_type': 'all',
+        'created_by': adminName,
+        'society_id': societyId,
+      });
+    }
 
     return results;
   }
@@ -225,6 +288,8 @@ class ElectionService {
     required List<Map<String, dynamic>> options,
     String? termFrom,
     String? termTo,
+    String? adminName,
+    String? title,
   }) async {
     if (!Env.isConfigured) return;
 
@@ -233,7 +298,7 @@ class ElectionService {
     final inserts = <Map<String, dynamic>>[];
     var sort = 0;
 
-    const execOrder = ['president', 'vice_president', 'secretary', 'treasurer'];
+    const execOrder = ['president', 'secretary', 'treasurer', 'vice_president'];
     const postToPosition = {
       'president': 'President',
       'vice_president': 'Vice-President',
@@ -296,5 +361,16 @@ class ElectionService {
       'election_phase': 'applied',
       'election_applied_at': DateTime.now().toIso8601String(),
     }).eq('id', pollId);
+
+    if (adminName != null && title != null) {
+      await SupabaseBootstrap.client.from('notifications').insert({
+        'title': 'New committee published',
+        'message': 'Elected office-bearers are now on the Committee roster: $title',
+        'type': 'poll',
+        'target_type': 'all',
+        'created_by': adminName,
+        'society_id': societyId,
+      });
+    }
   }
 }

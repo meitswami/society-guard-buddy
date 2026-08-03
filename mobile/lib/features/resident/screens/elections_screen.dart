@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/kutumbika_brand_theme.dart';
 import '../../../core/theme/kutumbika_colors.dart';
@@ -78,6 +79,33 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
       return;
     }
 
+    final statementCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Nominate for ${postDisplay[post] ?? post}'),
+        content: TextField(
+          controller: statementCtrl,
+          maxLines: 5,
+          maxLength: 2000,
+          decoration: const InputDecoration(
+            labelText: 'Why should members prefer you?',
+            alignLabelWithHint: true,
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Submit')),
+        ],
+      ),
+    );
+
+    if (ok != true) {
+      statementCtrl.dispose();
+      return;
+    }
+
     try {
       await _electionService.selfNominate(
         pollId: pollId,
@@ -87,6 +115,7 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
         flatId: widget.session.resident.flatId,
         flatNumber: widget.session.resident.flatNumber,
         nominatedBy: widget.session.resident.id,
+        nominationStatement: statementCtrl.text,
         existingOptions: _bundle!.options,
       );
       if (!mounted) return;
@@ -99,6 +128,8 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
       );
+    } finally {
+      statementCtrl.dispose();
     }
   }
 
@@ -164,6 +195,12 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     });
   }
 
+  Future<void> _openDoc(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
     final brand = KutumbikaBrandTheme.of(context);
@@ -200,12 +237,17 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
           builder: (context, snap) {
             final raw = snap.data;
             final open = raw != null && isVotingWindowOpen(raw);
+            final nomOpen = raw != null && isNominationWindowOpen(raw);
             final phase = raw != null ? electionPhase(raw) : ElectionPhase.closed;
             final opts = bundle.options.where((o) => o['poll_id'] == poll.id).toList();
+            final docs = bundle.documents.where((d) => d['poll_id'] == poll.id).toList();
             final postsFromOpts = opts.map((o) => o['election_post'] as String?).whereType<String>().toSet();
             final posts = phase == ElectionPhase.nomination
-                ? allElectionPosts.where((p) => raw != null && isPostOpenForNomination(raw, p)).toList()
-                : postsFromOpts.toList();
+                ? threeExecutivePosts.where((p) => raw != null && isPostOpenForNomination(raw, p)).toList()
+                : [
+                    ...threeExecutivePosts.where(postsFromOpts.contains),
+                    ...postsFromOpts.where((p) => !threeExecutivePosts.contains(p)),
+                  ];
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
@@ -216,73 +258,123 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                   children: [
                     Text(poll.question, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                     Text(
-                      '${phaseBadgeLabel(phase)}${open ? ' · vote now' : ''}',
+                      '${phaseBadgeLabel(phase)}${open ? ' · vote now' : ''}${nomOpen ? ' · nominate now' : ''}',
                       style: const TextStyle(fontSize: 12, color: KutumbikaColors.textMuted),
                     ),
-                    if (raw != null && phase != ElectionPhase.nomination)
+                    if (raw != null) ...[
                       Text(
-                        votingWindowLabel(raw),
+                        'Nomination: ${nominationWindowLabel(raw)}',
                         style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
                       ),
-                    const SizedBox(height: 12),
-                    if (phase == ElectionPhase.nomination)
-                      for (final post in posts)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(postDisplay[post] ?? post,
-                                    style: TextStyle(fontWeight: FontWeight.w600, color: brand.primary)),
-                              ),
-                              TextButton.icon(
-                                onPressed: raw == null ? null : () => _selfNominate(poll.id, post, raw),
-                                icon: const Icon(Icons.person_add_outlined, size: 18),
-                                label: const Text('Nominate me'),
-                              ),
-                            ],
-                          ),
-                        ),
-                    if (phase == ElectionPhase.nomination && opts.isNotEmpty) ...[
-                      const Divider(),
-                      const Text('Current candidates', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 6),
-                      ...opts.map((o) => Text(
-                            '· ${o['option_text']} (${postDisplay[o['election_post']] ?? o['election_post']})',
-                            style: const TextStyle(fontSize: 12),
-                          )),
-                      const SizedBox(height: 12),
+                      Text(
+                        'Voting: ${votingWindowLabel(raw)}',
+                        style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+                      ),
                     ],
-                    if (phase == ElectionPhase.voting)
-                      for (final post in posts) ...[
-                      Text(postDisplay[post] ?? post, style: TextStyle(fontWeight: FontWeight.w600, color: brand.primary)),
-                      const SizedBox(height: 6),
-                      ...opts.where((o) => o['election_post'] == post).map((o) {
-                        final id = o['id'] as String;
-                        final m = opts.where((x) => x['election_post'] == post).length;
-                        final current = _rankings[poll.id]?[post]?[id];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            children: [
-                              Expanded(child: Text(o['option_text'] as String? ?? '')),
-                              SizedBox(
-                                width: 72,
-                                child: DropdownButtonFormField<int>(
-                                  initialValue: current,
-                                  decoration: const InputDecoration(isDense: true, labelText: 'Rank'),
-                                  items: List.generate(
-                                    m,
-                                    (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}')),
-                                  ),
-                                  onChanged: open ? (v) => _setRank(poll.id, post, id, v) : null,
+                    const SizedBox(height: 12),
+                    if (docs.isNotEmpty) ...[
+                      const Text('Documents', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      ...docs.map((d) => ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.attach_file, size: 18),
+                            title: Text(d['title'] as String? ?? 'Document', style: const TextStyle(fontSize: 13)),
+                            subtitle: Text(d['doc_kind'] as String? ?? '', style: const TextStyle(fontSize: 11)),
+                            onTap: () => _openDoc(d['file_url'] as String? ?? ''),
+                          )),
+                      const SizedBox(height: 8),
+                    ],
+                    if (phase == ElectionPhase.nomination) ...[
+                      if (!nomOpen)
+                        Text(
+                          'Nomination opens in the scheduled window',
+                          style: TextStyle(fontSize: 12, color: Colors.amber.shade800),
+                        ),
+                      if (nomOpen)
+                        for (final post in posts)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(postDisplay[post] ?? post,
+                                      style: TextStyle(fontWeight: FontWeight.w600, color: brand.primary)),
                                 ),
+                                TextButton.icon(
+                                  onPressed: raw == null ? null : () => _selfNominate(poll.id, post, raw),
+                                  icon: const Icon(Icons.person_add_outlined, size: 18),
+                                  label: const Text('Nominate me'),
+                                ),
+                              ],
+                            ),
+                          ),
+                    ],
+                    if (opts.isNotEmpty) ...[
+                      const Divider(),
+                      const Text('Nominees', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      ...opts.map((o) {
+                        final statement = o['nomination_statement'] as String?;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '· ${o['option_text']} (${postDisplay[o['election_post']] ?? o['election_post']})',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                               ),
+                              if (statement != null && statement.isNotEmpty)
+                                Text(statement, style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted)),
                             ],
                           ),
                         );
                       }),
                       const SizedBox(height: 8),
+                    ],
+                    if (phase == ElectionPhase.voting)
+                      for (final post in posts) ...[
+                        Text(postDisplay[post] ?? post, style: TextStyle(fontWeight: FontWeight.w600, color: brand.primary)),
+                        const SizedBox(height: 6),
+                        ...opts.where((o) => o['election_post'] == post).map((o) {
+                          final id = o['id'] as String;
+                          final m = opts.where((x) => x['election_post'] == post).length;
+                          final current = _rankings[poll.id]?[post]?[id];
+                          final statement = o['nomination_statement'] as String?;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(child: Text(o['option_text'] as String? ?? '')),
+                                    SizedBox(
+                                      width: 72,
+                                      child: DropdownButtonFormField<int>(
+                                        initialValue: current,
+                                        decoration: const InputDecoration(isDense: true, labelText: 'Rank'),
+                                        items: List.generate(
+                                          m,
+                                          (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}')),
+                                        ),
+                                        onChanged: open ? (v) => _setRank(poll.id, post, id, v) : null,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (statement != null && statement.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(statement,
+                                        style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted)),
+                                  ),
+                              ],
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 8),
                       ],
                     if (open)
                       FilledButton(

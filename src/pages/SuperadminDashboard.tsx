@@ -237,9 +237,9 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     app_name: 'Kutumbika',
     tagline: '— parivaar jaisi society —',
     logo_url: '',
-    primary_color: '#F58220',
-    primary_dark_color: '#E08E10',
-    background_color: '#F8F7F4',
+    primary_color: '#14B8A6',
+    primary_dark_color: '#0F766E',
+    background_color: '#F0FAFA',
   });
   const [pendingPlatformLogo, setPendingPlatformLogo] = useState<File | null>(null);
   const [brandingSaving, setBrandingSaving] = useState(false);
@@ -272,9 +272,9 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
           app_name: data.app_name ?? 'Kutumbika',
           tagline: data.tagline ?? '— parivaar jaisi society —',
           logo_url: data.logo_url ?? '',
-          primary_color: data.primary_color ?? '#F58220',
-          primary_dark_color: data.primary_dark_color ?? '#E08E10',
-          background_color: data.background_color ?? '#F8F7F4',
+          primary_color: data.primary_color ?? '#14B8A6',
+          primary_dark_color: data.primary_dark_color ?? '#0F766E',
+          background_color: data.background_color ?? '#F0FAFA',
         });
         setPendingPlatformLogo(null);
       });
@@ -726,8 +726,8 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
       <div className="page-container">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-              <Crown className="w-5 h-5 text-amber-500" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Crown className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h1 className="page-title">{t('superadmin.panel')}</h1>

@@ -7,98 +7,98 @@
 @layer base {
   :root,
   [data-theme="dark"] {
-    --background: 220 20% 10%;
-    --foreground: 45 10% 90%;
+    --background: 222 42% 8%;
+    --foreground: 195 30% 94%;
 
-    --card: 220 18% 13%;
-    --card-foreground: 45 10% 90%;
+    --card: 222 36% 12%;
+    --card-foreground: 195 30% 94%;
 
-    --popover: 220 18% 13%;
-    --popover-foreground: 45 10% 90%;
+    --popover: 222 36% 12%;
+    --popover-foreground: 195 30% 94%;
 
-    --primary: 40 95% 55%;
-    --primary-foreground: 220 20% 8%;
+    --primary: 175 85% 48%;
+    --primary-foreground: 222 42% 6%;
 
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 45 10% 85%;
+    --secondary: 222 30% 17%;
+    --secondary-foreground: 195 20% 88%;
 
-    --muted: 220 15% 16%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 222 28% 15%;
+    --muted-foreground: 210 15% 58%;
 
-    --accent: 40 95% 55%;
-    --accent-foreground: 220 20% 8%;
+    --accent: 190 90% 52%;
+    --accent-foreground: 222 42% 6%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 78% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
+    --success: 152 72% 45%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
-    --warning-foreground: 220 20% 8%;
+    --warning-foreground: 222 42% 8%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 18%;
-    --ring: 40 95% 55%;
+    --border: 222 28% 20%;
+    --input: 222 28% 16%;
+    --ring: 175 85% 48%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 220 20% 10%;
-    --sidebar-foreground: 45 10% 90%;
-    --sidebar-primary: 40 95% 55%;
-    --sidebar-primary-foreground: 220 20% 8%;
-    --sidebar-accent: 220 15% 18%;
-    --sidebar-accent-foreground: 45 10% 90%;
-    --sidebar-border: 220 15% 20%;
-    --sidebar-ring: 40 95% 55%;
+    --sidebar-background: 222 42% 8%;
+    --sidebar-foreground: 195 30% 94%;
+    --sidebar-primary: 175 85% 48%;
+    --sidebar-primary-foreground: 222 42% 6%;
+    --sidebar-accent: 222 30% 17%;
+    --sidebar-accent-foreground: 195 30% 94%;
+    --sidebar-border: 222 28% 20%;
+    --sidebar-ring: 175 85% 48%;
 
     --font-display: 'Inter', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
 
   [data-theme="light"] {
-    --background: 40 20% 97%;
-    --foreground: 220 20% 15%;
+    --background: 195 40% 97%;
+    --foreground: 222 40% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 15%;
+    --card-foreground: 222 40% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 15%;
+    --popover-foreground: 222 40% 12%;
 
-    --primary: 35 90% 48%;
+    --primary: 175 78% 34%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 10% 92%;
-    --secondary-foreground: 220 15% 35%;
+    --secondary: 200 30% 92%;
+    --secondary-foreground: 222 30% 28%;
 
-    --muted: 220 10% 94%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 200 28% 94%;
+    --muted-foreground: 215 16% 42%;
 
-    --accent: 35 90% 48%;
+    --accent: 190 85% 38%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 40%;
+    --success: 152 70% 36%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 220 20% 8%;
+    --warning: 38 92% 46%;
+    --warning-foreground: 222 40% 12%;
 
-    --border: 220 10% 88%;
-    --input: 220 10% 92%;
-    --ring: 35 90% 48%;
+    --border: 200 22% 86%;
+    --input: 200 25% 92%;
+    --ring: 175 78% 34%;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 20% 15%;
-    --sidebar-primary: 35 90% 48%;
+    --sidebar-foreground: 222 40% 12%;
+    --sidebar-primary: 175 78% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 10% 94%;
-    --sidebar-accent-foreground: 220 20% 15%;
-    --sidebar-border: 220 10% 88%;
-    --sidebar-ring: 35 90% 48%;
+    --sidebar-accent: 200 28% 94%;
+    --sidebar-accent-foreground: 222 40% 12%;
+    --sidebar-border: 200 22% 86%;
+    --sidebar-ring: 175 78% 34%;
   }
 }
 

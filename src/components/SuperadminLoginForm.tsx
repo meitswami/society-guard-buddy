@@ -257,8 +257,8 @@ const SuperadminLoginForm = ({ onLogin, onBack, variant = 'full' }: Props) => {
     <div className="w-full max-w-sm mx-auto">
       {variant === 'full' && step === 'password' && (
         <div className="flex flex-col items-center mb-10">
-          <div className="w-20 h-20 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
-            <Crown className="w-10 h-10 text-amber-500" />
+          <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+            <Crown className="w-10 h-10 text-primary" />
           </div>
           <h1 className="page-title text-2xl text-center">{t('app.name')}</h1>
           <p className="text-muted-foreground text-xs mt-1 text-center">{t('app.subtitle')}</p>
@@ -269,7 +269,7 @@ const SuperadminLoginForm = ({ onLogin, onBack, variant = 'full' }: Props) => {
       )}
 
       {variant === 'embedded' && step === 'password' && (
-        <div className="flex items-center gap-2 mb-4 text-amber-600">
+        <div className="flex items-center gap-2 mb-4 text-primary">
           <Shield className="w-5 h-5" />
           <span className="text-sm font-medium">{t('superadmin.login')}</span>
         </div>

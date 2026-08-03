@@ -1,7 +1,25 @@
 enum ElectionPhase { nomination, voting, closed, applied }
 
-const executivePosts = ['president', 'vice_president', 'secretary', 'treasurer'];
-const allElectionPosts = [...executivePosts, 'committee'];
+/// Posts for new society elections.
+const threeExecutivePosts = ['president', 'secretary', 'treasurer'];
+
+/// Legacy + current posts that may appear on older elections.
+const executivePosts = threeExecutivePosts;
+const allElectionPosts = [
+  'president',
+  'vice_president',
+  'secretary',
+  'treasurer',
+  'committee',
+];
+
+const defaultOpenPosts = {
+  'president': true,
+  'secretary': true,
+  'treasurer': true,
+  'vice_president': false,
+  'committee': false,
+};
 
 const postDisplay = {
   'president': 'President',
@@ -29,27 +47,35 @@ ElectionPhase electionPhase(Map<String, dynamic> poll) {
   return ElectionPhase.voting;
 }
 
-bool isPostOpenForNomination(Map<String, dynamic> poll, String post) {
+bool _inWindow(dynamic startsAt, dynamic endsAt, DateTime now) {
+  final n = now.millisecondsSinceEpoch;
+  final start = startsAt != null ? DateTime.parse(startsAt as String).millisecondsSinceEpoch : 0;
+  final end = endsAt != null
+      ? DateTime.parse(endsAt as String).millisecondsSinceEpoch
+      : 9223372036854775807;
+  return n >= start && n <= end;
+}
+
+bool isNominationWindowOpen(Map<String, dynamic> poll, [DateTime? now]) {
   if (electionPhase(poll) != ElectionPhase.nomination) return false;
+  if (poll['is_active'] != true) return false;
+  return _inWindow(poll['nomination_starts_at'], poll['nomination_ends_at'], now ?? DateTime.now());
+}
+
+bool isPostOpenForNomination(Map<String, dynamic> poll, String post) {
+  if (!isNominationWindowOpen(poll)) return false;
   final open = poll['open_posts'];
   if (open is Map) {
     final v = open[post];
     if (v == false) return false;
   }
-  return true;
+  return threeExecutivePosts.contains(post);
 }
 
 bool isVotingWindowOpen(Map<String, dynamic> poll, [DateTime? now]) {
   if (electionPhase(poll) != ElectionPhase.voting) return false;
   if (poll['is_active'] != true) return false;
-  final n = (now ?? DateTime.now()).millisecondsSinceEpoch;
-  final start = poll['voting_starts_at'] != null
-      ? DateTime.parse(poll['voting_starts_at'] as String).millisecondsSinceEpoch
-      : 0;
-  final end = poll['voting_ends_at'] != null
-      ? DateTime.parse(poll['voting_ends_at'] as String).millisecondsSinceEpoch
-      : 9223372036854775807;
-  return n >= start && n <= end;
+  return _inWindow(poll['voting_starts_at'], poll['voting_ends_at'], now ?? DateTime.now());
 }
 
 String phaseBadgeLabel(ElectionPhase phase) {
@@ -61,19 +87,40 @@ String phaseBadgeLabel(ElectionPhase phase) {
   };
 }
 
-String votingWindowLabel(Map<String, dynamic> poll) {
-  final start = poll['voting_starts_at'] != null
-      ? DateTime.tryParse(poll['voting_starts_at'] as String)
-      : null;
-  final end = poll['voting_ends_at'] != null
-      ? DateTime.tryParse(poll['voting_ends_at'] as String)
-      : null;
-  if (start == null && end == null) return 'Window not scheduled';
-  String fmt(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')} ${_month(d.month)} ${d.year}';
+String _windowLabel(dynamic startsAt, dynamic endsAt, String empty) {
+  final start = startsAt != null ? DateTime.tryParse(startsAt as String) : null;
+  final end = endsAt != null ? DateTime.tryParse(endsAt as String) : null;
+  if (start == null && end == null) return empty;
+  String fmt(DateTime d) => '${d.day.toString().padLeft(2, '0')} ${_month(d.month)} ${d.year}';
   if (start != null && end != null) return '${fmt(start)} → ${fmt(end)}';
   if (start != null) return 'From ${fmt(start)}';
   return 'Until ${fmt(end!)}';
+}
+
+String nominationWindowLabel(Map<String, dynamic> poll) {
+  return _windowLabel(
+    poll['nomination_starts_at'],
+    poll['nomination_ends_at'],
+    'Nomination window not scheduled',
+  );
+}
+
+String votingWindowLabel(Map<String, dynamic> poll) {
+  return _windowLabel(
+    poll['voting_starts_at'],
+    poll['voting_ends_at'],
+    'Voting window not scheduled',
+  );
+}
+
+Map<String, int> parseWinningVotes(dynamic raw) {
+  final out = <String, int>{'president': 0, 'secretary': 0, 'treasurer': 0};
+  if (raw is! Map) return out;
+  for (final e in raw.entries) {
+    final n = e.value;
+    if (n is num && n >= 0) out[e.key.toString()] = n.toInt();
+  }
+  return out;
 }
 
 String _month(int m) {

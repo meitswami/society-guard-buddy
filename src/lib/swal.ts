@@ -4,9 +4,9 @@ import Swal from 'sweetalert2';
 export const getSwalThemeColors = () => {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   return {
-    background: isDark ? '#1a1a2e' : '#ffffff',
-    color: isDark ? '#e2e8f0' : '#1a1a2e',
-    confirmButtonColor: 'hsl(142, 71%, 45%)',
+    background: isDark ? '#0f1729' : '#ffffff',
+    color: isDark ? '#e8f4f7' : '#0f1729',
+    confirmButtonColor: 'hsl(152, 72%, 45%)',
     cancelButtonColor: '#6b7280',
   };
 };

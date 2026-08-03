@@ -2643,6 +2643,63 @@ export type Database = {
         }
         Relationships: []
       }
+      poll_documents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          doc_kind: string
+          file_name: string | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          poll_id: string
+          society_id: string | null
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          doc_kind?: string
+          file_name?: string | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          poll_id: string
+          society_id?: string | null
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          doc_kind?: string
+          file_name?: string | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          poll_id?: string
+          society_id?: string | null
+          sort_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_documents_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_documents_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_election_ballots: {
         Row: {
           created_at: string
@@ -2700,6 +2757,7 @@ export type Database = {
           id: string
           member_id: string | null
           nominated_by: string | null
+          nomination_statement: string | null
           option_text: string
           poll_id: string | null
           votes_count: number
@@ -2712,6 +2770,7 @@ export type Database = {
           id?: string
           member_id?: string | null
           nominated_by?: string | null
+          nomination_statement?: string | null
           option_text: string
           poll_id?: string | null
           votes_count?: number
@@ -2724,6 +2783,7 @@ export type Database = {
           id?: string
           member_id?: string | null
           nominated_by?: string | null
+          nomination_statement?: string | null
           option_text?: string
           poll_id?: string | null
           votes_count?: number
@@ -2812,12 +2872,15 @@ export type Database = {
           end_date: string | null
           id: string
           is_active: boolean
+          nomination_ends_at: string | null
+          nomination_starts_at: string | null
           open_posts: Json
           poll_kind: string
           question: string
           society_id: string | null
           voting_ends_at: string | null
           voting_starts_at: string | null
+          winning_votes: Json
         }
         Insert: {
           allow_multiple?: boolean
@@ -2833,12 +2896,15 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_active?: boolean
+          nomination_ends_at?: string | null
+          nomination_starts_at?: string | null
           open_posts?: Json
           poll_kind?: string
           question: string
           society_id?: string | null
           voting_ends_at?: string | null
           voting_starts_at?: string | null
+          winning_votes?: Json
         }
         Update: {
           allow_multiple?: boolean
@@ -2854,12 +2920,15 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_active?: boolean
+          nomination_ends_at?: string | null
+          nomination_starts_at?: string | null
           open_posts?: Json
           poll_kind?: string
           question?: string
           society_id?: string | null
           voting_ends_at?: string | null
           voting_starts_at?: string | null
+          winning_votes?: Json
         }
         Relationships: [
           {

@@ -156,7 +156,7 @@ export default function NewSocietySignupPage() {
           </div>
         </div>
 
-        <header className="relative mb-8 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/12 via-card to-amber-500/[0.07] p-6 shadow-sm">
+        <header className="relative mb-8 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/12 via-card to-cyan-500/[0.08] p-6 shadow-sm">
           <div
             className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/15 blur-3xl motion-safe:animate-pulse"
             aria-hidden

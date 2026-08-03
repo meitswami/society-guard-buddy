@@ -9,13 +9,15 @@ export type PollOptionRow = {
   flat_id?: string | null;
   flat_number?: string | null;
   nominated_by?: string | null;
+  nomination_statement?: string | null;
 };
 
 export type BallotRow = {
   rankings: Record<string, Record<string, number>> | null;
 };
 
-const EXEC_POSTS: ElectionPost[] = ['president', 'vice_president', 'secretary', 'treasurer'];
+const THREE_POSTS: ElectionPost[] = ['president', 'secretary', 'treasurer'];
+const LEGACY_EXTRA: ElectionPost[] = ['vice_president', 'committee'];
 
 /** Borda-style points: rank 1 gets m points, rank m gets 1 point. */
 function pointsForRank(rank: number, m: number): number {
@@ -23,14 +25,20 @@ function pointsForRank(rank: number, m: number): number {
   return m - rank + 1;
 }
 
+function postsPresent(options: PollOptionRow[]): ElectionPost[] {
+  const have = new Set(options.map((o) => o.election_post).filter(Boolean));
+  const ordered: ElectionPost[] = [...THREE_POSTS, ...LEGACY_EXTRA];
+  return ordered.filter((p) => have.has(p));
+}
+
 export function validateElectionRankings(
   options: PollOptionRow[],
   rankings: Record<string, Record<string, number>>,
-  committeeSeats: number,
+  _committeeSeats?: number,
 ): string | null {
   const byPost = (post: string) => options.filter((o) => o.election_post === post);
 
-  for (const post of [...EXEC_POSTS, 'committee']) {
+  for (const post of postsPresent(options)) {
     const postOpts = byPost(post);
     if (postOpts.length === 0) continue;
     const m = postOpts.length;
@@ -47,9 +55,6 @@ export function validateElectionRankings(
     if (usedRanks.size !== m) return `Complete all rankings for ${post}`;
   }
 
-  const committeeOpts = byPost('committee');
-  if (committeeOpts.length > 0 && committeeSeats < 1) return 'Invalid committee seat count';
-
   return null;
 }
 
@@ -61,6 +66,7 @@ export type ElectionResultsPayload = {
   secretary: ElectedWinner | null;
   treasurer: ElectedWinner | null;
   committee: ElectedWinner[];
+  vacant?: Partial<Record<ElectionPost, { reason: string; top_score: number; required: number }>>;
   tallied_at: string;
 };
 
@@ -68,6 +74,7 @@ export function tallyElection(
   options: PollOptionRow[],
   ballots: BallotRow[],
   committeeSeats: number,
+  winningVotes: Record<string, number> = {},
 ): ElectionResultsPayload {
   const byPost = (post: string) => options.filter((o) => o.election_post === post);
   const scoreMap = (post: string) => {
@@ -86,6 +93,8 @@ export function tallyElection(
     return scores;
   };
 
+  const vacant: ElectionResultsPayload['vacant'] = {};
+
   const pickWinner = (post: ElectionPost): ElectedWinner | null => {
     const postOpts = byPost(post);
     if (postOpts.length === 0) return null;
@@ -100,13 +109,23 @@ export function tallyElection(
       }
     }
     if (!best) return null;
+    const required = Number(winningVotes[post] ?? 0);
+    if (Number.isFinite(required) && required > 0 && bestScore < required) {
+      vacant[post] = {
+        reason: `Top score ${bestScore} below required ${required}`,
+        top_score: bestScore,
+        required,
+      };
+      return null;
+    }
     return { option_id: best.id, name: best.option_text, score: bestScore };
   };
 
   const committeeOpts = byPost('committee');
   const cScores = scoreMap('committee');
   const committeeSorted = [...committeeOpts].sort((a, b) => (cScores.get(b.id) ?? 0) - (cScores.get(a.id) ?? 0));
-  const seats = Math.max(1, Math.min(committeeSeats, committeeSorted.length));
+  const seats =
+    committeeOpts.length === 0 ? 0 : Math.max(0, Math.min(committeeSeats, committeeSorted.length));
   const committee: ElectedWinner[] = committeeSorted.slice(0, seats).map((o) => ({
     option_id: o.id,
     name: o.option_text,
@@ -119,6 +138,7 @@ export function tallyElection(
     secretary: pickWinner('secretary'),
     treasurer: pickWinner('treasurer'),
     committee,
+    vacant: Object.keys(vacant).length ? vacant : undefined,
     tallied_at: new Date().toISOString(),
   };
 }

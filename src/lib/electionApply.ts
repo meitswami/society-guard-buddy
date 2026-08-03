@@ -9,7 +9,7 @@ const POST_TO_COMMITTEE_POSITION: Record<string, string> = {
   committee: 'Committee Member',
 };
 
-const EXEC_ORDER: ElectionPost[] = ['president', 'vice_president', 'secretary', 'treasurer'];
+const EXEC_ORDER: ElectionPost[] = ['president', 'secretary', 'treasurer', 'vice_president'];
 
 type ApplyInput = {
   societyId: string;

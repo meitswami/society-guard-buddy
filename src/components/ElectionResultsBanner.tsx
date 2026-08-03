@@ -21,9 +21,9 @@ function ResultsBlock({ results }: { results: ElectionResultsPayload }) {
   return (
     <div className="space-y-0.5 mt-1">
       {line('President', results.president)}
-      {line('Vice-President', results.vice_president)}
       {line('Secretary', results.secretary)}
       {line('Treasurer', results.treasurer)}
+      {line('Vice-President', results.vice_president)}
       {results.committee.length > 0 && (
         <div>
           <p className="text-xs text-muted-foreground mt-1">Committee members</p>

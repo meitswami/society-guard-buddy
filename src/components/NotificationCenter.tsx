@@ -644,8 +644,8 @@ const NotificationCenter = ({
     <div className="page-container pb-24">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center relative">
-            <Bell className="w-5 h-5 text-amber-500" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center relative">
+            <Bell className="w-5 h-5 text-primary" />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
                 {unreadCount}

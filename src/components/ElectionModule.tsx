@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Landmark, Trash2, UserPlus, Award } from 'lucide-react';
+import { Landmark, Trash2, UserPlus, Award, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { DateInput } from '@/components/DateInput';
 import VotingCharterPanel from '@/components/VotingCharterPanel';
+import PollDocumentsPanel from '@/components/PollDocumentsPanel';
 import {
   validateElectionRankings,
   tallyElection,
@@ -15,21 +16,26 @@ import {
 import {
   electionPhase,
   isPostOpenForNomination,
+  isNominationWindowOpen,
   isVotingWindowOpen,
   votingWindowLabel,
+  nominationWindowLabel,
   phaseBadgeLabel,
   POST_DISPLAY,
-  EXECUTIVE_POSTS,
-  type ElectionPhase,
+  THREE_EXECUTIVE_POSTS,
+  DEFAULT_OPEN_POSTS,
+  parseWinningVotes,
+  toDatetimeLocalValue,
+  postsForPoll,
 } from '@/lib/electionGovernance';
 import { applyElectionToCommittee } from '@/lib/electionApply';
-import { invokePushNotification } from '@/lib/pushNotification';
+import { notifyElectionEvent } from '@/lib/electionNotify';
 import { capsFieldChange } from '@/lib/entryCaps';
+import type { PollDocumentRow } from '@/lib/pollDocuments';
 
 type VoterProfile = { name: string; flatNumber: string };
 
 interface Props {
-  /** When true, rendered inside PollManager elections section (no duplicate page chrome). */
   embedded?: boolean;
   adminName?: string;
   isResident?: boolean;
@@ -43,17 +49,10 @@ interface Props {
   electionPolls: any[];
   options: any[];
   ballots: any[];
+  documents?: PollDocumentRow[];
   voterProfiles: Record<string, VoterProfile>;
   onReload: () => void;
 }
-
-const defaultOpenPosts = {
-  president: true,
-  vice_president: true,
-  secretary: true,
-  treasurer: true,
-  committee: true,
-};
 
 const ElectionModule = ({
   embedded = false,
@@ -69,6 +68,7 @@ const ElectionModule = ({
   electionPolls,
   options,
   ballots,
+  documents = [],
   voterProfiles,
   onReload,
 }: Props) => {
@@ -76,19 +76,33 @@ const ElectionModule = ({
   const [ef, setEf] = useState({
     question: '',
     description: '',
-    committeeSeats: 5,
+    nominationStarts: '',
+    nominationEnds: '',
     votingStarts: '',
     votingEnds: '',
     termFrom: '',
     termTo: '',
+    winningPresident: 0,
+    winningSecretary: 0,
+    winningTreasurer: 0,
     president: [''] as string[],
-    vice_president: [''] as string[],
     secretary: [''] as string[],
     treasurer: [''] as string[],
-    committee: ['', '', '', '', ''] as string[],
-    openPosts: { ...defaultOpenPosts },
   });
   const [electionRanks, setElectionRanks] = useState<Record<string, Record<string, Record<string, number>>>>({});
+  const [nominatePost, setNominatePost] = useState<ElectionPost | null>(null);
+  const [nominateStatement, setNominateStatement] = useState('');
+  const [nominatePollId, setNominatePollId] = useState<string | null>(null);
+  const [scheduleEditId, setScheduleEditId] = useState<string | null>(null);
+  const [scheduleForm, setScheduleForm] = useState({
+    nominationStarts: '',
+    nominationEnds: '',
+    votingStarts: '',
+    votingEnds: '',
+    winningPresident: 0,
+    winningSecretary: 0,
+    winningTreasurer: 0,
+  });
 
   useEffect(() => {
     if (!voterId) return;
@@ -115,11 +129,44 @@ const ElectionModule = ({
     });
   }, []);
 
+  const resetCreateForm = () =>
+    setEf({
+      question: '',
+      description: '',
+      nominationStarts: '',
+      nominationEnds: '',
+      votingStarts: '',
+      votingEnds: '',
+      termFrom: '',
+      termTo: '',
+      winningPresident: 0,
+      winningSecretary: 0,
+      winningTreasurer: 0,
+      president: [''],
+      secretary: [''],
+      treasurer: [''],
+    });
+
   const addElection = async () => {
     if (!societyId || !ef.question.trim()) return;
-    const seats = Math.max(5, Math.min(20, Number(ef.committeeSeats) || 5));
-    const names = (post: ElectionPost) =>
-      (post === 'committee' ? ef.committee : ef[post]).map((s) => s.trim()).filter(Boolean);
+    if (!ef.nominationStarts || !ef.nominationEnds || !ef.votingStarts || !ef.votingEnds) {
+      toast.error('Set open and close dates for both nomination and voting.');
+      return;
+    }
+    if (new Date(ef.nominationEnds) < new Date(ef.nominationStarts)) {
+      toast.error('Nomination close must be after open.');
+      return;
+    }
+    if (new Date(ef.votingEnds) < new Date(ef.votingStarts)) {
+      toast.error('Voting close must be after open.');
+      return;
+    }
+
+    const winning_votes = {
+      president: Math.max(0, Math.floor(ef.winningPresident) || 0),
+      secretary: Math.max(0, Math.floor(ef.winningSecretary) || 0),
+      treasurer: Math.max(0, Math.floor(ef.winningTreasurer) || 0),
+    };
 
     const { data: poll, error: pe } = await supabase
       .from('polls')
@@ -130,14 +177,17 @@ const ElectionModule = ({
           created_by: adminName,
           society_id: societyId,
           poll_kind: 'election',
-          election_committee_seats: seats,
+          election_committee_seats: 0,
           election_phase: 'nomination',
           is_active: true,
-          voting_starts_at: ef.votingStarts ? new Date(ef.votingStarts).toISOString() : null,
-          voting_ends_at: ef.votingEnds ? new Date(ef.votingEnds).toISOString() : null,
+          nomination_starts_at: new Date(ef.nominationStarts).toISOString(),
+          nomination_ends_at: new Date(ef.nominationEnds).toISOString(),
+          voting_starts_at: new Date(ef.votingStarts).toISOString(),
+          voting_ends_at: new Date(ef.votingEnds).toISOString(),
           election_term_from: ef.termFrom || null,
           election_term_to: ef.termTo || null,
-          open_posts: ef.openPosts,
+          open_posts: DEFAULT_OPEN_POSTS,
+          winning_votes,
         },
       ])
       .select()
@@ -148,63 +198,100 @@ const ElectionModule = ({
       return;
     }
 
+    const names = (post: 'president' | 'secretary' | 'treasurer') =>
+      ef[post].map((s) => s.trim()).filter(Boolean);
     const rows: { poll_id: string; option_text: string; election_post: string; votes_count: number }[] = [];
-    for (const post of [...EXECUTIVE_POSTS, 'committee'] as ElectionPost[]) {
-      for (const t of names(post)) {
+    for (const post of THREE_EXECUTIVE_POSTS) {
+      for (const t of names(post as 'president' | 'secretary' | 'treasurer')) {
         rows.push({ poll_id: poll.id, option_text: t, election_post: post, votes_count: 0 });
       }
     }
     if (rows.length > 0) await supabase.from('poll_options').insert(rows);
 
-    setEf({
-      question: '',
-      description: '',
-      committeeSeats: 5,
-      votingStarts: '',
-      votingEnds: '',
-      termFrom: '',
-      termTo: '',
-      president: [''],
-      vice_president: [''],
-      secretary: [''],
-      treasurer: [''],
-      committee: ['', '', '', '', ''],
-      openPosts: { ...defaultOpenPosts },
-    });
+    const title = ef.question.trim();
+    resetCreateForm();
     setShowElectionForm(false);
-    toast.success('Election created — nomination phase open');
+    toast.success('Election created — nomination phase');
     onReload();
-    await supabase.from('notifications').insert([
-      {
-        title: 'Society election — nomination open',
-        message: `Propose yourself for posts: ${ef.question.trim()}`,
-        type: 'poll',
-        target_type: 'all',
-        created_by: adminName,
-        society_id: societyId,
-      },
-    ]);
-    if (societyId) {
-      await invokePushNotification({
-        title: 'Society election — nomination open',
-        message: `Propose yourself for posts: ${ef.question.trim()}`,
-        target_type: 'all',
-        society_id: societyId,
-      });
+    await notifyElectionEvent({
+      event: 'nomination_open',
+      societyId,
+      createdBy: adminName,
+      electionTitle: title,
+    });
+  };
+
+  const openScheduleEditor = (poll: any) => {
+    const wv = parseWinningVotes(poll.winning_votes);
+    setScheduleEditId(poll.id);
+    setScheduleForm({
+      nominationStarts: toDatetimeLocalValue(poll.nomination_starts_at),
+      nominationEnds: toDatetimeLocalValue(poll.nomination_ends_at),
+      votingStarts: toDatetimeLocalValue(poll.voting_starts_at),
+      votingEnds: toDatetimeLocalValue(poll.voting_ends_at),
+      winningPresident: wv.president ?? 0,
+      winningSecretary: wv.secretary ?? 0,
+      winningTreasurer: wv.treasurer ?? 0,
+    });
+  };
+
+  const saveSchedule = async (poll: any) => {
+    const { nominationStarts, nominationEnds, votingStarts, votingEnds } = scheduleForm;
+    if (!nominationStarts || !nominationEnds || !votingStarts || !votingEnds) {
+      toast.error('All four dates are required.');
+      return;
+    }
+    if (new Date(nominationEnds) < new Date(nominationStarts) || new Date(votingEnds) < new Date(votingStarts)) {
+      toast.error('Each close date must be after its open date.');
+      return;
+    }
+    const winning_votes = {
+      president: Math.max(0, Math.floor(scheduleForm.winningPresident) || 0),
+      secretary: Math.max(0, Math.floor(scheduleForm.winningSecretary) || 0),
+      treasurer: Math.max(0, Math.floor(scheduleForm.winningTreasurer) || 0),
+    };
+    const { error } = await supabase
+      .from('polls')
+      .update({
+        nomination_starts_at: new Date(nominationStarts).toISOString(),
+        nomination_ends_at: new Date(nominationEnds).toISOString(),
+        voting_starts_at: new Date(votingStarts).toISOString(),
+        voting_ends_at: new Date(votingEnds).toISOString(),
+        winning_votes,
+      })
+      .eq('id', poll.id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success('Schedule & winning scores updated');
+      setScheduleEditId(null);
+      onReload();
     }
   };
 
-  const selfNominate = async (poll: any, post: ElectionPost) => {
+  const beginNominate = (pollId: string, post: ElectionPost) => {
+    setNominatePollId(pollId);
+    setNominatePost(post);
+    setNominateStatement('');
+  };
+
+  const selfNominate = async () => {
+    const poll = electionPolls.find((p) => p.id === nominatePollId);
+    if (!poll || !nominatePost) return;
     if (!memberId || !memberName || !flatId) {
       toast.error('Your member profile is required to self-nominate.');
       return;
     }
-    if (!isPostOpenForNomination(poll, post)) {
-      toast.error('Self-nomination is not open for this post.');
+    if (!isPostOpenForNomination(poll, nominatePost)) {
+      toast.error('Self-nomination is not open for this post right now.');
+      return;
+    }
+    const statement = nominateStatement.trim();
+    if (statement.length < 20) {
+      toast.error('Please write at least a short statement (20+ characters) explaining why you should be chosen.');
       return;
     }
     const existing = options.filter(
-      (o) => o.poll_id === poll.id && o.election_post === post && o.member_id === memberId,
+      (o) => o.poll_id === poll.id && o.election_post === nominatePost && o.member_id === memberId,
     );
     if (existing.length > 0) {
       toast.error('You have already nominated yourself for this post.');
@@ -214,17 +301,21 @@ const ElectionModule = ({
       {
         poll_id: poll.id,
         option_text: memberName.trim(),
-        election_post: post,
+        election_post: nominatePost,
         votes_count: 0,
         member_id: memberId,
         flat_id: flatId,
         flat_number: flatNumber || null,
         nominated_by: voterId || memberId,
+        nomination_statement: statement,
       },
     ]);
     if (error) toast.error(error.message);
     else {
-      toast.success(`Nominated for ${POST_DISPLAY[post]}`);
+      toast.success(`Nominated for ${POST_DISPLAY[nominatePost]}`);
+      setNominatePost(null);
+      setNominatePollId(null);
+      setNominateStatement('');
       onReload();
     }
   };
@@ -240,7 +331,7 @@ const ElectionModule = ({
     }
     const pollOpts = options.filter((o) => o.poll_id === poll.id) as PollOptionRow[];
     const rankings = electionRanks[poll.id] ?? {};
-    const err = validateElectionRankings(pollOpts, rankings, Number(poll.election_committee_seats) || 5);
+    const err = validateElectionRankings(pollOpts, rankings);
     if (err) {
       toast.error(err);
       return;
@@ -286,37 +377,65 @@ const ElectionModule = ({
   };
 
   const startVoting = async (poll: any) => {
-    const ok = await confirmAction('Open voting?', 'Residents can rank candidates during the scheduled window.', 'Open voting', 'Cancel');
+    const ok = await confirmAction(
+      'Open voting?',
+      'Residents can rank candidates during the scheduled voting window. All members will be notified.',
+      'Open voting',
+      'Cancel',
+    );
     if (!ok) return;
-    await supabase
-      .from('polls')
-      .update({ election_phase: 'voting', is_active: true })
-      .eq('id', poll.id);
+    await supabase.from('polls').update({ election_phase: 'voting', is_active: true }).eq('id', poll.id);
     toast.success('Voting phase started');
     onReload();
+    if (societyId) {
+      await notifyElectionEvent({
+        event: 'voting_open',
+        societyId,
+        createdBy: adminName,
+        electionTitle: poll.question,
+      });
+    }
   };
 
   const closeElection = async (poll: any) => {
-    const ok = await confirmAction('Close election?', 'Voting stops. Results stay in admin portal until you publish to the committee roster.', 'Close & tally', 'Cancel');
+    const ok = await confirmAction(
+      'Close election?',
+      'Voting stops. Results stay in admin portal until you publish to the committee roster.',
+      'Close & tally',
+      'Cancel',
+    );
     if (!ok) return;
     const pollOpts = options.filter((o) => o.poll_id === poll.id) as PollOptionRow[];
     const bRows = ballots
       .filter((b) => b.poll_id === poll.id)
       .map((b) => ({ rankings: b.rankings as Record<string, Record<string, number>> }));
-    const results = tallyElection(pollOpts, bRows, Number(poll.election_committee_seats) || 5) as ElectionResultsPayload;
+    const winning = parseWinningVotes(poll.winning_votes);
+    const results = tallyElection(pollOpts, bRows, Number(poll.election_committee_seats) || 0, winning);
     await supabase
       .from('polls')
-      .update({ is_active: false, election_phase: 'closed', election_results: results as unknown as Record<string, unknown> })
+      .update({
+        is_active: false,
+        election_phase: 'closed',
+        election_results: results as unknown as Record<string, unknown>,
+      })
       .eq('id', poll.id);
     showSuccess('Election closed', 'Results are available here in the admin portal.');
     onReload();
+    if (societyId) {
+      await notifyElectionEvent({
+        event: 'election_closed',
+        societyId,
+        createdBy: adminName,
+        electionTitle: poll.question,
+      });
+    }
   };
 
   const publishToCommittee = async (poll: any) => {
     if (!societyId || !poll.election_results) return;
     const ok = await confirmAction(
       'Publish to Committee module?',
-      'Elected members will appear in the residents’ Committee tab. This cannot be undone automatically.',
+      'Elected members will appear in the residents’ Committee tab. All members will be notified.',
       'Publish',
       'Cancel',
     );
@@ -334,6 +453,12 @@ const ElectionModule = ({
     else {
       showSuccess('Published', 'Committee roster updated for residents.');
       onReload();
+      await notifyElectionEvent({
+        event: 'winners_published',
+        societyId,
+        createdBy: adminName,
+        electionTitle: poll.question,
+      });
     }
   };
 
@@ -341,22 +466,40 @@ const ElectionModule = ({
     const raw = poll.election_results;
     if (!raw || typeof raw !== 'object') return null;
     const r = raw as ElectionResultsPayload;
+    const wv = parseWinningVotes(poll.winning_votes);
     return (
       <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-1 text-sm">
         <p className="text-xs font-semibold text-primary uppercase tracking-wide flex items-center gap-1">
           <Award className="w-3.5 h-3.5" /> {adminView ? 'Tallied results (admin only)' : 'Results'}
         </p>
-        {(['president', 'vice_president', 'secretary', 'treasurer'] as const).map((post) => {
+        {THREE_EXECUTIVE_POSTS.map((post) => {
           const w = r[post];
-          if (!w) return null;
+          const vacant = r.vacant?.[post];
+          const req = wv[post] ?? 0;
+          if (!w && !vacant) return null;
           return (
             <p key={post}>
               <span className="text-muted-foreground">{POST_DISPLAY[post]}:</span>{' '}
-              <strong>{w.name}</strong>
-              <span className="text-[10px] text-muted-foreground ml-1">({w.score} pts)</span>
+              {w ? (
+                <>
+                  <strong>{w.name}</strong>
+                  <span className="text-[10px] text-muted-foreground ml-1">
+                    ({w.score} pts{req > 0 ? `, min ${req}` : ''})
+                  </span>
+                </>
+              ) : (
+                <span className="text-amber-700">
+                  Vacant — top {vacant?.top_score ?? 0} below required {vacant?.required ?? req}
+                </span>
+              )}
             </p>
           );
         })}
+        {r.vice_president && (
+          <p>
+            <span className="text-muted-foreground">Vice-President:</span> <strong>{r.vice_president.name}</strong>
+          </p>
+        )}
         {r.committee?.length > 0 && (
           <div>
             <p className="text-muted-foreground text-xs mt-1">Committee ({r.committee.length})</p>
@@ -374,6 +517,29 @@ const ElectionModule = ({
     );
   };
 
+  const renderCandidateList = (poll: any, post: ElectionPost) => {
+    const postOpts = options.filter((o) => o.poll_id === poll.id && o.election_post === post);
+    if (postOpts.length === 0) return null;
+    return (
+      <div className="mb-3 space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground">{POST_DISPLAY[post]} — nominees</p>
+        {postOpts.map((opt) => (
+          <div key={opt.id} className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2 text-sm">
+            <p className="font-medium">
+              {opt.option_text}
+              {opt.flat_number ? (
+                <span className="text-[10px] text-muted-foreground font-normal ml-1">· Flat {opt.flat_number}</span>
+              ) : null}
+            </p>
+            {opt.nomination_statement && (
+              <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{opt.nomination_statement}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderRankControls = (poll: any, post: ElectionPost) => {
     const postOpts = options.filter((o) => o.poll_id === poll.id && o.election_post === post);
     if (postOpts.length === 0) return null;
@@ -385,45 +551,97 @@ const ElectionModule = ({
           {POST_DISPLAY[post]} — rank each candidate (1 = highest preference)
         </p>
         {postOpts.map((opt) => (
-          <div key={opt.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span className="min-w-0 flex-1">
-              {opt.option_text}
-              {opt.flat_number ? <span className="text-[10px] text-muted-foreground ml-1">· Flat {opt.flat_number}</span> : null}
-            </span>
-            <select
-              className="input-field w-24 text-sm py-1"
-              value={ranks[opt.id] ?? ''}
-              onChange={(e) => setRank(poll.id, post, opt.id, e.target.value)}
-            >
-              <option value="">—</option>
-              {Array.from({ length: m }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
+          <div key={opt.id} className="rounded-md border border-border/60 px-2.5 py-2 space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="min-w-0 flex-1 font-medium">
+                {opt.option_text}
+                {opt.flat_number ? (
+                  <span className="text-[10px] text-muted-foreground font-normal ml-1">· Flat {opt.flat_number}</span>
+                ) : null}
+              </span>
+              <select
+                className="input-field w-24 text-sm py-1"
+                value={ranks[opt.id] ?? ''}
+                onChange={(e) => setRank(poll.id, post, opt.id, e.target.value)}
+              >
+                <option value="">—</option>
+                {Array.from({ length: m }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {opt.nomination_statement && (
+              <p className="text-[11px] text-muted-foreground whitespace-pre-wrap">{opt.nomination_statement}</p>
+            )}
           </div>
         ))}
       </div>
     );
   };
 
+  const seedFields = (post: 'president' | 'secretary' | 'treasurer') => (
+    <div key={post} className="space-y-2">
+      <p className="text-xs font-semibold">{POST_DISPLAY[post]} — seed candidates (optional)</p>
+      {ef[post].map((line, i) => (
+        <div key={`${post}-${i}`} className="flex gap-2">
+          <input
+            className="input-field flex-1 text-sm"
+            placeholder={`Name ${i + 1}`}
+            value={line}
+            onChange={(e) => {
+              const next = [...ef[post]];
+              next[i] = e.target.value;
+              setEf({ ...ef, [post]: next });
+            }}
+          />
+          {ef[post].length > 1 && (
+            <button
+              type="button"
+              onClick={() => setEf({ ...ef, [post]: ef[post].filter((_, j) => j !== i) })}
+              className="text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="text-xs text-primary underline"
+        onClick={() => setEf({ ...ef, [post]: [...ef[post], ''] })}
+      >
+        + Add {POST_DISPLAY[post]} candidate
+      </button>
+    </div>
+  );
+
   const renderElectionCard = (poll: any) => {
     const phase = electionPhase(poll);
     const pollBallots = ballots.filter((b) => b.poll_id === poll.id);
     const myBallot = pollBallots.find((b) => b.voter_id === voterId);
-    const seats = Number(poll.election_committee_seats) || 5;
     const votingOpen = isVotingWindowOpen(poll);
-    const showResultsToResident = false;
+    const nominationOpen = isNominationWindowOpen(poll);
+    const pollOpts = options.filter((o) => o.poll_id === poll.id);
+    const posts = postsForPoll(poll, pollOpts);
+    const wv = parseWinningVotes(poll.winning_votes);
+    const editingSchedule = scheduleEditId === poll.id;
 
     return (
       <div key={poll.id} className="card-section p-4 mb-3 border-l-4 border-l-primary">
         <div className="flex justify-between items-start gap-2 mb-2">
           <div className="min-w-0">
-            <span className="text-[10px] uppercase font-semibold text-primary">Election</span>
+            <span className="text-[10px] uppercase font-semibold text-primary">Election · 3 posts</span>
             <p className="font-semibold">{poll.question}</p>
             {poll.description && <p className="text-xs text-muted-foreground mt-1">{poll.description}</p>}
-            <p className="text-[11px] text-muted-foreground mt-1">Voting window: {votingWindowLabel(poll)}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">Nomination: {nominationWindowLabel(poll)}</p>
+            <p className="text-[11px] text-muted-foreground">Voting: {votingWindowLabel(poll)}</p>
+            {!isResident && (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Min winning scores — P:{wv.president || 0} · S:{wv.secretary || 0} · T:{wv.treasurer || 0}
+              </p>
+            )}
           </div>
           <span className="text-[10px] px-2 py-0.5 rounded-full shrink-0 bg-muted text-muted-foreground">
             {phaseBadgeLabel(phase)}
@@ -433,25 +651,67 @@ const ElectionModule = ({
 
         {!isResident && (phase === 'closed' || phase === 'applied') && poll.election_results && renderResults(poll, true)}
 
-        {isResident && showResultsToResident && poll.election_results && renderResults(poll, false)}
+        {(phase === 'nomination' || phase === 'voting') &&
+          THREE_EXECUTIVE_POSTS.filter((p) => posts.includes(p)).map((post) => (
+            <div key={`list-${post}`}>{renderCandidateList(poll, post)}</div>
+          ))}
 
         {isResident && phase === 'nomination' && (
           <div className="mt-3 border-t border-border pt-3 space-y-2">
-            <p className="text-xs font-medium text-foreground">Propose yourself for a post</p>
-            <div className="flex flex-wrap gap-2">
-              {([...EXECUTIVE_POSTS, 'committee'] as ElectionPost[]).map((post) =>
-                isPostOpenForNomination(poll, post) ? (
-                  <button
-                    key={post}
-                    type="button"
-                    onClick={() => void selfNominate(poll, post)}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 flex items-center gap-1"
-                  >
-                    <UserPlus className="w-3 h-3" /> {POST_DISPLAY[post]}
-                  </button>
-                ) : null,
-              )}
-            </div>
+            {!nominationOpen && (
+              <p className="text-xs text-amber-600">
+                Nomination opens in the scheduled window: {nominationWindowLabel(poll)}
+              </p>
+            )}
+            {nominationOpen && (
+              <>
+                <p className="text-xs font-medium text-foreground">Propose yourself for a post</p>
+                <div className="flex flex-wrap gap-2">
+                  {THREE_EXECUTIVE_POSTS.map((post) =>
+                    isPostOpenForNomination(poll, post) ? (
+                      <button
+                        key={post}
+                        type="button"
+                        onClick={() => beginNominate(poll.id, post)}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 flex items-center gap-1"
+                      >
+                        <UserPlus className="w-3 h-3" /> {POST_DISPLAY[post]}
+                      </button>
+                    ) : null,
+                  )}
+                </div>
+                {nominatePollId === poll.id && nominatePost && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <p className="text-xs font-semibold">
+                      Nominate for {POST_DISPLAY[nominatePost]} — why should members prefer you?
+                    </p>
+                    <textarea
+                      className="input-field text-sm min-h-[100px]"
+                      placeholder="Write why you should be chosen or given preference over others…"
+                      value={nominateStatement}
+                      onChange={(e) => setNominateStatement(e.target.value)}
+                      maxLength={2000}
+                    />
+                    <p className="text-[10px] text-muted-foreground">{nominateStatement.trim().length}/2000</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => void selfNominate()} className="btn-primary text-xs">
+                        Submit nomination
+                      </button>
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline"
+                        onClick={() => {
+                          setNominatePost(null);
+                          setNominatePollId(null);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -461,14 +721,15 @@ const ElectionModule = ({
               <p className="text-xs text-amber-600">Voting opens in the scheduled window: {votingWindowLabel(poll)}</p>
             )}
             {myBallot && votingOpen && (
-              <p className="text-xs text-green-600 font-medium mb-2">Ballot submitted — you may update ranks until the window closes.</p>
+              <p className="text-xs text-green-600 font-medium mb-2">
+                Ballot submitted — you may update ranks until the window closes.
+              </p>
             )}
             {votingOpen && (
               <>
-                {EXECUTIVE_POSTS.map((post) => (
+                {posts.map((post) => (
                   <div key={post}>{renderRankControls(poll, post)}</div>
                 ))}
-                {renderRankControls(poll, 'committee')}
                 <button
                   type="button"
                   disabled={!flatId || !voterId}
@@ -481,6 +742,15 @@ const ElectionModule = ({
             )}
           </div>
         )}
+
+        <PollDocumentsPanel
+          pollId={poll.id}
+          societyId={societyId}
+          isAdmin={!isResident}
+          documents={documents}
+          createdBy={adminName}
+          onChanged={onReload}
+        />
 
         {!isResident && (
           <div className="mt-2 text-xs text-muted-foreground space-y-1">
@@ -498,8 +768,22 @@ const ElectionModule = ({
 
         {!isResident && (
           <div className="mt-3 flex flex-wrap gap-2">
+            {(phase === 'nomination' || phase === 'voting') && (
+              <button
+                type="button"
+                onClick={() => (editingSchedule ? setScheduleEditId(null) : openScheduleEditor(poll))}
+                className="text-xs px-3 py-1.5 rounded-lg border border-border inline-flex items-center gap-1"
+              >
+                <CalendarClock className="w-3.5 h-3.5" />
+                {editingSchedule ? 'Hide schedule' : 'Edit dates & winning scores'}
+              </button>
+            )}
             {phase === 'nomination' && (
-              <button type="button" onClick={() => void startVoting(poll)} className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground">
+              <button
+                type="button"
+                onClick={() => void startVoting(poll)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground"
+              >
                 Start voting window
               </button>
             )}
@@ -509,13 +793,99 @@ const ElectionModule = ({
               </button>
             )}
             {phase === 'closed' && (
-              <button type="button" onClick={() => void publishToCommittee(poll)} className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white">
+              <button
+                type="button"
+                onClick={() => void publishToCommittee(poll)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white"
+              >
                 Publish winners to Committee module
               </button>
             )}
             {phase === 'applied' && (
               <span className="text-xs text-green-600 font-medium">✓ Published to committee roster</span>
             )}
+          </div>
+        )}
+
+        {!isResident && editingSchedule && (
+          <div className="mt-3 rounded-lg border border-border p-3 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase">Schedule & winning scores</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-muted-foreground">Nomination opens</label>
+                <input
+                  type="datetime-local"
+                  className="input-field mt-0.5"
+                  value={scheduleForm.nominationStarts}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, nominationStarts: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Nomination closes</label>
+                <input
+                  type="datetime-local"
+                  className="input-field mt-0.5"
+                  value={scheduleForm.nominationEnds}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, nominationEnds: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Voting opens</label>
+                <input
+                  type="datetime-local"
+                  className="input-field mt-0.5"
+                  value={scheduleForm.votingStarts}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, votingStarts: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Voting closes</label>
+                <input
+                  type="datetime-local"
+                  className="input-field mt-0.5"
+                  value={scheduleForm.votingEnds}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, votingEnds: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[10px] text-muted-foreground">Min score · President</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="input-field mt-0.5"
+                  value={scheduleForm.winningPresident}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, winningPresident: Number(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Min score · Secretary</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="input-field mt-0.5"
+                  value={scheduleForm.winningSecretary}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, winningSecretary: Number(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Min score · Treasurer</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="input-field mt-0.5"
+                  value={scheduleForm.winningTreasurer}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, winningTreasurer: Number(e.target.value) || 0 })}
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Min score 0 = no threshold (highest Borda score wins). Otherwise top score must meet or exceed the value.
+            </p>
+            <button type="button" onClick={() => void saveSchedule(poll)} className="btn-primary text-xs">
+              Save schedule
+            </button>
           </div>
         )}
       </div>
@@ -529,7 +899,8 @@ const ElectionModule = ({
       {!embedded && (
         <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
           <p className="text-[11px] text-muted-foreground">
-            <strong className="text-foreground">Society Elections</strong> — nominate, rank-vote for MC posts, publish winners to Committee.
+            <strong className="text-foreground">Society Elections</strong> — nominate for President, Secretary &amp;
+            Treasurer (Borda ranked vote), attach circulars/letters, publish winners to Committee.
           </p>
         </div>
       )}
@@ -546,7 +917,9 @@ const ElectionModule = ({
 
           {showElectionForm && (
             <div className="card-section p-4 mb-4 flex flex-col gap-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Society election (nomination first)</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase">
+                Society election — 3 posts (nomination first)
+              </p>
               <input
                 className="input-field"
                 placeholder="Election title (e.g. Managing Committee 2026)"
@@ -559,9 +932,33 @@ const ElectionModule = ({
                 value={ef.description}
                 onChange={capsFieldChange(setEf, 'description')}
               />
+
+              <p className="text-[11px] font-medium text-foreground">Nomination window</p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-muted-foreground">Voting starts</label>
+                  <label className="text-[10px] text-muted-foreground">Opens</label>
+                  <input
+                    type="datetime-local"
+                    className="input-field mt-0.5"
+                    value={ef.nominationStarts}
+                    onChange={(e) => setEf({ ...ef, nominationStarts: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Closes</label>
+                  <input
+                    type="datetime-local"
+                    className="input-field mt-0.5"
+                    value={ef.nominationEnds}
+                    onChange={(e) => setEf({ ...ef, nominationEnds: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <p className="text-[11px] font-medium text-foreground">Voting window</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Opens</label>
                   <input
                     type="datetime-local"
                     className="input-field mt-0.5"
@@ -570,7 +967,7 @@ const ElectionModule = ({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-muted-foreground">Voting ends</label>
+                  <label className="text-[10px] text-muted-foreground">Closes</label>
                   <input
                     type="datetime-local"
                     className="input-field mt-0.5"
@@ -579,73 +976,63 @@ const ElectionModule = ({
                   />
                 </div>
               </div>
+
+              <p className="text-[11px] font-medium text-foreground">Minimum winning Borda score (0 = no threshold)</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] text-muted-foreground">President</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="input-field mt-0.5"
+                    value={ef.winningPresident}
+                    onChange={(e) => setEf({ ...ef, winningPresident: Number(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Secretary</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="input-field mt-0.5"
+                    value={ef.winningSecretary}
+                    onChange={(e) => setEf({ ...ef, winningSecretary: Number(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Treasurer</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="input-field mt-0.5"
+                    value={ef.winningTreasurer}
+                    onChange={(e) => setEf({ ...ef, winningTreasurer: Number(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-muted-foreground">Tenure from</label>
-                  <DateInput className="input-field mt-0.5" value={ef.termFrom} onChange={(e) => setEf({ ...ef, termFrom: e.target.value })} />
+                  <DateInput
+                    className="input-field mt-0.5"
+                    value={ef.termFrom}
+                    onChange={(e) => setEf({ ...ef, termFrom: e.target.value })}
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground">Tenure to (optional)</label>
-                  <DateInput className="input-field mt-0.5" value={ef.termTo} onChange={(e) => setEf({ ...ef, termTo: e.target.value })} />
+                  <DateInput
+                    className="input-field mt-0.5"
+                    value={ef.termTo}
+                    onChange={(e) => setEf({ ...ef, termTo: e.target.value })}
+                  />
                 </div>
               </div>
-              <label className="text-xs text-muted-foreground">
-                Committee seats (min 5)
-                <input
-                  className="input-field mt-1"
-                  type="number"
-                  min={5}
-                  max={20}
-                  value={ef.committeeSeats}
-                  onChange={(e) => setEf({ ...ef, committeeSeats: Number(e.target.value) || 5 })}
-                />
-              </label>
 
-              {([...EXECUTIVE_POSTS, 'committee'] as ElectionPost[]).map((post) => (
-                <div key={post} className="space-y-2">
-                  <p className="text-xs font-semibold">{POST_DISPLAY[post]} — seed candidates (optional)</p>
-                  {(post === 'committee' ? ef.committee : ef[post]).map((line, i) => (
-                    <div key={`${post}-${i}`} className="flex gap-2">
-                      <input
-                        className="input-field flex-1 text-sm"
-                        placeholder={`Name ${i + 1}`}
-                        value={line}
-                        onChange={(e) => {
-                          const next = [...(post === 'committee' ? ef.committee : ef[post])];
-                          next[i] = e.target.value;
-                          setEf({ ...ef, [post]: next });
-                        }}
-                      />
-                      {(post === 'committee' ? ef.committee : ef[post]).length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEf({
-                              ...ef,
-                              [post]: (post === 'committee' ? ef.committee : ef[post]).filter((_, j) => j !== i),
-                            })
-                          }
-                          className="text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    className="text-xs text-primary underline"
-                    onClick={() =>
-                      setEf({
-                        ...ef,
-                        [post]: [...(post === 'committee' ? ef.committee : ef[post]), ''],
-                      })
-                    }
-                  >
-                    + Add {POST_DISPLAY[post]} candidate
-                  </button>
-                </div>
-              ))}
+              {seedFields('president')}
+              {seedFields('secretary')}
+              {seedFields('treasurer')}
 
               <button type="button" onClick={() => void addElection()} className="btn-primary">
                 Create election (nomination phase)
@@ -662,10 +1049,14 @@ const ElectionModule = ({
           <Landmark className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
           <p className="text-sm text-muted-foreground">No society elections yet.</p>
           {!isResident && (
-            <p className="text-xs text-muted-foreground mt-1">Create an election to open nomination for executive and committee posts.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Create an election to open nomination for President, Secretary and Treasurer.
+            </p>
           )}
           {isResident && (
-            <p className="text-xs text-muted-foreground mt-1">When the admin opens an election, you can self-nominate and vote here.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              When the admin opens an election, you can self-nominate and vote here.
+            </p>
           )}
         </div>
       )}

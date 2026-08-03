@@ -18,6 +18,24 @@ class ElectedWinner {
       };
 }
 
+class VacantPost {
+  const VacantPost({
+    required this.reason,
+    required this.topScore,
+    required this.required,
+  });
+
+  final String reason;
+  final int topScore;
+  final int required;
+
+  Map<String, dynamic> toJson() => {
+        'reason': reason,
+        'top_score': topScore,
+        'required': required,
+      };
+}
+
 class ElectionResultsPayload {
   const ElectionResultsPayload({
     this.president,
@@ -25,6 +43,7 @@ class ElectionResultsPayload {
     this.secretary,
     this.treasurer,
     this.committee = const [],
+    this.vacant = const {},
     required this.talliedAt,
   });
 
@@ -33,6 +52,7 @@ class ElectionResultsPayload {
   final ElectedWinner? secretary;
   final ElectedWinner? treasurer;
   final List<ElectedWinner> committee;
+  final Map<String, VacantPost> vacant;
   final String talliedAt;
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +61,7 @@ class ElectionResultsPayload {
         'secretary': secretary?.toJson(),
         'treasurer': treasurer?.toJson(),
         'committee': committee.map((c) => c.toJson()).toList(),
+        if (vacant.isNotEmpty) 'vacant': vacant.map((k, v) => MapEntry(k, v.toJson())),
         'tallied_at': talliedAt,
       };
 }
@@ -54,6 +75,7 @@ ElectionResultsPayload tallyElection({
   required List<Map<String, dynamic>> options,
   required List<Map<String, dynamic>> ballots,
   required int committeeSeats,
+  Map<String, int> winningVotes = const {},
 }) {
   List<Map<String, dynamic>> byPost(String post) =>
       options.where((o) => o['election_post'] == post).toList();
@@ -82,6 +104,8 @@ ElectionResultsPayload tallyElection({
     return scores;
   }
 
+  final vacant = <String, VacantPost>{};
+
   ElectedWinner? pickWinner(String post) {
     final postOpts = byPost(post);
     if (postOpts.isEmpty) return null;
@@ -96,6 +120,15 @@ ElectionResultsPayload tallyElection({
       }
     }
     if (best == null) return null;
+    final required = winningVotes[post] ?? 0;
+    if (required > 0 && bestScore < required) {
+      vacant[post] = VacantPost(
+        reason: 'Top score $bestScore below required $required',
+        topScore: bestScore,
+        required: required,
+      );
+      return null;
+    }
     return ElectedWinner(
       optionId: best['id'] as String,
       name: best['option_text'] as String,
@@ -108,7 +141,7 @@ ElectionResultsPayload tallyElection({
   final sorted = [...committeeOpts]
     ..sort((a, b) =>
         (cScores[b['id'] as String] ?? 0).compareTo(cScores[a['id'] as String] ?? 0));
-  final seats = committeeSeats.clamp(1, sorted.length);
+  final seats = sorted.isEmpty ? 0 : committeeSeats.clamp(1, sorted.length);
   final committee = sorted.take(seats).map((o) {
     final id = o['id'] as String;
     return ElectedWinner(
@@ -124,6 +157,7 @@ ElectionResultsPayload tallyElection({
     secretary: pickWinner('secretary'),
     treasurer: pickWinner('treasurer'),
     committee: committee,
+    vacant: vacant,
     talliedAt: DateTime.now().toIso8601String(),
   );
 }

@@ -14,8 +14,9 @@ export const VOTING_CHARTER_SECTIONS = [
   {
     heading: 'Nomination',
     points: [
-      'When the admin opens nomination, members may propose themselves for executive posts (President, Vice-President, Secretary, Treasurer) or as a core committee member.',
-      'Self-nomination closes when the admin starts the voting window.',
+      'When the admin opens the nomination window, members may propose themselves for three executive posts: President, Secretary, or Treasurer.',
+      'Each nominee must write a short statement explaining why they should be chosen or given preference.',
+      'Self-nomination is only allowed inside the admin-set nomination open and close dates.',
     ],
   },
   {
@@ -23,16 +24,17 @@ export const VOTING_CHARTER_SECTIONS = [
     points: [
       'Rank every candidate in each post — 1 = highest preference (maximum rating).',
       'You must rank all candidates in a post; duplicate ranks are not allowed.',
-      'Scores use priority points: top rank gets the highest score; the candidate with the highest total is elected.',
+      'Scores use Borda priority points: top rank gets the highest score; the candidate with the highest total is elected if they meet the admin’s minimum winning score for that post.',
       'You may include yourself in your rankings.',
+      'Voting is only allowed inside the admin-set voting open and close dates.',
     ],
   },
   {
-    heading: 'Results & committee roster',
+    heading: 'Documents & results',
     points: [
+      'Admin may attach circulars, letters, or other society/personal documents to the election; members can open them from the poll.',
       'After the voting window closes, the admin tallies results. Winners are visible in the admin portal first.',
       'Elected names appear in the residents’ Committee module only after the admin publishes them to the roster.',
-      'Committee roster changes (tenure, post, removal) remain admin-only. Residents may edit only their own personal profile fields.',
     ],
   },
 ] as const;
