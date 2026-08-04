@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -9,7 +10,12 @@ import 'package:share_plus/share_plus.dart';
 
 import 'voting_charter.dart';
 
-/// Build Voting Charter PDF bytes (English or Hindi with embedded Devanagari).
+enum CharterPdfShareResult { shared, dismissed, failed }
+
+String _formatGeneratedAt(DateTime when) =>
+    DateFormat('yyyy-MM-dd HH:mm').format(when.toLocal());
+
+/// Build Voting Charter PDF bytes (English or Hindi with embedded fonts).
 Future<Uint8List> buildVotingCharterPdfBytes({
   String? societyName,
   required CharterLang lang,
@@ -32,6 +38,8 @@ Future<Uint8List> buildVotingCharterPdfBytes({
   final muted = PdfColor.fromInt(0xFF6B7280);
   final body = PdfColor.fromInt(0xFF1F2937);
   final heading = PdfColor.fromInt(0xFF312E81);
+  final societyLabel =
+      (societyName != null && societyName.trim().isNotEmpty) ? societyName.trim() : (isHi ? 'सोसाइटी' : 'Society');
 
   doc.addPage(
     pw.MultiPage(
@@ -39,7 +47,7 @@ Future<Uint8List> buildVotingCharterPdfBytes({
       margin: const pw.EdgeInsets.all(48),
       build: (ctx) => [
         pw.Text(
-          (societyName != null && societyName.trim().isNotEmpty) ? societyName.trim() : (isHi ? 'सोसाइटी' : 'Society'),
+          societyLabel,
           style: pw.TextStyle(font: fontBold, fontSize: 11, color: indigo),
         ),
         pw.SizedBox(height: 6),
@@ -50,17 +58,17 @@ Future<Uint8List> buildVotingCharterPdfBytes({
         pw.SizedBox(height: 4),
         pw.Text(
           isHi
-              ? 'तैयार: ${DateTime.now().toLocal()}  ·  भाषा: हिंदी'
-              : 'Generated: ${DateTime.now().toLocal()}  ·  Language: English',
+              ? 'तैयार: ${_formatGeneratedAt(DateTime.now())}  ·  भाषा: हिंदी'
+              : 'Generated: ${_formatGeneratedAt(DateTime.now())}  ·  Language: English',
           style: pw.TextStyle(font: font, fontSize: 8, color: muted),
         ),
-        if (isHi) ...[
-          pw.SizedBox(height: 2),
-          pw.Text(
-            'इस PDF में Noto Sans Devanagari फ़ॉन्ट एम्बेड है।',
-            style: pw.TextStyle(font: font, fontSize: 7.5, color: muted),
-          ),
-        ],
+        pw.SizedBox(height: 2),
+        pw.Text(
+          isHi
+              ? 'इस PDF में Noto Sans Devanagari फ़ॉन्ट एम्बेड है।'
+              : 'This PDF embeds Noto Sans for clear Latin text (and Devanagari fonts for Hindi PDFs).',
+          style: pw.TextStyle(font: font, fontSize: 7.5, color: muted),
+        ),
         pw.SizedBox(height: 8),
         pw.Divider(color: PdfColor.fromInt(0xFFC7D2FE), thickness: 1),
         pw.SizedBox(height: 10),
@@ -148,28 +156,39 @@ Future<Uint8List> buildVotingCharterPdfBytes({
 }
 
 String votingCharterPdfFilename({String? societyName, required CharterLang lang}) {
-  final slug = (societyName ?? 'society')
+  var slug = (societyName ?? 'society')
       .toLowerCase()
       .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
       .replaceAll(RegExp(r'^-|-$'), '');
+  if (slug.length > 40) slug = slug.substring(0, 40).replaceAll(RegExp(r'-$'), '');
   final day = DateTime.now().toIso8601String().substring(0, 10);
   return 'voting-charter-${lang.name}-${slug.isEmpty ? 'society' : slug}-$day.pdf';
 }
 
 /// Write PDF to a temp file and open the system share sheet (Save / WhatsApp / Files).
-Future<bool> downloadOrShareVotingCharterPdf({
+Future<CharterPdfShareResult> downloadOrShareVotingCharterPdf({
   String? societyName,
   required CharterLang lang,
 }) async {
   final bytes = await buildVotingCharterPdfBytes(societyName: societyName, lang: lang);
+  if (bytes.length < 100) {
+    throw StateError(lang == CharterLang.hi ? 'PDF खाली था' : 'PDF was empty');
+  }
   final name = votingCharterPdfFilename(societyName: societyName, lang: lang);
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/$name');
   await file.writeAsBytes(bytes, flush: true);
+
   final result = await Share.shareXFiles(
     [XFile(file.path, mimeType: 'application/pdf', name: name)],
     subject: votingCharterContent(lang).title,
     text: votingCharterShareMessageFor(lang),
   );
-  return result.status != ShareResultStatus.dismissed;
+  if (result.status == ShareResultStatus.dismissed) {
+    return CharterPdfShareResult.dismissed;
+  }
+  if (result.status == ShareResultStatus.unavailable) {
+    return CharterPdfShareResult.failed;
+  }
+  return CharterPdfShareResult.shared;
 }

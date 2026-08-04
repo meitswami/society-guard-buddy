@@ -28,7 +28,8 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
   String? _voterMemberId;
   final _rankings = <String, Map<String, Map<String, int>>>{};
   bool _loading = true;
-  bool _pdfBusy = false;
+  CharterLang _viewLang = CharterLang.en;
+  CharterLang? _pdfBusyLang;
 
   @override
   void initState() {
@@ -205,41 +206,58 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  Future<void> _shareCharter() async {
-    final ok = await shareVotingCharterOnWhatsApp(societyName: widget.session.societyName);
+  Future<void> _shareCharterText() async {
+    final lang = _viewLang;
+    final ok = await shareVotingCharterOnWhatsApp(
+      societyName: widget.session.societyName,
+      lang: lang,
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? 'Opening WhatsApp with charter…' : 'Could not open WhatsApp')),
+      SnackBar(
+        content: Text(
+          ok
+              ? (lang == CharterLang.hi ? 'WhatsApp खुल रहा है…' : 'Opening WhatsApp…')
+              : (lang == CharterLang.hi ? 'WhatsApp नहीं खुल सका' : 'Could not open WhatsApp'),
+        ),
+      ),
     );
   }
 
   Future<void> _downloadCharterPdf(CharterLang lang) async {
-    if (_pdfBusy) return;
-    setState(() => _pdfBusy = true);
+    if (_pdfBusyLang != null) return;
+    setState(() => _pdfBusyLang = lang);
     try {
-      final ok = await downloadOrShareVotingCharterPdf(
+      final result = await downloadOrShareVotingCharterPdf(
         societyName: widget.session.societyName,
         lang: lang,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            ok
-                ? (lang == CharterLang.hi
-                    ? 'चार्टर PDF तैयार — Save / Share चुनें'
-                    : 'Charter PDF ready — choose Save or Share')
-                : 'Could not prepare charter PDF',
-          ),
-        ),
-      );
+      if (result == CharterPdfShareResult.dismissed) return;
+      final msg = switch (result) {
+        CharterPdfShareResult.shared => lang == CharterLang.hi
+            ? 'चार्टर PDF — Save to Files / WhatsApp चुनें'
+            : 'Charter PDF — choose Save to Files or WhatsApp',
+        CharterPdfShareResult.failed => lang == CharterLang.hi
+            ? 'शेयर उपलब्ध नहीं — कृपया पुनः प्रयास करें'
+            : 'Share unavailable — please try again',
+        CharterPdfShareResult.dismissed => '',
+      };
+      if (msg.isEmpty) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF failed: ${e.toString().replaceFirst('Bad state: ', '')}')),
+        SnackBar(
+          content: Text(
+            lang == CharterLang.hi
+                ? 'PDF नहीं बन सका: ${e.toString().replaceFirst('Bad state: ', '')}'
+                : 'PDF failed: ${e.toString().replaceFirst('Bad state: ', '')}',
+          ),
+        ),
       );
     } finally {
-      if (mounted) setState(() => _pdfBusy = false);
+      if (mounted) setState(() => _pdfBusyLang = null);
     }
   }
 
@@ -283,15 +301,34 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
   }
 
   Widget _buildCharterCard(KutumbikaBrandTheme brand) {
+    final content = votingCharterContent(_viewLang);
+    final busy = _pdfBusyLang != null;
+    final isHiView = _viewLang == CharterLang.hi;
+
+    Widget pdfButton(CharterLang lang, String idleLabel, String busyLabel) {
+      final thisBusy = _pdfBusyLang == lang;
+      return FilledButton.tonalIcon(
+        onPressed: busy ? null : () => _downloadCharterPdf(lang),
+        icon: thisBusy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.download, size: 18),
+        label: Text(thisBusy ? busyLabel : idleLabel),
+      );
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
         initiallyExpanded: true,
         leading: Icon(Icons.menu_book_outlined, color: brand.primary),
-        title: const Text(votingCharterTitle, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-        subtitle: const Text(
-          'Download PDF (phone) · WhatsApp share',
-          style: TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+        title: Text(content.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        subtitle: Text(
+          isHiView ? 'PDF डाउनलोड · WhatsApp साझा करें' : 'Download PDF · WhatsApp share',
+          style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
         ),
         children: [
           Padding(
@@ -299,47 +336,44 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                SegmentedButton<CharterLang>(
+                  segments: const [
+                    ButtonSegment(value: CharterLang.hi, label: Text('हिंदी'), icon: Icon(Icons.translate, size: 16)),
+                    ButtonSegment(value: CharterLang.en, label: Text('English'), icon: Icon(Icons.translate, size: 16)),
+                  ],
+                  selected: {_viewLang},
+                  onSelectionChanged: (s) => setState(() => _viewLang = s.first),
+                ),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
+                    pdfButton(CharterLang.hi, 'हिंदी PDF', 'तैयार हो रहा है…'),
+                    pdfButton(CharterLang.en, 'English PDF', 'Preparing…'),
                     FilledButton.tonalIcon(
-                      onPressed: _pdfBusy ? null : () => _downloadCharterPdf(CharterLang.hi),
-                      icon: _pdfBusy
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.download, size: 18),
-                      label: const Text('हिंदी PDF'),
-                    ),
-                    FilledButton.tonalIcon(
-                      onPressed: _pdfBusy ? null : () => _downloadCharterPdf(CharterLang.en),
-                      icon: const Icon(Icons.download, size: 18),
-                      label: const Text('English PDF'),
-                    ),
-                    FilledButton.tonalIcon(
-                      onPressed: _pdfBusy ? null : _shareCharter,
-                      icon: const Icon(Icons.share, size: 18),
-                      label: const Text('Share on WhatsApp'),
+                      onPressed: busy ? null : _shareCharterText,
+                      icon: const Icon(Icons.chat, size: 18),
+                      label: Text(isHiView ? 'WhatsApp पाठ' : 'WhatsApp text'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'On phone or tablet, PDF opens the share sheet — choose Save to Files / Downloads. Hindi PDF embeds Devanagari.',
-                  style: TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+                Text(
+                  isHiView
+                      ? 'PDF शेयर शीट खोलता है — Save to Files / Downloads या WhatsApp चुनें। हिंदी PDF में देवनागरी फ़ॉन्ट एम्बेड है।'
+                      : 'PDF opens the share sheet — choose Save to Files / Downloads or WhatsApp. Hindi PDF embeds Devanagari.',
+                  style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Step-by-step program for members',
+                  content.programHeading,
                   style: TextStyle(fontWeight: FontWeight.w600, color: brand.primary, fontSize: 13),
                 ),
                 const SizedBox(height: 4),
-                const Text(electionProgramIntro, style: TextStyle(fontSize: 12, color: KutumbikaColors.textMuted)),
+                Text(content.programIntro, style: const TextStyle(fontSize: 12, color: KutumbikaColors.textMuted)),
                 const SizedBox(height: 10),
-                for (var i = 0; i < electionProgramSteps.length; i++) ...[
+                for (var i = 0; i < content.steps.length; i++) ...[
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -356,10 +390,12 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(electionProgramSteps[i].title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            Text(content.steps[i].title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                             const SizedBox(height: 2),
-                            Text(electionProgramSteps[i].detail,
-                                style: const TextStyle(fontSize: 12, color: KutumbikaColors.textMuted)),
+                            Text(
+                              content.steps[i].detail,
+                              style: const TextStyle(fontSize: 12, color: KutumbikaColors.textMuted),
+                            ),
                           ],
                         ),
                       ),
@@ -367,9 +403,9 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                   ),
                   const SizedBox(height: 10),
                 ],
-                const Text('Charter rules', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(content.rulesHeading, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
-                for (final sec in votingCharterSections) ...[
+                for (final sec in content.sections) ...[
                   Text(sec.heading, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   for (final p in sec.points)

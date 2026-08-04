@@ -288,12 +288,37 @@ String buildVotingCharterPlainText({String? societyName, CharterLang lang = Char
 }
 
 Future<bool> shareVotingCharterOnWhatsApp({String? societyName, CharterLang lang = CharterLang.en}) async {
-  final body = '${votingCharterShareMessageFor(lang)}\n\n${buildVotingCharterPlainText(societyName: societyName, lang: lang)}';
-  // WhatsApp URL length limits — keep share message + full program; truncate rules if needed.
+  final programOnly = () {
+    final c = votingCharterContent(lang);
+    final buf = StringBuffer();
+    if (societyName != null && societyName.trim().isNotEmpty) {
+      buf.writeln(societyName.trim());
+      buf.writeln();
+    }
+    buf.writeln(c.title);
+    buf.writeln();
+    buf.writeln(c.programHeading);
+    buf.writeln(c.programIntro);
+    buf.writeln();
+    for (var i = 0; i < c.steps.length; i++) {
+      final s = c.steps[i];
+      buf.writeln('${i + 1}. ${s.title}');
+      buf.writeln(s.detail);
+      buf.writeln();
+    }
+    buf.writeln(lang == CharterLang.hi
+        ? 'पूर्ण नियम PDF में देखें (ऐप से हिंदी / English PDF डाउनलोड करें)।'
+        : 'See full rules in the PDF (download Hindi / English PDF from the app).');
+    return buf.toString().trim();
+  }();
+
+  final body = '${votingCharterShareMessageFor(lang)}\n\n$programOnly';
+  // WhatsApp URL length limits — prefer short human-readable program text.
   var text = body;
   const maxLen = 3500;
   if (text.length > maxLen) {
-    text = '${text.substring(0, maxLen - 20)}\n\n…(continued in app)';
+    final ellipsis = lang == CharterLang.hi ? '\n\n…(ऐप में जारी)' : '\n\n…(continued in app)';
+    text = '${text.substring(0, maxLen - ellipsis.length)}$ellipsis';
   }
   final uri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}');
   if (!await canLaunchUrl(uri)) return false;
