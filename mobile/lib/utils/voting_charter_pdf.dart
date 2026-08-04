@@ -23,12 +23,9 @@ Future<Uint8List> buildVotingCharterPdfBytes({
   final content = votingCharterContent(lang);
   final isHi = lang == CharterLang.hi;
 
-  final fontData = await rootBundle.load(
-    isHi ? 'assets/fonts/NotoSansDevanagari-Regular.ttf' : 'assets/fonts/NotoSans-Regular.ttf',
-  );
-  final boldData = await rootBundle.load(
-    isHi ? 'assets/fonts/NotoSansDevanagari-Bold.ttf' : 'assets/fonts/NotoSans-Bold.ttf',
-  );
+  // Always embed Devanagari (same as web) so Hindi society names render in English PDFs too.
+  final fontData = await rootBundle.load('assets/fonts/NotoSansDevanagari-Regular.ttf');
+  final boldData = await rootBundle.load('assets/fonts/NotoSansDevanagari-Bold.ttf');
   final font = pw.Font.ttf(fontData);
   final fontBold = pw.Font.ttf(boldData);
   final theme = pw.ThemeData.withFont(base: font, bold: fontBold);
@@ -66,7 +63,7 @@ Future<Uint8List> buildVotingCharterPdfBytes({
         pw.Text(
           isHi
               ? 'इस PDF में Noto Sans Devanagari फ़ॉन्ट एम्बेड है।'
-              : 'This PDF embeds Noto Sans for clear Latin text (and Devanagari fonts for Hindi PDFs).',
+              : 'This PDF embeds Noto Sans Devanagari for Hindi glyphs and society names.',
           style: pw.TextStyle(font: font, fontSize: 7.5, color: muted),
         ),
         pw.SizedBox(height: 8),

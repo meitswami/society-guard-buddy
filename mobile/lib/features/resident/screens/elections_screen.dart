@@ -34,6 +34,8 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
   @override
   void initState() {
     super.initState();
+    final code = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    if (code == 'hi') _viewLang = CharterLang.hi;
     _load();
   }
 
