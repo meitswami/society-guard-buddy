@@ -7,7 +7,9 @@ import '../../../models/session_models.dart';
 import '../../../services/election_service.dart';
 import '../../../services/member_service.dart';
 import '../../../utils/election_governance.dart';
+import '../../../utils/election_tally.dart';
 import '../../../utils/election_validation.dart';
+import '../../../utils/voting_charter.dart';
 
 class ElectionsScreen extends StatefulWidget {
   const ElectionsScreen({super.key, required this.session});
@@ -201,6 +203,38 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  Future<void> _shareCharter() async {
+    final ok = await shareVotingCharterOnWhatsApp(societyName: widget.session.societyName);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Opening WhatsApp with charter…' : 'Could not open WhatsApp')),
+    );
+  }
+
+  Future<void> _volunteer(String pollId, Map<String, dynamic> results) async {
+    final name = widget.session.resident.name;
+    try {
+      await _electionService.volunteerForCommittee(
+        pollId: pollId,
+        results: results,
+        memberName: name,
+        flatNumber: widget.session.resident.flatNumber,
+        flatId: widget.session.resident.flatId,
+        memberId: _voterMemberId,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You are listed as a committee volunteer')),
+      );
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final brand = KutumbikaBrandTheme.of(context);
@@ -216,22 +250,182 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     );
   }
 
+  Widget _buildCharterCard(KutumbikaBrandTheme brand) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        leading: Icon(Icons.menu_book_outlined, color: brand.primary),
+        title: const Text(votingCharterTitle, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        subtitle: const Text(
+          'Step-by-step program · share on WhatsApp',
+          style: TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: _shareCharter,
+                      icon: const Icon(Icons.share, size: 18),
+                      label: const Text('Share on WhatsApp'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'WhatsApp share uses clear English so every member can read it.',
+                  style: TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Step-by-step program for members',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: brand.primary, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                const Text(electionProgramIntro, style: TextStyle(fontSize: 12, color: KutumbikaColors.textMuted)),
+                const SizedBox(height: 10),
+                for (var i = 0; i < electionProgramSteps.length; i++) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 10,
+                        backgroundColor: brand.primary.withValues(alpha: 0.15),
+                        child: Text(
+                          '${i + 1}',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: brand.primary),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(electionProgramSteps[i].title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            const SizedBox(height: 2),
+                            Text(electionProgramSteps[i].detail,
+                                style: const TextStyle(fontSize: 12, color: KutumbikaColors.textMuted)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                const Text('Charter rules', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                for (final sec in votingCharterSections) ...[
+                  Text(sec.heading, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  for (final p in sec.points)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8, bottom: 4),
+                      child: Text('• $p', style: const TextStyle(fontSize: 12)),
+                    ),
+                  const SizedBox(height: 8),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormationSection(Map<String, dynamic> raw) {
+    final results = raw['election_results'];
+    if (results is! Map) return const SizedBox.shrink();
+    final phase = electionPhase(raw);
+    if (phase != ElectionPhase.closed && phase != ElectionPhase.applied) {
+      return const SizedBox.shrink();
+    }
+
+    final target = (raw['target_committee_size'] as num?)?.toInt() ?? defaultTargetCommitteeSize;
+    final formed = countFormedCommitteeFromResults(results);
+    final remaining = (target - formed).clamp(0, target);
+    final runners = listRunnersUpFromResults(results);
+    final formation = formationOf(results) ?? emptyFormationState();
+    final voluntary = (formation['voluntary'] as List?) ?? [];
+    final already = voluntary.any((v) {
+      if (v is! Map) return false;
+      if (_voterMemberId != null && v['member_id'] == _voterMemberId) return true;
+      return v['name'] == widget.session.resident.name;
+    });
+    final selectedIds = ((formation['selected_runner_up_ids'] as List?) ?? []).map((e) => e.toString()).toSet();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(),
+        const Text('Managing Committee formation', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text(
+          'Progress: $formed / $target (minimum $minCommitteeSize).'
+          '${remaining > 0 ? ' $remaining seat(s) still needed for the society target.' : ' Target reached.'}',
+          style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+        ),
+        if (runners.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          const Text('2nd & 3rd place (unelected)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          for (final r in runners)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '${selectedIds.contains(r['option_id']?.toString()) ? '✓' : '○'} ${r['name']} · ${postDisplay[r['from_post']] ?? r['from_post']} · place ${r['place'] ?? '—'}',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+        ],
+        const SizedBox(height: 8),
+        const Text('Voluntary interest', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        if (voluntary.isEmpty)
+          const Text('No volunteers yet.', style: TextStyle(fontSize: 11, color: KutumbikaColors.textMuted))
+        else
+          for (final v in voluntary)
+            if (v is Map)
+              Text(
+                '· ${v['name']}${v['flat_number'] != null ? ' · Flat ${v['flat_number']}' : ''}',
+                style: const TextStyle(fontSize: 12),
+              ),
+        if (remaining > 0 && !already) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => _volunteer(raw['id'] as String, Map<String, dynamic>.from(results)),
+            icon: const Icon(Icons.person_add_outlined, size: 18),
+            label: const Text('I volunteer for the Committee'),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildList(KutumbikaBrandTheme brand) {
     final bundle = _bundle!;
     if (bundle.elections.isEmpty) {
       return ListView(
-        children: const [
-          SizedBox(height: 120),
-          Center(child: Text('No elections', style: TextStyle(color: KutumbikaColors.textMuted))),
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildCharterCard(brand),
+          const SizedBox(height: 40),
+          const Center(child: Text('No elections', style: TextStyle(color: KutumbikaColors.textMuted))),
         ],
       );
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: bundle.elections.length,
+      itemCount: bundle.elections.length + 1,
       itemBuilder: (context, index) {
-        final poll = bundle.elections[index];
+        if (index == 0) return _buildCharterCard(brand);
+
+        final poll = bundle.elections[index - 1];
         return FutureBuilder<Map<String, dynamic>?>(
           future: _electionService.fetchPollRaw(poll.id),
           builder: (context, snap) {
@@ -382,6 +576,7 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                         style: FilledButton.styleFrom(backgroundColor: brand.primary),
                         child: const Text('Submit ranked ballot'),
                       ),
+                    if (raw != null) _buildFormationSection(raw),
                   ],
                 ),
               ),

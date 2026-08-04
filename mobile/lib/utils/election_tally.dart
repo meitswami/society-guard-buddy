@@ -1,3 +1,5 @@
+import 'election_governance.dart';
+
 typedef ElectionRankings = Map<String, Map<String, int>>;
 
 class ElectedWinner {
@@ -200,4 +202,56 @@ ElectionResultsPayload tallyElection({
     vacant: vacant,
     talliedAt: DateTime.now().toIso8601String(),
   );
+}
+
+Map<String, dynamic> emptyFormationState() => {
+      'selected_runner_up_ids': <String>[],
+      'voluntary': <Map<String, dynamic>>[],
+      'executive_proposed': <Map<String, dynamic>>[],
+    };
+
+/// Parse results JSON from polls.election_results (snake_case keys).
+Map<String, dynamic>? formationOf(dynamic results) {
+  if (results is! Map) return null;
+  final f = results['formation'];
+  if (f is Map) return Map<String, dynamic>.from(f);
+  return emptyFormationState();
+}
+
+List<Map<String, dynamic>> listRunnersUpFromResults(dynamic results) {
+  if (results is! Map) return [];
+  final runners = results['runners_up'];
+  if (runners is! Map) return [];
+  final out = <Map<String, dynamic>>[];
+  for (final post in threeExecutivePosts) {
+    final list = runners[post];
+    if (list is! List) continue;
+    for (final item in list) {
+      if (item is! Map) continue;
+      final row = Map<String, dynamic>.from(item);
+      row['from_post'] = post;
+      out.add(row);
+    }
+  }
+  return out;
+}
+
+int countFormedCommitteeFromResults(dynamic results) {
+  if (results is! Map) return 0;
+  var n = 0;
+  for (final post in ['president', 'vice_president', 'secretary', 'treasurer']) {
+    if (results[post] is Map) n += 1;
+  }
+  final committee = results['committee'];
+  if (committee is List) n += committee.length;
+  final formation = formationOf(results);
+  if (formation != null) {
+    final selected = formation['selected_runner_up_ids'];
+    if (selected is List) n += selected.length;
+    final voluntary = formation['voluntary'];
+    if (voluntary is List) n += voluntary.length;
+    final exec = formation['executive_proposed'];
+    if (exec is List) n += exec.length;
+  }
+  return n;
 }

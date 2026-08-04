@@ -282,6 +282,40 @@ class ElectionService {
     return results;
   }
 
+  Future<void> volunteerForCommittee({
+    required String pollId,
+    required Map<String, dynamic> results,
+    required String memberName,
+    required String flatNumber,
+    String? flatId,
+    String? memberId,
+  }) async {
+    if (!Env.isConfigured) return;
+
+    final formation = Map<String, dynamic>.from(formationOf(results) ?? emptyFormationState());
+    final voluntary = List<Map<String, dynamic>>.from(
+      (formation['voluntary'] as List?)?.map((e) => Map<String, dynamic>.from(e as Map)) ?? [],
+    );
+    final key = 'vol-${memberId ?? memberName}-$flatNumber';
+    if (voluntary.any((v) =>
+        v['key'] == key || (memberId != null && memberId.isNotEmpty && v['member_id'] == memberId))) {
+      throw StateError('You are already listed as a volunteer');
+    }
+    voluntary.add({
+      'key': key,
+      'name': memberName.trim(),
+      'flat_number': flatNumber.isEmpty ? null : flatNumber,
+      'flat_id': flatId,
+      'member_id': memberId,
+      'source': 'voluntary',
+    });
+    formation['voluntary'] = voluntary;
+    final nextResults = Map<String, dynamic>.from(results)..['formation'] = formation;
+    await SupabaseBootstrap.client.from('polls').update({
+      'election_results': nextResults,
+    }).eq('id', pollId);
+  }
+
   Future<void> publishToCommittee({
     required String societyId,
     required String pollId,

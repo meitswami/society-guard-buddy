@@ -1,25 +1,49 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Download, ChevronDown, ChevronUp, ScrollText } from 'lucide-react';
 import {
   ELECTION_PROGRAM_STEPS,
   VOTING_CHARTER_SECTIONS,
   VOTING_CHARTER_TITLE_KEY,
 } from '@/lib/votingCharter';
-import { buildVotingCharterPdfBlob, votingCharterPdfFilename } from '@/lib/votingCharterPdf';
+import {
+  buildVotingCharterPdfBlob,
+  votingCharterPdfFilename,
+  votingCharterShareMessage,
+} from '@/lib/votingCharterPdf';
 import { triggerDownload } from '@/lib/reportExportUtils';
 import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useStore } from '@/store/useStore';
+import { supabase } from '@/integrations/supabase/client';
 
 type Props = {
   societyName?: string;
 };
 
-const VotingCharterPanel = ({ societyName }: Props) => {
+const VotingCharterPanel = ({ societyName: societyNameProp }: Props) => {
   const { t } = useLanguage();
+  const societyId = useStore((s) => s.societyId);
   const [open, setOpen] = useState(true);
   const [programOpen, setProgramOpen] = useState(true);
+  const [societyName, setSocietyName] = useState(societyNameProp || '');
 
-  const getBlob = () => buildVotingCharterPdfBlob({ societyName, t });
+  useEffect(() => {
+    if (societyNameProp) {
+      setSocietyName(societyNameProp);
+      return;
+    }
+    if (!societyId) return;
+    void supabase
+      .from('societies')
+      .select('name')
+      .eq('id', societyId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.name) setSocietyName(data.name);
+      });
+  }, [societyId, societyNameProp]);
+
+  const getBlob = () => buildVotingCharterPdfBlob({ societyName });
   const filename = votingCharterPdfFilename(societyName);
 
   const downloadPdf = async () => {
@@ -54,10 +78,13 @@ const VotingCharterPanel = ({ societyName }: Props) => {
             <SharePdfWhatsAppButton
               getBlob={getBlob}
               filename={filename}
-              message={t('votingCharter.shareMessage')}
+              message={votingCharterShareMessage()}
               label={t('votingCharter.shareWhatsApp')}
             />
           </div>
+          <p className="text-[10px] text-muted-foreground">
+            PDF / WhatsApp share uses English so every device can read it. On-screen charter follows your language toggle.
+          </p>
 
           <div className="rounded-lg border border-indigo-500/20 bg-background/40">
             <button
