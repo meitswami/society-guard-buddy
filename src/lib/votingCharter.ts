@@ -30,11 +30,58 @@ export const VOTING_CHARTER_SECTIONS = [
     ],
   },
   {
+    headingKey: 'votingCharter.committee.heading',
+    pointKeys: [
+      'votingCharter.committee.p1',
+      'votingCharter.committee.p2',
+      'votingCharter.committee.p3',
+      'votingCharter.committee.p4',
+      'votingCharter.committee.p5',
+    ],
+  },
+  {
     headingKey: 'votingCharter.docs.heading',
     pointKeys: [
       'votingCharter.docs.p1',
       'votingCharter.docs.p2',
       'votingCharter.docs.p3',
+      'votingCharter.docs.p4',
     ],
+  },
+] as const;
+
+/** Numbered member program — how the election & committee formation works. */
+export const ELECTION_PROGRAM_STEPS = [
+  {
+    stepKey: 'votingCharter.program.s1.title',
+    detailKey: 'votingCharter.program.s1.detail',
+  },
+  {
+    stepKey: 'votingCharter.program.s2.title',
+    detailKey: 'votingCharter.program.s2.detail',
+  },
+  {
+    stepKey: 'votingCharter.program.s3.title',
+    detailKey: 'votingCharter.program.s3.detail',
+  },
+  {
+    stepKey: 'votingCharter.program.s4.title',
+    detailKey: 'votingCharter.program.s4.detail',
+  },
+  {
+    stepKey: 'votingCharter.program.s5.title',
+    detailKey: 'votingCharter.program.s5.detail',
+  },
+  {
+    stepKey: 'votingCharter.program.s6.title',
+    detailKey: 'votingCharter.program.s6.detail',
+  },
+  {
+    stepKey: 'votingCharter.program.s7.title',
+    detailKey: 'votingCharter.program.s7.detail',
+  },
+  {
+    stepKey: 'votingCharter.program.s8.title',
+    detailKey: 'votingCharter.program.s8.detail',
   },
 ] as const;

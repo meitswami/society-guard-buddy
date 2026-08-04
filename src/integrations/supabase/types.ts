@@ -2878,6 +2878,8 @@ export type Database = {
           poll_kind: string
           question: string
           society_id: string | null
+          start_date: string | null
+          target_committee_size: number
           voting_ends_at: string | null
           voting_starts_at: string | null
           winning_votes: Json
@@ -2902,6 +2904,8 @@ export type Database = {
           poll_kind?: string
           question: string
           society_id?: string | null
+          start_date?: string | null
+          target_committee_size?: number
           voting_ends_at?: string | null
           voting_starts_at?: string | null
           winning_votes?: Json
@@ -2926,6 +2930,8 @@ export type Database = {
           poll_kind?: string
           question?: string
           society_id?: string | null
+          start_date?: string | null
+          target_committee_size?: number
           voting_ends_at?: string | null
           voting_starts_at?: string | null
           winning_votes?: Json

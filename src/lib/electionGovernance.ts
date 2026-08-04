@@ -18,6 +18,15 @@ export type ElectionPollRow = {
 /** Posts used for new society elections (President, Secretary, Treasurer). */
 export const THREE_EXECUTIVE_POSTS: ElectionPost[] = ['president', 'secretary', 'treasurer'];
 
+/** Minimum Managing Committee size after formation (charter). */
+export const MIN_COMMITTEE_SIZE = 7;
+
+/** Society default target Managing Committee size (charter). */
+export const DEFAULT_TARGET_COMMITTEE_SIZE = 15;
+
+/** How many unelected places (2nd, 3rd) from each executive post may join the committee. */
+export const RUNNER_UP_PLACES = 2;
+
 /** All posts that may appear on legacy elections. */
 export const ALL_ELECTION_POSTS: ElectionPost[] = [
   'president',
@@ -114,7 +123,7 @@ export function phaseBadgeLabel(phase: ElectionPhase): string {
     case 'voting':
       return 'Voting open';
     case 'closed':
-      return 'Closed — admin review';
+      return 'Closed — form committee';
     case 'applied':
       return 'Published to committee';
   }

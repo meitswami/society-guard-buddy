@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Award } from 'lucide-react';
 import type { ElectionResultsPayload } from '@/lib/electionTally';
+import { listRunnersUp } from '@/lib/electionTally';
+import { POST_DISPLAY } from '@/lib/electionGovernance';
 
 function isResultsPayload(x: unknown): x is ElectionResultsPayload {
   if (!x || typeof x !== 'object') return false;
@@ -10,6 +12,7 @@ function isResultsPayload(x: unknown): x is ElectionResultsPayload {
 }
 
 function ResultsBlock({ results }: { results: ElectionResultsPayload }) {
+  const runners = listRunnersUp(results);
   const line = (label: string, w: { name: string; score: number } | null) =>
     w ? (
       <p className="text-sm">
@@ -24,7 +27,22 @@ function ResultsBlock({ results }: { results: ElectionResultsPayload }) {
       {line('Secretary', results.secretary)}
       {line('Treasurer', results.treasurer)}
       {line('Vice-President', results.vice_president)}
-      {results.committee.length > 0 && (
+      {runners.length > 0 && (
+        <div>
+          <p className="text-xs text-muted-foreground mt-1">2nd &amp; 3rd place (committee eligible)</p>
+          <ul className="text-sm list-disc list-inside">
+            {runners.map((c) => (
+              <li key={c.option_id}>
+                {c.name}
+                <span className="text-[10px] text-muted-foreground ml-1">
+                  {c.from_post ? POST_DISPLAY[c.from_post] : ''} · place {c.place ?? '—'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {results.committee?.length > 0 && (
         <div>
           <p className="text-xs text-muted-foreground mt-1">Committee members</p>
           <ul className="text-sm font-medium list-disc list-inside">

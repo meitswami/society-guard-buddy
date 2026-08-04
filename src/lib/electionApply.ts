@@ -1,5 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { ElectionPost, ElectionResultsPayload, PollOptionRow } from '@/lib/electionTally';
+import type {
+  ElectionPost,
+  ElectionResultsPayload,
+  FormationMember,
+  PollOptionRow,
+} from '@/lib/electionTally';
+import { listRunnersUp } from '@/lib/electionTally';
 
 const POST_TO_COMMITTEE_POSITION: Record<string, string> = {
   president: 'President',
@@ -19,6 +25,33 @@ type ApplyInput = {
   termFrom: string | null;
   termTo: string | null;
 };
+
+function formationInsert(
+  societyId: string,
+  pollId: string,
+  term_from: string,
+  term_to: string | null,
+  sort: number,
+  member: FormationMember,
+  selection_type: string,
+  opt?: PollOptionRow,
+): Record<string, unknown> {
+  return {
+    society_id: societyId,
+    flat_id: member.flat_id ?? opt?.flat_id ?? null,
+    flat_number: member.flat_number ?? opt?.flat_number ?? null,
+    flat_owner_name: opt?.option_text ?? member.name,
+    name: member.name,
+    position: 'Committee Member',
+    selection_type,
+    term_from,
+    term_to,
+    sort_order: sort,
+    is_active: true,
+    source_poll_id: pollId,
+    source_option_id: member.option_id ?? opt?.id ?? null,
+  };
+}
 
 export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok: true } | { ok: false; error: string }> {
   const { societyId, pollId, results, options, termFrom, termTo } = input;
@@ -70,6 +103,50 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
     });
   }
 
+  const formation = results.formation;
+  const selectedIds = new Set(formation?.selected_runner_up_ids ?? []);
+  const winnerIds = new Set(
+    EXEC_ORDER.map((p) => {
+      const w = results[p as keyof ElectionResultsPayload];
+      return w && typeof w === 'object' && 'option_id' in w ? (w as { option_id: string }).option_id : null;
+    }).filter(Boolean) as string[],
+  );
+
+  for (const runner of listRunnersUp(results)) {
+    if (!selectedIds.has(runner.option_id)) continue;
+    if (winnerIds.has(runner.option_id)) continue;
+    const opt = optById.get(runner.option_id);
+    inserts.push(
+      formationInsert(
+        societyId,
+        pollId,
+        term_from,
+        term_to,
+        sort++,
+        {
+          key: runner.option_id,
+          name: runner.name,
+          option_id: runner.option_id,
+          from_post: runner.from_post ?? null,
+          place: runner.place ?? null,
+          source: 'runner_up',
+          flat_id: opt?.flat_id,
+          flat_number: opt?.flat_number,
+        },
+        'runner_up',
+        opt,
+      ),
+    );
+  }
+
+  for (const v of formation?.voluntary ?? []) {
+    inserts.push(formationInsert(societyId, pollId, term_from, term_to, sort++, v, 'voluntary'));
+  }
+
+  for (const e of formation?.executive_proposed ?? []) {
+    inserts.push(formationInsert(societyId, pollId, term_from, term_to, sort++, e, 'executive_proposed'));
+  }
+
   if (inserts.length === 0) {
     return { ok: false, error: 'No winners to publish.' };
   }
@@ -88,4 +165,20 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
   if (pollErr) return { ok: false, error: pollErr.message };
 
   return { ok: true };
+}
+
+export function countFormedCommittee(results: ElectionResultsPayload): number {
+  let n = 0;
+  for (const post of EXEC_ORDER) {
+    const w = results[post as keyof ElectionResultsPayload];
+    if (w && typeof w === 'object' && 'option_id' in w) n += 1;
+  }
+  n += results.committee?.length ?? 0;
+  const formation = results.formation;
+  if (formation) {
+    n += formation.selected_runner_up_ids?.length ?? 0;
+    n += formation.voluntary?.length ?? 0;
+    n += formation.executive_proposed?.length ?? 0;
+  }
+  return n;
 }

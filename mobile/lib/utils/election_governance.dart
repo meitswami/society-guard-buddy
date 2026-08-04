@@ -3,6 +3,15 @@ enum ElectionPhase { nomination, voting, closed, applied }
 /// Posts for new society elections.
 const threeExecutivePosts = ['president', 'secretary', 'treasurer'];
 
+/// Minimum Managing Committee size after formation (charter).
+const minCommitteeSize = 7;
+
+/// Society default target Managing Committee size (charter).
+const defaultTargetCommitteeSize = 15;
+
+/// How many unelected places (2nd, 3rd) from each executive post may join the committee.
+const runnerUpPlaces = 2;
+
 /// Legacy + current posts that may appear on older elections.
 const executivePosts = threeExecutivePosts;
 const allElectionPosts = [

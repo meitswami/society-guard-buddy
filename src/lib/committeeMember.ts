@@ -1,4 +1,9 @@
-export type CommitteeSelectionType = 'elected' | 'nominated';
+export type CommitteeSelectionType =
+  | 'elected'
+  | 'nominated'
+  | 'runner_up'
+  | 'voluntary'
+  | 'executive_proposed';
 
 export type CommitteeMemberRow = {
   id: string;
@@ -64,7 +69,26 @@ export function committeeTenureLabel(row: Pick<CommitteeMemberRow, 'term_from' |
 }
 
 export function selectionTypeLabel(type: CommitteeSelectionType | null | undefined): string {
-  if (type === 'elected') return 'Elected';
-  if (type === 'nominated') return 'Nominated';
-  return '—';
+  switch (type) {
+    case 'elected':
+      return 'Elected';
+    case 'nominated':
+      return 'Nominated';
+    case 'runner_up':
+      return 'Runner-up (2nd/3rd)';
+    case 'voluntary':
+      return 'Voluntary';
+    case 'executive_proposed':
+      return 'Executive proposed';
+    default:
+      return '—';
+  }
 }
+
+export const COMMITTEE_SELECTION_OPTIONS: { value: CommitteeSelectionType; label: string }[] = [
+  { value: 'elected', label: 'Elected' },
+  { value: 'nominated', label: 'Nominated' },
+  { value: 'runner_up', label: 'Runner-up (2nd/3rd)' },
+  { value: 'voluntary', label: 'Voluntary' },
+  { value: 'executive_proposed', label: 'Executive proposed' },
+];

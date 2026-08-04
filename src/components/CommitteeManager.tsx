@@ -9,6 +9,7 @@ import { fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import {
   type CommitteeMemberRow,
   type CommitteeSelectionType,
+  COMMITTEE_SELECTION_OPTIONS,
   committeeDisplayLabels,
   committeeIsRepresentative,
   committeeTenureLabel,
@@ -240,7 +241,7 @@ const CommitteeManager = ({ isResident = false }: Props) => {
       return;
     }
     if (!form.selectionType) {
-      toast.error('Select Elected or Nominated');
+      toast.error('Select how the member was chosen');
       return;
     }
     if (form.termTo && form.termTo < form.termFrom) {
@@ -493,26 +494,21 @@ const CommitteeManager = ({ isResident = false }: Props) => {
                 </div>
 
                 <div className="col-span-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Elected / Nominated *</label>
-                  <div className="flex gap-4 mt-2">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="radio"
-                        name="selection-type"
-                        checked={form.selectionType === 'elected'}
-                        onChange={() => setForm({ ...form, selectionType: 'elected' })}
-                      />
-                      Elected
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="radio"
-                        name="selection-type"
-                        checked={form.selectionType === 'nominated'}
-                        onChange={() => setForm({ ...form, selectionType: 'nominated' })}
-                      />
-                      Nominated
-                    </label>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    How selected *
+                  </label>
+                  <div className="flex flex-wrap gap-3 mt-2">
+                    {COMMITTEE_SELECTION_OPTIONS.map((opt) => (
+                      <label key={opt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="radio"
+                          name="selection-type"
+                          checked={form.selectionType === opt.value}
+                          onChange={() => setForm({ ...form, selectionType: opt.value })}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
                   </div>
                 </div>
 

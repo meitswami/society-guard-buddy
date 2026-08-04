@@ -5,10 +5,12 @@ import { toast } from 'sonner';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { DateInput } from '@/components/DateInput';
 import VotingCharterPanel from '@/components/VotingCharterPanel';
+import CommitteeFormationPanel from '@/components/CommitteeFormationPanel';
 import PollDocumentsPanel from '@/components/PollDocumentsPanel';
 import {
   validateElectionRankings,
   tallyElection,
+  listRunnersUp,
   type ElectionPost,
   type ElectionResultsPayload,
   type PollOptionRow,
@@ -24,11 +26,14 @@ import {
   POST_DISPLAY,
   THREE_EXECUTIVE_POSTS,
   DEFAULT_OPEN_POSTS,
+  DEFAULT_TARGET_COMMITTEE_SIZE,
+  MIN_COMMITTEE_SIZE,
+  RUNNER_UP_PLACES,
   parseWinningVotes,
   toDatetimeLocalValue,
   postsForPoll,
 } from '@/lib/electionGovernance';
-import { applyElectionToCommittee } from '@/lib/electionApply';
+import { applyElectionToCommittee, countFormedCommittee } from '@/lib/electionApply';
 import { notifyElectionEvent } from '@/lib/electionNotify';
 import { capsFieldChange } from '@/lib/entryCaps';
 import type { PollDocumentRow } from '@/lib/pollDocuments';
@@ -117,6 +122,48 @@ const ElectionModule = ({
     });
   }, [ballots, voterId]);
 
+  /** Backfill runners_up + formation on older closed tallies that lack them. */
+  useEffect(() => {
+    if (isResident || !societyId) return;
+    let cancelled = false;
+    const run = async () => {
+      let updated = false;
+      for (const poll of electionPolls) {
+        if (electionPhase(poll) !== 'closed' || !poll.election_results) continue;
+        const raw = poll.election_results as ElectionResultsPayload;
+        if (raw.runners_up && raw.formation) continue;
+        const pollOpts = options.filter((o) => o.poll_id === poll.id) as PollOptionRow[];
+        const bRows = ballots
+          .filter((b) => b.poll_id === poll.id)
+          .map((b) => ({ rankings: b.rankings as Record<string, Record<string, number>> }));
+        const winning = parseWinningVotes(poll.winning_votes);
+        const retallied = tallyElection(
+          pollOpts,
+          bRows,
+          Number(poll.election_committee_seats) || 0,
+          winning,
+          RUNNER_UP_PLACES,
+        );
+        const merged: ElectionResultsPayload = {
+          ...raw,
+          runners_up: raw.runners_up ?? retallied.runners_up,
+          formation: raw.formation ?? retallied.formation,
+        };
+        const { error } = await supabase
+          .from('polls')
+          .update({ election_results: merged as unknown as Record<string, unknown> })
+          .eq('id', poll.id);
+        if (!error) updated = true;
+      }
+      if (updated && !cancelled) onReload();
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [electionPolls.map((p) => `${p.id}:${electionPhase(p)}:${!!(p.election_results as ElectionResultsPayload)?.runners_up}`).join('|')]);
+
   const setRank = useCallback((pollId: string, post: string, optionId: string, rankStr: string) => {
     setElectionRanks((prev) => {
       const pollR = { ...(prev[pollId] ?? {}) };
@@ -178,6 +225,7 @@ const ElectionModule = ({
           society_id: societyId,
           poll_kind: 'election',
           election_committee_seats: 0,
+          target_committee_size: DEFAULT_TARGET_COMMITTEE_SIZE,
           election_phase: 'nomination',
           is_active: true,
           nomination_starts_at: new Date(ef.nominationStarts).toISOString(),
@@ -400,7 +448,7 @@ const ElectionModule = ({
   const closeElection = async (poll: any) => {
     const ok = await confirmAction(
       'Close election?',
-      'Voting stops. Results stay in admin portal until you publish to the committee roster.',
+      'Voting stops. Results and 2nd/3rd place candidates stay in admin portal for committee formation until you publish.',
       'Close & tally',
       'Cancel',
     );
@@ -410,7 +458,13 @@ const ElectionModule = ({
       .filter((b) => b.poll_id === poll.id)
       .map((b) => ({ rankings: b.rankings as Record<string, Record<string, number>> }));
     const winning = parseWinningVotes(poll.winning_votes);
-    const results = tallyElection(pollOpts, bRows, Number(poll.election_committee_seats) || 0, winning);
+    const results = tallyElection(
+      pollOpts,
+      bRows,
+      Number(poll.election_committee_seats) || 0,
+      winning,
+      RUNNER_UP_PLACES,
+    );
     await supabase
       .from('polls')
       .update({
@@ -433,9 +487,21 @@ const ElectionModule = ({
 
   const publishToCommittee = async (poll: any) => {
     if (!societyId || !poll.election_results) return;
+    const results = poll.election_results as ElectionResultsPayload;
+    const formed = countFormedCommittee(results);
+    const target = Number(poll.target_committee_size) || DEFAULT_TARGET_COMMITTEE_SIZE;
+    if (formed < MIN_COMMITTEE_SIZE) {
+      toast.error(
+        `Charter requires at least ${MIN_COMMITTEE_SIZE} committee members before publishing (currently ${formed}). Add 2nd/3rd place, volunteers, or executive proposals.`,
+      );
+      return;
+    }
+    const shortOfTarget = formed < target;
     const ok = await confirmAction(
-      'Publish to Committee module?',
-      'Elected members will appear in the residents’ Committee tab. All members will be notified.',
+      'Publish formed Committee?',
+      shortOfTarget
+        ? `Roster has ${formed} members (society target ${target}). Publish winners, selected runners-up, volunteers and executive proposals to the Committee tab?`
+        : `Publish ${formed} members (winners, selected runners-up, volunteers and executive proposals) to the Committee tab? All members will be notified.`,
       'Publish',
       'Cancel',
     );
@@ -444,7 +510,7 @@ const ElectionModule = ({
     const res = await applyElectionToCommittee({
       societyId,
       pollId: poll.id,
-      results: poll.election_results as ElectionResultsPayload,
+      results,
       options: pollOpts,
       termFrom: poll.election_term_from,
       termTo: poll.election_term_to,
@@ -499,6 +565,21 @@ const ElectionModule = ({
           <p>
             <span className="text-muted-foreground">Vice-President:</span> <strong>{r.vice_president.name}</strong>
           </p>
+        )}
+        {listRunnersUp(r).length > 0 && (
+          <div>
+            <p className="text-muted-foreground text-xs mt-2">2nd &amp; 3rd place (eligible for Committee)</p>
+            <ul className="list-disc list-inside text-xs">
+              {listRunnersUp(r).map((c) => (
+                <li key={c.option_id}>
+                  {c.name}
+                  <span className="text-[10px] text-muted-foreground ml-1">
+                    {c.from_post ? POST_DISPLAY[c.from_post] : ''} · place {c.place ?? '—'} ({c.score} pts)
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {r.committee?.length > 0 && (
           <div>
@@ -650,6 +731,18 @@ const ElectionModule = ({
         <p className="text-xs text-muted-foreground mb-2">{pollBallots.length} ballot(s) cast</p>
 
         {!isResident && (phase === 'closed' || phase === 'applied') && poll.election_results && renderResults(poll, true)}
+        {isResident && (phase === 'closed' || phase === 'applied') && poll.election_results && renderResults(poll, false)}
+        {phase === 'closed' && poll.election_results && (
+          <CommitteeFormationPanel
+            poll={poll}
+            isResident={!!isResident}
+            memberName={memberName}
+            flatNumber={flatNumber}
+            flatId={flatId}
+            memberId={memberId}
+            onReload={onReload}
+          />
+        )}
 
         {(phase === 'nomination' || phase === 'voting') &&
           THREE_EXECUTIVE_POSTS.filter((p) => posts.includes(p)).map((post) => (
@@ -798,7 +891,7 @@ const ElectionModule = ({
                 onClick={() => void publishToCommittee(poll)}
                 className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white"
               >
-                Publish winners to Committee module
+                Publish formed Committee to roster
               </button>
             )}
             {phase === 'applied' && (
@@ -899,8 +992,9 @@ const ElectionModule = ({
       {!embedded && (
         <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
           <p className="text-[11px] text-muted-foreground">
-            <strong className="text-foreground">Society Elections</strong> — nominate for President, Secretary &amp;
-            Treasurer (Borda ranked vote), attach circulars/letters, publish winners to Committee.
+            <strong className="text-foreground">Society Elections</strong> — nominate &amp; rank for President,
+            Secretary &amp; Treasurer; after tally, 2nd/3rd place may join the Managing Committee (min 7, target 15);
+            remaining seats via volunteers or executive proposals. Download the Voting Charter to circulate to members.
           </p>
         </div>
       )}

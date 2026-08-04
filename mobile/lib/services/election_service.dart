@@ -170,6 +170,7 @@ class ElectionService {
           'society_id': societyId,
           'poll_kind': 'election',
           'election_committee_seats': 0,
+          'target_committee_size': 15,
           'election_phase': 'nomination',
           'is_active': true,
           'nomination_starts_at': nominationStarts?.toIso8601String(),

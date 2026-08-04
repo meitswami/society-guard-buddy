@@ -58,7 +58,25 @@ export function validateElectionRankings(
   return null;
 }
 
-export type ElectedWinner = { option_id: string; name: string; score: number };
+export type ElectedWinner = { option_id: string; name: string; score: number; place?: number; from_post?: ElectionPost };
+
+export type FormationMember = {
+  key: string;
+  name: string;
+  flat_number?: string | null;
+  flat_id?: string | null;
+  member_id?: string | null;
+  option_id?: string | null;
+  from_post?: ElectionPost | null;
+  place?: number | null;
+  source: 'runner_up' | 'voluntary' | 'executive_proposed';
+};
+
+export type CommitteeFormationState = {
+  selected_runner_up_ids: string[];
+  voluntary: FormationMember[];
+  executive_proposed: FormationMember[];
+};
 
 export type ElectionResultsPayload = {
   president: ElectedWinner | null;
@@ -66,15 +84,33 @@ export type ElectionResultsPayload = {
   secretary: ElectedWinner | null;
   treasurer: ElectedWinner | null;
   committee: ElectedWinner[];
+  /** 2nd & 3rd place unelected candidates per executive post (eligible for committee). */
+  runners_up?: Partial<Record<ElectionPost, ElectedWinner[]>>;
   vacant?: Partial<Record<ElectionPost, { reason: string; top_score: number; required: number }>>;
+  formation?: CommitteeFormationState;
   tallied_at: string;
 };
+
+export function emptyFormationState(): CommitteeFormationState {
+  return { selected_runner_up_ids: [], voluntary: [], executive_proposed: [] };
+}
+
+export function listRunnersUp(results: ElectionResultsPayload): ElectedWinner[] {
+  const out: ElectedWinner[] = [];
+  for (const post of THREE_POSTS) {
+    for (const r of results.runners_up?.[post] ?? []) {
+      out.push({ ...r, from_post: post });
+    }
+  }
+  return out;
+}
 
 export function tallyElection(
   options: PollOptionRow[],
   ballots: BallotRow[],
   committeeSeats: number,
   winningVotes: Record<string, number> = {},
+  runnerUpPlaces = 2,
 ): ElectionResultsPayload {
   const byPost = (post: string) => options.filter((o) => o.election_post === post);
   const scoreMap = (post: string) => {
@@ -95,50 +131,71 @@ export function tallyElection(
 
   const vacant: ElectionResultsPayload['vacant'] = {};
 
-  const pickWinner = (post: ElectionPost): ElectedWinner | null => {
+  const rankedForPost = (post: ElectionPost): ElectedWinner[] => {
     const postOpts = byPost(post);
-    if (postOpts.length === 0) return null;
+    if (postOpts.length === 0) return [];
     const scores = scoreMap(post);
-    let best: PollOptionRow | null = null;
-    let bestScore = -1;
-    for (const o of postOpts) {
-      const s = scores.get(o.id) ?? 0;
-      if (s > bestScore) {
-        bestScore = s;
-        best = o;
-      }
-    }
-    if (!best) return null;
+    return [...postOpts]
+      .sort((a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0))
+      .map((o, i) => ({
+        option_id: o.id,
+        name: o.option_text,
+        score: scores.get(o.id) ?? 0,
+        place: i + 1,
+        from_post: post,
+      }));
+  };
+
+  const resolveWinner = (post: ElectionPost, ranked: ElectedWinner[]): ElectedWinner | null => {
+    if (ranked.length === 0) return null;
+    const best = ranked[0];
     const required = Number(winningVotes[post] ?? 0);
-    if (Number.isFinite(required) && required > 0 && bestScore < required) {
+    if (Number.isFinite(required) && required > 0 && best.score < required) {
       vacant[post] = {
-        reason: `Top score ${bestScore} below required ${required}`,
-        top_score: bestScore,
+        reason: `Top score ${best.score} below required ${required}`,
+        top_score: best.score,
         required,
       };
       return null;
     }
-    return { option_id: best.id, name: best.option_text, score: bestScore };
+    return best;
   };
+
+  const winners: Partial<Record<ElectionPost, ElectedWinner | null>> = {};
+  const runners_up: NonNullable<ElectionResultsPayload['runners_up']> = {};
+  for (const post of [...THREE_POSTS, 'vice_president' as ElectionPost]) {
+    const ranked = rankedForPost(post);
+    const winner = resolveWinner(post, ranked);
+    winners[post] = winner;
+    if (THREE_POSTS.includes(post)) {
+      const unelected = ranked.filter((r) => !winner || r.option_id !== winner.option_id);
+      const slice = unelected.slice(0, Math.max(0, runnerUpPlaces));
+      if (slice.length > 0) runners_up[post] = slice;
+    }
+  }
 
   const committeeOpts = byPost('committee');
   const cScores = scoreMap('committee');
   const committeeSorted = [...committeeOpts].sort((a, b) => (cScores.get(b.id) ?? 0) - (cScores.get(a.id) ?? 0));
   const seats =
     committeeOpts.length === 0 ? 0 : Math.max(0, Math.min(committeeSeats, committeeSorted.length));
-  const committee: ElectedWinner[] = committeeSorted.slice(0, seats).map((o) => ({
+  const committee: ElectedWinner[] = committeeSorted.slice(0, seats).map((o, i) => ({
     option_id: o.id,
     name: o.option_text,
     score: cScores.get(o.id) ?? 0,
+    place: i + 1,
+    from_post: 'committee' as ElectionPost,
   }));
 
   return {
-    president: pickWinner('president'),
-    vice_president: pickWinner('vice_president'),
-    secretary: pickWinner('secretary'),
-    treasurer: pickWinner('treasurer'),
+    president: winners.president ?? null,
+    vice_president: winners.vice_president ?? null,
+    secretary: winners.secretary ?? null,
+    treasurer: winners.treasurer ?? null,
     committee,
+    runners_up: Object.keys(runners_up).length ? runners_up : undefined,
     vacant: Object.keys(vacant).length ? vacant : undefined,
+    formation: emptyFormationState(),
     tallied_at: new Date().toISOString(),
   };
 }

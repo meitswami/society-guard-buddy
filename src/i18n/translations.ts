@@ -1167,7 +1167,53 @@ const translations: Record<string, Record<Lang, string>> = {
   },
 
   // Voting charter (member-facing; overridable per society)
-  'votingCharter.title': { en: 'Voting Charter', hi: 'मतदान चार्टर' },
+  'votingCharter.title': { en: 'Voting & Committee Formation Charter', hi: 'मतदान और समिति गठन चार्टर' },
+  'votingCharter.rulesHeading': { en: 'Charter rules', hi: 'चार्टर नियम' },
+  'votingCharter.program.heading': { en: 'Step-by-step program for members', hi: 'सदस्यों के लिए चरणबद्ध कार्यक्रम' },
+  'votingCharter.program.intro': {
+    en: 'Follow these steps to understand the executive election poll and how the Managing Committee of the society is formed.',
+    hi: 'कार्यकारी चुनाव पोल और सोसाइटी की प्रबंध समिति कैसे बनती है — यह समझने के लिए ये चरण अपनाएँ।',
+  },
+  'votingCharter.program.s1.title': { en: 'Know the three executive posts', hi: 'तीन कार्यकारी पद जानें' },
+  'votingCharter.program.s1.detail': {
+    en: 'The election poll is for President, Secretary and Treasurer only. Ranked voting (Borda) decides the winner of each post.',
+    hi: 'चुनाव पोल केवल अध्यक्ष, सचिव और कोषाध्यक्ष के लिए है। प्रत्येक पद का विजेता क्रमबद्ध (बोर्डा) मतदान से तय होता है।',
+  },
+  'votingCharter.program.s2.title': { en: 'Nominate during the nomination window', hi: 'नामांकन विंडो में नामांकन करें' },
+  'votingCharter.program.s2.detail': {
+    en: 'When nominations are open, eligible members may self-nominate for any of the three posts with a short statement.',
+    hi: 'नामांकन खुला होने पर पात्र सदस्य संक्षिप्त विवरण के साथ तीन में से किसी भी पद के लिए स्वयं नामांकन कर सकते हैं।',
+  },
+  'votingCharter.program.s3.title': { en: 'Cast your ranked ballot', hi: 'अपना क्रमबद्ध मतपत्र डालें' },
+  'votingCharter.program.s3.detail': {
+    en: 'In the voting window, rank every candidate in each post (1 = highest preference). One vote per person; up to two ballots per flat when both spouses vote.',
+    hi: 'मतदान विंडो में प्रत्येक पद के सभी उम्मीदवारों को रैंक दें (1 = सर्वोच्च प्राथमिकता)। प्रति व्यक्ति एक वोट; दोनों जीवनसाथी मतदान करें तो प्रति फ्लैट अधिकतम दो मतपत्र।',
+  },
+  'votingCharter.program.s4.title': { en: 'Winners take the three posts', hi: 'विजेता तीन पद ग्रहण करते हैं' },
+  'votingCharter.program.s4.detail': {
+    en: 'After tally, the highest-scoring candidate for each post is elected (if they meet any minimum winning score set by the admin).',
+    hi: 'परिणाम गणना के बाद प्रत्येक पद पर सर्वाधिक अंक वाला उम्मीदवार निर्वाचित होता है (यदि एडमिन की न्यूनतम जीत अंक सीमा पूरी हो)।',
+  },
+  'votingCharter.program.s5.title': { en: '2nd & 3rd place may join the Committee', hi: 'दूसरे व तीसरे स्थान समिति में शामिल हो सकते हैं' },
+  'votingCharter.program.s5.detail': {
+    en: 'Candidates who remain unelected in 2nd or 3rd place for President, Secretary or Treasurer may be nominated as other executive members of the Managing Committee.',
+    hi: 'अध्यक्ष, सचिव या कोषाध्यक्ष के चुनाव में दूसरे या तीसरे स्थान पर रहकर निर्वाचित न हुए उम्मीदवार प्रबंध समिति के अन्य कार्यकारी सदस्यों के रूप में नामांकित हो सकते हैं।',
+  },
+  'votingCharter.program.s6.title': { en: 'Committee size: at least 7, target 15', hi: 'समिति आकार: कम से कम 7, लक्ष्य 15' },
+  'votingCharter.program.s6.detail': {
+    en: 'The Managing Committee is formed with seven or more members. The Society proposes a committee of minimum fifteen members.',
+    hi: 'प्रबंध समिति सात या अधिक सदस्यों से गठित होती है। सोसाइटी न्यूनतम पंद्रह सदस्यों की समिति प्रस्तावित करती है।',
+  },
+  'votingCharter.program.s7.title': { en: 'Fill remaining seats', hi: 'शेष सीटें भरें' },
+  'votingCharter.program.s7.detail': {
+    en: 'If the committee does not reach 15 through winners and 2nd/3rd place nominations, interested members may join voluntarily. If seats still remain, the executive committee proposes names.',
+    hi: 'यदि विजेताओं और दूसरे/तीसरे स्थान के नामांकन से समिति 15 तक न पहुँचे, इच्छुक सदस्य स्वेच्छा से जुड़ सकते हैं। फिर भी सीटें बचें तो कार्यकारी समिति नाम प्रस्तावित करेगी।',
+  },
+  'votingCharter.program.s8.title': { en: 'Publish the full roster', hi: 'पूर्ण रोस्टर प्रकाशित करें' },
+  'votingCharter.program.s8.detail': {
+    en: 'When formation is complete (minimum 7), the admin publishes the roster. Members then see the full committee in the Committee module.',
+    hi: 'गठन पूरा होने पर (न्यूनतम 7) एडमिन रोस्टर प्रकाशित करता है। इसके बाद सदस्य समिति मॉड्यूल में पूरी समिति देख सकते हैं।',
+  },
   'votingCharter.eligibility.heading': { en: 'Eligibility', hi: 'पात्रता' },
   'votingCharter.eligibility.p1': {
     en: 'Every registered owner and their spouse may cast one ranked ballot each.',
@@ -1215,18 +1261,49 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Voting is only allowed inside the admin-set voting open and close dates.',
     hi: 'मतदान केवल एडमिन द्वारा निर्धारित मतदान आरंभ और समाप्ति तिथियों के बीच ही अनुमत है।',
   },
+  'votingCharter.committee.heading': { en: 'Managing Committee formation', hi: 'प्रबंध समिति का गठन' },
+  'votingCharter.committee.p1': {
+    en: 'After the three executive winners are declared, candidates placed 2nd or 3rd (unelected) for President, Secretary or Treasurer may be nominated into the Managing Committee as other executive members.',
+    hi: 'तीन कार्यकारी विजेताओं की घोषणा के बाद, अध्यक्ष/सचिव/कोषाध्यक्ष में दूसरे या तीसरे स्थान पर रहकर निर्वाचित न हुए उम्मीदवार प्रबंध समिति में अन्य कार्यकारी सदस्यों के रूप में नामांकित हो सकते हैं।',
+  },
+  'votingCharter.committee.p2': {
+    en: 'The committee is formed with seven or more members. The Society proposes a minimum of fifteen members.',
+    hi: 'समिति सात या अधिक सदस्यों से गठित होती है। सोसाइटी न्यूनतम पंद्रह सदस्यों का प्रस्ताव करती है।',
+  },
+  'votingCharter.committee.p3': {
+    en: 'If 15 seats are not filled by winners plus 2nd/3rd place nominations, members who volunteer may be included.',
+    hi: 'यदि विजेताओं और दूसरे/तीसरे स्थान के नामांकन से 15 सीटें न भरें, स्वेच्छा से इच्छुक सदस्यों को शामिल किया जा सकता है।',
+  },
+  'votingCharter.committee.p4': {
+    en: 'If seats still remain after voluntary interest, the executive committee proposes names of members to complete the roster.',
+    hi: 'स्वैच्छिक रुचि के बाद भी सीटें बचें तो कार्यकारी समिति रोस्टर पूरा करने हेतु सदस्यों के नाम प्रस्तावित करेगी।',
+  },
+  'votingCharter.committee.p5': {
+    en: 'The full committee appears for residents only after the admin publishes the formed roster.',
+    hi: 'गठित रोस्टर एडमिन द्वारा प्रकाशित करने के बाद ही निवासियों को पूरी समिति दिखती है।',
+  },
   'votingCharter.docs.heading': { en: 'Documents & results', hi: 'दस्तावेज़ और परिणाम' },
   'votingCharter.docs.p1': {
     en: 'Admin may attach circulars, letters, or other society/personal documents to the election; members can open them from the poll.',
     hi: 'एडमिन चुनाव में परिपत्र, पत्र या अन्य सोसाइटी/व्यक्तिगत दस्तावेज़ संलग्न कर सकता है; सदस्य उन्हें पोल से खोल सकते हैं।',
   },
   'votingCharter.docs.p2': {
-    en: 'After the voting window closes, the admin tallies results. Winners are visible in the admin portal first.',
-    hi: 'मतदान विंडो बंद होने के बाद एडमिन परिणाम गिनता है। विजेता पहले एडमिन पोर्टल में दिखते हैं।',
+    en: 'After the voting window closes, the admin tallies results. Winners and 2nd/3rd place candidates are visible in the admin portal first.',
+    hi: 'मतदान विंडो बंद होने के बाद एडमिन परिणाम गिनता है। विजेता और दूसरे/तीसरे स्थान पहले एडमिन पोर्टल में दिखते हैं।',
   },
   'votingCharter.docs.p3': {
-    en: 'Elected names appear in the residents’ Committee module only after the admin publishes them to the roster.',
-    hi: 'निर्वाचित नाम निवासी समिति मॉड्यूल में तभी दिखते हैं जब एडमिन उन्हें रोस्टर पर प्रकाशित करता है।',
+    en: 'Elected and formed committee names appear in the residents’ Committee module only after the admin publishes them to the roster.',
+    hi: 'निर्वाचित और गठित समिति के नाम निवासी समिति मॉड्यूल में तभी दिखते हैं जब एडमिन उन्हें रोस्टर पर प्रकाशित करता है।',
+  },
+  'votingCharter.docs.p4': {
+    en: 'This charter can be downloaded as a PDF and shared with all members (for example via WhatsApp).',
+    hi: 'यह चार्टर PDF के रूप में डाउनलोड करके सभी सदस्यों को (जैसे WhatsApp से) परिचालित किया जा सकता है।',
+  },
+  'votingCharter.download': { en: 'Download charter PDF', hi: 'चार्टर PDF डाउनलोड करें' },
+  'votingCharter.shareWhatsApp': { en: 'Share on WhatsApp', hi: 'WhatsApp पर साझा करें' },
+  'votingCharter.shareMessage': {
+    en: 'Society Voting & Committee Formation Charter — please read the step-by-step program for the executive election and Managing Committee formation.',
+    hi: 'सोसाइटी मतदान और समिति गठन चार्टर — कार्यकारी चुनाव और प्रबंध समिति गठन का चरणबद्ध कार्यक्रम कृपया पढ़ें।',
   },
 
   // Finance UI / audit (overridable for member-facing notices)
