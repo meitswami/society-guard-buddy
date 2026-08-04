@@ -67,9 +67,23 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>) => {
       const override = overrides[key];
-      const fromOverride = override?.[lang]?.trim() || override?.en?.trim();
-      const fromStatic = translations[key]?.[lang] || translations[key]?.en;
-      const raw = fromOverride || fromStatic || key;
+      // Prefer active language override, then static translation for that language,
+      // then the other language — never let empty Hindi override fall back to English override
+      // before the static Hindi string.
+      const fromOverrideLang = override?.[lang]?.trim();
+      const fromStaticLang = translations[key]?.[lang]?.trim();
+      const fromOverrideEn = lang !== 'en' ? override?.en?.trim() : '';
+      const fromStaticEn = lang !== 'en' ? translations[key]?.en?.trim() : '';
+      const fromOverrideHi = lang !== 'hi' ? override?.hi?.trim() : '';
+      const fromStaticHi = lang !== 'hi' ? translations[key]?.hi?.trim() : '';
+      const raw =
+        fromOverrideLang ||
+        fromStaticLang ||
+        fromOverrideEn ||
+        fromStaticEn ||
+        fromOverrideHi ||
+        fromStaticHi ||
+        key;
       return applyVars(raw, vars);
     },
     [lang, overrides],

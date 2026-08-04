@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Download, ChevronDown, ChevronUp, ScrollText } from 'lucide-react';
+import { Download, ChevronDown, ChevronUp, ScrollText, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   ELECTION_PROGRAM_STEPS,
   VOTING_CHARTER_SECTIONS,
@@ -15,17 +16,19 @@ import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
+import type { Lang } from '@/i18n/translations';
 
 type Props = {
   societyName?: string;
 };
 
 const VotingCharterPanel = ({ societyName: societyNameProp }: Props) => {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [open, setOpen] = useState(true);
   const [programOpen, setProgramOpen] = useState(true);
   const [societyName, setSocietyName] = useState(societyNameProp || '');
+  const [busyLang, setBusyLang] = useState<Lang | null>(null);
 
   useEffect(() => {
     if (societyNameProp) {
@@ -43,13 +46,36 @@ const VotingCharterPanel = ({ societyName: societyNameProp }: Props) => {
       });
   }, [societyId, societyNameProp]);
 
-  const getBlob = () => buildVotingCharterPdfBlob({ societyName });
-  const filename = votingCharterPdfFilename(societyName);
+  const getBlob = (pdfLang: Lang) =>
+    buildVotingCharterPdfBlob({
+      societyName,
+      lang: pdfLang,
+    });
 
-  const downloadPdf = async () => {
-    const blob = await getBlob();
-    triggerDownload(blob, filename);
+  const downloadPdf = async (pdfLang: Lang) => {
+    if (busyLang) return;
+    setBusyLang(pdfLang);
+    try {
+      const blob = await getBlob(pdfLang);
+      if (!blob || blob.size < 100) {
+        throw new Error('PDF was empty');
+      }
+      triggerDownload(blob, votingCharterPdfFilename(societyName, pdfLang));
+      toast.success(pdfLang === 'hi' ? 'हिंदी चार्टर PDF डाउनलोड हो गया' : 'English charter PDF downloaded');
+    } catch (err) {
+      console.error('Voting charter PDF download failed', err);
+      toast.error(
+        pdfLang === 'hi'
+          ? 'हिंदी PDF डाउनलोड नहीं हो सका — कृपया पुनः प्रयास करें'
+          : 'Could not download English PDF — please try again',
+      );
+    } finally {
+      setBusyLang(null);
+    }
   };
+
+  const btnClass =
+    'text-xs px-2.5 py-1.5 rounded-lg border border-indigo-500/40 bg-background/80 inline-flex items-center gap-1.5 hover:bg-indigo-500/10 disabled:opacity-60';
 
   return (
     <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 overflow-hidden">
@@ -69,21 +95,42 @@ const VotingCharterPanel = ({ societyName: societyNameProp }: Props) => {
           <div className="flex flex-wrap gap-2 pt-2">
             <button
               type="button"
-              onClick={() => void downloadPdf()}
-              className="text-xs px-2.5 py-1.5 rounded-lg border border-indigo-500/40 bg-background/80 inline-flex items-center gap-1.5 hover:bg-indigo-500/10"
+              disabled={!!busyLang}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void downloadPdf('hi');
+              }}
+              className={btnClass}
             >
-              <Download className="w-3.5 h-3.5" />
-              {t('votingCharter.download')}
+              {busyLang === 'hi' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              {busyLang === 'hi' ? 'तैयार हो रहा है…' : 'हिंदी PDF'}
+            </button>
+            <button
+              type="button"
+              disabled={!!busyLang}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void downloadPdf('en');
+              }}
+              className={btnClass}
+            >
+              {busyLang === 'en' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              {busyLang === 'en' ? 'Preparing…' : 'English PDF'}
             </button>
             <SharePdfWhatsAppButton
-              getBlob={getBlob}
-              filename={filename}
-              message={votingCharterShareMessage()}
+              getBlob={() => getBlob(lang === 'hi' ? 'hi' : 'en')}
+              filename={votingCharterPdfFilename(societyName, lang === 'hi' ? 'hi' : 'en')}
+              message={votingCharterShareMessage(lang === 'hi' ? 'hi' : 'en')}
               label={t('votingCharter.shareWhatsApp')}
+              disabled={!!busyLang}
             />
           </div>
           <p className="text-[10px] text-muted-foreground">
-            PDF / WhatsApp share uses English so every device can read it. On-screen charter follows your language toggle.
+            {lang === 'hi'
+              ? 'हिंदी PDF बटन दबाएँ — चार्टर देवनागरी में बनेगा। English PDF अलग से अंग्रेज़ी में डाउनलोड होता है।'
+              : 'Use Hindi PDF for Devanagari charter text. English PDF downloads the English version.'}
           </p>
 
           <div className="rounded-lg border border-indigo-500/20 bg-background/40">

@@ -7,8 +7,6 @@ import {
   VOTING_CHARTER_TITLE_KEY,
 } from '@/lib/votingCharter';
 
-type Translate = (key: string) => string;
-
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -17,39 +15,65 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function tFor(lang: Lang, key: string): string {
-  return translations[key]?.[lang] || translations[key]?.en || key;
+/** Resolve charter copy for an explicit language (never falls back to the other language first). */
+export function charterText(lang: Lang, key: string): string {
+  const row = translations[key];
+  if (!row) return key;
+  const preferred = (row[lang] || '').trim();
+  if (preferred) return preferred;
+  return (row.en || row.hi || key).trim() || key;
+}
+
+function hasDevanagari(s: string): boolean {
+  return /[\u0900-\u097F]/.test(s);
 }
 
 /** Ensure Devanagari + Latin Noto fonts are available for canvas capture. */
 async function ensureCharterFonts(): Promise<void> {
-  const id = 'kutumbika-charter-fonts';
-  if (!document.getElementById(id)) {
-    const link = document.createElement('link');
-    link.id = id;
-    link.rel = 'stylesheet';
-    link.href =
-      'https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans:wght@400;600;700&display=swap';
-    document.head.appendChild(link);
-  }
-
-  // Local TTF fallback (variable fonts in /public/fonts)
   const styleId = 'kutumbika-charter-font-face';
   if (!document.getElementById(styleId)) {
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = `
       @font-face {
-        font-family: 'NotoSansDevanagariLocal';
+        font-family: 'Noto Sans Devanagari';
         src: url('/fonts/NotoSansDevanagari-Regular.ttf') format('truetype');
-        font-weight: 100 900;
+        font-weight: 400;
         font-style: normal;
         font-display: swap;
       }
       @font-face {
-        font-family: 'NotoSansLocal';
+        font-family: 'Noto Sans Devanagari';
+        src: url('/fonts/NotoSansDevanagari-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Noto Sans Devanagari';
+        src: url('/fonts/NotoSansDevanagari-Medium.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Noto Sans Devanagari';
+        src: url('/fonts/NotoSansDevanagari-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Noto Sans';
         src: url('/fonts/NotoSans-Regular.ttf') format('truetype');
-        font-weight: 100 900;
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Noto Sans';
+        src: url('/fonts/NotoSans-Bold.ttf') format('truetype');
+        font-weight: 700;
         font-style: normal;
         font-display: swap;
       }
@@ -57,33 +81,40 @@ async function ensureCharterFonts(): Promise<void> {
     document.head.appendChild(style);
   }
 
+  const id = 'kutumbika-charter-fonts-cdn';
+  if (!document.getElementById(id)) {
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href =
+      'https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans:wght@400;700&display=swap';
+    document.head.appendChild(link);
+  }
+
   try {
     await Promise.all([
       document.fonts.load("400 16px 'Noto Sans Devanagari'"),
+      document.fonts.load("600 16px 'Noto Sans Devanagari'"),
       document.fonts.load("700 16px 'Noto Sans Devanagari'"),
       document.fonts.load("400 16px 'Noto Sans'"),
       document.fonts.load("700 16px 'Noto Sans'"),
-      document.fonts.load("400 16px 'NotoSansDevanagariLocal'"),
-      document.fonts.load("400 16px 'NotoSansLocal'"),
     ]);
   } catch {
-    /* continue — browser may still have fallbacks */
+    /* continue */
   }
   await document.fonts.ready;
-  // Brief settle so webfont paint completes before html2canvas
-  await new Promise((r) => setTimeout(r, 120));
+  await new Promise((r) => setTimeout(r, 200));
 }
 
 function buildCharterHtml(opts: {
   societyName: string;
   lang: Lang;
-  t: Translate;
   generatedAt: string;
 }): string {
-  const { societyName, lang, t, generatedAt } = opts;
+  const { societyName, lang, generatedAt } = opts;
+  const t = (key: string) => charterText(lang, key);
   const isHi = lang === 'hi';
   const langLabel = isHi ? 'हिंदी' : 'English';
-  const dir = 'ltr';
 
   const steps = ELECTION_PROGRAM_STEPS.map(
     (step, i) => `
@@ -107,7 +138,7 @@ function buildCharterHtml(opts: {
   ).join('');
 
   return `
-<div class="charter-root" lang="${lang}" dir="${dir}">
+<div class="charter-root" lang="${lang}" dir="ltr" data-charter-lang="${lang}">
   <header class="charter-header">
     <p class="eyebrow">${escapeHtml(societyName || (isHi ? 'सोसाइटी' : 'Society'))}</p>
     <h1>${escapeHtml(t(VOTING_CHARTER_TITLE_KEY))}</h1>
@@ -143,7 +174,7 @@ const CHARTER_CSS = `
   padding: 28px 32px 36px;
   color: #1a1a1a;
   background: #ffffff;
-  font-family: 'Noto Sans Devanagari', 'NotoSansDevanagariLocal', 'Noto Sans', 'NotoSansLocal', 'Segoe UI', sans-serif;
+  font-family: 'Noto Sans Devanagari', 'Noto Sans', 'Segoe UI', sans-serif;
   font-size: 13px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -208,7 +239,6 @@ h4 {
 }
 .steps {
   list-style: none;
-  counter-reset: none;
   display: block;
 }
 .step {
@@ -271,17 +301,22 @@ h4 {
 `;
 
 /**
- * Build a formatted Voting Charter PDF in the active UI language.
- * Uses browser HTML rendering (with embedded Noto Devanagari) so Hindi
- * conjuncts display correctly — plain jsPDF Helvetica cannot.
+ * Build a Voting Charter PDF in the requested language.
+ * Uses HTML + Noto Devanagari so Hindi conjuncts render correctly.
+ * Always resolves copy from static translations for `lang` (does not use UI `t()`,
+ * which can fall back to English overrides).
  */
 export async function buildVotingCharterPdfBlob(opts: {
   societyName?: string;
   lang?: Lang;
-  t?: Translate;
 }): Promise<Blob> {
   const lang: Lang = opts.lang === 'hi' ? 'hi' : 'en';
-  const t: Translate = opts.t ?? ((key) => tFor(lang, key));
+
+  // Sanity: Hindi must resolve to Devanagari title before we render.
+  const title = charterText(lang, VOTING_CHARTER_TITLE_KEY);
+  if (lang === 'hi' && !hasDevanagari(title)) {
+    throw new Error('Hindi charter translations are missing Devanagari text');
+  }
 
   await ensureCharterFonts();
 
@@ -289,21 +324,31 @@ export async function buildVotingCharterPdfBlob(opts: {
   host.setAttribute('data-voting-charter-pdf', '1');
   host.style.cssText =
     'position:fixed;left:-10000px;top:0;width:720px;background:#fff;z-index:-1;pointer-events:none;';
-  const styleEl = document.createElement('style');
-  styleEl.textContent = CHARTER_CSS;
-  host.appendChild(styleEl);
 
   const wrap = document.createElement('div');
   wrap.innerHTML = buildCharterHtml({
     societyName: opts.societyName || '',
     lang,
-    t,
     generatedAt: fmtDateTimeFull(new Date().toISOString()) || new Date().toLocaleString(),
   });
+
+  const root = wrap.querySelector('.charter-root') as HTMLElement | null;
+  if (!root) {
+    wrap.remove();
+    throw new Error('Charter HTML failed to render');
+  }
+
+  // Confirm DOM actually contains Hindi when requested (guards against wrong lang).
+  if (lang === 'hi' && !hasDevanagari(root.textContent || '')) {
+    host.remove();
+    throw new Error('Hindi charter HTML did not contain Devanagari text');
+  }
+
+  const styleEl = document.createElement('style');
+  styleEl.textContent = CHARTER_CSS;
+  root.insertBefore(styleEl, root.firstChild);
   host.appendChild(wrap);
   document.body.appendChild(host);
-
-  const root = host.querySelector('.charter-root') as HTMLElement;
 
   try {
     const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
@@ -322,6 +367,15 @@ export async function buildVotingCharterPdfBlob(opts: {
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
+        onclone: (_doc, el) => {
+          // Force computed font on clone so html2canvas paints Devanagari glyphs.
+          const node = el as HTMLElement;
+          node.style.fontFamily = "'Noto Sans Devanagari', 'Noto Sans', sans-serif";
+          node.querySelectorAll('*').forEach((child) => {
+            (child as HTMLElement).style.fontFamily =
+              "'Noto Sans Devanagari', 'Noto Sans', sans-serif";
+          });
+        },
       },
     });
 
@@ -332,7 +386,7 @@ export async function buildVotingCharterPdfBlob(opts: {
 }
 
 export function votingCharterShareMessage(lang: Lang = 'en'): string {
-  return tFor(lang, 'votingCharter.shareMessage');
+  return charterText(lang, 'votingCharter.shareMessage');
 }
 
 export function votingCharterPdfFilename(societyName?: string, lang: Lang = 'en'): string {

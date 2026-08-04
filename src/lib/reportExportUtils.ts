@@ -7,8 +7,14 @@ export function triggerDownload(blob: Blob, filename: string) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  // Must be in the document for reliable downloads on mobile browsers / WebViews.
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  // Delayed revoke — immediate revoke can cancel the download on Safari / Android.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 /** Open a blob (e.g. PDF) in a new browser tab for viewing. */
