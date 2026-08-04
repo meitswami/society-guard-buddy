@@ -6,6 +6,7 @@ import '../../models/session_models.dart';
 import '../../services/election_service.dart';
 import '../../utils/election_governance.dart';
 import '../../utils/election_tally.dart';
+import '../../widgets/voting_charter_card.dart';
 
 class AdminElectionsScreen extends StatefulWidget {
   const AdminElectionsScreen({
@@ -343,9 +344,11 @@ class AdminElectionsScreenState extends State<AdminElectionsScreen> {
     final bundle = _bundle!;
     if (bundle.elections.isEmpty) {
       return ListView(
-        children: const [
-          SizedBox(height: 100),
-          Center(
+        padding: const EdgeInsets.all(16),
+        children: [
+          VotingCharterCard(societyName: widget.session.societyName),
+          const SizedBox(height: 48),
+          const Center(
             child: Text('No elections yet', style: TextStyle(color: KutumbikaColors.textMuted)),
           ),
         ],
@@ -354,9 +357,12 @@ class AdminElectionsScreenState extends State<AdminElectionsScreen> {
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: bundle.elections.length,
+      itemCount: bundle.elections.length + 1,
       itemBuilder: (context, index) {
-        final poll = bundle.elections[index];
+        if (index == 0) {
+          return VotingCharterCard(societyName: widget.session.societyName);
+        }
+        final poll = bundle.elections[index - 1];
         return FutureBuilder<Map<String, dynamic>?>(
           future: _service.fetchPollRaw(poll.id),
           builder: (context, snap) {
