@@ -10,6 +10,7 @@ import '../../../utils/election_governance.dart';
 import '../../../utils/election_tally.dart';
 import '../../../utils/election_validation.dart';
 import '../../../utils/voting_charter.dart';
+import '../../../utils/voting_charter_pdf.dart';
 
 class ElectionsScreen extends StatefulWidget {
   const ElectionsScreen({super.key, required this.session});
@@ -27,6 +28,7 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
   String? _voterMemberId;
   final _rankings = <String, Map<String, Map<String, int>>>{};
   bool _loading = true;
+  bool _pdfBusy = false;
 
   @override
   void initState() {
@@ -211,6 +213,36 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     );
   }
 
+  Future<void> _downloadCharterPdf(CharterLang lang) async {
+    if (_pdfBusy) return;
+    setState(() => _pdfBusy = true);
+    try {
+      final ok = await downloadOrShareVotingCharterPdf(
+        societyName: widget.session.societyName,
+        lang: lang,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? (lang == CharterLang.hi
+                    ? 'चार्टर PDF तैयार — Save / Share चुनें'
+                    : 'Charter PDF ready — choose Save or Share')
+                : 'Could not prepare charter PDF',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF failed: ${e.toString().replaceFirst('Bad state: ', '')}')),
+      );
+    } finally {
+      if (mounted) setState(() => _pdfBusy = false);
+    }
+  }
+
   Future<void> _volunteer(String pollId, Map<String, dynamic> results) async {
     final name = widget.session.resident.name;
     try {
@@ -258,7 +290,7 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
         leading: Icon(Icons.menu_book_outlined, color: brand.primary),
         title: const Text(votingCharterTitle, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
         subtitle: const Text(
-          'Step-by-step program · share on WhatsApp',
+          'Download PDF (phone) · WhatsApp share',
           style: TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
         ),
         children: [
@@ -272,7 +304,23 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                   runSpacing: 8,
                   children: [
                     FilledButton.tonalIcon(
-                      onPressed: _shareCharter,
+                      onPressed: _pdfBusy ? null : () => _downloadCharterPdf(CharterLang.hi),
+                      icon: _pdfBusy
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.download, size: 18),
+                      label: const Text('हिंदी PDF'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: _pdfBusy ? null : () => _downloadCharterPdf(CharterLang.en),
+                      icon: const Icon(Icons.download, size: 18),
+                      label: const Text('English PDF'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: _pdfBusy ? null : _shareCharter,
                       icon: const Icon(Icons.share, size: 18),
                       label: const Text('Share on WhatsApp'),
                     ),
@@ -280,7 +328,7 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'WhatsApp share uses clear English so every member can read it.',
+                  'On phone or tablet, PDF opens the share sheet — choose Save to Files / Downloads. Hindi PDF embeds Devanagari.',
                   style: TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
                 ),
                 const SizedBox(height: 12),
