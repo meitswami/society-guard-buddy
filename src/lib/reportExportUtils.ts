@@ -17,6 +17,47 @@ export function triggerDownload(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/** True on phones/tablets where `<a download>` with blob URLs often fails (iOS Safari). */
+export function isMobileClient(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return true;
+  // iPadOS 13+ reports as Mac; treat touch Macs as mobile for save UX.
+  if (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua)) return true;
+  return false;
+}
+
+export type SavePdfResult = 'shared' | 'downloaded' | 'opened' | 'cancelled';
+
+/**
+ * Save a PDF on laptop (classic download) or mobile (share sheet → Save to Files / Downloads).
+ * Falls back to opening the PDF in a new tab when share/download is blocked.
+ */
+export async function savePdfToDevice(blob: Blob, filename: string): Promise<SavePdfResult> {
+  const safeName = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
+  const file = new File([blob], safeName, { type: 'application/pdf' });
+
+  // Mobile: Web Share with file is the reliable way to "download" (Save to Files / Downloads).
+  if (isMobileClient() && typeof navigator.share === 'function') {
+    const shareData: ShareData = { files: [file], title: safeName.replace(/\.pdf$/i, '') };
+    if (navigator.canShare?.(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return 'shared';
+      } catch (err) {
+        if ((err as DOMException).name === 'AbortError') return 'cancelled';
+        // Fall through to open/download.
+      }
+    }
+    // iOS often ignores download=; opening the blob lets the user tap Share → Save.
+    openBlobInNewTab(blob, safeName);
+    return 'opened';
+  }
+
+  triggerDownload(blob, safeName);
+  return 'downloaded';
+}
+
 /** Open a blob (e.g. PDF) in a new browser tab for viewing. */
 export function openBlobInNewTab(blob: Blob, filename = 'report.pdf') {
   const url = URL.createObjectURL(blob);

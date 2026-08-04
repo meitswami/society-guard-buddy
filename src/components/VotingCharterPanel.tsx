@@ -11,7 +11,7 @@ import {
   votingCharterPdfFilename,
   votingCharterShareMessage,
 } from '@/lib/votingCharterPdf';
-import { triggerDownload } from '@/lib/reportExportUtils';
+import { savePdfToDevice } from '@/lib/reportExportUtils';
 import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
@@ -60,8 +60,19 @@ const VotingCharterPanel = ({ societyName: societyNameProp }: Props) => {
       if (!blob || blob.size < 100) {
         throw new Error('PDF was empty');
       }
-      triggerDownload(blob, votingCharterPdfFilename(societyName, pdfLang));
-      toast.success(pdfLang === 'hi' ? 'हिंदी चार्टर PDF डाउनलोड हो गया' : 'English charter PDF downloaded');
+      const result = await savePdfToDevice(blob, votingCharterPdfFilename(societyName, pdfLang));
+      if (result === 'cancelled') return;
+      if (result === 'shared') {
+        toast.success(pdfLang === 'hi' ? 'चार्टर PDF सेव / शेयर करें' : 'Use Share to save the charter PDF');
+      } else if (result === 'opened') {
+        toast.success(
+          pdfLang === 'hi'
+            ? 'PDF खुला — Share → Save to Files से सेव करें'
+            : 'PDF opened — use Share → Save to Files to keep it',
+        );
+      } else {
+        toast.success(pdfLang === 'hi' ? 'हिंदी चार्टर PDF डाउनलोड हो गया' : 'English charter PDF downloaded');
+      }
     } catch (err) {
       console.error('Voting charter PDF download failed', err);
       toast.error(
@@ -129,8 +140,8 @@ const VotingCharterPanel = ({ societyName: societyNameProp }: Props) => {
           </div>
           <p className="text-[10px] text-muted-foreground">
             {lang === 'hi'
-              ? 'हिंदी PDF बटन दबाएँ — चार्टर देवनागरी में बनेगा। English PDF अलग से अंग्रेज़ी में डाउनलोड होता है।'
-              : 'Use Hindi PDF for Devanagari charter text. English PDF downloads the English version.'}
+              ? 'लैपटॉप पर फ़ाइल डाउनलोड होती है; मोबाइल पर Share शीट से Save to Files / Downloads चुनें। हिंदी PDF में देवनागरी फ़ॉन्ट एम्बेड है।'
+              : 'On laptop the file downloads directly; on mobile use the share sheet → Save to Files / Downloads. Hindi PDF embeds Devanagari.'}
           </p>
 
           <div className="rounded-lg border border-indigo-500/20 bg-background/40">
