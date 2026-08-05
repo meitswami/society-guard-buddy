@@ -1161,6 +1161,11 @@ const AdminResidentManager = ({
                                 <option value="washerman">Washerman</option>
                                 <option value="newspaper">Newspaper</option>
                                 <option value="driver">Driver</option>
+                                <option value="guard">Guard</option>
+                                <option value="cleaner">Cleaner</option>
+                                <option value="sweeper">Sweeper</option>
+                                <option value="housekeeper">Housekeeper</option>
+                                <option value="mid-servant">Mid-servant</option>
                               </optgroup>
                             </select>
                             <input className="input-field text-xs" placeholder="Age" type="number" value={memberForm.age} onChange={e => setMemberForm({...memberForm, age: e.target.value})} />
@@ -1170,20 +1175,20 @@ const AdminResidentManager = ({
                               <option value="Female">Female</option>
                               <option value="Other">Other</option>
                             </select>
-                            {!restrictedForm && (
-                              <div className="col-span-2 space-y-1">
-                                <p className="text-[10px] font-medium text-muted-foreground uppercase">Profile photo (optional)</p>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <button type="button" onClick={() => pickIdImage('photo')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
-                                    <Camera className="w-3 h-3" /> Upload photo
-                                  </button>
-                                  {memberForm.photo && <span className="text-[10px] text-green-600">✓</span>}
-                                  {memberForm.photo && (
-                                    <img src={memberForm.photo} alt="" className="h-10 w-10 rounded-full object-cover border border-border" />
-                                  )}
-                                </div>
+                            <div className="col-span-2 space-y-1">
+                              <p className="text-[10px] font-medium text-muted-foreground uppercase">
+                                Profile photo (optional — used in elections &amp; committee)
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button type="button" onClick={() => pickIdImage('photo')} className="text-xs px-2 py-1 rounded-lg border border-border flex items-center gap-1">
+                                  <Camera className="w-3 h-3" /> Upload photo
+                                </button>
+                                {memberForm.photo && <span className="text-[10px] text-green-600">✓</span>}
+                                {memberForm.photo && (
+                                  <img src={memberForm.photo} alt="" className="h-10 w-10 rounded-full object-cover border border-border" />
+                                )}
                               </div>
-                            )}
+                            </div>
                             {restrictedForm && (
                               <>
                                 <div className="col-span-2 space-y-1">
