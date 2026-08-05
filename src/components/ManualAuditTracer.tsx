@@ -6,7 +6,6 @@ import {
   AlertTriangle,
   ArrowRight,
   ExternalLink,
-  IndianRupee,
   Loader2,
   MapPin,
   FileText,
@@ -16,7 +15,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { fmtIsoMonthToDisplay, fmtIsoDateToDisplay } from '@/lib/dateFormat';
+import { fmtIsoMonthToDisplay } from '@/lib/dateFormat';
 import type { AdminTab } from '@/lib/adminPermissions';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { MANUAL_AUDIT_METRICS } from '@/lib/descriptiveMetricCopy';
@@ -31,8 +30,9 @@ type TraceSource = 'period_report' | 'flat_report' | 'payments_tab' | 'receipts_
 interface TraceResult {
   source: string;
   computedTotal: number;
-  expectedTotal: number;
-  difference: number;
+  /** null when trace ran without an expected amount */
+  expectedTotal: number | null;
+  difference: number | null;
   findings: TraceFinding[];
 }
 
@@ -59,11 +59,13 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
   const [expandedFinding, setExpandedFinding] = useState<string | null>(null);
 
   const trace = useCallback(async () => {
-    if (!societyId || !expectedAmount || !month) return;
+    if (!societyId || !month) return;
     setRunning(true);
     setResult(null);
 
-    const expected = Number(expectedAmount);
+    const amountTrimmed = expectedAmount.trim();
+    const hasExpected = amountTrimmed !== '' && Number.isFinite(Number(amountTrimmed));
+    const expected = hasExpected ? Number(amountTrimmed) : null;
     const findings: TraceFinding[] = [];
     let findingIdx = 0;
     const addFinding = (f: Omit<TraceFinding, 'id'>) => {
@@ -159,11 +161,174 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
         ? periodReportTotal
         : flatReportTotal;
 
-      const difference = computedTotal - expected;
+      const difference = expected != null ? computedTotal - expected : null;
+      const amountMatches =
+        difference != null && Math.abs(difference) < 1;
 
-      // ─── TRACE THE DISCREPANCY ───
+      // ─── Structural checks (always) + amount match when expected is provided ───
 
-      if (Math.abs(difference) < 1) {
+      // 1. Check for date-boundary payments (payment date in different month than entry_month)
+      const dateBoundaryPayments: any[] = [];
+      for (const p of verifiedPayments) {
+        if (!p.finance_entry_id) continue;
+        const pDate = p.due_date || p.payment_date || p.created_at || '';
+        const pMonth = pDate ? format(new Date(pDate), 'yyyy-MM') : '';
+        const entry = allLedger.find((e) => e.id === p.finance_entry_id);
+        if (!entry) continue;
+        const eMonth = entry.entry_month || '';
+        if (pMonth && eMonth && pMonth !== eMonth) {
+          // Check if either month is our target month
+          if (pMonth === month || eMonth === month) {
+            dateBoundaryPayments.push({ ...p, paymentMonth: pMonth, entryMonth: eMonth, entryTitle: entry.title });
+          }
+        }
+      }
+
+      if (dateBoundaryPayments.length > 0) {
+        const boundaryTotal = dateBoundaryPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+        addFinding({
+          severity: 'error',
+          title: `${dateBoundaryPayments.length} Date-Boundary Payment(s) — ₹${boundaryTotal.toLocaleString('en-IN')}`,
+          description: `These payments have due_date in one month but their finance_entry has entry_month in a different month. This causes the payment to appear in one report but the ledger entry in another.`,
+          origin: 'Finance → Payments tab. The payment due_date does not match the finance_entry entry_month.',
+          navigateTo: 'finance',
+          navigateLabel: 'Go to Payments',
+          data: {
+            payments: dateBoundaryPayments.slice(0, 10).map((p) => ({
+              id: p.id.slice(0, 8),
+              flat: p.flat_number,
+              amount: p.amount,
+              paymentMonth: p.paymentMonth,
+              entryMonth: p.entryMonth,
+              method: p.payment_method,
+            })),
+          },
+        });
+      }
+
+      // 2. Check for unlinked ledger entries adding extra receipts
+      if (unlinkedLedgerInMonth.length > 0) {
+        const unlinkedTotal = unlinkedLedgerInMonth.reduce((s, e) => s + Number(e.total_amount || 0), 0);
+        addFinding({
+          severity: 'error',
+          title: `${unlinkedLedgerInMonth.length} Unlinked Ledger Entry/Entries — ₹${unlinkedTotal.toLocaleString('en-IN')}`,
+          description: `These finance_entries have no linked maintenance_payments. The period report counts their total_amount as additional receipts, inflating the total.`,
+          origin: 'Finance → Receipts tab. These entries exist in the ledger but have no corresponding payment records.',
+          navigateTo: 'finance',
+          navigateLabel: 'Go to Receipts',
+          data: {
+            entries: unlinkedLedgerInMonth.slice(0, 10).map((e) => ({
+              id: e.id.slice(0, 8),
+              title: e.title,
+              amount: e.total_amount,
+              mode: e.record_mode,
+              destination: e.destination,
+              entryMonth: e.entry_month,
+            })),
+          },
+        });
+      }
+
+      // 3. Check for duplicate payments in this month
+      const dupeKey = (p: any) => {
+        const d = p.due_date || p.payment_date || p.created_at || '';
+        const monthKey = d ? format(new Date(d), 'yyyy-MM') : 'unknown';
+        const ch = normalizePaymentChannel(p.payment_method);
+        return `${p.flat_number}||${p.charge_id}||${monthKey}||${ch}`;
+      };
+      const dupeGroups = new Map<string, any[]>();
+      for (const p of periodPayments) {
+        const key = dupeKey(p);
+        if (!dupeGroups.has(key)) dupeGroups.set(key, []);
+        dupeGroups.get(key)!.push(p);
+      }
+      const dupes = [...dupeGroups.entries()].filter(([, g]) => g.length > 1);
+      if (dupes.length > 0) {
+        const dupeTotal = dupes.reduce((s, [, g]) => s + g.slice(1).reduce((ss, p) => ss + Number(p.amount || 0), 0), 0);
+        addFinding({
+          severity: 'error',
+          title: `${dupes.length} Duplicate Payment Group(s) — ₹${dupeTotal.toLocaleString('en-IN')} extra`,
+          description: `Same flat + same charge + same channel recorded multiple times in ${fmtIsoMonthToDisplay(month)}.`,
+          origin: 'Finance → Payments tab. Delete the duplicate entries.',
+          navigateTo: 'audit',
+          navigateLabel: 'Go to Duplicate Alarms',
+          data: {
+            duplicates: dupes.slice(0, 5).map(([key, g]) => ({
+              flat: key.split('||')[0],
+              count: g.length,
+              totalAmount: g.reduce((s, p) => s + Number(p.amount || 0), 0),
+            })),
+          },
+        });
+      }
+
+      // 4. Check for payments with wrong amount vs charge definition
+      const wrongAmountPayments: any[] = [];
+      for (const p of periodPayments) {
+        const charge = chargeMap.get(p.charge_id);
+        if (!charge || (charge.frequency ?? '').toLowerCase() !== 'monthly') continue;
+        const chargeExpected = Number(charge.amount || 0);
+        const actual = Number(p.amount || 0);
+        if (chargeExpected > 0 && Math.abs(actual - chargeExpected) > 1) {
+          wrongAmountPayments.push({ ...p, expectedAmount: chargeExpected, chargeTitle: charge.title });
+        }
+      }
+      if (wrongAmountPayments.length > 0) {
+        const amtDiff = wrongAmountPayments.reduce((s, p) => s + (Number(p.amount) - p.expectedAmount), 0);
+        addFinding({
+          severity: 'warning',
+          title: `${wrongAmountPayments.length} Payment(s) with Non-Standard Amount — ₹${Math.abs(amtDiff).toLocaleString('en-IN')} ${amtDiff > 0 ? 'over' : 'under'}`,
+          description: `These payments have a different amount than the charge definition. Could be partial payments, penalties, or data entry errors.`,
+          origin: 'Finance → Payments tab. Compare each payment amount against the charge definition.',
+          navigateTo: 'finance',
+          navigateLabel: 'Go to Payments',
+          data: {
+            payments: wrongAmountPayments.slice(0, 10).map((p) => ({
+              flat: p.flat_number,
+              recorded: p.amount,
+              expected: p.expectedAmount,
+              charge: p.chargeTitle,
+              diff: Number(p.amount) - p.expectedAmount,
+            })),
+          },
+        });
+      }
+
+      // 5. Check for orphaned payments (no finance_entry_id) in this month
+      const orphansInMonth = periodPayments.filter((p) => !p.finance_entry_id);
+      if (orphansInMonth.length > 0) {
+        const orphanTotal = orphansInMonth.reduce((s, p) => s + Number(p.amount || 0), 0);
+        addFinding({
+          severity: 'warning',
+          title: `${orphansInMonth.length} Orphaned Payment(s) — ₹${orphanTotal.toLocaleString('en-IN')}`,
+          description: `These payments have no linked finance_entry. They are counted in totals but lack a ledger trail, which can cause flat report vs period report mismatch.`,
+          origin: 'Finance → Payments tab. These need to be re-recorded properly or linked to a ledger entry.',
+          navigateTo: 'finance',
+          navigateLabel: 'Go to Payments',
+          data: {
+            count: orphansInMonth.length,
+            total: orphanTotal,
+            flats: [...new Set(orphansInMonth.map((p) => p.flat_number))].slice(0, 10),
+          },
+        });
+      }
+
+      // 6. Check period report vs flat report discrepancy
+      const reportDiff = Math.abs(periodReportTotal - flatReportTotal);
+      if (reportDiff > 1) {
+        addFinding({
+          severity: 'warning',
+          title: `Period Report vs Flat Report Mismatch — ₹${reportDiff.toLocaleString('en-IN')}`,
+          description: `Period report shows ₹${periodReportTotal.toLocaleString('en-IN')} but flat report shows ₹${flatReportTotal.toLocaleString('en-IN')} for ${fmtIsoMonthToDisplay(month)}.`,
+          origin: 'Reports → Financial: compare head-wise and flat-wise views for this month.',
+          navigateTo: 'report',
+          navigateLabel: 'Go to Reports',
+          data: { periodReport: periodReportTotal, flatReport: flatReportTotal, difference: reportDiff },
+        });
+      }
+
+      // 7. Amount comparison / clean scan summary
+      if (expected != null && amountMatches && findings.length === 0) {
         addFinding({
           severity: 'info',
           title: 'No discrepancy detected',
@@ -172,183 +337,29 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
           navigateTo: 'finance',
           navigateLabel: 'Open Finance',
         });
-      } else {
-        // 1. Check for date-boundary payments (payment date in different month than entry_month)
-        const dateBoundaryPayments: any[] = [];
-        for (const p of verifiedPayments) {
-          if (!p.finance_entry_id) continue;
-          const pDate = p.due_date || p.payment_date || p.created_at || '';
-          const pMonth = pDate ? format(new Date(pDate), 'yyyy-MM') : '';
-          const entry = allLedger.find((e) => e.id === p.finance_entry_id);
-          if (!entry) continue;
-          const eMonth = entry.entry_month || '';
-          if (pMonth && eMonth && pMonth !== eMonth) {
-            // Check if either month is our target month
-            if (pMonth === month || eMonth === month) {
-              dateBoundaryPayments.push({ ...p, paymentMonth: pMonth, entryMonth: eMonth, entryTitle: entry.title });
-            }
-          }
-        }
+      } else if (expected != null && difference != null && Math.abs(difference) > 1) {
+        const breakdown: string[] = [];
+        if (dateBoundaryPayments.length > 0) breakdown.push(`Date-boundary: ₹${dateBoundaryPayments.reduce((s, p) => s + Number(p.amount || 0), 0).toLocaleString('en-IN')}`);
+        if (unlinkedLedgerInMonth.length > 0) breakdown.push(`Unlinked ledger: ₹${unlinkedLedgerInMonth.reduce((s, e) => s + Number(e.total_amount || 0), 0).toLocaleString('en-IN')}`);
+        if (dupes.length > 0) breakdown.push(`Duplicates: ₹${dupes.reduce((s, [, g]) => s + g.slice(1).reduce((ss, p) => ss + Number(p.amount || 0), 0), 0).toLocaleString('en-IN')}`);
 
-        if (dateBoundaryPayments.length > 0) {
-          const boundaryTotal = dateBoundaryPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
-          addFinding({
-            severity: 'error',
-            title: `${dateBoundaryPayments.length} Date-Boundary Payment(s) — ₹${boundaryTotal.toLocaleString('en-IN')}`,
-            description: `These payments have due_date in one month but their finance_entry has entry_month in a different month. This causes the payment to appear in one report but the ledger entry in another.`,
-            origin: 'Finance → Payments tab. The payment due_date does not match the finance_entry entry_month.',
-            navigateTo: 'finance',
-            navigateLabel: 'Go to Payments',
-            data: {
-              payments: dateBoundaryPayments.slice(0, 10).map((p) => ({
-                id: p.id.slice(0, 8),
-                flat: p.flat_number,
-                amount: p.amount,
-                paymentMonth: p.paymentMonth,
-                entryMonth: p.entryMonth,
-                method: p.payment_method,
-              })),
-            },
-          });
-        }
-
-        // 2. Check for unlinked ledger entries adding extra receipts
-        if (unlinkedLedgerInMonth.length > 0) {
-          const unlinkedTotal = unlinkedLedgerInMonth.reduce((s, e) => s + Number(e.total_amount || 0), 0);
-          addFinding({
-            severity: 'error',
-            title: `${unlinkedLedgerInMonth.length} Unlinked Ledger Entry/Entries — ₹${unlinkedTotal.toLocaleString('en-IN')}`,
-            description: `These finance_entries have no linked maintenance_payments. The period report counts their total_amount as additional receipts, inflating the total.`,
-            origin: 'Finance → Receipts tab. These entries exist in the ledger but have no corresponding payment records.',
-            navigateTo: 'finance',
-            navigateLabel: 'Go to Receipts',
-            data: {
-              entries: unlinkedLedgerInMonth.slice(0, 10).map((e) => ({
-                id: e.id.slice(0, 8),
-                title: e.title,
-                amount: e.total_amount,
-                mode: e.record_mode,
-                destination: e.destination,
-                entryMonth: e.entry_month,
-              })),
-            },
-          });
-        }
-
-        // 3. Check for duplicate payments in this month
-        const dupeKey = (p: any) => {
-          const d = p.due_date || p.payment_date || p.created_at || '';
-          const month = d ? format(new Date(d), 'yyyy-MM') : 'unknown';
-          const ch = normalizePaymentChannel(p.payment_method);
-          return `${p.flat_number}||${p.charge_id}||${month}||${ch}`;
-        };
-        const dupeGroups = new Map<string, any[]>();
-        for (const p of periodPayments) {
-          const key = dupeKey(p);
-          if (!dupeGroups.has(key)) dupeGroups.set(key, []);
-          dupeGroups.get(key)!.push(p);
-        }
-        const dupes = [...dupeGroups.entries()].filter(([, g]) => g.length > 1);
-        if (dupes.length > 0) {
-          const dupeTotal = dupes.reduce((s, [, g]) => s + g.slice(1).reduce((ss, p) => ss + Number(p.amount || 0), 0), 0);
-          addFinding({
-            severity: 'error',
-            title: `${dupes.length} Duplicate Payment Group(s) — ₹${dupeTotal.toLocaleString('en-IN')} extra`,
-            description: `Same flat + same charge + same channel recorded multiple times in ${fmtIsoMonthToDisplay(month)}.`,
-            origin: 'Finance → Payments tab. Delete the duplicate entries.',
-            navigateTo: 'audit',
-            navigateLabel: 'Go to Duplicate Alarms',
-            data: {
-              duplicates: dupes.slice(0, 5).map(([key, g]) => ({
-                flat: key.split('||')[0],
-                count: g.length,
-                totalAmount: g.reduce((s, p) => s + Number(p.amount || 0), 0),
-              })),
-            },
-          });
-        }
-
-        // 4. Check for payments with wrong amount vs charge definition
-        const wrongAmountPayments: any[] = [];
-        for (const p of periodPayments) {
-          const charge = chargeMap.get(p.charge_id);
-          if (!charge || (charge.frequency ?? '').toLowerCase() !== 'monthly') continue;
-          const expected = Number(charge.amount || 0);
-          const actual = Number(p.amount || 0);
-          if (expected > 0 && Math.abs(actual - expected) > 1) {
-            wrongAmountPayments.push({ ...p, expectedAmount: expected, chargeTitle: charge.title });
-          }
-        }
-        if (wrongAmountPayments.length > 0) {
-          const amtDiff = wrongAmountPayments.reduce((s, p) => s + (Number(p.amount) - p.expectedAmount), 0);
-          addFinding({
-            severity: 'warning',
-            title: `${wrongAmountPayments.length} Payment(s) with Non-Standard Amount — ₹${Math.abs(amtDiff).toLocaleString('en-IN')} ${amtDiff > 0 ? 'over' : 'under'}`,
-            description: `These payments have a different amount than the charge definition. Could be partial payments, penalties, or data entry errors.`,
-            origin: 'Finance → Payments tab. Compare each payment amount against the charge definition.',
-            navigateTo: 'finance',
-            navigateLabel: 'Go to Payments',
-            data: {
-              payments: wrongAmountPayments.slice(0, 10).map((p) => ({
-                flat: p.flat_number,
-                recorded: p.amount,
-                expected: p.expectedAmount,
-                charge: p.chargeTitle,
-                diff: Number(p.amount) - p.expectedAmount,
-              })),
-            },
-          });
-        }
-
-        // 5. Check for orphaned payments (no finance_entry_id) in this month
-        const orphansInMonth = periodPayments.filter((p) => !p.finance_entry_id);
-        if (orphansInMonth.length > 0) {
-          const orphanTotal = orphansInMonth.reduce((s, p) => s + Number(p.amount || 0), 0);
-          addFinding({
-            severity: 'warning',
-            title: `${orphansInMonth.length} Orphaned Payment(s) — ₹${orphanTotal.toLocaleString('en-IN')}`,
-            description: `These payments have no linked finance_entry. They are counted in totals but lack a ledger trail, which can cause flat report vs period report mismatch.`,
-            origin: 'Finance → Payments tab. These need to be re-recorded properly or linked to a ledger entry.',
-            navigateTo: 'finance',
-            navigateLabel: 'Go to Payments',
-            data: {
-              count: orphansInMonth.length,
-              total: orphanTotal,
-              flats: [...new Set(orphansInMonth.map((p) => p.flat_number))].slice(0, 10),
-            },
-          });
-        }
-
-        // 6. Check period report vs flat report discrepancy
-        const reportDiff = Math.abs(periodReportTotal - flatReportTotal);
-        if (reportDiff > 1) {
-          addFinding({
-            severity: 'warning',
-            title: `Period Report vs Flat Report Mismatch — ₹${reportDiff.toLocaleString('en-IN')}`,
-            description: `Period report shows ₹${periodReportTotal.toLocaleString('en-IN')} but flat report shows ₹${flatReportTotal.toLocaleString('en-IN')} for ${fmtIsoMonthToDisplay(month)}.`,
-            origin: 'Reports → Financial: compare head-wise and flat-wise views for this month.',
-            navigateTo: 'report',
-            navigateLabel: 'Go to Reports',
-            data: { periodReport: periodReportTotal, flatReport: flatReportTotal, difference: reportDiff },
-          });
-        }
-
-        // 7. Summary: breakdown of where the excess/deficit comes from
-        if (Math.abs(difference) > 1) {
-          const breakdown: string[] = [];
-          if (dateBoundaryPayments.length > 0) breakdown.push(`Date-boundary: ₹${dateBoundaryPayments.reduce((s, p) => s + Number(p.amount || 0), 0).toLocaleString('en-IN')}`);
-          if (unlinkedLedgerInMonth.length > 0) breakdown.push(`Unlinked ledger: ₹${unlinkedLedgerInMonth.reduce((s, e) => s + Number(e.total_amount || 0), 0).toLocaleString('en-IN')}`);
-          if (dupes.length > 0) breakdown.push(`Duplicates: ₹${dupes.reduce((s, [, g]) => s + g.slice(1).reduce((ss, p) => ss + Number(p.amount || 0), 0), 0).toLocaleString('en-IN')}`);
-
-          addFinding({
-            severity: 'info',
-            title: `Discrepancy Breakdown: ${difference > 0 ? '+' : ''}₹${difference.toLocaleString('en-IN')}`,
-            description: `System shows ₹${computedTotal.toLocaleString('en-IN')}, you expected ₹${expected.toLocaleString('en-IN')}. Possible sources: ${breakdown.length > 0 ? breakdown.join(' + ') : 'Could not pinpoint — check individual payments manually.'}`,
-            origin: 'Multiple sources may contribute. Expand findings above for details.',
-            navigateTo: 'finance',
-            navigateLabel: 'Open Finance Module',
-          });
-        }
+        addFinding({
+          severity: 'info',
+          title: `Discrepancy Breakdown: ${difference > 0 ? '+' : ''}₹${difference.toLocaleString('en-IN')}`,
+          description: `System shows ₹${computedTotal.toLocaleString('en-IN')}, you expected ₹${expected.toLocaleString('en-IN')}. Possible sources: ${breakdown.length > 0 ? breakdown.join(' + ') : 'Could not pinpoint — check individual payments manually.'}`,
+          origin: 'Multiple sources may contribute. Expand findings above for details.',
+          navigateTo: 'finance',
+          navigateLabel: 'Open Finance Module',
+        });
+      } else if (expected == null && findings.length === 0) {
+        addFinding({
+          severity: 'info',
+          title: 'No structural issues found',
+          description: `Scanned ${fmtIsoMonthToDisplay(month)} without an expected amount. System ${source.replace(/_/g, ' ')} total is ₹${computedTotal.toLocaleString('en-IN')}. Enter an expected collection to compare against bank/manual figures.`,
+          origin: 'Structural checks only — date-boundary, unlinked ledger, duplicates, orphans, report mismatch.',
+          navigateTo: 'finance',
+          navigateLabel: 'Open Finance',
+        });
       }
 
       setResult({
@@ -363,7 +374,7 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
         source: source.replace(/_/g, ' '),
         computedTotal: 0,
         expectedTotal: expected,
-        difference: 0,
+        difference: expected != null ? 0 : null,
         findings: [{
           id: 'err',
           severity: 'error',
@@ -389,7 +400,7 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
         <div>
           <h3 className="text-sm font-semibold">Manual Discrepancy Tracer</h3>
           <p className="text-[10px] text-muted-foreground">
-            Enter the expected amount and let the system trace where the mistake originates
+            Pick a month to scan for recording issues — optionally enter an expected amount to compare
           </p>
         </div>
       </div>
@@ -423,23 +434,23 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
         </div>
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-            Actual / Expected Collection (₹)
+            Actual / Expected Collection (₹) — optional
           </label>
           <input
             type="number"
             className="input-field mt-0.5 text-sm font-mono"
-            placeholder="e.g. 72500"
+            placeholder="Leave blank to scan without money"
             value={expectedAmount}
             onChange={(e) => setExpectedAmount(e.target.value)}
           />
           <p className="text-[9px] text-muted-foreground mt-0.5">
-            Enter the amount you believe is correct (from bank statement, manual count, etc.)
+            Optional. Enter a bank/manual figure to compare; leave empty to find structural issues only.
           </p>
         </div>
         <button
           type="button"
           onClick={() => void trace()}
-          disabled={running || !expectedAmount || !month || !societyId}
+          disabled={running || !month || !societyId}
           className="w-full px-4 py-2.5 rounded-lg bg-amber-500 text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-amber-600 transition-colors"
         >
           {running ? (
@@ -454,39 +465,51 @@ const ManualAuditTracer = ({ onNavigate }: Props) => {
       {result && (
         <div className="space-y-3">
           {/* Summary card */}
-          <div className={`grid grid-cols-3 gap-2 ${Math.abs(result.difference) < 1 ? '' : ''}`}>
-            <DescriptiveStatCard
-              {...MANUAL_AUDIT_METRICS.computedTotal}
-              caption={`System (${result.source})`}
-              value={`₹${result.computedTotal.toLocaleString('en-IN')}`}
-              valueClassName="text-base font-mono"
-              className={`!p-2.5 ${Math.abs(result.difference) < 1 ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}
-            />
-            {Math.abs(result.difference) < 1 ? (
+          {result.expectedTotal != null && result.difference != null ? (
+            <div className="grid grid-cols-3 gap-2">
               <DescriptiveStatCard
-                {...MANUAL_AUDIT_METRICS.match}
-                caption="Match"
-                value={<CheckCircle2 className="w-6 h-6 text-green-500 mx-auto" />}
-                className="!p-2.5 border-green-500/30 bg-green-500/5 items-center text-center"
-                contentAlign="center"
+                {...MANUAL_AUDIT_METRICS.computedTotal}
+                caption={`System (${result.source})`}
+                value={`₹${result.computedTotal.toLocaleString('en-IN')}`}
+                valueClassName="text-base font-mono"
+                className={`!p-2.5 ${Math.abs(result.difference) < 1 ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}
               />
-            ) : (
+              {Math.abs(result.difference) < 1 ? (
+                <DescriptiveStatCard
+                  {...MANUAL_AUDIT_METRICS.match}
+                  caption="Match"
+                  value={<CheckCircle2 className="w-6 h-6 text-green-500 mx-auto" />}
+                  className="!p-2.5 border-green-500/30 bg-green-500/5 items-center text-center"
+                  contentAlign="center"
+                />
+              ) : (
+                <DescriptiveStatCard
+                  {...MANUAL_AUDIT_METRICS.difference}
+                  caption={result.difference > 0 ? 'Over-reported' : 'Under-reported'}
+                  value={`${result.difference > 0 ? '+' : ''}₹${result.difference.toLocaleString('en-IN')}`}
+                  valueClassName={`text-base font-mono ${result.difference > 0 ? 'text-destructive' : 'text-amber-600'}`}
+                  className="!p-2.5 border-amber-500/30 bg-amber-500/5"
+                />
+              )}
               <DescriptiveStatCard
-                {...MANUAL_AUDIT_METRICS.difference}
-                caption={result.difference > 0 ? 'Over-reported' : 'Under-reported'}
-                value={`${result.difference > 0 ? '+' : ''}₹${result.difference.toLocaleString('en-IN')}`}
-                valueClassName={`text-base font-mono ${result.difference > 0 ? 'text-destructive' : 'text-amber-600'}`}
-                className="!p-2.5 border-amber-500/30 bg-amber-500/5"
+                {...MANUAL_AUDIT_METRICS.expectedTotal}
+                caption="Expected (yours)"
+                value={`₹${result.expectedTotal.toLocaleString('en-IN')}`}
+                valueClassName="text-base font-mono"
+                className={`!p-2.5 ${Math.abs(result.difference) < 1 ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}
               />
-            )}
-            <DescriptiveStatCard
-              {...MANUAL_AUDIT_METRICS.expectedTotal}
-              caption="Expected (yours)"
-              value={`₹${result.expectedTotal.toLocaleString('en-IN')}`}
-              valueClassName="text-base font-mono"
-              className={`!p-2.5 ${Math.abs(result.difference) < 1 ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}
-            />
-          </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2">
+              <DescriptiveStatCard
+                {...MANUAL_AUDIT_METRICS.computedTotal}
+                caption={`System (${result.source}) — structural scan`}
+                value={`₹${result.computedTotal.toLocaleString('en-IN')}`}
+                valueClassName="text-base font-mono"
+                className="!p-2.5 border-blue-500/20 bg-blue-500/5"
+              />
+            </div>
+          )}
 
           {/* Findings with navigation */}
           {result.findings.map((f) => (

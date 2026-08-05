@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +21,7 @@ export function PersonPhotoSide({
   name: string;
   photo?: string | null;
   size?: Size;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';

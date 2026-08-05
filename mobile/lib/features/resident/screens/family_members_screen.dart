@@ -190,7 +190,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
         phone: phoneCtrl.text.trim(),
         age: age,
         photo: photo,
-        householdGroup: isStaff ? 'staff' : 'family',
+        householdGroup: 'owner',
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -9,6 +9,7 @@ import '../../../services/member_service.dart';
 import '../../../utils/election_governance.dart';
 import '../../../utils/election_tally.dart';
 import '../../../utils/election_validation.dart';
+import '../../../utils/member_photo.dart';
 import '../../../widgets/voting_charter_card.dart';
 
 class ElectionsScreen extends StatefulWidget {
@@ -26,6 +27,7 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
   ElectionBundle? _bundle;
   String? _voterMemberId;
   final _rankings = <String, Map<String, Map<String, int>>>{};
+  Map<String, String> _photoByMemberId = {};
   bool _loading = true;
 
   @override
@@ -56,9 +58,16 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
       }
     }
 
+    final memberIds = bundle.options
+        .map((o) => o['member_id'] as String?)
+        .whereType<String>()
+        .toList();
+    final photos = await _memberService.fetchPhotosByIds(memberIds);
+
     setState(() {
       _voterMemberId = member?.id;
       _bundle = bundle;
+      _photoByMemberId = photos;
       _rankings
         ..clear()
         ..addAll(ranks);
@@ -413,17 +422,36 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                       const SizedBox(height: 6),
                       ...opts.map((o) {
                         final statement = o['nomination_statement'] as String?;
+                        final name = o['option_text'] as String? ?? '';
+                        final mid = o['member_id'] as String?;
+                        final photo = mid != null ? _photoByMemberId[mid] : null;
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Column(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                '· ${o['option_text']} (${postDisplay[o['election_post']] ?? o['election_post']})',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              memberPhotoAvatar(
+                                name: name,
+                                photo: photo,
+                                backgroundColor: brand.primary.withValues(alpha: 0.12),
+                                foregroundColor: brand.primary,
+                                radius: 20,
                               ),
-                              if (statement != null && statement.isNotEmpty)
-                                Text(statement, style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '$name (${postDisplay[o['election_post']] ?? o['election_post']})',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                    if (statement != null && statement.isNotEmpty)
+                                      Text(statement,
+                                          style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted)),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -439,34 +467,52 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                           final m = opts.where((x) => x['election_post'] == post).length;
                           final current = _rankings[poll.id]?[post]?[id];
                           final statement = o['nomination_statement'] as String?;
+                          final name = o['option_text'] as String? ?? '';
+                          final mid = o['member_id'] as String?;
+                          final photo = mid != null ? _photoByMemberId[mid] : null;
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Column(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(child: Text(o['option_text'] as String? ?? '')),
-                                    SizedBox(
-                                      width: 72,
-                                      child: DropdownButtonFormField<int>(
-                                        initialValue: current,
-                                        decoration: const InputDecoration(isDense: true, labelText: 'Rank'),
-                                        items: List.generate(
-                                          m,
-                                          (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}')),
-                                        ),
-                                        onChanged: open ? (v) => _setRank(poll.id, post, id, v) : null,
-                                      ),
-                                    ),
-                                  ],
+                                memberPhotoAvatar(
+                                  name: name,
+                                  photo: photo,
+                                  backgroundColor: brand.primary.withValues(alpha: 0.12),
+                                  foregroundColor: brand.primary,
+                                  radius: 20,
                                 ),
-                                if (statement != null && statement.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Text(statement,
-                                        style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted)),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(child: Text(name)),
+                                          SizedBox(
+                                            width: 72,
+                                            child: DropdownButtonFormField<int>(
+                                              initialValue: current,
+                                              decoration: const InputDecoration(isDense: true, labelText: 'Rank'),
+                                              items: List.generate(
+                                                m,
+                                                (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}')),
+                                              ),
+                                              onChanged: open ? (v) => _setRank(poll.id, post, id, v) : null,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (statement != null && statement.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
+                                          child: Text(statement,
+                                              style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted)),
+                                        ),
+                                    ],
                                   ),
+                                ),
                               ],
                             ),
                           );

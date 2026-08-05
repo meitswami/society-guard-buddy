@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -7,6 +6,7 @@ import '../../../core/theme/kutumbika_colors.dart';
 import '../../../models/committee_duty.dart';
 import '../../../models/committee_member.dart';
 import '../../../models/session_models.dart';
+import '../../../utils/member_photo.dart';
 import '../../../services/committee_duty_service.dart';
 import '../../../services/committee_service.dart';
 
@@ -152,14 +152,11 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
                             return Column(
                               children: [
                                 ListTile(
-                                  leading: CircleAvatar(
+                                  leading: memberPhotoAvatar(
+                                    name: displayName,
+                                    photo: photo,
                                     backgroundColor: brand.primary.withValues(alpha: 0.12),
-                                    backgroundImage: photo != null && photo.isNotEmpty
-                                        ? CachedNetworkImageProvider(photo)
-                                        : null,
-                                    child: photo == null || photo.isEmpty
-                                        ? Icon(Icons.person, color: brand.primary)
-                                        : null,
+                                    foregroundColor: brand.primary,
                                   ),
                                   title: Text(displayName),
                                   subtitle: Column(

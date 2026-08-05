@@ -129,7 +129,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.onboard.genderOptional': { en: 'Gender (optional)', hi: 'लिंग (वैकल्पिक)' },
   'login.onboard.nameRequired': { en: 'Name is required', hi: 'नाम आवश्यक है' },
   'login.onboard.saveFailed': { en: 'Could not save', hi: 'सहेजा नहीं जा सका' },
-  'login.onboard.noPrimaryTitle': { en: 'Household not set up', hi: 'परिवार सेट नहीं है' },
+  'login.onboard.noPrimaryTitle': { en: 'Household not set up', hi: 'परिवार निर्धारित नहीं है' },
   'login.onboard.noPrimaryBody': {
     en: 'Ask your society administrator to add household members for this flat.',
     hi: 'कृपया प्रशासक से इस फ्लैट के लिए सदस्य जोड़ने को कहें।',
@@ -200,7 +200,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'resident.mandatoryBioTitle': { en: 'Enable fingerprint login?', hi: 'फ़िंगरप्रिंट प्रवेश चालू करें?' },
   'resident.mandatoryBioBody': {
     en: 'Use your device biometric or screen lock to sign in faster next time. You can also set this later under Profile.',
-    hi: 'अगली बार तेज़ प्रवेश के लिए उपकरण की जैवमितीय या पटल ताला उपयोग करें। व्यक्तिगत विवरण में बाद में भी सेट कर सकते हैं।',
+    hi: 'अगली बार तेज़ प्रवेश के लिए उपकरण की जैवमितीय या पटल ताला उपयोग करें। व्यक्तिगत विवरण में बाद में भी निर्धारित कर सकते हैं।',
   },
   'resident.demo': { en: 'Demo: 9876543210 / resident123', hi: 'नमूना: 9876543210 / resident123' },
   'resident.approvals': { en: 'Approvals', hi: 'अनुमोदन' },
@@ -253,7 +253,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'nav.emergency': { en: 'Alert', hi: 'अलर्ट' },
   'nav.directory': { en: 'Directory', hi: 'निर्देशिका' },
   'nav.report': { en: 'REPORTS', hi: 'प्रतिवेदन्स' },
-  'nav.logs': { en: 'Logs', hi: 'लॉग्स' },
+  'nav.logs': { en: 'Logs', hi: 'अभिलेख' },
   'nav.settings': { en: 'Settings', hi: 'सेटिंग्स' },
   'nav.tour': { en: 'Tour', hi: 'मार्गदर्शन' },
   'nav.duty': { en: 'Duty', hi: 'कर्तव्य' },
@@ -456,7 +456,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.guard.s4.title': { en: 'Settings & shift', hi: 'सेटिंग्स और पारी' },
   'tour.guard.s4.body': {
     en: 'Theme, language, biometric shortcuts, and end-of-shift logout live here. Always end your shift when handing over the device.',
-    hi: 'थीम, भाषा, जैवमितीय, लॉग आउट यहाँ। उपकरण सौंपते समय पारी समाप्त करें।',
+    hi: 'रूपरंग, भाषा, जैवमितीय, निर्गमन यहाँ। उपकरण सौंपते समय पारी समाप्त करें।',
   },
 
   'tour.ch.resident.welcome': { en: 'Resident home', hi: 'निवासी मुख्य पृष्ठ' },
@@ -526,7 +526,7 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Create or edit societies, upload photos, define numbering, and trim stray flats after range changes.',
     hi: 'सोसाइटी बनाएँ/संपादित करें, फोटो, नंबरिंग, सीमा बदलने पर अतिरिक्त फ्लैट ट्रिम।',
   },
-  'tour.super.s3.title': { en: 'Custom roles', hi: 'कस्टम भूमिकाएँ' },
+  'tour.super.s3.title': { en: 'Custom roles', hi: 'अनुकूलित भूमिकाएँ' },
   'tour.super.s3.body': {
     en: 'Define role names per society and attach granular admin permissions — treasurer vs secretary vs guard supervisor.',
     hi: 'प्रति सोसाइटी भूमिका नाम और विस्तृत प्रशासक अनुमतियाँ — कोषाध्यक्ष, सचिव आदि।',
@@ -534,7 +534,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'tour.super.s4.title': { en: 'Admins', hi: 'प्रशासक' },
   'tour.super.s4.body': {
     en: 'Provision society admins, assign roles, and keep recovery email ready for password resets.',
-    hi: 'सोसाइटी प्रशासक बनाएँ, भूमिका दें, कूटशब्द रीसेट के लिए पुनर्प्राप्ति ई-मेल रखें।',
+    hi: 'सोसाइटी प्रशासक बनाएँ, भूमिका दें, कूटशब्द पुनः निर्धारित करने के लिए पुनर्प्राप्ति ई-मेल रखें।',
   },
   'tour.super.s5.title': { en: 'Maintenance', hi: 'रखरखाव' },
   'tour.super.s5.body': {
@@ -661,7 +661,7 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Generate printable summaries for any date — great for committee meetings.',
     hi: 'किसी भी तारीख के लिए प्रिंट योग्य सारांश।',
   },
-  'tour.admin.rp2.title': { en: 'Logs', hi: 'लॉग' },
+  'tour.admin.rp2.title': { en: 'Logs', hi: 'अभिलेख' },
   'tour.admin.rp2.body': {
     en: 'Deep search across visitor rows with filters for category and guard.',
     hi: 'आगंतुक अभिलेख में गहरी खोज, श्रेणी/गार्ड छानबीन।',
@@ -808,7 +808,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'directory.lastVisit': { en: 'Last visit', hi: 'अंतिम विज़िट' },
 
   // Logs
-  'logs.title': { en: 'Logs', hi: 'लॉग्स' },
+  'logs.title': { en: 'Logs', hi: 'अभिलेख' },
   'logs.subtitle': { en: 'Search & export records', hi: 'अभिलेख खोजें और निर्यात करें' },
   'logs.searchPlaceholder': { en: 'Name, phone, flat, vehicle, guard...', hi: 'नाम, फोन, फ्लैट, वाहन, गार्ड...' },
   'logs.noRecords': { en: 'No records found', hi: 'कोई अभिलेख नहीं मिला' },
@@ -853,7 +853,7 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'No society payment splits in this month.',
     hi: 'इस माह कोई समाज भुगतान स्प्लिट नहीं।',
   },
-  'report.colMode': { en: 'Mode', hi: 'मोड' },
+  'report.colMode': { en: 'Mode', hi: 'विधि' },
   'report.colDestination': { en: 'Destination', hi: 'गंतव्य' },
   'report.colEntries': { en: 'Entries', hi: 'प्रविष्टियाँ' },
   'report.colAmount': { en: 'Amount', hi: 'राशि' },
@@ -870,7 +870,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'report.searchTitle': { en: 'Search report data', hi: 'प्रतिवेदन डेटा खोजें' },
   'report.searchPlaceholderFinancial': {
     en: 'Flat, amount, mode, destination, txn id, notes…',
-    hi: 'फ्लैट, राशि, मोड, गंतव्य, ट्रांज़ैक्शन पहचान, नोट्स…',
+    hi: 'फ्लैट, राशि, विधि, गंतव्य, लेनदेन पहचान, टिप्पणियाँ…',
   },
   'report.searchPlaceholderVisitor': {
     en: 'Name, phone, flat, vehicle, guard, purpose…',
@@ -892,11 +892,11 @@ const translations: Record<string, Record<Lang, string>> = {
   'swal.confirmDelete': { en: 'Delete?', hi: 'हटाएं?' },
   'swal.confirmDeleteText': { en: 'This action cannot be undone.', hi: 'यह क्रिया पूर्ववत नहीं की जा सकती।' },
   'swal.confirmLogout': { en: 'End Shift?', hi: 'पारी समाप्त करें?' },
-  'swal.confirmLogoutText': { en: 'You will be logged out of the system.', hi: 'आप सिस्टम से लॉग आउट हो जाएंगे।' },
+  'swal.confirmLogoutText': { en: 'You will be logged out of the system.', hi: 'आप प्रणाली से बाहर निकल जाएंगे।' },
   'swal.confirmLogoutGuard': { en: 'End Shift', hi: 'पारी समाप्त करें' },
-  'swal.confirmLogoutGuardText': { en: 'You will be logged out of the system.', hi: 'आप सिस्टम से लॉग आउट हो जाएंगे।' },
-  'swal.confirmLogoutUser': { en: 'Log Out', hi: 'लॉग आउट' },
-  'swal.confirmLogoutUserText': { en: 'Are you sure you want to get logged out of the system?', hi: 'क्या आप सिस्टम से लॉग आउट होना चाहते हैं?' },
+  'swal.confirmLogoutGuardText': { en: 'You will be logged out of the system.', hi: 'आप प्रणाली से बाहर निकल जाएंगे।' },
+  'swal.confirmLogoutUser': { en: 'Log Out', hi: 'बाहर निकलें' },
+  'swal.confirmLogoutUserText': { en: 'Are you sure you want to get logged out of the system?', hi: 'क्या आप प्रणाली से बाहर निकलना चाहते हैं?' },
   'swal.yes': { en: 'Yes', hi: 'हां' },
   'swal.no': { en: 'No', hi: 'नहीं' },
   'swal.success': { en: 'Success!', hi: 'सफल!' },
@@ -913,12 +913,12 @@ const translations: Record<string, Record<Lang, string>> = {
   'settings.title': { en: 'Settings', hi: 'सेटिंग्स' },
   'settings.subtitle': { en: 'App configuration', hi: 'ऐप निर्धारितेशन' },
   'settings.appearance': { en: 'Appearance', hi: 'दिखावट' },
-  'settings.theme': { en: 'Theme', hi: 'थीम' },
+  'settings.theme': { en: 'Theme', hi: 'रूपरंग' },
   'settings.language': { en: 'Language', hi: 'भाषा' },
   'settings.autoCaps': { en: 'Auto CAPS for entries', hi: 'प्रवेश के लिए ऑटो बड़े अक्षर' },
   'settings.autoCapsHint': {
     en: 'Names, titles, notes — phone & passwords stay as typed',
-    hi: 'नाम, शीर्षक, नोट्स — फोन और कूटशब्द जैसे टाइप किए गए रहेंगे',
+    hi: 'नाम, शीर्षक, टिप्पणियाँ — फोन और कूटशब्द जैसे टाइप किए गए रहेंगे',
   },
   'settings.dataSummary': { en: 'Data Summary', hi: 'डेटा सारांश' },
   'settings.banners': { en: 'Dashboard login banners', hi: 'मुख्य पटल प्रवेश सूचनापट' },
@@ -967,7 +967,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'adminNav.directory': { en: 'Directory', hi: 'निर्देशिका' },
   'adminNav.quick': { en: 'Quick', hi: 'त्वरित' },
   'adminNav.reports': { en: 'Reports', hi: 'प्रतिवेदन्स' },
-  'adminNav.logs': { en: 'Logs', hi: 'लॉग्स' },
+  'adminNav.logs': { en: 'Logs', hi: 'अभिलेख' },
   'adminNav.audit': { en: 'Audit', hi: 'लेखा-परीक्षा' },
   'adminNav.password': { en: 'Password', hi: 'कूटशब्द' },
   'adminNav.biometric': { en: 'Biometric', hi: 'जैवमितीय' },
@@ -1004,7 +1004,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'admin.currentLocation': { en: 'Current Geofence', hi: 'वर्तमान भौगोलिक सीमा' },
   'admin.radius': { en: 'Radius', hi: 'दायरा' },
   'admin.geofenceActive': { en: 'Geofence Active', hi: 'भौगोलिक सीमा सक्रिय' },
-  'admin.noGeofence': { en: 'No geofence set. Guards can login from anywhere.', hi: 'कोई भौगोलिक सीमा सेट नहीं। गार्ड कहीं से भी प्रवेश कर सकते हैं।' },
+  'admin.noGeofence': { en: 'No geofence set. Guards can login from anywhere.', hi: 'कोई भौगोलिक सीमा निर्धारित नहीं। गार्ड कहीं से भी प्रवेश कर सकते हैं।' },
   'admin.captureLocation': { en: 'Set My Current Location', hi: 'मेरा वर्तमान स्थान निर्धारित करें' },
   'admin.capturing': { en: 'Capturing GPS...', hi: 'जीपीएस स्थान ग्रहण हो रहा है...' },
   'admin.locationError': { en: 'Location error', hi: 'स्थान त्रुटि' },
@@ -1144,7 +1144,7 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Deletes all residential flats for this society, then regenerates from current range/floors/blocks. Use when tower mode changed by mistake.',
     hi: 'इस सोसाइटी के सभी निवासी फ्लैट हटाकर वर्तमान सीमा/मंजिल/ब्लॉक्स से दोबारा बनाता है। टावर विधि गलती से बदलने पर उपयोग करें।',
   },
-  'superadmin.resetFlatsConfirmTitle': { en: 'Reset and regenerate flats?', hi: 'फ्लैट रीसेट और दोबारा बनाएं?' },
+  'superadmin.resetFlatsConfirmTitle': { en: 'Reset and regenerate flats?', hi: 'फ्लैट हटाकर दोबारा बनाएँ?' },
   'superadmin.resetFlatsConfirmText': {
     en: 'This will delete all residential flats for this society (and linked members via cascade) and regenerate using current layout settings.',
     hi: 'यह इस सोसाइटी के सभी आवासीय फ्लैट (और उनसे जुड़े सदस्य) हटाकर वर्तमान विन्यास से दोबारा बनाएगा।',
@@ -1157,7 +1157,7 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Rebuilt flats from layout: {created} created, {skipped} skipped.',
     hi: 'विन्यास से फ्लैट दोबारा बने: {created} बने, {skipped} छोड़ दिए गए।',
   },
-  'superadmin.flatResetFailed': { en: 'Could not reset flats for this society', hi: 'इस सोसाइटी के फ्लैट रीसेट नहीं हो सके' },
+  'superadmin.flatResetFailed': { en: 'Could not reset flats for this society', hi: 'इस सोसाइटी के फ्लैट पुनः निर्धारित नहीं हो सके' },
   'superadmin.flatsTrimmed': {
     en: 'Removed {count} flat(s) that were outside the configured range (e.g. extra numbers per floor).',
     hi: '{count} फ्लैट हटाए गए जो निर्धारित सीमा के बाहर थे।',
@@ -1167,7 +1167,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'superadmin.addSocietyPhotos': { en: 'Add photos', hi: 'फोटो जोड़ें' },
   'superadmin.societyPhotosLimit': { en: 'Maximum 12 photos per society', hi: 'प्रति सोसाइटी अधिकतम 12 फोटो' },
   'superadmin.flatsPerFloorShort': { en: 'flats/floor', hi: 'फ्लैट/मंजिल' },
-  'superadmin.adminEmail': { en: 'Admin Email (for password reset)', hi: 'प्रशासक ई-मेल (कूटशब्द रीसेट के लिए)' },
+  'superadmin.adminEmail': { en: 'Admin Email (for password reset)', hi: 'प्रशासक ई-मेल (कूटशब्द पुनः निर्धारित करने हेतु)' },
 
   // Biometric
   'biometric.title': { en: 'Biometric', hi: 'जैवमितीय' },
@@ -1391,14 +1391,14 @@ const translations: Record<string, Record<Lang, string>> = {
   'contentEditor.title': { en: 'Member content (Hindi / English)', hi: 'सदस्य सामग्री (हिंदी / अंग्रेज़ी)' },
   'contentEditor.subtitle': {
     en: 'Edit translations saved for your society. Members see the language they selected; empty fields keep the app default.',
-    hi: 'अपनी सोसाइटी के लिए अनुवाद संपादित करें। सदस्य चुनी भाषा देखेंगे; खाली फ़ील्ड ऐप की डिफ़ॉल्ट भाषा रखती हैं।',
+    hi: 'अपनी सोसाइटी के लिए अनुवाद संपादित करें। सदस्य चुनी भाषा देखेंगे; खाली क्षेत्र ऐप की मूल भाषा रखती हैं।',
   },
   'contentEditor.save': { en: 'Save translations', hi: 'अनुवाद सहेजें' },
   'contentEditor.saved': { en: 'Translations saved for members', hi: 'सदस्यों के लिए अनुवाद सहेजे गए' },
-  'contentEditor.resetDefaults': { en: 'Reset to app defaults', hi: 'ऐप डिफ़ॉल्ट पर रीसेट' },
+  'contentEditor.resetDefaults': { en: 'Reset to app defaults', hi: 'ऐप मूल पर लौटाएँ' },
   'contentEditor.english': { en: 'English', hi: 'अंग्रेज़ी' },
   'contentEditor.hindi': { en: 'Hindi', hi: 'हिंदी' },
-  'contentEditor.defaultHint': { en: 'App default', hi: 'ऐप डिफ़ॉल्ट' },
+  'contentEditor.defaultHint': { en: 'App default', hi: 'ऐप मूल' },
 };
 
 export default translations;

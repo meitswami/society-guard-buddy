@@ -1,6 +1,10 @@
--- Phase 2: Bye-law election governance
--- Voting method, proxies, designated joint voter, arrears eligibility helpers,
--- immutable ballots, append-only election audit.
+-- Phase 2: Bye-law election governance (consolidated source of truth for the repo).
+-- Applied remotely as:
+--   bye_law_election_governance_polls_members
+--   bye_law_election_governance_proxies
+--   bye_law_election_governance_ballots_audit
+--   bye_law_election_governance_eligibility_fns
+--   bye_law_election_governance_search_path
 -- Does NOT delete or rewrite existing Society / election row data.
 
 -- ---------------------------------------------------------------------------
@@ -124,6 +128,7 @@ GRANT ALL ON TABLE public.election_proxies TO anon, authenticated, service_role;
 CREATE OR REPLACE FUNCTION public.election_proxy_enforce_deadline()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
   v_meeting timestamptz;

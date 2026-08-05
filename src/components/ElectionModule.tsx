@@ -32,14 +32,22 @@ import {
   DEFAULT_TARGET_COMMITTEE_SIZE,
   MIN_COMMITTEE_SIZE,
   RUNNER_UP_PLACES,
+  BYE_LAW,
+  electionQuorumRequired,
   parseWinningVotes,
   toDatetimeLocalValue,
   postsForPoll,
+  type ElectionVotingMethod,
 } from '@/lib/electionGovernance';
 import { applyElectionToCommittee, countFormedCommittee } from '@/lib/electionApply';
 import { notifyElectionEvent } from '@/lib/electionNotify';
 import { capsFieldChange } from '@/lib/entryCaps';
 import type { PollDocumentRow } from '@/lib/pollDocuments';
+import {
+  fetchMemberElectionEligibility,
+  eligibilityReasonLabel,
+} from '@/lib/electionEligibility';
+import { logElectionAudit, recordElectionVotingMethod } from '@/lib/electionAudit';
 
 type VoterProfile = { name: string; flatNumber: string };
 

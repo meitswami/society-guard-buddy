@@ -707,6 +707,140 @@ export type Database = {
           },
         ]
       }
+      election_audit_events: {
+        Row: {
+          actor_id: string | null
+          actor_name: string | null
+          actor_type: string | null
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          poll_id: string | null
+          society_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_type?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          poll_id?: string | null
+          society_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_type?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          poll_id?: string | null
+          society_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_audit_events_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_audit_events_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      election_proxies: {
+        Row: {
+          authorization_document_url: string | null
+          authorization_notes: string | null
+          created_at: string
+          id: string
+          meeting_at: string | null
+          poll_id: string
+          principal_member_id: string
+          proxy_holder_member_id: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          society_id: string
+          status: string
+          submitted_at: string
+          submitted_by: string | null
+        }
+        Insert: {
+          authorization_document_url?: string | null
+          authorization_notes?: string | null
+          created_at?: string
+          id?: string
+          meeting_at?: string | null
+          poll_id: string
+          principal_member_id: string
+          proxy_holder_member_id: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          society_id: string
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+        }
+        Update: {
+          authorization_document_url?: string | null
+          authorization_notes?: string | null
+          created_at?: string
+          id?: string
+          meeting_at?: string | null
+          poll_id?: string
+          principal_member_id?: string
+          proxy_holder_member_id?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          society_id?: string
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_proxies_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_proxies_principal_member_id_fkey"
+            columns: ["principal_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_proxies_proxy_holder_member_id_fkey"
+            columns: ["proxy_holder_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_proxies_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emergency_alerts: {
         Row: {
           created_at: string
@@ -1524,9 +1658,150 @@ export type Database = {
           },
         ]
       }
+      fixed_assets: {
+        Row: {
+          acquisition_date: string | null
+          amc_end_date: string | null
+          amc_period_months: number | null
+          amc_start_date: string | null
+          amc_vendor: string | null
+          asset_name: string
+          asset_tag: string | null
+          bill_attachment_url: string | null
+          bill_value: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          disposal_date: string | null
+          disposal_notes: string | null
+          disposal_value: number | null
+          expense_group_id: string | null
+          expense_id: string | null
+          finance_entry_id: string | null
+          id: string
+          location: string | null
+          major_head: string
+          notes: string | null
+          serial_number: string | null
+          society_id: string
+          source_type: string
+          status: string
+          sub_head: string | null
+          template_key: string | null
+          updated_at: string
+          vendor_contact: string | null
+          vendor_name: string | null
+          warranty_end_date: string | null
+          warranty_period_months: number | null
+          warranty_start_date: string | null
+        }
+        Insert: {
+          acquisition_date?: string | null
+          amc_end_date?: string | null
+          amc_period_months?: number | null
+          amc_start_date?: string | null
+          amc_vendor?: string | null
+          asset_name: string
+          asset_tag?: string | null
+          bill_attachment_url?: string | null
+          bill_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          disposal_date?: string | null
+          disposal_notes?: string | null
+          disposal_value?: number | null
+          expense_group_id?: string | null
+          expense_id?: string | null
+          finance_entry_id?: string | null
+          id?: string
+          location?: string | null
+          major_head?: string
+          notes?: string | null
+          serial_number?: string | null
+          society_id: string
+          source_type?: string
+          status?: string
+          sub_head?: string | null
+          template_key?: string | null
+          updated_at?: string
+          vendor_contact?: string | null
+          vendor_name?: string | null
+          warranty_end_date?: string | null
+          warranty_period_months?: number | null
+          warranty_start_date?: string | null
+        }
+        Update: {
+          acquisition_date?: string | null
+          amc_end_date?: string | null
+          amc_period_months?: number | null
+          amc_start_date?: string | null
+          amc_vendor?: string | null
+          asset_name?: string
+          asset_tag?: string | null
+          bill_attachment_url?: string | null
+          bill_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          disposal_date?: string | null
+          disposal_notes?: string | null
+          disposal_value?: number | null
+          expense_group_id?: string | null
+          expense_id?: string | null
+          finance_entry_id?: string | null
+          id?: string
+          location?: string | null
+          major_head?: string
+          notes?: string | null
+          serial_number?: string | null
+          society_id?: string
+          source_type?: string
+          status?: string
+          sub_head?: string | null
+          template_key?: string | null
+          updated_at?: string
+          vendor_contact?: string | null
+          vendor_name?: string | null
+          warranty_end_date?: string | null
+          warranty_period_months?: number | null
+          warranty_start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixed_assets_expense_group_id_fkey"
+            columns: ["expense_group_id"]
+            isOneToOne: false
+            referencedRelation: "expense_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixed_assets_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixed_assets_finance_entry_id_fkey"
+            columns: ["finance_entry_id"]
+            isOneToOne: true
+            referencedRelation: "finance_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixed_assets_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flats: {
         Row: {
           created_at: string
+          designated_voter_member_id: string | null
           flat_number: string
           flat_type: string | null
           floor: string | null
@@ -1542,6 +1817,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          designated_voter_member_id?: string | null
           flat_number: string
           flat_type?: string | null
           floor?: string | null
@@ -1557,6 +1833,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          designated_voter_member_id?: string | null
           flat_number?: string
           flat_type?: string | null
           floor?: string | null
@@ -1571,6 +1848,13 @@ export type Database = {
           wing?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "flats_designated_voter_member_id_fkey"
+            columns: ["designated_voter_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "flats_society_id_fkey"
             columns: ["society_id"]
@@ -1659,6 +1943,70 @@ export type Database = {
           },
         ]
       }
+      guard_daily_duty: {
+        Row: {
+          created_at: string
+          duty_date: string
+          guard_id: string
+          guard_name: string
+          guard_uuid: string
+          id: string
+          shift_id: string
+          society_id: string
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duty_date?: string
+          guard_id: string
+          guard_name: string
+          guard_uuid: string
+          id?: string
+          shift_id: string
+          society_id: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duty_date?: string
+          guard_id?: string
+          guard_name?: string
+          guard_uuid?: string
+          id?: string
+          shift_id?: string
+          society_id?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_daily_duty_guard_uuid_fkey"
+            columns: ["guard_uuid"]
+            isOneToOne: false
+            referencedRelation: "guards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_daily_duty_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: true
+            referencedRelation: "guard_shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_daily_duty_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guard_documents: {
         Row: {
           back_url: string | null
@@ -1690,6 +2038,120 @@ export type Database = {
             columns: ["guard_id"]
             isOneToOne: false
             referencedRelation: "guards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guard_duty_incidents: {
+        Row: {
+          category: string
+          created_at: string
+          duty_id: string
+          flat_number: string | null
+          id: string
+          photo_urls: Json
+          problem_preset: string | null
+          severity: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          duty_id: string
+          flat_number?: string | null
+          id?: string
+          photo_urls?: Json
+          problem_preset?: string | null
+          severity?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          duty_id?: string
+          flat_number?: string | null
+          id?: string
+          photo_urls?: Json
+          problem_preset?: string | null
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_duty_incidents_duty_id_fkey"
+            columns: ["duty_id"]
+            isOneToOne: false
+            referencedRelation: "guard_daily_duty"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guard_duty_staff_attendance: {
+        Row: {
+          absence_reason: string | null
+          duty_id: string
+          id: string
+          staff_name: string | null
+          staff_role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          absence_reason?: string | null
+          duty_id: string
+          id?: string
+          staff_name?: string | null
+          staff_role: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          absence_reason?: string | null
+          duty_id?: string
+          id?: string
+          staff_name?: string | null
+          staff_role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_duty_staff_attendance_duty_id_fkey"
+            columns: ["duty_id"]
+            isOneToOne: false
+            referencedRelation: "guard_daily_duty"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guard_duty_system_checks: {
+        Row: {
+          check_key: string
+          duty_id: string
+          id: string
+          problem_preset: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          check_key: string
+          duty_id: string
+          id?: string
+          problem_preset?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          check_key?: string
+          duty_id?: string
+          id?: string
+          problem_preset?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_duty_system_checks_duty_id_fkey"
+            columns: ["duty_id"]
+            isOneToOne: false
+            referencedRelation: "guard_daily_duty"
             referencedColumns: ["id"]
           },
         ]
@@ -2282,6 +2744,7 @@ export type Database = {
           created_at: string
           date_joining: string | null
           date_leave: string | null
+          election_disqualified_until: string | null
           flat_id: string
           gender: string | null
           household_group: string
@@ -2302,6 +2765,7 @@ export type Database = {
           created_at?: string
           date_joining?: string | null
           date_leave?: string | null
+          election_disqualified_until?: string | null
           flat_id: string
           gender?: string | null
           household_group?: string
@@ -2322,6 +2786,7 @@ export type Database = {
           created_at?: string
           date_joining?: string | null
           date_leave?: string | null
+          election_disqualified_until?: string | null
           flat_id?: string
           gender?: string | null
           household_group?: string
@@ -2702,32 +3167,47 @@ export type Database = {
       }
       poll_election_ballots: {
         Row: {
+          ballot_method: string | null
+          choices: Json
           created_at: string
           flat_id: string | null
           flat_number: string | null
           id: string
+          is_proxy_vote: boolean
           poll_id: string
+          proxy_id: string | null
           rankings: Json
+          submitted_at: string
           voter_id: string
           voter_phone: string | null
         }
         Insert: {
+          ballot_method?: string | null
+          choices?: Json
           created_at?: string
           flat_id?: string | null
           flat_number?: string | null
           id?: string
+          is_proxy_vote?: boolean
           poll_id: string
+          proxy_id?: string | null
           rankings?: Json
+          submitted_at?: string
           voter_id: string
           voter_phone?: string | null
         }
         Update: {
+          ballot_method?: string | null
+          choices?: Json
           created_at?: string
           flat_id?: string | null
           flat_number?: string | null
           id?: string
+          is_proxy_vote?: boolean
           poll_id?: string
+          proxy_id?: string | null
           rankings?: Json
+          submitted_at?: string
           voter_id?: string
           voter_phone?: string | null
         }
@@ -2744,6 +3224,13 @@ export type Database = {
             columns: ["poll_id"]
             isOneToOne: false
             referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_election_ballots_proxy_id_fkey"
+            columns: ["proxy_id"]
+            isOneToOne: false
+            referencedRelation: "election_proxies"
             referencedColumns: ["id"]
           },
         ]
@@ -2860,79 +3347,100 @@ export type Database = {
       polls: {
         Row: {
           allow_multiple: boolean
+          bye_law_mode: boolean
           created_at: string
           created_by: string | null
           description: string | null
           election_applied_at: string | null
           election_committee_seats: number
           election_phase: string
+          election_quorum_required: number | null
           election_results: Json | null
           election_term_from: string | null
           election_term_to: string | null
           end_date: string | null
+          first_mc_meeting_deadline: string | null
           id: string
           is_active: boolean
+          member_count_at_election: number | null
           nomination_ends_at: string | null
           nomination_starts_at: string | null
           open_posts: Json
           poll_kind: string
           question: string
+          separate_office_votes: boolean
           society_id: string | null
-          start_date: string | null
           target_committee_size: number
           voting_ends_at: string | null
+          voting_method: string | null
+          voting_method_recorded_at: string | null
+          voting_method_recorded_by: string | null
           voting_starts_at: string | null
           winning_votes: Json
         }
         Insert: {
           allow_multiple?: boolean
+          bye_law_mode?: boolean
           created_at?: string
           created_by?: string | null
           description?: string | null
           election_applied_at?: string | null
           election_committee_seats?: number
           election_phase?: string
+          election_quorum_required?: number | null
           election_results?: Json | null
           election_term_from?: string | null
           election_term_to?: string | null
           end_date?: string | null
+          first_mc_meeting_deadline?: string | null
           id?: string
           is_active?: boolean
+          member_count_at_election?: number | null
           nomination_ends_at?: string | null
           nomination_starts_at?: string | null
           open_posts?: Json
           poll_kind?: string
           question: string
+          separate_office_votes?: boolean
           society_id?: string | null
-          start_date?: string | null
           target_committee_size?: number
           voting_ends_at?: string | null
+          voting_method?: string | null
+          voting_method_recorded_at?: string | null
+          voting_method_recorded_by?: string | null
           voting_starts_at?: string | null
           winning_votes?: Json
         }
         Update: {
           allow_multiple?: boolean
+          bye_law_mode?: boolean
           created_at?: string
           created_by?: string | null
           description?: string | null
           election_applied_at?: string | null
           election_committee_seats?: number
           election_phase?: string
+          election_quorum_required?: number | null
           election_results?: Json | null
           election_term_from?: string | null
           election_term_to?: string | null
           end_date?: string | null
+          first_mc_meeting_deadline?: string | null
           id?: string
           is_active?: boolean
+          member_count_at_election?: number | null
           nomination_ends_at?: string | null
           nomination_starts_at?: string | null
           open_posts?: Json
           poll_kind?: string
           question?: string
+          separate_office_votes?: boolean
           society_id?: string | null
-          start_date?: string | null
           target_committee_size?: number
           voting_ends_at?: string | null
+          voting_method?: string | null
+          voting_method_recorded_at?: string | null
+          voting_method_recorded_by?: string | null
           voting_starts_at?: string | null
           winning_votes?: Json
         }
@@ -3104,6 +3612,59 @@ export type Database = {
           },
         ]
       }
+      saved_report_definitions: {
+        Row: {
+          columns: Json | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          filters: Json
+          group_by: Json | null
+          id: string
+          name: string
+          report_id: string
+          society_id: string
+          sort: Json | null
+          updated_at: string
+        }
+        Insert: {
+          columns?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          filters?: Json
+          group_by?: Json | null
+          id?: string
+          name: string
+          report_id: string
+          society_id: string
+          sort?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          columns?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          filters?: Json
+          group_by?: Json | null
+          id?: string
+          name?: string
+          report_id?: string
+          society_id?: string
+          sort?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_report_definitions_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       societies: {
         Row: {
           address: string | null
@@ -3187,59 +3748,6 @@ export type Database = {
           total_floors?: number | null
         }
         Relationships: []
-      }
-      saved_report_definitions: {
-        Row: {
-          id: string
-          society_id: string
-          report_id: string
-          name: string
-          description: string | null
-          columns: Json | null
-          filters: Json
-          sort: Json | null
-          group_by: Json | null
-          created_by: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          society_id: string
-          report_id: string
-          name: string
-          description?: string | null
-          columns?: Json | null
-          filters?: Json
-          sort?: Json | null
-          group_by?: Json | null
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          society_id?: string
-          report_id?: string
-          name?: string
-          description?: string | null
-          columns?: Json | null
-          filters?: Json
-          sort?: Json | null
-          group_by?: Json | null
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "saved_report_definitions_society_id_fkey"
-            columns: ["society_id"]
-            isOneToOne: false
-            referencedRelation: "societies"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       society_content_translations: {
         Row: {
@@ -3941,7 +4449,90 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      election_quorum_required: {
+        Args: { p_member_count: number }
+        Returns: number
+      }
+      flat_has_maintenance_arrears_over_days: {
+        Args: { p_as_of?: string; p_days?: number; p_flat_id: string }
+        Returns: boolean
+      }
+      is_fixed_asset_expense_group: {
+        Args: { p_group_id: string }
+        Returns: boolean
+      }
+      log_election_audit_event: {
+        Args: {
+          p_actor_id?: string
+          p_actor_name?: string
+          p_actor_type?: string
+          p_event_type: string
+          p_payload?: Json
+          p_poll_id: string
+          p_society_id: string
+        }
+        Returns: string
+      }
+      member_election_eligibility: {
+        Args: {
+          p_arrears_days?: number
+          p_as_of?: string
+          p_member_id: string
+          p_society_id: string
+        }
+        Returns: Json
+      }
+      record_election_voting_method: {
+        Args: {
+          p_method: string
+          p_poll_id: string
+          p_recorded_by?: string
+          p_separate_office_votes?: boolean
+        }
+        Returns: {
+          allow_multiple: boolean
+          bye_law_mode: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          election_applied_at: string | null
+          election_committee_seats: number
+          election_phase: string
+          election_quorum_required: number | null
+          election_results: Json | null
+          election_term_from: string | null
+          election_term_to: string | null
+          end_date: string | null
+          first_mc_meeting_deadline: string | null
+          id: string
+          is_active: boolean
+          member_count_at_election: number | null
+          nomination_ends_at: string | null
+          nomination_starts_at: string | null
+          open_posts: Json
+          poll_kind: string
+          question: string
+          separate_office_votes: boolean
+          society_id: string | null
+          target_committee_size: number
+          voting_ends_at: string | null
+          voting_method: string | null
+          voting_method_recorded_at: string | null
+          voting_method_recorded_by: string | null
+          voting_starts_at: string | null
+          winning_votes: Json
+        }
+        SetofOptions: {
+          from: "*"
+          to: "polls"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      upsert_fixed_asset_from_finance_entry: {
+        Args: { p_finance_entry_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
