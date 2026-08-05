@@ -33,7 +33,7 @@ export function LoginFooter() {
             |
           </span>
           <Link to="/about" className={linkClass}>
-            About
+            {t("login.footerAbout")}
           </Link>
         </nav>
         <p className="text-center text-[10px] text-muted-foreground sm:text-[11px]">{t("app.footer")}</p>

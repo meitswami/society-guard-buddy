@@ -27,7 +27,7 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
   }, []);
 
   const handleLeave = useCallback(() => {
-    closeTimer.current = setTimeout(() => setOpen(false), 280);
+    closeTimer.current = setTimeout(() => setOpen(false), 400);
   }, []);
 
   if (drawerTabs.length === 0) return null;
@@ -38,12 +38,12 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
-      {/* Hot zone — highlighted strip at left edge */}
+      {/* Hot zone — left-edge strip (wide enough to hit on touch / trackpad) */}
       <div
-        className={`w-3 shrink-0 transition-colors duration-200 cursor-pointer ${
+        className={`w-8 shrink-0 transition-colors duration-200 cursor-pointer touch-manipulation ${
           open
             ? 'bg-primary shadow-[2px_0_12px_hsl(var(--primary)/0.35)]'
-            : 'bg-primary/70 hover:bg-primary'
+            : 'bg-primary/70 hover:bg-primary active:bg-primary'
         }`}
         aria-hidden
         onClick={() => setOpen((v) => !v)}
@@ -54,7 +54,7 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
       >
         <div className="h-full flex items-center justify-center">
           <ChevronRight
-            className={`w-3 h-3 text-primary-foreground transition-transform duration-200 ${
+            className={`w-4 h-4 text-primary-foreground transition-transform duration-200 ${
               open ? 'rotate-180' : ''
             }`}
           />
@@ -64,12 +64,12 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
       {/* Sliding panel */}
       <aside
         className={`bg-card border-r border-border shadow-xl transition-all duration-200 overflow-hidden ${
-          open ? 'w-56 opacity-100' : 'w-0 opacity-0 pointer-events-none'
+          open ? 'w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none'
         }`}
         aria-label={t('adminNav.allModules')}
         aria-hidden={!open}
       >
-        <div className="w-56 h-full flex flex-col pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
+        <div className="w-64 h-full flex flex-col pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
           <div className="px-3 py-2 border-b border-border flex items-center justify-between gap-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">{t('adminNav.allModules')}</p>
             <div className="flex rounded-lg border border-border overflow-hidden">

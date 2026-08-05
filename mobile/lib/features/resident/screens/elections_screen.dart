@@ -340,10 +340,10 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
             final docs = bundle.documents.where((d) => d['poll_id'] == poll.id).toList();
             final postsFromOpts = opts.map((o) => o['election_post'] as String?).whereType<String>().toSet();
             final posts = phase == ElectionPhase.nomination
-                ? threeExecutivePosts.where((p) => raw != null && isPostOpenForNomination(raw, p)).toList()
+                ? managementCommitteePosts.where((p) => raw != null && isPostOpenForNomination(raw, p)).toList()
                 : [
-                    ...threeExecutivePosts.where(postsFromOpts.contains),
-                    ...postsFromOpts.where((p) => !threeExecutivePosts.contains(p)),
+                    ...managementCommitteePosts.where(postsFromOpts.contains),
+                    ...postsFromOpts.where((p) => !managementCommitteePosts.contains(p)),
                   ];
 
             return Card(

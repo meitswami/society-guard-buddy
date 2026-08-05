@@ -154,6 +154,33 @@ class _VotingCharterCardState extends State<VotingCharterCard> {
                   style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
                 ),
                 const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: brand.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: brand.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        content.summaryTitle,
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: brand.primary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(content.summaryPosts, style: const TextStyle(fontSize: 12)),
+                      const SizedBox(height: 6),
+                      for (final p in content.summaryPoints)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(p, style: const TextStyle(fontSize: 12, color: KutumbikaColors.textMuted)),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Text(
                   content.programHeading,
                   style: TextStyle(fontWeight: FontWeight.w600, color: brand.primary, fontSize: 13),

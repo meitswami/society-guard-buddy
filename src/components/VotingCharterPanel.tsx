@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import {
   ELECTION_PROGRAM_STEPS,
   VOTING_CHARTER_SECTIONS,
+  VOTING_CHARTER_SUMMARY,
   VOTING_CHARTER_TITLE_KEY,
 } from '@/lib/votingCharter';
 import {
@@ -143,6 +144,18 @@ const VotingCharterPanel = ({ societyName: societyNameProp }: Props) => {
               ? 'लैपटॉप पर फ़ाइल डाउनलोड होती है; मोबाइल पर Share शीट से Save to Files / Downloads चुनें। हिंदी PDF में देवनागरी फ़ॉन्ट एम्बेड है।'
               : 'On laptop the file downloads directly; on mobile use the share sheet → Save to Files / Downloads. Hindi PDF embeds Devanagari.'}
           </p>
+
+          <div className="rounded-lg border border-indigo-500/25 bg-background/60 px-3 py-2.5 space-y-1.5">
+            <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-200">
+              {t(VOTING_CHARTER_SUMMARY.titleKey)}
+            </p>
+            <p className="text-xs text-foreground">{t(VOTING_CHARTER_SUMMARY.postsKey)}</p>
+            <ul className="text-xs text-muted-foreground space-y-1 list-none pt-0.5">
+              <li>{t(VOTING_CHARTER_SUMMARY.voteRightKey)}</li>
+              <li>{t(VOTING_CHARTER_SUMMARY.proxyKey)}</li>
+              <li>{t(VOTING_CHARTER_SUMMARY.quorumKey)}</li>
+            </ul>
+          </div>
 
           <div className="rounded-lg border border-indigo-500/20 bg-background/40">
             <button

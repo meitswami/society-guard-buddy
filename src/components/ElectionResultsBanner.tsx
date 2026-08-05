@@ -24,12 +24,14 @@ function ResultsBlock({ results }: { results: ElectionResultsPayload }) {
   return (
     <div className="space-y-0.5 mt-1">
       {line('President', results.president)}
+      {line('Vice-President', results.vice_president)}
       {line('Secretary', results.secretary)}
       {line('Treasurer', results.treasurer)}
-      {line('Vice-President', results.vice_president)}
       {runners.length > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mt-1">2nd &amp; 3rd place (committee eligible)</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Other tallied places (not auto-seated under bye-laws)
+          </p>
           <ul className="text-sm list-disc list-inside">
             {runners.map((c) => (
               <li key={c.option_id}>
@@ -44,7 +46,7 @@ function ResultsBlock({ results }: { results: ElectionResultsPayload }) {
       )}
       {results.committee?.length > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mt-1">Committee members</p>
+          <p className="text-xs text-muted-foreground mt-1">Executive Members</p>
           <ul className="text-sm font-medium list-disc list-inside">
             {results.committee.map((c) => (
               <li key={c.option_id}>

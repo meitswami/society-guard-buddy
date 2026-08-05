@@ -148,11 +148,12 @@ const CommitteeFormationPanel = ({
         <Users className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
         <div>
           <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 uppercase tracking-wide">
-            Managing Committee formation
+            Management Committee ({MIN_COMMITTEE_SIZE} seats)
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Progress: <strong className="text-foreground">{formed}</strong> / {target} (minimum {MIN_COMMITTEE_SIZE}
-            ). {remaining > 0 ? `${remaining} seat(s) still needed for the society target.` : 'Target reached.'}
+            Progress: <strong className="text-foreground">{formed}</strong> / {target} (bye-law fixed size{' '}
+            {MIN_COMMITTEE_SIZE}). {remaining > 0 ? `${remaining} seat(s) still open.` : 'Full roster.'} Vacancies
+            follow the bye-law majority-of-remaining-committee procedure — runners-up are not auto-seated.
           </p>
         </div>
       </div>
@@ -160,7 +161,11 @@ const CommitteeFormationPanel = ({
       {runners.length > 0 && (
         <div>
           <p className="text-[11px] font-semibold text-foreground mb-1.5">
-            2nd &amp; 3rd place (unelected) — nominate into Committee
+            Other tallied places (legacy — not auto-nominated under bye-laws)
+          </p>
+          <p className="text-[10px] text-muted-foreground mb-1.5">
+            Bye-laws do not make 2nd/3rd place candidates Management Committee members automatically. Prefer filling
+            vacant seats via the vacancy procedure after election.
           </p>
           <ul className="space-y-1.5">
             {runners.map((r) => {
@@ -285,7 +290,7 @@ const CommitteeFormationPanel = ({
 
       {formed < MIN_COMMITTEE_SIZE && (
         <p className="text-[11px] text-amber-800 dark:text-amber-200">
-          Charter minimum is {MIN_COMMITTEE_SIZE} members before publishing the full roster.
+          Bye-laws require {MIN_COMMITTEE_SIZE} Management Committee members before publishing the roster.
         </p>
       )}
     </div>

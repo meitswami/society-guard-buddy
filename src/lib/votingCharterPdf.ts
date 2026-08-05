@@ -179,6 +179,37 @@ export async function buildVotingCharterPdfBlob(opts: {
   hRule(w);
   paraBreak(w, 2);
 
+  // —— Bye-law summary ——
+  writeWrapped(w, t('votingCharter.summary.title'), {
+    style: 'bold',
+    size: 12,
+    color: [49, 46, 129],
+    gap: 5,
+  });
+  writeWrapped(w, t('votingCharter.summary.posts'), {
+    style: 'normal',
+    size: 10,
+    color: [31, 41, 55],
+    gap: 5,
+  });
+  for (const key of [
+    'votingCharter.summary.voteRight',
+    'votingCharter.summary.proxy',
+    'votingCharter.summary.quorum',
+  ] as const) {
+    ensureSpace(w, 6);
+    setStyle(w, 'bold', 10, [79, 70, 229]);
+    doc.text('•', margin + 1, w.y);
+    writeWrapped(w, t(key), {
+      style: 'normal',
+      size: 9.5,
+      color: [31, 41, 55],
+      gap: 4.5,
+      indent: 6,
+    });
+  }
+  paraBreak(w, 3);
+
   // —— Program (ordered list) ——
   writeWrapped(w, t('votingCharter.program.heading'), {
     style: 'bold',

@@ -25,6 +25,7 @@ import {
   phaseBadgeLabel,
   POST_DISPLAY,
   THREE_EXECUTIVE_POSTS,
+  MANAGEMENT_COMMITTEE_POSTS,
   DEFAULT_OPEN_POSTS,
   DEFAULT_TARGET_COMMITTEE_SIZE,
   MIN_COMMITTEE_SIZE,
@@ -427,7 +428,7 @@ const ElectionModule = ({
   const startVoting = async (poll: any) => {
     const ok = await confirmAction(
       'Open voting?',
-      'Residents can rank candidates during the scheduled voting window. All members will be notified.',
+      'Residents can cast votes during the scheduled voting window. All members will be notified.',
       'Open voting',
       'Cancel',
     );
@@ -448,7 +449,7 @@ const ElectionModule = ({
   const closeElection = async (poll: any) => {
     const ok = await confirmAction(
       'Close election?',
-      'Voting stops. Results and 2nd/3rd place candidates stay in admin portal for committee formation until you publish.',
+      'Voting stops. Results stay in the admin portal until you publish the seven-member Management Committee. Second- or third-place candidates are not automatically seated.',
       'Close & tally',
       'Cancel',
     );
@@ -492,16 +493,16 @@ const ElectionModule = ({
     const target = Number(poll.target_committee_size) || DEFAULT_TARGET_COMMITTEE_SIZE;
     if (formed < MIN_COMMITTEE_SIZE) {
       toast.error(
-        `Charter requires at least ${MIN_COMMITTEE_SIZE} committee members before publishing (currently ${formed}). Add 2nd/3rd place, volunteers, or executive proposals.`,
+        `Bye-laws require ${MIN_COMMITTEE_SIZE} Management Committee members before publishing (currently ${formed}). Fill vacant seats per the vacancy procedure — do not auto-seat runners-up.`,
       );
       return;
     }
     const shortOfTarget = formed < target;
     const ok = await confirmAction(
-      'Publish formed Committee?',
+      'Publish Management Committee?',
       shortOfTarget
-        ? `Roster has ${formed} members (society target ${target}). Publish winners, selected runners-up, volunteers and executive proposals to the Committee tab?`
-        : `Publish ${formed} members (winners, selected runners-up, volunteers and executive proposals) to the Committee tab? All members will be notified.`,
+        ? `Roster has ${formed} members (required ${target}). Publish the elected seven-member Management Committee to the Committee tab?`
+        : `Publish ${formed} members of the Management Committee to the Committee tab? All members will be notified.`,
       'Publish',
       'Cancel',
     );
@@ -538,7 +539,7 @@ const ElectionModule = ({
         <p className="text-xs font-semibold text-primary uppercase tracking-wide flex items-center gap-1">
           <Award className="w-3.5 h-3.5" /> {adminView ? 'Tallied results (admin only)' : 'Results'}
         </p>
-        {THREE_EXECUTIVE_POSTS.map((post) => {
+        {MANAGEMENT_COMMITTEE_POSTS.filter((p) => p !== 'committee').map((post) => {
           const w = r[post];
           const vacant = r.vacant?.[post];
           const req = wv[post] ?? 0;
@@ -561,14 +562,9 @@ const ElectionModule = ({
             </p>
           );
         })}
-        {r.vice_president && (
-          <p>
-            <span className="text-muted-foreground">Vice-President:</span> <strong>{r.vice_president.name}</strong>
-          </p>
-        )}
         {listRunnersUp(r).length > 0 && (
           <div>
-            <p className="text-muted-foreground text-xs mt-2">2nd &amp; 3rd place (eligible for Committee)</p>
+            <p className="text-muted-foreground text-xs mt-2">Other tallied places (not auto-seated under bye-laws)</p>
             <ul className="list-disc list-inside text-xs">
               {listRunnersUp(r).map((c) => (
                 <li key={c.option_id}>
@@ -583,7 +579,7 @@ const ElectionModule = ({
         )}
         {r.committee?.length > 0 && (
           <div>
-            <p className="text-muted-foreground text-xs mt-1">Committee ({r.committee.length})</p>
+            <p className="text-muted-foreground text-xs mt-1">Executive Members ({r.committee.length})</p>
             <ul className="list-disc list-inside font-medium">
               {r.committee.map((c) => (
                 <li key={c.option_id}>
@@ -992,9 +988,10 @@ const ElectionModule = ({
       {!embedded && (
         <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
           <p className="text-[11px] text-muted-foreground">
-            <strong className="text-foreground">Society Elections</strong> — nominate &amp; rank for President,
-            Secretary &amp; Treasurer; after tally, 2nd/3rd place may join the Managing Committee (min 7, target 15);
-            remaining seats via volunteers or executive proposals. Download the Voting Charter to circulate to members.
+            <strong className="text-foreground">Society Elections</strong> — elect the seven-member
+            Management Committee (President, Vice-President, Secretary, Treasurer, 3 Executive Members) under
+            the registered bye-laws: one vote per eligible member, Secret Ballot or Show of Hands, election
+            quorum 3/4, 2-year term. Download the Election Charter to circulate to members.
           </p>
         </div>
       )}

@@ -1,0 +1,57 @@
+---
+description: Society registered bye-laws control the Election Module — do not use generic apartment-election assumptions.
+alwaysApply: true
+---
+
+# Election Module — Registered Bye-Laws (Controlling Source)
+
+IMPORTANT: The Society's attached registered bye-laws are the controlling source for the Election Module. Do not use generic apartment-election assumptions where they conflict with these bye-laws.
+
+## Revised 30-flat configuration
+
+| Rule | Bye-law position |
+|------|------------------|
+| Apartments | 30 |
+| Management Committee | 7 |
+| President | 1 |
+| Vice-President | 1 |
+| Secretary | 1 |
+| Treasurer | 1 |
+| Executive Members | 3 |
+| Committee term | 2 years |
+| Re-election | Permitted |
+| Member voting right | 1 per member |
+| Joint owners | One designated member |
+| Proxy | Permitted |
+| Proxy deadline | 48 hours before meeting |
+| Max proxies/person | 1 member |
+| Election quorum | 3/4 (= 23 of 30) |
+| Maintenance arrears disqualification | >60 days on election date |
+| Voting method | Secret ballot / show of hands (record method before polling) |
+| Committee meeting quorum | 2/3 (= 5 of 7) |
+| Regular committee meetings | At least monthly |
+| Regular meeting notice | 7 clear days |
+| First committee meeting | Within 30 days of election |
+| Committee vacancy | Majority of remaining committee |
+| Committee removal | Special Resolution + hearing |
+| Removal disqualification | 2 years |
+
+## Hard constraints
+
+- Do **not** automatically provide separate votes for every office unless that voting method is expressly established/approved. Respect one-member-one-vote.
+- Do **not** automatically make second- or third-place candidates members of the Management Committee.
+- Do **not** use ranked/Borda "rank every candidate" as the default member UX.
+- Vacancies, removals, resignations, adjourned and emergency meetings must follow bye-law procedures exactly.
+- Do **not** delete or modify existing Society data; use database migrations.
+- Every election-critical action must be auditable.
+- Votes must not be editable by ordinary administrators after submission.
+- Prevent duplicate voting; maintain an immutable election record.
+- Generate a complete Election Report and AGM Election Minutes after completion.
+
+## Resident-facing summary (required copy direction)
+
+Title: समिति के 7 सदस्यों का चुनाव  
+Posts: अध्यक्ष • उपाध्यक्ष • सचिव • कोषाध्यक्ष • 3 कार्यकारिणी सदस्य  
+Voting right: प्रत्येक पात्र सदस्य को एक मत।  
+Proxy: लिखित प्राधिकरण के साथ, बैठक से कम-से-कम 48 घंटे पूर्व।  
+Quorum: कुल सदस्यों का 3/4। 30 सदस्यों के लिए न्यूनतम 23 सदस्य।

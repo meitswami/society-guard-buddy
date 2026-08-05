@@ -1,6 +1,17 @@
-/** Society election & voting charter — keys resolve via useLanguage().t() (static + society overrides). */
+/** Society election charter — keys resolve via useLanguage().t() (static + society overrides).
+ * Controlling source: registered Society bye-laws (7-member Management Committee).
+ */
 
 export const VOTING_CHARTER_TITLE_KEY = 'votingCharter.title';
+
+/** Prominent resident summary (bye-law composition + voting rights). */
+export const VOTING_CHARTER_SUMMARY = {
+  titleKey: 'votingCharter.summary.title',
+  postsKey: 'votingCharter.summary.posts',
+  voteRightKey: 'votingCharter.summary.voteRight',
+  proxyKey: 'votingCharter.summary.proxy',
+  quorumKey: 'votingCharter.summary.quorum',
+} as const;
 
 export const VOTING_CHARTER_SECTIONS = [
   {
@@ -9,6 +20,7 @@ export const VOTING_CHARTER_SECTIONS = [
       'votingCharter.eligibility.p1',
       'votingCharter.eligibility.p2',
       'votingCharter.eligibility.p3',
+      'votingCharter.eligibility.p4',
     ],
   },
   {
@@ -26,7 +38,6 @@ export const VOTING_CHARTER_SECTIONS = [
       'votingCharter.method.p2',
       'votingCharter.method.p3',
       'votingCharter.method.p4',
-      'votingCharter.method.p5',
     ],
   },
   {
@@ -36,7 +47,6 @@ export const VOTING_CHARTER_SECTIONS = [
       'votingCharter.committee.p2',
       'votingCharter.committee.p3',
       'votingCharter.committee.p4',
-      'votingCharter.committee.p5',
     ],
   },
   {
@@ -50,7 +60,7 @@ export const VOTING_CHARTER_SECTIONS = [
   },
 ] as const;
 
-/** Numbered member program — how the election & committee formation works. */
+/** Numbered member program — bye-law aligned (no ranked ballot / no auto 2nd–3rd). */
 export const ELECTION_PROGRAM_STEPS = [
   {
     stepKey: 'votingCharter.program.s1.title',
@@ -75,13 +85,5 @@ export const ELECTION_PROGRAM_STEPS = [
   {
     stepKey: 'votingCharter.program.s6.title',
     detailKey: 'votingCharter.program.s6.detail',
-  },
-  {
-    stepKey: 'votingCharter.program.s7.title',
-    detailKey: 'votingCharter.program.s7.detail',
-  },
-  {
-    stepKey: 'votingCharter.program.s8.title',
-    detailKey: 'votingCharter.program.s8.detail',
   },
 ] as const;

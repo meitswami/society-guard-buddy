@@ -60,7 +60,7 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
         setAdding(false);
         if (error) toast.error(error.message);
         else {
-          toast.success('Banner added');
+          toast.success(t('settings.bannerAdded'));
           setNewTitle('');
           loadBanners();
         }
@@ -75,7 +75,21 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
     const { error } = await supabase.from('society_dashboard_banners').delete().eq('id', id).eq('society_id', societyId);
     if (error) toast.error(error.message);
     else {
-      toast.success('Banner removed');
+      toast.success(t('settings.bannerRemoved'));
+      loadBanners();
+    }
+  };
+
+  const saveBannerTitle = async (id: string, title: string) => {
+    if (!societyId) return;
+    const { error } = await supabase
+      .from('society_dashboard_banners')
+      .update({ title: title.trim() || null })
+      .eq('id', id)
+      .eq('society_id', societyId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(t('settings.bannerTitleSaved'));
       loadBanners();
     }
   };
@@ -198,7 +212,7 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
           <div className="flex gap-2 items-center mb-3">
             <input
               className="input-field text-sm flex-1"
-              placeholder="Optional title"
+              placeholder={t('settings.bannerTitlePlaceholder')}
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
             />
@@ -208,20 +222,38 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
               disabled={adding}
               className="btn-primary text-sm flex items-center gap-2"
             >
-              <ImagePlus className="w-4 h-4" /> {adding ? 'Uploading…' : 'Add'}
+              <ImagePlus className="w-4 h-4" /> {adding ? t('settings.bannerUploading') : t('settings.bannerAdd')}
             </button>
           </div>
-          <p className="text-[10px] text-muted-foreground mb-2">{activeCount} active · {banners.length} total</p>
+          <p className="text-[10px] text-muted-foreground mb-2">
+            {t('settings.bannersActiveCount', { active: activeCount, total: banners.length })}
+          </p>
           {banners.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No banners added yet.</p>
+            <p className="text-xs text-muted-foreground">{t('settings.bannersEmpty')}</p>
           ) : (
             <div className="space-y-2">
               {banners.map((b) => (
                 <div key={b.id} className="rounded-xl border border-border bg-secondary/30 p-2">
                   <div className="flex items-start gap-2">
                     <img src={b.image_url} alt="" className="h-14 w-24 object-cover rounded-lg border border-border bg-background" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{b.title || 'Banner'}</p>
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <input
+                        className="input-field text-xs w-full py-1.5"
+                        defaultValue={b.title || ''}
+                        key={`${b.id}-${b.title || ''}`}
+                        placeholder={t('settings.bannerTitlePlaceholder')}
+                        onBlur={(e) => {
+                          const next = e.target.value.trim();
+                          const prev = (b.title || '').trim();
+                          if (next !== prev) void saveBannerTitle(b.id, next);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            (e.target as HTMLInputElement).blur();
+                          }
+                        }}
+                      />
                       <p className="text-[10px] text-muted-foreground">Order: {b.sort_order ?? 0}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <label className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -230,7 +262,7 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
                             checked={!!b.is_active}
                             onChange={(e) => toggleActive(b.id, e.target.checked)}
                           />
-                          Active
+                          {t('settings.bannerActive')}
                         </label>
                       </div>
                     </div>

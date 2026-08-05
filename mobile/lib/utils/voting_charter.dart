@@ -1,6 +1,6 @@
 import 'package:url_launcher/url_launcher.dart';
 
-/// Member-facing election & committee formation charter (EN + HI for PDF).
+/// Member-facing election charter (EN + HI) — registered bye-laws controlling.
 enum CharterLang { en, hi }
 
 class VotingCharterStep {
@@ -18,6 +18,9 @@ class VotingCharterSection {
 class VotingCharterContent {
   const VotingCharterContent({
     required this.title,
+    required this.summaryTitle,
+    required this.summaryPosts,
+    required this.summaryPoints,
     required this.programHeading,
     required this.programIntro,
     required this.rulesHeading,
@@ -28,6 +31,9 @@ class VotingCharterContent {
   });
 
   final String title;
+  final String summaryTitle;
+  final String summaryPosts;
+  final List<String> summaryPoints;
   final String programHeading;
   final String programIntro;
   final String rulesHeading;
@@ -37,54 +43,44 @@ class VotingCharterContent {
   final String shareMessage;
 }
 
-const votingCharterTitle = 'Voting & Committee Formation Charter';
+const votingCharterTitle = 'Election of the 7-member Management Committee';
 
 const votingCharterShareMessage =
-    'Society Voting & Committee Formation Charter — please read the step-by-step program for the executive election and Managing Committee formation.';
+    'Society Election Charter — election of the 7-member Management Committee under the registered bye-laws.';
 
 const electionProgramIntro =
-    'Follow these steps to understand the executive election poll and how the Managing Committee of the society is formed.';
+    'Follow these steps for electing the Society’s seven-member Management Committee under the registered bye-laws.';
 
 const electionProgramSteps = <VotingCharterStep>[
   VotingCharterStep(
-    title: 'Know the three executive posts',
+    title: 'Know the seven Management Committee seats',
     detail:
-        'The election poll is for President, Secretary and Treasurer only. Ranked voting (Borda) decides the winner of each post.',
+        'The Management Committee has seven members: President, Vice-President, Secretary, Treasurer, and three Executive Members. The term is two years; retiring members may seek re-election.',
   ),
   VotingCharterStep(
     title: 'Nominate during the nomination window',
     detail:
-        'When nominations are open, eligible members may self-nominate for any of the three posts with a short statement.',
+        'When nominations are open, eligible members (not in maintenance arrears over 60 days) may self-nominate for an open seat with a short statement.',
   ),
   VotingCharterStep(
-    title: 'Cast your ranked ballot',
+    title: 'Cast your vote',
     detail:
-        'In the voting window, rank every candidate in each post (1 = highest preference). One vote per person; up to two ballots per flat when both spouses vote.',
+        'Each eligible member has one vote. Voting is by Secret Ballot or Show of Hands — the method is recorded before polling. Proxy voting needs written authorisation at least 48 hours before the meeting (one person may proxy for only one member).',
   ),
   VotingCharterStep(
-    title: 'Winners take the three posts',
+    title: 'Quorum and eligibility',
     detail:
-        'After tally, the highest-scoring candidate for each post is elected (if they meet any minimum winning score set by the admin).',
+        'Election quorum is 3/4 of members (for 30 members: at least 23 represented). A member with maintenance/common-expense arrears exceeding 60 days on election day cannot vote or contest. Joint owners follow the designated-member rule.',
   ),
   VotingCharterStep(
-    title: '2nd & 3rd place may join the Committee',
+    title: 'Results and the seven seats',
     detail:
-        'Candidates who remain unelected in 2nd or 3rd place for President, Secretary or Treasurer may be nominated as other executive members of the Managing Committee.',
+        'Declared results fill the seven Management Committee seats. Second- or third-place candidates are not automatically made committee members. Vacancies follow the bye-law vacancy procedure.',
   ),
   VotingCharterStep(
-    title: 'Committee size: at least 7, target 15',
+    title: 'Publish roster and first meeting',
     detail:
-        'The Managing Committee is formed with seven or more members. The Society proposes a committee of minimum fifteen members.',
-  ),
-  VotingCharterStep(
-    title: 'Fill remaining seats',
-    detail:
-        'If the committee does not reach 15 through winners and 2nd/3rd place nominations, interested members may join voluntarily. If seats still remain, the executive committee proposes names.',
-  ),
-  VotingCharterStep(
-    title: 'Publish the full roster',
-    detail:
-        'When formation is complete (minimum 7), the admin publishes the roster. Members then see the full committee in the Committee module.',
+        'After publication, members see the committee in the Committee module. The first Management Committee meeting must be scheduled within 30 days of the election. Ordinary MC quorum is 5 of 7; regular meetings are at least monthly with seven clear days’ notice.',
   ),
 ];
 
@@ -92,45 +88,44 @@ const votingCharterSections = <VotingCharterSection>[
   VotingCharterSection(
     heading: 'Eligibility',
     points: [
-      'Every registered owner and their spouse may cast one ranked ballot each.',
-      'One vote per person — even if you own more than one flat, you vote only once (matched by login / phone).',
-      'Up to two ballots may come from the same flat when both spouses vote separately.',
+      'Each Society member has one voting right, irrespective of the number of apartments owned.',
+      'Joint ownership follows the designated-member rule in the bye-laws — only the designated member votes for that holding.',
+      'A member with maintenance or common-expense arrears exceeding 60 days on the election date is disqualified from voting and contesting.',
+      'Voting may be in person or through a valid written proxy submitted at least 48 hours before the meeting; one person may not act as proxy for more than one member.',
     ],
   ),
   VotingCharterSection(
     heading: 'Nomination',
     points: [
-      'When the admin opens the nomination window, members may propose themselves for three executive posts: President, Secretary, or Treasurer.',
-      'Each nominee must write a short statement explaining why they should be chosen or given preference.',
-      'Self-nomination is only allowed inside the admin-set nomination open and close dates.',
+      'When the admin opens the nomination window, eligible members may propose themselves for Management Committee seats: President, Vice-President, Secretary, Treasurer, or Executive Member.',
+      'Each nominee must write a short statement. Retiring members remain eligible for re-election.',
+      'Self-nomination is only allowed inside the admin-set nomination open and close dates, and only for members not disqualified by arrears.',
     ],
   ),
   VotingCharterSection(
     heading: 'Voting method',
     points: [
-      'Rank every candidate in each post — 1 = highest preference (maximum rating).',
-      'You must rank all candidates in a post; duplicate ranks are not allowed.',
-      'Scores use Borda priority points: top rank gets the highest score; the candidate with the highest total is elected if they meet the admin’s minimum winning score for that post.',
-      'You may include yourself in your rankings.',
-      'Voting is only allowed inside the admin-set voting open and close dates.',
+      'Bye-laws permit Secret Ballot and Show of Hands. The chosen method must be recorded before polling begins.',
+      'Each eligible member casts one vote. Separate per-office ballots are used only when that voting method is expressly established or approved.',
+      'Votes are final after submission — ordinary administrators cannot edit them. Duplicate voting is blocked; the election record is immutable.',
+      'Voting is only allowed inside the admin-set voting window and only once election quorum (3/4 of members) is satisfied.',
     ],
   ),
   VotingCharterSection(
-    heading: 'Managing Committee formation',
+    heading: 'Management Committee',
     points: [
-      'After the three executive winners are declared, candidates placed 2nd or 3rd (unelected) for President, Secretary or Treasurer may be nominated into the Managing Committee as other executive members.',
-      'The committee is formed with seven or more members. The Society proposes a minimum of fifteen members.',
-      'If 15 seats are not filled by winners plus 2nd/3rd place nominations, members who volunteer may be included.',
-      'If seats still remain after voluntary interest, the executive committee proposes names of members to complete the roster.',
-      'The full committee appears for residents only after the admin publishes the formed roster.',
+      'The Management Committee has exactly seven members: President, Vice-President, Secretary, Treasurer, and three Executive Members, for a two-year term.',
+      'Second- or third-place candidates are not automatically made members of the Management Committee.',
+      'Vacancies are filled by majority of the remaining committee per the bye-laws. Removal requires Special Resolution and hearing; removed members are disqualified for two years.',
+      'The first committee meeting must be within 30 days of election. Ordinary meeting quorum is 5 of 7; regular meetings at least monthly with seven clear days’ notice.',
     ],
   ),
   VotingCharterSection(
     heading: 'Documents & results',
     points: [
-      'Admin may attach circulars, letters, or other society/personal documents to the election; members can open them from the poll.',
-      'After the voting window closes, the admin tallies results. Winners and 2nd/3rd place candidates are visible in the admin portal first.',
-      'Elected and formed committee names appear in the residents’ Committee module only after the admin publishes them to the roster.',
+      'Admin may attach circulars, letters, or other society documents to the election; members can open them from the poll.',
+      'After voting closes, results are tallied and audited. A complete Election Report and AGM Election Minutes are generated on completion.',
+      'Elected committee names appear in the residents’ Committee module only after the admin publishes the roster.',
       'This charter can be downloaded as a PDF and shared with all members (for example via WhatsApp).',
     ],
   ),
@@ -138,44 +133,34 @@ const votingCharterSections = <VotingCharterSection>[
 
 const _hiSteps = <VotingCharterStep>[
   VotingCharterStep(
-    title: 'तीन कार्यकारी पद जानें',
+    title: 'प्रबंध समिति के सात पद जानें',
     detail:
-        'चुनाव पोल केवल अध्यक्ष, सचिव और कोषाध्यक्ष के लिए है। प्रत्येक पद का विजेता क्रमबद्ध (बोर्डा) मतदान से तय होता है।',
+        'प्रबंध समिति में सात सदस्य होते हैं: अध्यक्ष, उपाध्यक्ष, सचिव, कोषाध्यक्ष और तीन कार्यकारिणी सदस्य। कार्यकाल दो वर्ष है; सेवानिवृत्त सदस्य पुनः चुनाव लड़ सकते हैं।',
   ),
   VotingCharterStep(
     title: 'नामांकन विंडो में नामांकन करें',
     detail:
-        'नामांकन खुला होने पर पात्र सदस्य संक्षिप्त विवरण के साथ तीन में से किसी भी पद के लिए स्वयं नामांकन कर सकते हैं।',
+        'नामांकन खुला होने पर पात्र सदस्य (60 दिनों से अधिक रखरखाव बकाया न हो) खुली सीट के लिए संक्षिप्त विवरण के साथ स्वयं नामांकन कर सकते हैं।',
   ),
   VotingCharterStep(
-    title: 'अपना क्रमबद्ध मतपत्र डालें',
+    title: 'अपना मत डालें',
     detail:
-        'मतदान विंडो में प्रत्येक पद के सभी उम्मीदवारों को रैंक दें (1 = सर्वोच्च प्राथमिकता)। प्रति व्यक्ति एक वोट; दोनों जीवनसाथी मतदान करें तो प्रति फ्लैट अधिकतम दो मतपत्र।',
+        'प्रत्येक पात्र सदस्य को एक मत है। मतदान गुप्त मतपत्र या हाथ उठाकर — विधि मतदान से पहले दर्ज की जाती है। प्रॉक्सी के लिए बैठक से कम-से-कम 48 घंटे पूर्व लिखित प्राधिकरण आवश्यक है (एक व्यक्ति केवल एक सदस्य का प्रॉक्सी हो सकता है)।',
   ),
   VotingCharterStep(
-    title: 'विजेता तीन पद ग्रहण करते हैं',
+    title: 'कोरम और पात्रता',
     detail:
-        'परिणाम गणना के बाद प्रत्येक पद पर सर्वाधिक अंक वाला उम्मीदवार निर्वाचित होता है (यदि एडमिन की न्यूनतम जीत अंक सीमा पूरी हो)।',
+        'चुनाव कोरम कुल सदस्यों का 3/4 है (30 सदस्यों के लिए न्यूनतम 23)। चुनाव तिथि पर 60 दिनों से अधिक रखरखाव/साझा व्यय बकाया वाले सदस्य मतदान या चुनाव नहीं लड़ सकते। संयुक्त स्वामित्व में नामित सदस्य नियम लागू होता है।',
   ),
   VotingCharterStep(
-    title: 'दूसरे व तीसरे स्थान समिति में शामिल हो सकते हैं',
+    title: 'परिणाम और सात पद',
     detail:
-        'अध्यक्ष, सचिव या कोषाध्यक्ष के चुनाव में दूसरे या तीसरे स्थान पर रहकर निर्वाचित न हुए उम्मीदवार प्रबंध समिति के अन्य कार्यकारी सदस्यों के रूप में नामांकित हो सकते हैं।',
+        'घोषित परिणाम प्रबंध समिति के सात पद भरते हैं। दूसरे या तीसरे स्थान के उम्मीदवार स्वतः समिति सदस्य नहीं बनते। रिक्तियाँ उपविधि की रिक्ति प्रक्रिया से भरी जाती हैं।',
   ),
   VotingCharterStep(
-    title: 'समिति आकार: कम से कम 7, लक्ष्य 15',
+    title: 'रोस्टर प्रकाशित करें और पहली बैठक',
     detail:
-        'प्रबंध समिति सात या अधिक सदस्यों से गठित होती है। सोसाइटी न्यूनतम पंद्रह सदस्यों की समिति प्रस्तावित करती है।',
-  ),
-  VotingCharterStep(
-    title: 'शेष सीटें भरें',
-    detail:
-        'यदि विजेताओं और दूसरे/तीसरे स्थान के नामांकन से समिति 15 तक न पहुँचे, इच्छुक सदस्य स्वेच्छा से जुड़ सकते हैं। फिर भी सीटें बचें तो कार्यकारी समिति नाम प्रस्तावित करेगी।',
-  ),
-  VotingCharterStep(
-    title: 'पूर्ण रोस्टर प्रकाशित करें',
-    detail:
-        'गठन पूरा होने पर (न्यूनतम 7) एडमिन रोस्टर प्रकाशित करता है। इसके बाद सदस्य समिति मॉड्यूल में पूरी समिति देख सकते हैं।',
+        'प्रकाशन के बाद सदस्य समिति मॉड्यूल में समिति देख सकते हैं। पहली प्रबंध समिति बैठक चुनाव के 30 दिनों के भीतर निर्धारित होनी चाहिए। सामान्य बैठक कोरम 7 में से 5 है; नियमित बैठकें कम-से-कम मासिक, सात स्पष्ट दिनों की सूचना के साथ।',
   ),
 ];
 
@@ -183,45 +168,44 @@ const _hiSections = <VotingCharterSection>[
   VotingCharterSection(
     heading: 'पात्रता',
     points: [
-      'प्रत्येक पंजीकृत मालिक और उनके जीवनसाथी एक-एक क्रमबद्ध मतपत्र डाल सकते हैं।',
-      'प्रति व्यक्ति एक वोट — एक से अधिक फ्लैट होने पर भी आप केवल एक बार मतदान करते हैं (लॉगिन / फोन से मिलाया जाता है)।',
-      'जब दोनों जीवनसाथी अलग-अलग मतदान करें तो एक ही फ्लैट से अधिकतम दो मतपत्र आ सकते हैं।',
+      'प्रत्येक सोसाइटी सदस्य को एक मतदान अधिकार है — चाहे उनके पास कितने भी अपार्टमेंट हों।',
+      'संयुक्त स्वामित्व में उपविधि का नामित-सदस्य नियम लागू होता है — उस धारण के लिए केवल नामित सदस्य मतदान करता है।',
+      'चुनाव तिथि पर 60 दिनों से अधिक रखरखाव या साझा व्यय बकाया वाले सदस्य मतदान और चुनाव लड़ने से अयोग्य हैं।',
+      'मतदान व्यक्तिगत रूप से या बैठक से कम-से-कम 48 घंटे पूर्व जमा वैध लिखित प्रॉक्सी से हो सकता है; एक व्यक्ति एक से अधिक सदस्य का प्रॉक्सी नहीं हो सकता।',
     ],
   ),
   VotingCharterSection(
     heading: 'नामांकन',
     points: [
-      'जब एडमिन नामांकन विंडो खोलता है, सदस्य तीन कार्यकारी पदों — अध्यक्ष, सचिव या कोषाध्यक्ष — के लिए स्वयं को प्रस्तावित कर सकते हैं।',
-      'प्रत्येक नामांकित को यह बताते हुए एक संक्षिप्त विवरण लिखना होगा कि उन्हें क्यों चुना जाए या प्राथमिकता दी जाए।',
-      'स्व-नामांकन केवल एडमिन द्वारा निर्धारित नामांकन आरंभ और समाप्ति तिथियों के बीच ही अनुमत है।',
+      'जब एडमिन नामांकन विंडो खोलता है, पात्र सदस्य प्रबंध समिति के पदों — अध्यक्ष, उपाध्यक्ष, सचिव, कोषाध्यक्ष या कार्यकारिणी सदस्य — के लिए स्वयं को प्रस्तावित कर सकते हैं।',
+      'प्रत्येक नामांकित को संक्षिप्त विवरण लिखना होगा। सेवानिवृत्त सदस्य पुनः चुनाव के लिए पात्र रहते हैं।',
+      'स्व-नामांकन केवल एडमिन द्वारा निर्धारित नामांकन तिथियों में, और बकाया से अयोग्य न होने वाले सदस्यों के लिए ही अनुमत है।',
     ],
   ),
   VotingCharterSection(
     heading: 'मतदान विधि',
     points: [
-      'प्रत्येक पद में सभी उम्मीदवारों को रैंक दें — 1 = उच्चतम प्राथमिकता (अधिकतम रेटिंग)।',
-      'एक पद में सभी उम्मीदवारों को रैंक देना अनिवार्य है; समान रैंक की अनुमति नहीं है।',
-      'अंक बोर्डा प्राथमिकता पद्धति से मिलते हैं: शीर्ष रैंक को सर्वाधिक अंक; सबसे अधिक कुल अंक वाला उम्मीदवार चुना जाता है यदि वह उस पद के लिए एडमिन की न्यूनतम जीत अंक सीमा पूरी करता है।',
-      'आप अपनी रैंकिंग में स्वयं को भी शामिल कर सकते हैं।',
-      'मतदान केवल एडमिन द्वारा निर्धारित मतदान आरंभ और समाप्ति तिथियों के बीच ही अनुमत है।',
+      'उपविधियाँ गुप्त मतपत्र और हाथ उठाकर मतदान दोनों की अनुमति देती हैं। चुनी गई विधि मतदान शुरू होने से पहले दर्ज करनी होगी।',
+      'प्रत्येक पात्र सदस्य एक मत डालता है। प्रति-पद अलग मतपत्र केवल तभी जब वह मतदान विधि स्पष्ट रूप से स्थापित/अनुमोदित हो।',
+      'जमा होने के बाद मत अंतिम हैं — सामान्य प्रशासक उन्हें संपादित नहीं कर सकते। दोहरा मतदान रोका जाता है; चुनाव अभिलेख अपरिवर्तनीय है।',
+      'मतदान केवल एडमिन द्वारा निर्धारित मतदान विंडो में और चुनाव कोरम (सदस्यों का 3/4) पूरा होने पर ही अनुमत है।',
     ],
   ),
   VotingCharterSection(
-    heading: 'प्रबंध समिति का गठन',
+    heading: 'प्रबंध समिति',
     points: [
-      'तीन कार्यकारी विजेताओं की घोषणा के बाद, अध्यक्ष/सचिव/कोषाध्यक्ष में दूसरे या तीसरे स्थान पर रहकर निर्वाचित न हुए उम्मीदवार प्रबंध समिति में अन्य कार्यकारी सदस्यों के रूप में नामांकित हो सकते हैं।',
-      'समिति सात या अधिक सदस्यों से गठित होती है। सोसाइटी न्यूनतम पंद्रह सदस्यों का प्रस्ताव करती है।',
-      'यदि विजेताओं और दूसरे/तीसरे स्थान के नामांकन से 15 सीटें न भरें, स्वेच्छा से इच्छुक सदस्यों को शामिल किया जा सकता है।',
-      'स्वैच्छिक रुचि के बाद भी सीटें बचें तो कार्यकारी समिति रोस्टर पूरा करने हेतु सदस्यों के नाम प्रस्तावित करेगी।',
-      'गठित रोस्टर एडमिन द्वारा प्रकाशित करने के बाद ही निवासियों को पूरी समिति दिखती है।',
+      'प्रबंध समिति में ठीक सात सदस्य होते हैं: अध्यक्ष, उपाध्यक्ष, सचिव, कोषाध्यक्ष और तीन कार्यकारिणी सदस्य — दो वर्ष के कार्यकाल के लिए।',
+      'दूसरे या तीसरे स्थान के उम्मीदवार स्वतः प्रबंध समिति के सदस्य नहीं बनते।',
+      'रिक्तियाँ शेष समिति के बहुमत से उपविधि के अनुसार भरी जाती हैं। निष्कासन के लिए विशेष प्रस्ताव और सुनवाई आवश्यक है; निष्कासित सदस्य दो वर्ष के लिए अयोग्य रहते हैं।',
+      'पहली समिति बैठक चुनाव के 30 दिनों के भीतर होनी चाहिए। सामान्य बैठक कोरम 7 में से 5; नियमित बैठकें कम-से-कम मासिक, सात स्पष्ट दिनों की सूचना के साथ।',
     ],
   ),
   VotingCharterSection(
     heading: 'दस्तावेज़ और परिणाम',
     points: [
-      'एडमिन चुनाव में परिपत्र, पत्र या अन्य सोसाइटी/व्यक्तिगत दस्तावेज़ संलग्न कर सकता है; सदस्य उन्हें पोल से खोल सकते हैं।',
-      'मतदान विंडो बंद होने के बाद एडमिन परिणाम गिनता है। विजेता और दूसरे/तीसरे स्थान पहले एडमिन पोर्टल में दिखते हैं।',
-      'निर्वाचित और गठित समिति के नाम निवासी समिति मॉड्यूल में तभी दिखते हैं जब एडमिन उन्हें रोस्टर पर प्रकाशित करता है।',
+      'एडमिन चुनाव में परिपत्र, पत्र या अन्य सोसाइटी दस्तावेज़ संलग्न कर सकता है; सदस्य उन्हें पोल से खोल सकते हैं।',
+      'मतदान बंद होने के बाद परिणाम गिने और ऑडिट किए जाते हैं। पूर्ण होने पर पूर्ण चुनाव रिपोर्ट और वार्षिक आम सभा चुनाव कार्यवृत्त तैयार होते हैं।',
+      'निर्वाचित समिति के नाम निवासी समिति मॉड्यूल में तभी दिखते हैं जब एडमिन रोस्टर प्रकाशित करता है।',
       'यह चार्टर PDF के रूप में डाउनलोड करके सभी सदस्यों को (जैसे WhatsApp से) परिचालित किया जा सकता है।',
     ],
   ),
@@ -230,23 +214,37 @@ const _hiSections = <VotingCharterSection>[
 VotingCharterContent votingCharterContent(CharterLang lang) {
   if (lang == CharterLang.hi) {
     return const VotingCharterContent(
-      title: 'मतदान और समिति गठन चार्टर',
+      title: 'समिति के 7 सदस्यों का चुनाव',
+      summaryTitle: 'समिति के 7 सदस्यों का चुनाव',
+      summaryPosts: 'अध्यक्ष • उपाध्यक्ष • सचिव • कोषाध्यक्ष • 3 कार्यकारिणी सदस्य',
+      summaryPoints: [
+        'मतदान का अधिकार: प्रत्येक पात्र सदस्य को एक मत।',
+        'प्रॉक्सी: लिखित प्राधिकरण के साथ, बैठक से कम-से-कम 48 घंटे पूर्व।',
+        'चुनाव कोरम: कुल सदस्यों का 3/4। 30 सदस्यों के लिए न्यूनतम 23 सदस्य।',
+      ],
       programHeading: 'सदस्यों के लिए चरणबद्ध कार्यक्रम',
       programIntro:
-          'कार्यकारी चुनाव पोल और सोसाइटी की प्रबंध समिति कैसे बनती है — यह समझने के लिए ये चरण अपनाएँ।',
-      rulesHeading: 'चार्टर नियम',
+          'पंजीकृत उपविधियों के अनुसार सोसाइटी की सात-सदस्यीय प्रबंध समिति के चुनाव के लिए ये चरण अपनाएँ।',
+      rulesHeading: 'उपविधि नियम',
       steps: _hiSteps,
       sections: _hiSections,
       footerNote: 'यह चार्टर PDF के रूप में डाउनलोड करके सभी सदस्यों को (जैसे WhatsApp से) परिचालित किया जा सकता है।',
       shareMessage:
-          'सोसाइटी मतदान और समिति गठन चार्टर — कार्यकारी चुनाव और प्रबंध समिति गठन का चरणबद्ध कार्यक्रम कृपया पढ़ें।',
+          'सोसाइटी चुनाव चार्टर — पंजीकृत उपविधियों के अनुसार समिति के 7 सदस्यों का चुनाव।',
     );
   }
-  return VotingCharterContent(
+  return const VotingCharterContent(
     title: votingCharterTitle,
+    summaryTitle: 'Election of the 7-member Management Committee',
+    summaryPosts: 'President • Vice-President • Secretary • Treasurer • 3 Executive Members',
+    summaryPoints: [
+      'Voting right: one vote for each eligible member.',
+      'Proxy: with written authorisation, at least 48 hours before the meeting.',
+      'Election quorum: 3/4 of members. For 30 members, minimum 23 members.',
+    ],
     programHeading: 'Step-by-step program for members',
     programIntro: electionProgramIntro,
-    rulesHeading: 'Charter rules',
+    rulesHeading: 'Bye-law rules',
     steps: electionProgramSteps,
     sections: votingCharterSections,
     footerNote:
@@ -265,6 +263,12 @@ String buildVotingCharterPlainText({String? societyName, CharterLang lang = Char
     buf.writeln();
   }
   buf.writeln(c.title);
+  buf.writeln();
+  buf.writeln(c.summaryTitle);
+  buf.writeln(c.summaryPosts);
+  for (final p in c.summaryPoints) {
+    buf.writeln('• $p');
+  }
   buf.writeln();
   buf.writeln(c.programHeading);
   buf.writeln(c.programIntro);
@@ -295,7 +299,11 @@ Future<bool> shareVotingCharterOnWhatsApp({String? societyName, CharterLang lang
       buf.writeln(societyName.trim());
       buf.writeln();
     }
-    buf.writeln(c.title);
+    buf.writeln(c.summaryTitle);
+    buf.writeln(c.summaryPosts);
+    for (final p in c.summaryPoints) {
+      buf.writeln('• $p');
+    }
     buf.writeln();
     buf.writeln(c.programHeading);
     buf.writeln(c.programIntro);
@@ -313,7 +321,6 @@ Future<bool> shareVotingCharterOnWhatsApp({String? societyName, CharterLang lang
   }();
 
   final body = '${votingCharterShareMessageFor(lang)}\n\n$programOnly';
-  // WhatsApp URL length limits — prefer short human-readable program text.
   var text = body;
   const maxLen = 3500;
   if (text.length > maxLen) {

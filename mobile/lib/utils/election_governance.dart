@@ -1,19 +1,50 @@
+/// Registered bye-laws — controlling source for the Election Module.
+library;
+
 enum ElectionPhase { nomination, voting, closed, applied }
 
-/// Posts for new society elections.
+/// Bye-law constants (30-flat / 7-member Management Committee configuration).
+class ByeLaw {
+  static const apartments = 30;
+  static const committeeSize = 7;
+  static const termYears = 2;
+  static const proxyDeadlineHours = 48;
+  static const maxProxiesPerPerson = 1;
+  static const electionQuorumNumerator = 3;
+  static const electionQuorumDenominator = 4;
+  static const electionQuorumFor30 = 23;
+  static const arrearsDisqualifyDays = 60;
+  static const mcMeetingQuorumOfSeven = 5;
+  static const regularMeetingNoticeClearDays = 7;
+  static const firstMeetingWithinDays = 30;
+  static const removalDisqualificationYears = 2;
+}
+
+/// Seven Management Committee posts under the bye-laws.
+const managementCommitteePosts = [
+  'president',
+  'vice_president',
+  'secretary',
+  'treasurer',
+  'committee',
+];
+
+/// @Deprecated Prefer [managementCommitteePosts].
 const threeExecutivePosts = ['president', 'secretary', 'treasurer'];
 
-/// Minimum Managing Committee size after formation (charter).
-const minCommitteeSize = 7;
+/// Fixed Managing Committee size (bye-laws).
+const minCommitteeSize = ByeLaw.committeeSize;
 
-/// Society default target Managing Committee size (charter).
-const defaultTargetCommitteeSize = 15;
+/// Target equals fixed size — no target-15 formation.
+const defaultTargetCommitteeSize = ByeLaw.committeeSize;
 
-/// How many unelected places (2nd, 3rd) from each executive post may join the committee.
-const runnerUpPlaces = 2;
+/// Bye-laws do not auto-seat 2nd/3rd place.
+const runnerUpPlaces = 0;
+
+const defaultTermYears = ByeLaw.termYears;
 
 /// Legacy + current posts that may appear on older elections.
-const executivePosts = threeExecutivePosts;
+const executivePosts = managementCommitteePosts;
 const allElectionPosts = [
   'president',
   'vice_president',
@@ -24,10 +55,10 @@ const allElectionPosts = [
 
 const defaultOpenPosts = {
   'president': true,
+  'vice_president': true,
   'secretary': true,
   'treasurer': true,
-  'vice_president': false,
-  'committee': false,
+  'committee': true,
 };
 
 const postDisplay = {
@@ -35,8 +66,14 @@ const postDisplay = {
   'vice_president': 'Vice-President',
   'secretary': 'Secretary',
   'treasurer': 'Treasurer',
-  'committee': 'Committee member',
+  'committee': 'Executive Member',
 };
+
+int electionQuorumRequired(int memberCount) =>
+    ((memberCount * ByeLaw.electionQuorumNumerator) / ByeLaw.electionQuorumDenominator).ceil();
+
+int mcMeetingQuorumRequired([int committeeSize = ByeLaw.committeeSize]) =>
+    ((committeeSize * 2) / 3).ceil();
 
 ElectionPhase electionPhase(Map<String, dynamic> poll) {
   final p = poll['election_phase'] as String?;
@@ -78,7 +115,7 @@ bool isPostOpenForNomination(Map<String, dynamic> poll, String post) {
     final v = open[post];
     if (v == false) return false;
   }
-  return threeExecutivePosts.contains(post);
+  return managementCommitteePosts.contains(post);
 }
 
 bool isVotingWindowOpen(Map<String, dynamic> poll, [DateTime? now]) {
@@ -123,7 +160,13 @@ String votingWindowLabel(Map<String, dynamic> poll) {
 }
 
 Map<String, int> parseWinningVotes(dynamic raw) {
-  final out = <String, int>{'president': 0, 'secretary': 0, 'treasurer': 0};
+  final out = <String, int>{
+    'president': 0,
+    'vice_president': 0,
+    'secretary': 0,
+    'treasurer': 0,
+    'committee': 0,
+  };
   if (raw is! Map) return out;
   for (final e in raw.entries) {
     final n = e.value;

@@ -97,7 +97,7 @@ ElectionResultsPayload tallyElection({
   required List<Map<String, dynamic>> ballots,
   required int committeeSeats,
   Map<String, int> winningVotes = const {},
-  int runnerUpPlaces = 2,
+  int runnerUpPlaces = 0,
 }) {
   List<Map<String, dynamic>> byPost(String post) =>
       options.where((o) => o['election_post'] == post).toList();
