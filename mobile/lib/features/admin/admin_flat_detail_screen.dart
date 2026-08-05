@@ -5,6 +5,7 @@ import '../../core/theme/kutumbika_colors.dart';
 import '../../models/session_models.dart';
 import '../../services/admin_flat_service.dart';
 import '../../services/admin_resident_service.dart';
+import '../../utils/member_photo.dart';
 import '../../utils/password_generator.dart';
 
 class AdminFlatDetailScreen extends StatefulWidget {
@@ -426,6 +427,7 @@ class _MembersTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = KutumbikaBrandTheme.of(context);
     if (members.isEmpty) {
       return Center(
         child: Column(
@@ -445,12 +447,20 @@ class _MembersTab extends StatelessWidget {
       itemBuilder: (context, index) {
         final m = members[index];
         final primary = m['is_primary'] as bool? ?? false;
+        final name = m['name'] as String? ?? '';
         return Card(
           child: ListTile(
-            leading: Icon(primary ? Icons.star : Icons.person_outline),
-            title: Text(m['name'] as String? ?? ''),
+            leading: memberPhotoAvatar(
+              name: name,
+              photo: m['photo'] as String?,
+              backgroundColor: brand.primary.withValues(alpha: 0.12),
+              foregroundColor: brand.primary,
+              radius: 22,
+            ),
+            title: Text(name),
             subtitle: Text(
               [
+                if (primary) 'Primary',
                 if (m['relation'] != null) m['relation'] as String,
                 if (m['phone'] != null) m['phone'] as String,
               ].join(' · '),

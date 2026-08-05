@@ -20,7 +20,7 @@ import SocietyDocumentsManager from '@/components/SocietyDocumentsManager';
 import CommitteeManager from '@/components/CommitteeManager';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
-import { isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
+import { allowsPrimaryMember, allowsResidentLogin, isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
 import { useNotificationsRealtimeRevision } from '@/hooks/useNotificationsRealtimeRevision';
 import { notificationVisibleToResident } from '@/lib/notificationAudience';
 import { uploadMaintenanceReceipt } from '@/lib/notificationMediaStorage';
@@ -31,6 +31,8 @@ import TourGuideHub from '@/components/TourGuideHub';
 import ResidentFeedbackForm from '@/components/ResidentFeedbackForm';
 import Flat360ProfilePanel from '@/components/Flat360ProfilePanel';
 import { HOUSEHOLD_RELATION_TYPES, HOUSEHOLD_SERVICE_TYPES } from '@/lib/householdRoles';
+import { propagateMemberPhoto } from '@/lib/memberPhotos';
+import { PersonAvatar } from '@/components/PersonAvatar';
 
 interface Resident {
   id: string; name: string; phone: string; flatId: string; flatNumber: string;
@@ -746,6 +748,11 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       ? (memberForm.serviceType === 'Others' ? memberForm.customServiceType || 'others' : memberForm.serviceType)
       : (memberForm.relation === 'Others' ? 'others' : memberForm.relation);
     const relNorm = relationRaw.toLowerCase();
+    const wasPrimary = !!editingMember?.is_primary;
+    if (wasPrimary && (memberForm.isServiceman || !allowsPrimaryMember(relNorm))) {
+      toast.error('Primary member must stay an owner-household relation (not tenant/staff)');
+      return;
+    }
     const restricted = isRestrictedMemberCategory(relNorm);
     const isTenant = relNorm === 'tenant';
     const photoIdDocs = memberDocs.filter((d) => d.kind === 'photo_id' && !!d.front);
@@ -777,7 +784,8 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       age: memberForm.age ? parseInt(memberForm.age, 10) : null,
       gender: memberForm.gender || null,
       photo: memberForm.photo || null,
-      is_primary: false,
+      // Never demote primary via this form; new members are never primary here.
+      is_primary: wasPrimary,
     };
 
     if (restricted || isTenant) {
@@ -811,6 +819,19 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
     if (editingMember) {
       await supabase.from('members').update(payload).eq('id', editingMember.id);
+      if (allowsResidentLogin(relNorm) && memberForm.phone) {
+        await supabase
+          .from('resident_users')
+          .update({ name: memberForm.name })
+          .eq('phone', memberForm.phone)
+          .eq('flat_id', resident.flatId);
+      }
+      if (wasPrimary) {
+        await supabase
+          .from('flats')
+          .update({ owner_name: memberForm.name, is_occupied: true })
+          .eq('id', resident.flatId);
+      }
       toast.success('Member updated');
       memberId = editingMember.id;
     } else {
@@ -846,6 +867,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
           back_url: d.back || null,
         }));
       if (rows.length > 0) await supabase.from('member_documents').insert(rows);
+      await propagateMemberPhoto(memberId, memberForm.photo || null);
     }
 
     if (restricted && memberId) await syncResidentStaffVehicle(memberId);
@@ -1432,7 +1454,14 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
             {showAddMember && (
               <div className="card-section p-4 flex flex-col gap-3">
-                <p className="text-sm font-semibold">{editingMember ? 'Edit Member' : 'Add Member'}</p>
+                <p className="text-sm font-semibold">
+                  {editingMember?.is_primary ? 'Edit Primary Member' : editingMember ? 'Edit Member' : 'Add Member'}
+                </p>
+                {editingMember?.is_primary && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Update name, contact details, and profile photo. Primary status is kept on save.
+                  </p>
+                )}
 
                 {/* Type toggle */}
                 <div className="flex gap-2">
@@ -1440,7 +1469,14 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                     className={`flex-1 py-2 rounded-lg text-xs font-medium ${!memberForm.isServiceman ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
                     👨‍👩‍👧‍👦 Family
                   </button>
-                  <button onClick={() => setMemberForm(f => ({ ...f, isServiceman: true }))}
+                  <button
+                    onClick={() => {
+                      if (editingMember?.is_primary) {
+                        toast.error('Primary member cannot be changed to staff');
+                        return;
+                      }
+                      setMemberForm(f => ({ ...f, isServiceman: true }));
+                    }}
                     className={`flex-1 py-2 rounded-lg text-xs font-medium ${memberForm.isServiceman ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
                     🧹 Serviceman
                   </button>
@@ -1464,10 +1500,22 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 {!memberForm.isServiceman ? (
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Relation</label>
-                    <select className="input-field" value={memberForm.relation}
-                      onChange={e => setMemberForm(f => ({ ...f, relation: e.target.value }))}>
+                    <select
+                      className="input-field"
+                      value={memberForm.relation}
+                      onChange={e => {
+                        const next = e.target.value;
+                        if (editingMember?.is_primary && !allowsPrimaryMember(next)) {
+                          toast.error('Primary member cannot use Tenant or Others');
+                          return;
+                        }
+                        setMemberForm(f => ({ ...f, relation: next }));
+                      }}
+                    >
                       <option value="" disabled>---Select---</option>
-                      {RELATION_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
+                      {RELATION_TYPES.filter((r) => !editingMember?.is_primary || allowsPrimaryMember(r)).map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
                     </select>
                   </div>
                 ) : (
@@ -1775,14 +1823,20 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                         {m.phone ? ` · 📱${m.phone}` : ''}
                       </p>
                     </div>
-                    {!m.is_primary && !isMemberOnCommitteeRoster({ ...m, flat_id: resident.flatId }, committeeRoster) && (
+                    {!isMemberOnCommitteeRoster({ ...m, flat_id: resident.flatId }, committeeRoster) && (
                       <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => startEditMember(m)} className="p-1.5 text-muted-foreground hover:text-primary">
+                        <button
+                          onClick={() => startEditMember(m)}
+                          className="p-1.5 text-muted-foreground hover:text-primary"
+                          title={m.is_primary ? 'Edit primary profile & photo' : 'Edit member'}
+                        >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleDeleteMember(m)} className="p-1.5 text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {!m.is_primary && (
+                          <button onClick={() => handleDeleteMember(m)} className="p-1.5 text-muted-foreground hover:text-destructive">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     )}
                     {isMemberOnCommitteeRoster({ ...m, flat_id: resident.flatId }, committeeRoster) && (
@@ -1873,6 +1927,12 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
               const flatMembers = allMembers.filter((m: any) => m.flat_id === flat.id);
               const flatVehicles = allVehicles.filter((v: any) => v.flat_number === flat.flat_number);
               const isExpanded = expandedFlat === flat.id;
+              const q = dirSearch.trim().toLowerCase();
+              const nameHits = q
+                ? flatMembers.filter((m: any) =>
+                    [m.name, m.phone, m.relation].filter(Boolean).join(' ').toLowerCase().includes(q),
+                  )
+                : [];
 
               return (
                 <div key={flat.id} className={`card-section ${isMyFlat ? 'border-primary/30' : ''}`}>
@@ -1888,6 +1948,16 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                         {flat.wing && <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground">Wing {flat.wing}</span>}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{flat.owner_name || 'No owner'} · {flatMembers.length} members · {flatVehicles.length} vehicles</p>
+                      {nameHits.length > 0 && (
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          {nameHits.slice(0, 4).map((m: any) => (
+                            <span key={m.id} className="inline-flex items-center gap-1.5 bg-secondary/70 rounded-full pr-2 py-0.5 pl-0.5">
+                              <PersonAvatar name={m.name} photo={m.photo} size="xs" />
+                              <span className="text-[10px] font-medium truncate max-w-[7rem]">{m.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </button>
 
@@ -1913,9 +1983,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                       )}
                       {flatMembers.map((m: any) => (
                         <div key={m.id} className="flex items-center gap-2 bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0 overflow-hidden">
-                            {m.photo ? <img src={m.photo} alt="" className="w-full h-full object-cover" /> : m.name.charAt(0)}
-                          </div>
+                          <PersonAvatar name={m.name} photo={m.photo} size="xs" />
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">
                               {m.name} {m.is_primary && <span className="text-[9px] text-primary">★</span>}
@@ -2140,11 +2208,20 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             )}
             <div className="card-section p-4">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-6 h-6 text-primary" />
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {myMemberRecord?.photo ? (
+                    <img src={myMemberRecord.photo} alt={resident.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-6 h-6 text-primary" />
+                  )}
                 </div>
-                <div>
-                  <p className="font-semibold text-foreground">{resident.name}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground">
+                    {myMemberRecord?.name || resident.name}
+                    {myMemberRecord?.is_primary && (
+                      <span className="ml-1 text-[9px] text-primary font-medium">★ Primary</span>
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">Flat {resident.flatNumber} · 📱 {resident.phone}</p>
                   {myMemberRecord &&
                     isMemberOnCommitteeRoster({ ...myMemberRecord, flat_id: resident.flatId }, committeeRoster) && (
@@ -2152,8 +2229,22 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                     )}
                 </div>
               </div>
+              {myMemberRecord &&
+                !isMemberOnCommitteeRoster({ ...myMemberRecord, flat_id: resident.flatId }, committeeRoster) && (
+                  <button
+                    type="button"
+                    className="btn-primary text-sm w-full flex items-center justify-center gap-2"
+                    onClick={() => {
+                      setTab('family');
+                      void startEditMember(myMemberRecord);
+                    }}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    Edit profile &amp; photo
+                  </button>
+                )}
               {flatmates.length > 1 && (
-                <div>
+                <div className={myMemberRecord ? 'mt-3' : undefined}>
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Flatmates (shared login)</p>
                   <div className="space-y-1">
                     {flatmates.filter(f => f.id !== resident.id).map((f: any) => (

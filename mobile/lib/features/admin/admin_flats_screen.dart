@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../core/config/env.dart';
+import '../../core/supabase/supabase_bootstrap.dart';
 import '../../core/theme/kutumbika_brand_theme.dart';
 import '../../core/theme/kutumbika_colors.dart';
 import '../../models/session_models.dart';
 import '../../services/admin_flat_service.dart';
+import '../../utils/member_photo.dart';
 import 'admin_flat_detail_screen.dart';
 import 'admin_flat_generator_screen.dart';
 
@@ -20,6 +23,7 @@ class _AdminFlatsScreenState extends State<AdminFlatsScreen> {
   final _service = AdminFlatService();
   final _searchCtrl = TextEditingController();
   List<Map<String, dynamic>> _flats = const [];
+  Map<String, String> _ownerPhotoByFlatId = const {};
   bool _loading = true;
 
   @override
@@ -36,8 +40,29 @@ class _AdminFlatsScreenState extends State<AdminFlatsScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    _flats = await _service.fetchFlats(widget.session.societyId);
-    if (mounted) setState(() => _loading = false);
+    final flats = await _service.fetchFlats(widget.session.societyId);
+    final photoByFlat = <String, String>{};
+    if (Env.isConfigured && flats.isNotEmpty) {
+      final flatIds = flats.map((f) => f['id'] as String).toList();
+      final rows = await SupabaseBootstrap.client
+          .from('members')
+          .select('flat_id, photo')
+          .eq('is_primary', true)
+          .inFilter('flat_id', flatIds);
+      for (final row in (rows as List).cast<Map<String, dynamic>>()) {
+        final photo = (row['photo'] as String?)?.trim();
+        final flatId = row['flat_id'] as String?;
+        if (flatId != null && photo != null && photo.isNotEmpty) {
+          photoByFlat[flatId] = photo;
+        }
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _flats = flats;
+      _ownerPhotoByFlatId = photoByFlat;
+      _loading = false;
+    });
   }
 
   List<Map<String, dynamic>> get _filtered {
@@ -213,12 +238,12 @@ class _AdminFlatsScreenState extends State<AdminFlatsScreen> {
 
                               return Card(
                                 child: ListTile(
-                                  leading: CircleAvatar(
+                                  leading: memberPhotoAvatar(
+                                    name: f['owner_name'] as String? ?? f['flat_number'] as String? ?? '?',
+                                    photo: _ownerPhotoByFlatId[f['id'] as String],
                                     backgroundColor: brand.primaryLight,
-                                    child: Text(
-                                      (f['flat_number'] as String? ?? '?').substring(0, 1),
-                                      style: TextStyle(color: brand.primary),
-                                    ),
+                                    foregroundColor: brand.primary,
+                                    radius: 22,
                                   ),
                                   title: Text('Flat ${f['flat_number']}'),
                                   subtitle: Text(

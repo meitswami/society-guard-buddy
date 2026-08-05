@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { fmtDateTimeFull } from '@/lib/dateFormat';
 import { confirmAction } from '@/lib/swal';
 import { DateInput } from '@/components/DateInput';
+import { PersonAvatar } from '@/components/PersonAvatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,7 +97,7 @@ type SigRow = {
   signer_label: string | null;
 };
 
-type MemberPick = { id: string; name: string; flat_id: string; flat_number: string };
+type MemberPick = { id: string; name: string; flat_id: string; flat_number: string; photo?: string | null };
 
 type FlatWithMembers = {
   id: string;
@@ -349,13 +350,14 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       setMembers([]);
       return;
     }
-    const { data: mems } = await supabase.from('members').select('id, name, flat_id').in('flat_id', flatIds);
+    const { data: mems } = await supabase.from('members').select('id, name, flat_id, photo').in('flat_id', flatIds);
     setMembers(
       (mems ?? []).map((m) => ({
         id: m.id,
         name: m.name,
         flat_id: m.flat_id,
         flat_number: flatNum.get(m.flat_id) ?? '',
+        photo: typeof m.photo === 'string' ? m.photo : null,
       })),
     );
   }, [societyId, isResident]);
@@ -1980,6 +1982,11 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                           aria-label={`Select ${a.display_name}`}
                         />
                       )}
+                      <PersonAvatar
+                        name={a.display_name}
+                        photo={a.member_id ? members.find((m) => m.id === a.member_id)?.photo : null}
+                        size="xs"
+                      />
                       <span className="min-w-0 truncate">
                         {a.display_name}
                         {a.flat_number ? <span className="text-muted-foreground"> · {a.flat_number}</span> : null}
@@ -2187,7 +2194,12 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                         />
                       </td>
                       <td className="p-2 align-middle font-medium">{m.flat_number}</td>
-                      <td className="p-2 align-middle">{m.name}</td>
+                      <td className="p-2 align-middle">
+                        <span className="inline-flex items-center gap-2 min-w-0">
+                          <PersonAvatar name={m.name} photo={m.photo} size="xs" />
+                          <span className="truncate">{m.name}</span>
+                        </span>
+                      </td>
                       <td className="p-2 align-middle text-muted-foreground">{onList ? 'Already added' : '—'}</td>
                     </tr>
                   );

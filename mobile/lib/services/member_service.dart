@@ -70,5 +70,25 @@ class MemberService {
   Future<void> updatePhoto({required String memberId, required String photo}) async {
     if (!Env.isConfigured) return;
     await SupabaseBootstrap.client.from('members').update({'photo': photo}).eq('id', memberId);
+    await _propagateToCommittee(memberId: memberId, photo: photo);
+  }
+
+  /// Keep active committee roster photos in sync with household member face photos.
+  Future<void> _propagateToCommittee({required String memberId, required String photo}) async {
+    final row = await SupabaseBootstrap.client
+        .from('members')
+        .select('name, flat_id')
+        .eq('id', memberId)
+        .maybeSingle();
+    if (row == null) return;
+    final name = (row['name'] as String?)?.trim();
+    final flatId = row['flat_id'] as String?;
+    if (name == null || name.isEmpty || flatId == null) return;
+    await SupabaseBootstrap.client
+        .from('committee_members')
+        .update({'photo': photo.trim().isEmpty ? null : photo.trim()})
+        .eq('flat_id', flatId)
+        .eq('name', name)
+        .eq('is_active', true);
   }
 }

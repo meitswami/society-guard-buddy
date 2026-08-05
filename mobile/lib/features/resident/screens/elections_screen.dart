@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/supabase/supabase_bootstrap.dart';
 import '../../../core/theme/kutumbika_brand_theme.dart';
 import '../../../core/theme/kutumbika_colors.dart';
 import '../../../models/session_models.dart';
@@ -61,12 +62,30 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
       }
     }
 
-    final memberIds = bundle.options
-        .map((o) => o['member_id'] as String?)
-        .whereType<String>()
-        .toList();
-    final photos = await _memberService.fetchPhotosByIds(memberIds);
+    final memberIds = <String>{
+      ...bundle.options.map((o) => o['member_id'] as String?).whereType<String>(),
+    };
+    if (bundle.elections.isNotEmpty) {
+      final resultRows = await SupabaseBootstrap.client
+          .from('polls')
+          .select('id, election_results')
+          .inFilter('id', bundle.elections.map((e) => e.id).toList());
+      for (final row in (resultRows as List).cast<Map<String, dynamic>>()) {
+        final results = row['election_results'];
+        if (results is! Map) continue;
+        final formation = formationOf(Map<String, dynamic>.from(results));
+        if (formation == null) continue;
+        for (final v in (formation['voluntary'] as List?) ?? []) {
+          if (v is Map && v['member_id'] is String) memberIds.add(v['member_id'] as String);
+        }
+        for (final e in (formation['executive_proposed'] as List?) ?? []) {
+          if (e is Map && e['member_id'] is String) memberIds.add(e['member_id'] as String);
+        }
+      }
+    }
+    final photos = await _memberService.fetchPhotosByIds(memberIds.toList());
 
+    if (!mounted) return;
     setState(() {
       _voterMemberId = member?.id;
       _bundle = bundle;
@@ -268,7 +287,7 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     );
   }
 
-  Widget _buildFormationSection(Map<String, dynamic> raw) {
+  Widget _buildFormationSection(Map<String, dynamic> raw, KutumbikaBrandTheme brand) {
     final results = raw['election_results'];
     if (results is! Map) return const SizedBox.shrink();
     final phase = electionPhase(raw);
@@ -305,9 +324,26 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
         else
           for (final v in voluntary)
             if (v is Map)
-              Text(
-                '· ${v['name']}${v['flat_number'] != null ? ' · Flat ${v['flat_number']}' : ''}',
-                style: const TextStyle(fontSize: 12),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    memberPhotoAvatar(
+                      name: '${v['name'] ?? ''}',
+                      photo: v['member_id'] is String ? _photoByMemberId[v['member_id'] as String] : null,
+                      backgroundColor: brand.primary.withValues(alpha: 0.12),
+                      foregroundColor: brand.primary,
+                      radius: 14,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${v['name']}${v['flat_number'] != null ? ' · Flat ${v['flat_number']}' : ''}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
               ),
         if (remaining > 0 && !already) ...[
           const SizedBox(height: 8),
@@ -526,7 +562,7 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                         style: FilledButton.styleFrom(backgroundColor: brand.primary),
                         child: const Text('Submit ballot (final)'),
                       ),
-                    if (raw != null) _buildFormationSection(raw),
+                    if (raw != null) _buildFormationSection(raw, brand),
                   ],
                 ),
               ),

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { Plus, Trash2, Edit2, Search, Users, Home, ChevronDown, ChevronUp, Car, Phone, Star, UserPlus, Key, Eye, EyeOff, RefreshCw, Camera, FileDown, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Users, ChevronDown, ChevronUp, Car, Phone, Star, UserPlus, Key, Eye, EyeOff, RefreshCw, Camera, FileDown, X } from 'lucide-react';
 import { confirmAction, showSuccess } from '@/lib/swal';
 import { toast } from 'sonner';
 import { generateFlatPassword } from '@/lib/passwordGenerator';
@@ -15,6 +15,8 @@ import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import SensitiveAdminVerifyModal from '@/components/SensitiveAdminVerifyModal';
 import Flat360ProfilePanel from '@/components/Flat360ProfilePanel';
 import { DateInput } from '@/components/DateInput';
+import { PersonAvatar } from '@/components/PersonAvatar';
+import { propagateMemberPhoto } from '@/lib/memberPhotos';
 
 type MemberDocumentKind = 'photo_id' | 'tenant_doc' | 'service_doc';
 type MemberDocDraft = {
@@ -188,14 +190,30 @@ const AdminResidentManager = ({
   const filteredFlats = useMemo(() => {
     if (!search.trim()) return flats;
     const q = search.toLowerCase();
-    return flats.filter(f =>
-      f.flatNumber.toLowerCase().includes(q) ||
-      (f.ownerName && f.ownerName.toLowerCase().includes(q)) ||
-      (f.ownerPhone && f.ownerPhone.includes(q))
-    );
-  }, [flats, search]);
+    return flats.filter(f => {
+      const flatMembers = members.filter(m => m.flatId === f.id);
+      const memberHay = flatMembers
+        .map((m) => [m.name, m.phone, m.relation].filter(Boolean).join(' '))
+        .join(' ')
+        .toLowerCase();
+      return (
+        f.flatNumber.toLowerCase().includes(q) ||
+        (f.ownerName && f.ownerName.toLowerCase().includes(q)) ||
+        (f.ownerPhone && f.ownerPhone.includes(q)) ||
+        memberHay.includes(q)
+      );
+    });
+  }, [flats, search, members]);
 
   const getMembersForFlat = (flatId: string) => members.filter(m => m.flatId === flatId);
+  const matchingMembersForFlat = (flatId: string) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return [] as Member[];
+    return getMembersForFlat(flatId).filter((m) => {
+      const hay = [m.name, m.phone, m.relation].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  };
   const getVehiclesForFlat = (flatNumber: string) => residentVehicles.filter(v => v.flatNumber === flatNumber);
   const getPrimaryMember = (flatId: string) => members.find(m => m.flatId === flatId && m.isPrimary);
   const getResidentUsersForFlat = (flatId: string) => residentUsers.filter(r => r.flat_id === flatId);
@@ -570,6 +588,7 @@ const AdminResidentManager = ({
           back_url: d.back || null,
         }));
       if (rows.length > 0) await supabase.from('member_documents').insert(rows);
+      await propagateMemberPhoto(memberId, memberForm.photo || null);
     }
 
     if (isPrimary && flat) {
@@ -874,6 +893,7 @@ const AdminResidentManager = ({
             const primary = flatMembers.find(m => m.isPrimary);
             const flatLogins = getResidentUsersForFlat(flat.id);
             const flatPass = getFlatPassword(flat.id);
+            const nameHits = matchingMembersForFlat(flat.id);
 
             return (
               <div key={flat.id} className="card-section">
@@ -888,9 +908,11 @@ const AdminResidentManager = ({
                       setFlatDetailView('manage');
                     }
                   }}>
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${flat.isOccupied ? 'bg-primary/10' : 'bg-muted'}`}>
-                    <Home className={`w-5 h-5 ${flat.isOccupied ? 'text-primary' : 'text-muted-foreground'}`} />
-                  </div>
+                  <PersonAvatar
+                    name={primary?.name || flat.ownerName || flat.flatNumber}
+                    photo={primary?.photo}
+                    size="md"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold font-mono">{flat.flatNumber}</p>
@@ -901,6 +923,19 @@ const AdminResidentManager = ({
                       {primary?.name || flat.ownerName || 'No owner'} · {flatMembers.length} members · {flatVehicles.length} vehicles
                       {flatLogins.length > 0 && ` · ${flatLogins.length} logins`}
                     </p>
+                    {nameHits.length > 0 && (
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        {nameHits.slice(0, 4).map((m) => (
+                          <span key={m.id} className="inline-flex items-center gap-1.5 bg-secondary/70 rounded-full pr-2 py-0.5 pl-0.5">
+                            <PersonAvatar name={m.name} photo={m.photo} size="xs" />
+                            <span className="text-[10px] font-medium truncate max-w-[7rem]">{m.name}</span>
+                          </span>
+                        ))}
+                        {nameHits.length > 4 && (
+                          <span className="text-[10px] text-muted-foreground">+{nameHits.length - 4}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                 </button>
@@ -1060,9 +1095,7 @@ const AdminResidentManager = ({
                         const tenantGroup = flatMembers.filter((m) => memberGroup(m) === 'tenant');
                         const renderMember = (m: Member) => (
                             <div key={m.id} className="flex items-start gap-2 bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0 overflow-hidden">
-                                {m.photo ? <img src={m.photo} alt="" className="w-full h-full object-cover" /> : m.name.charAt(0)}
-                              </div>
+                              <PersonAvatar name={m.name} photo={m.photo} size="xs" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium truncate">
                                   {m.name}

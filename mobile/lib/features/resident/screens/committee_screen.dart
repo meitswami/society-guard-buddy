@@ -146,7 +146,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
                                 ? m.repPhone
                                 : m.phone;
                             final photo = m.showRepresentative && (m.repName?.isNotEmpty ?? false)
-                                ? null
+                                ? (m.repPhoto ?? m.photo)
                                 : m.photo;
 
                             return Column(

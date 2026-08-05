@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { BookUser, Search, ChevronDown, ChevronUp, Home, Users, Car, Phone, Edit2 } from 'lucide-react';
+import { PersonAvatar } from '@/components/PersonAvatar';
 import { fmtDate } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
 
@@ -84,6 +85,16 @@ const DirectoryPage = ({
   const getMembersForFlat = (flatId: string) => membersByFlatId.get(flatId) ?? [];
   const getVehiclesForFlat = (flatNumber: string) => vehiclesByFlatNumber.get(flatNumber) ?? [];
 
+  /** When searching by name, surface matching people (with photos) on the flat row. */
+  const matchingMembersForFlat = (flatId: string) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return [];
+    return getMembersForFlat(flatId).filter((m) => {
+      const hay = [m.name, m.phone, m.relation].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  };
+
   // === VISITORS VIEW ===
   const visitorDirectory = useMemo(() => {
     const phoneMap = new Map<string, { latest: typeof visitors[0]; totalVisits: number; firstVisit: string }>();
@@ -158,6 +169,7 @@ const DirectoryPage = ({
               const isExpanded = expandedId === flat.id;
               const flatMembers = getMembersForFlat(flat.id);
               const flatVehicles = getVehiclesForFlat(flat.flatNumber);
+              const nameHits = matchingMembersForFlat(flat.id);
               return (
                 <div key={flat.id} className="card-section">
                   <button type="button" className="w-full flex items-center gap-3 text-left" onClick={() => setExpandedId(isExpanded ? null : flat.id)}>
@@ -171,6 +183,19 @@ const DirectoryPage = ({
                         {!flat.isOccupied && <span className="text-[10px] bg-warning/20 px-1.5 py-0.5 rounded text-warning">Vacant</span>}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{flat.ownerName || 'No owner'} · {flatMembers.length} members · {flatVehicles.length} vehicles</p>
+                      {nameHits.length > 0 && (
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          {nameHits.slice(0, 4).map((m) => (
+                            <span key={m.id} className="inline-flex items-center gap-1.5 bg-secondary/70 rounded-full pr-2 py-0.5 pl-0.5">
+                              <PersonAvatar name={m.name} photo={m.photo} size="xs" />
+                              <span className="text-[10px] font-medium truncate max-w-[7rem]">{m.name}</span>
+                            </span>
+                          ))}
+                          {nameHits.length > 4 && (
+                            <span className="text-[10px] text-muted-foreground">+{nameHits.length - 4}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="flex-shrink-0 flex items-center gap-1">
                       {canEditResidents && onEditFlat && (
@@ -212,9 +237,7 @@ const DirectoryPage = ({
                           <div className="space-y-1.5">
                             {flatMembers.map(m => (
                               <div key={m.id} className="flex items-center gap-2 bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
-                                  {m.name.charAt(0)}
-                                </div>
+                                <PersonAvatar name={m.name} photo={m.photo} size="xs" />
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-medium truncate">
                                     {m.name}

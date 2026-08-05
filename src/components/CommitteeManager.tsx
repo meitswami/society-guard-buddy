@@ -30,6 +30,7 @@ type FlatOption = {
   flat_number: string;
   owner_name: string | null;
   primary_member_name: string;
+  primary_member_photo: string | null;
 };
 
 type FormState = {
@@ -125,19 +126,28 @@ const CommitteeManager = ({ isResident = false }: Props) => {
     const flatIds = (flats ?? []).map((f) => f.id);
     const { data: primaries } =
       flatIds.length > 0
-        ? await supabase.from('members').select('flat_id, name').eq('is_primary', true).in('flat_id', flatIds)
-        : { data: [] as { flat_id: string; name: string }[] };
-    const primaryByFlatId = new Map<string, string>();
+        ? await supabase.from('members').select('flat_id, name, photo').eq('is_primary', true).in('flat_id', flatIds)
+        : { data: [] as { flat_id: string; name: string; photo: string | null }[] };
+    const primaryByFlatId = new Map<string, { name: string; photo: string | null }>();
     for (const row of primaries ?? []) {
-      if (row.flat_id && row.name?.trim()) primaryByFlatId.set(row.flat_id, row.name.trim());
+      if (row.flat_id && row.name?.trim()) {
+        primaryByFlatId.set(row.flat_id, {
+          name: row.name.trim(),
+          photo: typeof row.photo === 'string' && row.photo.trim() ? row.photo.trim() : null,
+        });
+      }
     }
     setFlatOptions(
-      (flats ?? []).map((f) => ({
-        id: f.id,
-        flat_number: f.flat_number,
-        owner_name: f.owner_name,
-        primary_member_name: primaryByFlatId.get(f.id) ?? f.owner_name?.trim() ?? '',
-      })),
+      (flats ?? []).map((f) => {
+        const primary = primaryByFlatId.get(f.id);
+        return {
+          id: f.id,
+          flat_number: f.flat_number,
+          owner_name: f.owner_name,
+          primary_member_name: primary?.name ?? f.owner_name?.trim() ?? '',
+          primary_member_photo: primary?.photo ?? null,
+        };
+      }),
     );
   }, [societyId]);
 
@@ -156,7 +166,28 @@ const CommitteeManager = ({ isResident = false }: Props) => {
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true });
     if (error) toast.error(error.message);
-    setRows((data as CommitteeMemberRow[]) ?? []);
+
+    const roster = (data as CommitteeMemberRow[]) ?? [];
+    const flatIds = [...new Set(roster.map((r) => r.flat_id).filter(Boolean))] as string[];
+    if (flatIds.length > 0) {
+      const { data: mems } = await supabase
+        .from('members')
+        .select('flat_id, name, photo')
+        .in('flat_id', flatIds);
+      const live = new Map<string, string>();
+      for (const m of mems ?? []) {
+        const photo = typeof m.photo === 'string' ? m.photo.trim() : '';
+        const name = typeof m.name === 'string' ? m.name.trim() : '';
+        if (m.flat_id && name && photo) live.set(`${m.flat_id}|${name}`, photo);
+      }
+      for (const row of roster) {
+        if (!row.flat_id || !row.name) continue;
+        const hit = live.get(`${row.flat_id}|${row.name.trim()}`);
+        if (hit) row.photo = hit;
+      }
+    }
+
+    setRows(roster);
     setLoading(false);
   }, [societyId]);
 
@@ -189,6 +220,7 @@ const CommitteeManager = ({ isResident = false }: Props) => {
       flatNumber: flat.flat_number,
       flatOwnerName: ownerName,
       name: prev.name.trim() ? prev.name : ownerName,
+      photo: prev.photo.trim() ? prev.photo : flat.primary_member_photo || '',
     }));
   };
 
@@ -456,10 +488,19 @@ const CommitteeManager = ({ isResident = false }: Props) => {
                 </div>
 
                 {form.flatOwnerName && (
-                  <div className="col-span-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase">Flat owner (from Members)</p>
-                    <p className="text-sm font-medium">{form.flatOwnerName}</p>
-                    {form.flatNumber && <p className="text-[10px] text-muted-foreground">Flat {form.flatNumber}</p>}
+                  <div className="col-span-2 rounded-lg border border-border bg-muted/20 px-3 py-2 flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary flex-shrink-0 overflow-hidden border border-border">
+                      {form.photo ? (
+                        <img src={form.photo} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        form.flatOwnerName.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase">Flat owner (from Members)</p>
+                      <p className="text-sm font-medium">{form.flatOwnerName}</p>
+                      {form.flatNumber && <p className="text-[10px] text-muted-foreground">Flat {form.flatNumber}</p>}
+                    </div>
                   </div>
                 )}
 

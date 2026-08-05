@@ -6,6 +6,8 @@ import '../../core/theme/kutumbika_brand_theme.dart';
 import '../../core/theme/kutumbika_colors.dart';
 import '../../models/session_models.dart';
 import '../../services/admin_resident_service.dart';
+import '../../utils/member_photo.dart';
+import '../../utils/phone_utils.dart';
 
 class AdminResidentsScreen extends StatefulWidget {
   const AdminResidentsScreen({super.key, required this.session});
@@ -20,6 +22,8 @@ class _AdminResidentsScreenState extends State<AdminResidentsScreen> {
   final _service = AdminResidentService();
   List<Map<String, dynamic>> _residents = const [];
   List<Map<String, dynamic>> _flats = const [];
+  Map<String, String> _photoByPhone = const {};
+  Map<String, String> _photoByFlatName = const {};
   bool _loading = true;
   final _searchCtrl = TextEditingController();
 
@@ -58,11 +62,47 @@ class _AdminResidentsScreenState extends State<AdminResidentsScreen> {
         .inFilter('flat_id', flatIds)
         .order('flat_number');
 
+    final photoByPhone = <String, String>{};
+    final photoByFlatName = <String, String>{};
+    final memRows = await SupabaseBootstrap.client
+        .from('members')
+        .select('flat_id, name, phone, photo')
+        .inFilter('flat_id', flatIds);
+    for (final m in (memRows as List).cast<Map<String, dynamic>>()) {
+      final photo = (m['photo'] as String?)?.trim();
+      if (photo == null || photo.isEmpty) continue;
+      final phone = m['phone'] as String?;
+      if (phone != null && phone.trim().isNotEmpty) {
+        photoByPhone[normalizeLoginPhone(phone)] = photo;
+      }
+      final name = (m['name'] as String?)?.trim().toLowerCase();
+      final flatId = m['flat_id'] as String?;
+      if (name != null && name.isNotEmpty && flatId != null) {
+        photoByFlatName['$flatId|$name'] = photo;
+      }
+    }
+
     if (!mounted) return;
     setState(() {
       _residents = (rows as List).cast<Map<String, dynamic>>();
+      _photoByPhone = photoByPhone;
+      _photoByFlatName = photoByFlatName;
       _loading = false;
     });
+  }
+
+  String? _photoForResident(Map<String, dynamic> r) {
+    final phone = r['phone'] as String?;
+    if (phone != null && phone.trim().isNotEmpty) {
+      final byPhone = _photoByPhone[normalizeLoginPhone(phone)];
+      if (byPhone != null) return byPhone;
+    }
+    final flatId = r['flat_id'] as String?;
+    final name = (r['name'] as String?)?.trim().toLowerCase();
+    if (flatId != null && name != null && name.isNotEmpty) {
+      return _photoByFlatName['$flatId|$name'];
+    }
+    return null;
   }
 
   List<Map<String, dynamic>> get _filtered {
@@ -262,6 +302,13 @@ class _AdminResidentsScreenState extends State<AdminResidentsScreen> {
                             itemBuilder: (context, index) {
                               final r = _filtered[index];
                               return ListTile(
+                                leading: memberPhotoAvatar(
+                                  name: r['name']?.toString() ?? '',
+                                  photo: _photoForResident(r),
+                                  backgroundColor: brand.primary.withValues(alpha: 0.12),
+                                  foregroundColor: brand.primary,
+                                  radius: 22,
+                                ),
                                 title: Text(r['name']?.toString() ?? ''),
                                 subtitle: Text('Flat ${r['flat_number']} · ${r['phone']}'),
                                 trailing: PopupMenuButton<String>(

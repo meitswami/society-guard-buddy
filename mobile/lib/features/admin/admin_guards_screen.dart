@@ -6,6 +6,7 @@ import '../../core/theme/kutumbika_brand_theme.dart';
 import '../../core/theme/kutumbika_colors.dart';
 import '../../models/session_models.dart';
 import '../../services/admin_guard_service.dart';
+import '../../utils/member_photo.dart';
 
 class AdminGuardsScreen extends StatefulWidget {
   const AdminGuardsScreen({super.key, required this.session});
@@ -42,7 +43,7 @@ class _AdminGuardsScreenState extends State<AdminGuardsScreen> {
 
     final rows = await SupabaseBootstrap.client
         .from('guards')
-        .select('id, guard_id, name, phone, auth_mode')
+        .select('id, guard_id, name, phone, auth_mode, photo_url')
         .eq('society_id', widget.session.societyId)
         .order('name');
 
@@ -238,6 +239,13 @@ class _AdminGuardsScreenState extends State<AdminGuardsScreen> {
                             itemBuilder: (context, index) {
                               final g = _filtered[index];
                               return ListTile(
+                                leading: memberPhotoAvatar(
+                                  name: g['name']?.toString() ?? '',
+                                  photo: g['photo_url'] as String?,
+                                  backgroundColor: brand.primary.withValues(alpha: 0.12),
+                                  foregroundColor: brand.primary,
+                                  radius: 22,
+                                ),
                                 title: Text(g['name']?.toString() ?? ''),
                                 subtitle: Text('ID ${g['guard_id']} · ${g['auth_mode']}'),
                                 trailing: PopupMenuButton<String>(

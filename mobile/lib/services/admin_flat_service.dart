@@ -85,7 +85,7 @@ class AdminFlatService {
     if (!Env.isConfigured) return const [];
     final rows = await SupabaseBootstrap.client
         .from('members')
-        .select('id, name, phone, relation, age, gender, is_primary, household_group')
+        .select('id, name, phone, relation, age, gender, is_primary, household_group, photo')
         .eq('flat_id', flatId)
         .order('is_primary', ascending: false)
         .order('name');

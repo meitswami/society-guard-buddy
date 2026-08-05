@@ -23,3 +23,25 @@ export function photoForOption(
   if (mid && photoByMemberId[mid]) return photoByMemberId[mid];
   return undefined;
 }
+
+/**
+ * Keep denormalized committee roster photos in sync when a household member
+ * face photo is uploaded or updated (family / staff / elected / nominated).
+ */
+export async function propagateMemberPhoto(memberId: string, photo: string | null): Promise<void> {
+  const trimmed = typeof photo === 'string' ? photo.trim() : '';
+  const value = trimmed || null;
+  const { data: member } = await supabase
+    .from('members')
+    .select('id, name, flat_id')
+    .eq('id', memberId)
+    .maybeSingle();
+  if (!member?.flat_id || !member.name?.trim()) return;
+
+  await supabase
+    .from('committee_members')
+    .update({ photo: value })
+    .eq('flat_id', member.flat_id)
+    .eq('name', member.name.trim())
+    .eq('is_active', true);
+}
