@@ -172,7 +172,7 @@ export async function buildVotingCharterPdfBlob(opts: {
   writeWrapped(
     w,
     isHi
-      ? 'इस PDF में Noto Sans Devanagari फ़ॉन्ट एम्बेड है।'
+      ? 'इस पीडीएफ में नोतो सैंस देवनागरी अक्षर जुड़े हैं।'
       : 'This PDF embeds the Noto Sans Devanagari font for Hindi glyphs.',
     { style: 'normal', size: 7.5, color: [107, 114, 128], gap: 4 },
   );

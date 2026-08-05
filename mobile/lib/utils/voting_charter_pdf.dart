@@ -62,7 +62,7 @@ Future<Uint8List> buildVotingCharterPdfBytes({
         pw.SizedBox(height: 2),
         pw.Text(
           isHi
-              ? 'इस PDF में Noto Sans Devanagari फ़ॉन्ट एम्बेड है।'
+              ? 'इस पीडीएफ में नोतो सैंस देवनागरी अक्षर जुड़े हैं।'
               : 'This PDF embeds Noto Sans Devanagari for Hindi glyphs and society names.',
           style: pw.TextStyle(font: font, fontSize: 7.5, color: muted),
         ),
@@ -169,7 +169,7 @@ Future<CharterPdfShareResult> downloadOrShareVotingCharterPdf({
 }) async {
   final bytes = await buildVotingCharterPdfBytes(societyName: societyName, lang: lang);
   if (bytes.length < 100) {
-    throw StateError(lang == CharterLang.hi ? 'PDF खाली था' : 'PDF was empty');
+    throw StateError(lang == CharterLang.hi ? 'पीडीएफ खाली था' : 'PDF was empty');
   }
   final name = votingCharterPdfFilename(societyName: societyName, lang: lang);
   final dir = await getTemporaryDirectory();

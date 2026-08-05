@@ -6,6 +6,7 @@ class FlatMember {
     this.phone,
     this.relation,
     this.age,
+    this.photo,
     this.isPrimary = false,
     this.householdGroup = 'family',
   });
@@ -16,6 +17,7 @@ class FlatMember {
   final String? phone;
   final String? relation;
   final int? age;
+  final String? photo;
   final bool isPrimary;
   final String householdGroup;
 
@@ -26,6 +28,7 @@ class FlatMember {
         phone: row['phone'] as String?,
         relation: row['relation'] as String?,
         age: row['age'] as int?,
+        photo: row['photo'] as String?,
         isPrimary: row['is_primary'] as bool? ?? false,
         householdGroup: row['household_group'] as String? ?? 'family',
       );

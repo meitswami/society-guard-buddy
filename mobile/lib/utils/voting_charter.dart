@@ -315,7 +315,7 @@ Future<bool> shareVotingCharterOnWhatsApp({String? societyName, CharterLang lang
       buf.writeln();
     }
     buf.writeln(lang == CharterLang.hi
-        ? 'पूर्ण नियम PDF में देखें (ऐप से हिंदी / English PDF डाउनलोड करें)।'
+        ? 'पूर्ण नियम पीडीएफ में देखें (ऐप से हिंदी / अंग्रेज़ी पीडीएफ प्राप्त करें)।'
         : 'See full rules in the PDF (download Hindi / English PDF from the app).');
     return buf.toString().trim();
   }();

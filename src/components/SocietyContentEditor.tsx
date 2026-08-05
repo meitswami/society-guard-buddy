@@ -99,7 +99,7 @@ const SocietyContentEditor = () => {
     const ok = await confirmAction(
       t('contentEditor.resetDefaults'),
       lang === 'hi'
-        ? 'सोसाइटी के सभी कस्टम अनुवाद हटाकर ऐप डिफ़ॉल्ट वापस आ जाएँगे।'
+        ? 'सोसाइटी के सभी अनुकूलित अनुवाद हटाकर ऐप की मूल भाषा वापस आ जाएगी।'
         : 'This removes custom society translations and restores app defaults.',
       t('swal.yes'),
       t('swal.no'),

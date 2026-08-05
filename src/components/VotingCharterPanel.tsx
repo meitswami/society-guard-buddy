@@ -66,21 +66,21 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
       const result = await savePdfToDevice(blob, votingCharterPdfFilename(societyName, pdfLang));
       if (result === 'cancelled') return;
       if (result === 'shared') {
-        toast.success(pdfLang === 'hi' ? 'चार्टर PDF सेव / शेयर करें' : 'Use Share to save the charter PDF');
+        toast.success(pdfLang === 'hi' ? 'नियमपत्र पीडीएफ सहेजें / साझा करें' : 'Use Share to save the charter PDF');
       } else if (result === 'opened') {
         toast.success(
           pdfLang === 'hi'
-            ? 'PDF खुला — Share → Save to Files से सेव करें'
+            ? 'पीडीएफ खुला — साझा करें → फ़ाइलों में सहेजें चुनें'
             : 'PDF opened — use Share → Save to Files to keep it',
         );
       } else {
-        toast.success(pdfLang === 'hi' ? 'हिंदी चार्टर PDF डाउनलोड हो गया' : 'English charter PDF downloaded');
+        toast.success(pdfLang === 'hi' ? 'हिंदी नियमपत्र पीडीएफ प्राप्त हो गया' : 'English charter PDF downloaded');
       }
     } catch (err) {
       console.error('Voting charter PDF download failed', err);
       toast.error(
         pdfLang === 'hi'
-          ? 'हिंदी PDF डाउनलोड नहीं हो सका — कृपया पुनः प्रयास करें'
+          ? 'हिंदी पीडीएफ प्राप्त नहीं हो सका — कृपया पुनः प्रयास करें'
           : 'Could not download English PDF — please try again',
       );
     } finally {
@@ -120,7 +120,7 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
                   className={btnClass}
                 >
                   {busyLang === 'hi' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  {busyLang === 'hi' ? 'तैयार हो रहा है…' : 'हिंदी PDF'}
+                  {busyLang === 'hi' ? 'तैयार हो रहा है…' : 'हिंदी पीडीएफ'}
                 </button>
                 <button
                   type="button"
@@ -145,7 +145,7 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
               </div>
               <p className="text-[10px] text-muted-foreground">
                 {lang === 'hi'
-                  ? 'लैपटॉप पर फ़ाइल डाउनलोड होती है; मोबाइल पर Share शीट से Save to Files / Downloads चुनें। हिंदी PDF में देवनागरी फ़ॉन्ट एम्बेड है।'
+                  ? 'लैपटॉप पर फ़ाइल सीधे प्राप्त होती है; मोबाइल पर साझा पत्रक से «फ़ाइलों में सहेजें» चुनें। हिंदी पीडीएफ में देवनागरी अक्षर जुड़े हैं।'
                   : 'On laptop the file downloads directly; on mobile use the share sheet → Save to Files / Downloads. Hindi PDF embeds Devanagari.'}
               </p>
             </>

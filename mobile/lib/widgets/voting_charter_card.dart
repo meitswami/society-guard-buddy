@@ -42,8 +42,8 @@ class _VotingCharterCardState extends State<VotingCharterCard> {
       SnackBar(
         content: Text(
           ok
-              ? (lang == CharterLang.hi ? 'WhatsApp खुल रहा है…' : 'Opening WhatsApp…')
-              : (lang == CharterLang.hi ? 'WhatsApp नहीं खुल सका' : 'Could not open WhatsApp'),
+              ? (lang == CharterLang.hi ? 'व्हाट्सऐप खुल रहा है…' : 'Opening WhatsApp…')
+              : (lang == CharterLang.hi ? 'व्हाट्सऐप नहीं खुल सका' : 'Could not open WhatsApp'),
         ),
       ),
     );
@@ -61,10 +61,10 @@ class _VotingCharterCardState extends State<VotingCharterCard> {
       if (result == CharterPdfShareResult.dismissed) return;
       final msg = switch (result) {
         CharterPdfShareResult.shared => lang == CharterLang.hi
-            ? 'चार्टर PDF साझा / सेव हो गया'
+            ? 'नियमपत्र पीडीएफ साझा / सहेजा गया'
             : 'Charter PDF shared or saved',
         CharterPdfShareResult.failed => lang == CharterLang.hi
-            ? 'शेयर उपलब्ध नहीं — कृपया पुनः प्रयास करें'
+            ? 'साझा करना उपलब्ध नहीं — कृपया पुनः प्रयास करें'
             : 'Share unavailable — please try again',
         CharterPdfShareResult.dismissed => '',
       };
@@ -76,7 +76,7 @@ class _VotingCharterCardState extends State<VotingCharterCard> {
         SnackBar(
           content: Text(
             lang == CharterLang.hi
-                ? 'PDF नहीं बन सका: ${e.toString().replaceFirst('Bad state: ', '')}'
+                ? 'पीडीएफ नहीं बन सका: ${e.toString().replaceFirst('Bad state: ', '')}'
                 : 'PDF failed: ${e.toString().replaceFirst('Bad state: ', '')}',
           ),
         ),
@@ -115,7 +115,7 @@ class _VotingCharterCardState extends State<VotingCharterCard> {
         leading: Icon(Icons.menu_book_outlined, color: brand.primary),
         title: Text(content.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
         subtitle: Text(
-          isHiView ? 'PDF डाउनलोड · WhatsApp साझा करें' : 'Download PDF · WhatsApp share',
+          isHiView ? 'पीडीएफ प्राप्त करें · व्हाट्सऐप साझा करें' : 'Download PDF · WhatsApp share',
           style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
         ),
         children: [
@@ -137,19 +137,19 @@ class _VotingCharterCardState extends State<VotingCharterCard> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    pdfButton(CharterLang.hi, 'हिंदी PDF', 'तैयार हो रहा है…'),
+                    pdfButton(CharterLang.hi, 'हिंदी पीडीएफ', 'तैयार हो रहा है…'),
                     pdfButton(CharterLang.en, 'English PDF', 'Preparing…'),
                     FilledButton.tonalIcon(
                       onPressed: busy ? null : _shareCharterText,
                       icon: const Icon(Icons.chat, size: 18),
-                      label: Text(isHiView ? 'WhatsApp पाठ' : 'WhatsApp text'),
+                      label: Text(isHiView ? 'व्हाट्सऐप पाठ' : 'WhatsApp text'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
                   isHiView
-                      ? 'PDF शेयर शीट खोलता है — Save to Files / Downloads या WhatsApp चुनें। देवनागरी फ़ॉन्ट एम्बेड है।'
+                      ? 'पीडीएफ साझा पत्रक खोलता है — «फ़ाइलों में सहेजें» या व्हाट्सऐप चुनें। देवनागरी अक्षर जुड़े हैं।'
                       : 'PDF opens the share sheet — choose Save to Files / Downloads or WhatsApp. Devanagari font is embedded.',
                   style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
                 ),

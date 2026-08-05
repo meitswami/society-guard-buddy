@@ -1,10 +1,41 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/kutumbika_brand_theme.dart';
 import '../../../core/theme/kutumbika_colors.dart';
 import '../../../models/flat_member.dart';
 import '../../../models/session_models.dart';
 import '../../../services/member_service.dart';
+import '../../../utils/member_photo.dart';
+
+const _familyRelations = [
+  'Owner',
+  'Spouse',
+  'Son',
+  'Daughter',
+  'Father',
+  'Mother',
+  'Brother',
+  'Sister',
+  'Tenant',
+  'Others',
+];
+
+const _staffRoles = [
+  'Cook',
+  'Maid',
+  'Washerman',
+  'Newspaper',
+  'Driver',
+  'Guard',
+  'Cleaner',
+  'Sweeper',
+  'Housekeeper',
+  'Mid-servant',
+  'Others',
+];
 
 class FamilyMembersScreen extends StatefulWidget {
   const FamilyMembersScreen({super.key, required this.session});
@@ -36,46 +67,106 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
     });
   }
 
+  Future<String?> _pickPhotoDataUrl() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 800,
+    );
+    if (file == null) return null;
+    final bytes = await file.readAsBytes();
+    final mime = file.mimeType ?? 'image/jpeg';
+    return 'data:$mime;base64,${base64Encode(bytes)}';
+  }
+
   Future<void> _addMember() async {
     final nameCtrl = TextEditingController();
-    final relationCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final ageCtrl = TextEditingController();
+    var isStaff = false;
+    var relation = _familyRelations.first;
+    String? photo;
 
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add family member'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Name *'),
-                textCapitalization: TextCapitalization.words,
-              ),
-              TextField(
-                controller: relationCtrl,
-                decoration: const InputDecoration(labelText: 'Relation'),
-              ),
-              TextField(
-                controller: phoneCtrl,
-                decoration: const InputDecoration(labelText: 'Phone'),
-                keyboardType: TextInputType.phone,
-              ),
-              TextField(
-                controller: ageCtrl,
-                decoration: const InputDecoration(labelText: 'Age'),
-                keyboardType: TextInputType.number,
-              ),
-            ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Add family / staff'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Family'), icon: Icon(Icons.family_restroom, size: 16)),
+                    ButtonSegment(value: true, label: Text('Staff'), icon: Icon(Icons.cleaning_services, size: 16)),
+                  ],
+                  selected: {isStaff},
+                  onSelectionChanged: (s) => setLocal(() {
+                    isStaff = s.first;
+                    relation = isStaff ? _staffRoles.first : _familyRelations.first;
+                  }),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Name *'),
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: relation,
+                  decoration: InputDecoration(labelText: isStaff ? 'Role' : 'Relation'),
+                  items: (isStaff ? _staffRoles : _familyRelations)
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                      .toList(),
+                  onChanged: (v) => setLocal(() => relation = v ?? relation),
+                ),
+                TextField(
+                  controller: phoneCtrl,
+                  decoration: const InputDecoration(labelText: 'Phone'),
+                  keyboardType: TextInputType.phone,
+                ),
+                TextField(
+                  controller: ageCtrl,
+                  decoration: const InputDecoration(labelText: 'Age'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    memberPhotoAvatar(
+                      name: nameCtrl.text.isEmpty ? '?' : nameCtrl.text,
+                      photo: photo,
+                      backgroundColor: KutumbikaColors.textMuted.withValues(alpha: 0.12),
+                      radius: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final data = await _pickPhotoDataUrl();
+                          if (data != null) setLocal(() => photo = data);
+                        },
+                        icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                        label: Text(photo == null ? 'Add photo' : 'Change photo'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Photos appear beside election nominees and elected committee members.',
+                  style: TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
-        ],
       ),
     );
 
@@ -95,9 +186,11 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
       await _service.addMember(
         flatId: widget.session.resident.flatId,
         name: name,
-        relation: relationCtrl.text.trim(),
+        relation: relation.toLowerCase(),
         phone: phoneCtrl.text.trim(),
         age: age,
+        photo: photo,
+        householdGroup: isStaff ? 'staff' : 'family',
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,12 +205,30 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
     }
   }
 
+  Future<void> _updatePhoto(FlatMember m) async {
+    final data = await _pickPhotoDataUrl();
+    if (data == null || !mounted) return;
+    try {
+      await _service.updatePhoto(memberId: m.id, photo: data);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Photo saved')),
+      );
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save photo: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final brand = KutumbikaBrandTheme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Family members')),
+      appBar: AppBar(title: const Text('Family & staff')),
       floatingActionButton: FloatingActionButton(
         onPressed: _addMember,
         backgroundColor: brand.primary,
@@ -131,7 +242,13 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                   ? ListView(
                       children: const [
                         SizedBox(height: 120),
-                        Center(child: Text('No members yet', style: TextStyle(color: KutumbikaColors.textMuted))),
+                        Center(
+                          child: Text(
+                            'No members yet — add family, servants, guards, cleaners…',
+                            style: TextStyle(color: KutumbikaColors.textMuted),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ],
                     )
                   : ListView.separated(
@@ -147,9 +264,12 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                         ].join(' · ');
 
                         return ListTile(
-                          leading: CircleAvatar(
+                          contentPadding: EdgeInsets.zero,
+                          leading: memberPhotoAvatar(
+                            name: m.name,
+                            photo: m.photo,
                             backgroundColor: brand.primary.withValues(alpha: 0.12),
-                            child: Icon(Icons.person, color: brand.primary),
+                            foregroundColor: brand.primary,
                           ),
                           title: Row(
                             children: [
@@ -169,6 +289,11 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                             ],
                           ),
                           subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
+                          trailing: IconButton(
+                            tooltip: 'Update photo',
+                            onPressed: () => _updatePhoto(m),
+                            icon: Icon(Icons.photo_camera_outlined, color: brand.primary),
+                          ),
                         );
                       },
                     ),
