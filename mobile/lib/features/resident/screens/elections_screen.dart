@@ -28,7 +28,8 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
   final _memberService = MemberService();
   ElectionBundle? _bundle;
   String? _voterMemberId;
-  final _rankings = <String, Map<String, Map<String, int>>>{};
+  /// pollId → selected option ids (combined ballot).
+  final _selected = <String, Set<String>>{};
   Map<String, String> _photoByMemberId = {};
   bool _loading = true;
 
@@ -47,15 +48,15 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     final bundle = await _electionService.fetchForSociety(widget.session.societyId);
     if (!mounted) return;
 
-    final ranks = <String, Map<String, Map<String, int>>>{};
+    final selected = <String, Set<String>>{};
     if (member != null) {
       for (final b in bundle.ballots) {
-        if (b['voter_id'] == member.id && b['rankings'] is Map) {
-          final raw = Map<String, dynamic>.from(b['rankings'] as Map);
-          ranks[b['poll_id'] as String] = raw.map((post, opts) {
-            final om = Map<String, dynamic>.from(opts as Map);
-            return MapEntry(post, om.map((k, v) => MapEntry(k, (v as num).toInt())));
-          });
+        if (b['voter_id'] == member.id && b['choices'] is Map) {
+          final raw = Map<String, dynamic>.from(b['choices'] as Map);
+          final picks = raw['selected'];
+          if (picks is List) {
+            selected[b['poll_id'] as String] = picks.whereType<String>().toSet();
+          }
         }
       }
     }
@@ -70,9 +71,9 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
       _voterMemberId = member?.id;
       _bundle = bundle;
       _photoByMemberId = photos;
-      _rankings
+      _selected
         ..clear()
-        ..addAll(ranks);
+        ..addAll(selected);
       _loading = false;
     });
   }
@@ -171,8 +172,16 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     }
 
     final options = _bundle!.options.where((o) => o['poll_id'] == pollId).toList();
-    final rankings = _rankings[pollId] ?? {};
-    final err = validateElectionRankings(options, rankings);
+    final picks = (_selected[pollId] ?? {}).toList();
+    final choices = <String, dynamic>{'selected': picks};
+    final separate = pollRaw['separate_office_votes'] == true;
+    final err = validateElectionChoices(
+      options,
+      choices,
+      separateOfficeVotes: separate,
+      committeeSeats: 3,
+      maxMarks: ByeLaw.committeeSize,
+    );
     if (err != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
       return;
@@ -185,12 +194,13 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
         flatId: widget.session.resident.flatId,
         flatNumber: widget.session.resident.flatNumber,
         voterPhone: widget.session.resident.phone,
-        rankings: rankings,
+        choices: choices,
+        ballotMethod: method,
         existingBallots: _bundle!.ballots,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ballot submitted')),
+        const SnackBar(content: Text('Ballot submitted (final)')),
       );
       await _load();
     } catch (e) {
@@ -201,17 +211,15 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     }
   }
 
-  void _setRank(String pollId, String post, String optionId, int? rank) {
+  void _togglePick(String pollId, String optionId) {
     setState(() {
-      final pollR = Map<String, Map<String, int>>.from(_rankings[pollId] ?? {});
-      final postR = Map<String, int>.from(pollR[post] ?? {});
-      if (rank == null) {
-        postR.remove(optionId);
-      } else {
-        postR[optionId] = rank;
+      final set = Set<String>.from(_selected[pollId] ?? {});
+      if (set.contains(optionId)) {
+        set.remove(optionId);
+      } else if (set.length < ByeLaw.committeeSize) {
+        set.add(optionId);
       }
-      pollR[post] = postR;
-      _rankings[pollId] = pollR;
+      _selected[pollId] = set;
     });
   }
 
@@ -271,7 +279,6 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     final target = (raw['target_committee_size'] as num?)?.toInt() ?? defaultTargetCommitteeSize;
     final formed = countFormedCommitteeFromResults(results);
     final remaining = (target - formed).clamp(0, target);
-    final runners = listRunnersUpFromResults(results);
     final formation = formationOf(results) ?? emptyFormationState();
     final voluntary = (formation['voluntary'] as List?) ?? [];
     final already = voluntary.any((v) {
@@ -279,7 +286,6 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
       if (_voterMemberId != null && v['member_id'] == _voterMemberId) return true;
       return v['name'] == widget.session.resident.name;
     });
-    final selectedIds = ((formation['selected_runner_up_ids'] as List?) ?? []).map((e) => e.toString()).toSet();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,22 +294,10 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
         const Text('Managing Committee formation', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         Text(
-          'Progress: $formed / $target (minimum $minCommitteeSize).'
-          '${remaining > 0 ? ' $remaining seat(s) still needed for the society target.' : ' Target reached.'}',
+          'Progress: $formed / $target (bye-law size $minCommitteeSize).'
+          '${remaining > 0 ? ' Fill vacancies by majority of remaining committee — not runner-up seating.' : ' Full roster.'}',
           style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
         ),
-        if (runners.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          const Text('2nd & 3rd place (unelected)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          for (final r in runners)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                '${selectedIds.contains(r['option_id']?.toString()) ? '✓' : '○'} ${r['name']} · ${postDisplay[r['from_post']] ?? r['from_post']} · place ${r['place'] ?? '—'}',
-                style: const TextStyle(fontSize: 12),
-              ),
-            ),
-        ],
         const SizedBox(height: 8),
         const Text('Voluntary interest', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         if (voluntary.isEmpty)
@@ -480,67 +474,50 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                       }),
                       const SizedBox(height: 8),
                     ],
-                    if (phase == ElectionPhase.voting)
+                    if (phase == ElectionPhase.voting) ...[
+                      Text(
+                        'Mark up to ${ByeLaw.committeeSize} nominees (one ballot — not ranked)',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: brand.primary),
+                      ),
+                      Text(
+                        'Selected ${(_selected[poll.id] ?? {}).length} / ${ByeLaw.committeeSize}',
+                        style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+                      ),
+                      const SizedBox(height: 6),
                       for (final post in posts) ...[
-                        Text(postDisplay[post] ?? post, style: TextStyle(fontWeight: FontWeight.w600, color: brand.primary)),
-                        const SizedBox(height: 6),
+                        Text(postDisplay[post] ?? post,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
                         ...opts.where((o) => o['election_post'] == post).map((o) {
                           final id = o['id'] as String;
-                          final m = opts.where((x) => x['election_post'] == post).length;
-                          final current = _rankings[poll.id]?[post]?[id];
+                          final checked = (_selected[poll.id] ?? {}).contains(id);
                           final statement = o['nomination_statement'] as String?;
                           final name = o['option_text'] as String? ?? '';
                           final mid = o['member_id'] as String?;
                           final photo = mid != null ? _photoByMemberId[mid] : null;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                memberPhotoAvatar(
-                                  name: name,
-                                  photo: photo,
-                                  backgroundColor: brand.primary.withValues(alpha: 0.12),
-                                  foregroundColor: brand.primary,
-                                  radius: 20,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(child: Text(name)),
-                                          SizedBox(
-                                            width: 72,
-                                            child: DropdownButtonFormField<int>(
-                                              initialValue: current,
-                                              decoration: const InputDecoration(isDense: true, labelText: 'Rank'),
-                                              items: List.generate(
-                                                m,
-                                                (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}')),
-                                              ),
-                                              onChanged: open ? (v) => _setRank(poll.id, post, id, v) : null,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      if (statement != null && statement.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 4),
-                                          child: Text(statement,
-                                              style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted)),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                          return CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            value: checked,
+                            onChanged: open ? (_) => _togglePick(poll.id, id) : null,
+                            secondary: memberPhotoAvatar(
+                              name: name,
+                              photo: photo,
+                              backgroundColor: brand.primary.withValues(alpha: 0.12),
+                              foregroundColor: brand.primary,
+                              radius: 18,
                             ),
+                            title: Text(name, style: const TextStyle(fontSize: 13)),
+                            subtitle: statement != null && statement.isNotEmpty
+                                ? Text(statement,
+                                    style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted))
+                                : null,
+                            controlAffinity: ListTileControlAffinity.leading,
                           );
                         }),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                       ],
+                    ],
                     if (open)
                       FilledButton(
                         onPressed: (raw?['voting_method'] as String?)?.isNotEmpty == true

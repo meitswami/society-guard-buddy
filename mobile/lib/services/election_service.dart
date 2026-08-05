@@ -75,39 +75,41 @@ class ElectionService {
     required String flatId,
     required String flatNumber,
     required String voterPhone,
-    required Map<String, Map<String, int>> rankings,
+    required Map<String, dynamic> choices,
+    required String ballotMethod,
     required List<Map<String, dynamic>> existingBallots,
   }) async {
     if (!Env.isConfigured) return;
 
     final phone = voterPhone.replaceAll(RegExp(r'\D'), '');
     final existing = existingBallots.where((b) => b['poll_id'] == pollId && b['voter_id'] == voterId).toList();
+    if (existing.isNotEmpty) {
+      throw StateError('Your ballot is already submitted and cannot be edited');
+    }
 
-    if (existing.isEmpty && phone.isNotEmpty) {
+    if (phone.isNotEmpty) {
       final phoneVote = existingBallots.where((b) {
         if (b['poll_id'] != pollId) return false;
         final p = (b['voter_phone'] as String?)?.replaceAll(RegExp(r'\D'), '') ?? '';
         return p == phone;
       });
       if (phoneVote.isNotEmpty) {
-        throw StateError('You have already voted on this election');
+        throw StateError('You have already voted (one vote per member)');
       }
     }
 
-    final flatBallots = existingBallots.where((b) => b['poll_id'] == pollId && b['flat_id'] == flatId);
-    final distinctOthers = flatBallots.where((b) => b['voter_id'] != voterId).map((b) => b['voter_id']).toSet();
-    if (existing.isEmpty && distinctOthers.length >= 2) {
-      throw StateError('This flat already has two ballots');
-    }
-
-    await SupabaseBootstrap.client.from('poll_election_ballots').upsert({
+    await SupabaseBootstrap.client.from('poll_election_ballots').insert({
       'poll_id': pollId,
       'voter_id': voterId,
       'flat_id': flatId,
       'flat_number': flatNumber,
       'voter_phone': phone.isEmpty ? null : phone,
-      'rankings': rankings,
-    }, onConflict: 'poll_id,voter_id');
+      'rankings': <String, dynamic>{},
+      'choices': choices,
+      'ballot_method': ballotMethod,
+      'is_proxy_vote': false,
+      'submitted_at': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 
   Future<void> selfNominate({
@@ -170,8 +172,10 @@ class ElectionService {
           'created_by': adminName,
           'society_id': societyId,
           'poll_kind': 'election',
-          'election_committee_seats': 0,
-          'target_committee_size': 15,
+          'election_committee_seats': 3,
+          'target_committee_size': defaultTargetCommitteeSize,
+          'bye_law_mode': true,
+          'separate_office_votes': false,
           'election_phase': 'nomination',
           'is_active': true,
           'nomination_starts_at': nominationStarts?.toIso8601String(),
@@ -184,8 +188,10 @@ class ElectionService {
           'winning_votes': winningVotes ??
               {
                 'president': 0,
+                'vice_president': 0,
                 'secretary': 0,
                 'treasurer': 0,
+                'committee': 0,
               },
         })
         .select('id')
@@ -195,7 +201,7 @@ class ElectionService {
 
     await SupabaseBootstrap.client.from('notifications').insert({
       'title': 'Society election — nomination open',
-      'message': 'Propose yourself for President, Secretary or Treasurer: ${question.trim()}',
+      'message': 'Propose yourself for the 7-member Management Committee: ${question.trim()}',
       'type': 'poll',
       'target_type': 'all',
       'created_by': adminName,
@@ -436,7 +442,8 @@ class ElectionService {
     final results = tallyElection(
       options: pollOpts,
       ballots: pollBallots,
-      committeeSeats: committeeSeats,
+      committeeSeats: committeeSeats > 0 ? committeeSeats : 3,
+      separateOfficeVotes: false,
       winningVotes: winningVotes,
     );
 
