@@ -12,6 +12,7 @@ export function useReportModuleAggregations(
     queryKey: [...financeQueryKeys.all, 'module-aggregations', societyId, periodFrom, periodTo] as const,
     queryFn: () => fetchReportModuleAggregations(societyId!, periodFrom, periodTo),
     enabled: Boolean(societyId) && enabled && periodFrom <= periodTo,
+    staleTime: 60_000,
   });
 
   return {

@@ -7,6 +7,7 @@ export function useFinanceEventReference(societyId: string | null | undefined, e
     queryKey: financeQueryKeys.eventReference(societyId),
     queryFn: () => fetchFinanceEventReference(societyId!),
     enabled: Boolean(societyId) && enabled,
+    staleTime: 60_000,
   });
 
   return {

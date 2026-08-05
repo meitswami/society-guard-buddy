@@ -79,160 +79,179 @@ export function derivePeriodReportDataFromCore(core: SocietyFinanceCoreData): So
   };
 }
 
+async function ensureCurrentMonthMaintenanceCharge(
+  societyId: string,
+  adminName: string,
+  charges: any[],
+  reminderDueDay: number,
+): Promise<any[]> {
+  const monthlyMaintenanceCharges = charges.filter(isMonthlyMaintenanceCharge);
+  const hasCurrentMonthCharge = monthlyMaintenanceCharges.some((row) => isCurrentMonthChargeTitle(row.title));
+  const templateCharge = monthlyMaintenanceCharges[0];
+  if (hasCurrentMonthCharge || !templateCharge) return charges;
+
+  const currentTitle = buildCurrentMonthChargeTitle();
+  if (charges.some((row) => normalizeTitle(row.title) === normalizeTitle(currentTitle))) {
+    return charges;
+  }
+
+  const { data: inserted, error } = await supabase
+    .from('maintenance_charges')
+    .insert([
+      {
+        title: currentTitle,
+        amount: Number(templateCharge.amount) || 0,
+        frequency: 'monthly',
+        due_day: reminderDueDay,
+        created_by: adminName,
+        society_id: societyId,
+      },
+    ])
+    .select('*')
+    .maybeSingle();
+
+  if (error || !inserted) return charges;
+  return [inserted, ...charges];
+}
+
 export async function fetchSocietyFinanceCore(
   societyId: string,
   adminName: string,
 ): Promise<SocietyFinanceCoreData> {
-  const { data: flatRows } = await supabase
-    .from('flats')
-    .select('flat_number, id, owner_name, is_occupied')
-    .eq('society_id', societyId)
-    .order('flat_number');
-  const flats = sortFlatsByNumber(flatRows ?? []);
+  // Wave 1: independent society-scoped reads in parallel (was ~10 serial round-trips).
+  const [
+    flatsRes,
+    societyRes,
+    reminderRes,
+    chargesRes,
+    paymentGroupsRes,
+    ledgerRes,
+    reserveRes,
+  ] = await Promise.all([
+    supabase
+      .from('flats')
+      .select('flat_number, id, owner_name, is_occupied')
+      .eq('society_id', societyId)
+      .order('flat_number'),
+    supabase.from('societies').select('name').eq('id', societyId).maybeSingle(),
+    (supabase as any)
+      .from('finance_reminder_settings')
+      .select('enabled, schedule, due_day')
+      .eq('society_id', societyId)
+      .maybeSingle(),
+    supabase
+      .from('maintenance_charges')
+      .select('*')
+      .eq('society_id', societyId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('expense_groups')
+      .select('id, name, major_head, description')
+      .eq('society_id', societyId)
+      .eq('group_kind', 'general')
+      .order('name'),
+    supabase
+      .from('finance_entries')
+      .select('*, finance_entry_counterparties(*), finance_entry_allocations(*)')
+      .eq('society_id', societyId)
+      .order('created_at', { ascending: false })
+      .limit(2500),
+    supabase
+      .from('reserve_fund_transfers')
+      .select('id, entry_month, amount, direction, payment_method, notes, created_at')
+      .eq('society_id', societyId)
+      .order('entry_month', { ascending: false })
+      .limit(500),
+  ]);
+
+  if (ledgerRes.error) throw new Error(ledgerRes.error.message);
+  if (reserveRes.error) throw new Error(reserveRes.error.message);
+
+  const flats = sortFlatsByNumber(flatsRes.data ?? []);
   const flatIds = flats.map((x) => x.id);
-
-  const primaryByFlatId: Record<string, string> = {};
-  if (flatIds.length > 0) {
-    const { data: memberRows } = await supabase
-      .from('members')
-      .select('flat_id, name')
-      .eq('is_primary', true)
-      .in('flat_id', flatIds);
-    for (const row of memberRows ?? []) {
-      if (row.flat_id && row.name?.trim()) primaryByFlatId[row.flat_id] = row.name.trim();
-    }
-  }
-
-  const { data: societyRow } = await supabase.from('societies').select('name').eq('id', societyId).maybeSingle();
-  const societyName = (societyRow as { name?: string } | null)?.name ?? '';
-
-  let residentUsers: SocietyFinanceCoreData['residentUsers'] = [];
-  if (flatIds.length > 0) {
-    const { data: residentRows } = await supabase
-      .from('resident_users')
-      .select('id, name, flat_number, flat_id')
-      .in('flat_id', flatIds)
-      .order('flat_number');
-    residentUsers = (residentRows ?? []) as SocietyFinanceCoreData['residentUsers'];
-  }
+  const societyName = (societyRes.data as { name?: string } | null)?.name ?? '';
 
   let autoReminderEnabled = true;
   let autoReminderSchedule: FinanceReminderSchedule = 'once_12pm';
   let reminderDueDay = 1;
-  const { data: reminderSetting } = await (supabase as any)
-    .from('finance_reminder_settings')
-    .select('enabled, schedule, due_day')
-    .eq('society_id', societyId)
-    .maybeSingle();
+  const reminderSetting = reminderRes.data;
   if (reminderSetting) {
     autoReminderEnabled = !!reminderSetting.enabled;
     autoReminderSchedule = reminderSetting.schedule === 'twice_12pm_7pm' ? 'twice_12pm_7pm' : 'once_12pm';
     reminderDueDay = Math.min(28, Math.max(1, Number(reminderSetting.due_day) || 1));
   }
 
-  const { data: chargeData } = await supabase
-    .from('maintenance_charges')
-    .select('*')
-    .eq('society_id', societyId)
-    .order('created_at', { ascending: false });
-  let charges = chargeData ?? [];
+  const paymentExpenseGroups = (paymentGroupsRes.data ?? []) as SocietyFinanceCoreData['paymentExpenseGroups'];
+  const ledgerEntries = (ledgerRes.data ?? []) as FinanceLedgerRow[];
+  const linkedExpenseIds = ledgerEntries.map((e) => e.expense_id).filter((id): id is string => Boolean(id));
 
-  const monthlyMaintenanceCharges = charges.filter(isMonthlyMaintenanceCharge);
-  const hasCurrentMonthCharge = monthlyMaintenanceCharges.some((row) => isCurrentMonthChargeTitle(row.title));
-  const templateCharge = monthlyMaintenanceCharges[0];
+  // Start independent wave-2 work immediately; only payments wait on monthly-charge ensure.
+  const membersPromise =
+    flatIds.length > 0
+      ? supabase.from('members').select('flat_id, name').eq('is_primary', true).in('flat_id', flatIds)
+      : Promise.resolve({ data: [] as { flat_id: string; name: string }[], error: null });
+  const residentsPromise =
+    flatIds.length > 0
+      ? supabase
+          .from('resident_users')
+          .select('id, name, flat_number, flat_id')
+          .in('flat_id', flatIds)
+          .order('flat_number')
+      : Promise.resolve({ data: [] as SocietyFinanceCoreData['residentUsers'], error: null });
+  const expenseCategoriesPromise =
+    linkedExpenseIds.length > 0
+      ? supabase.from('expenses').select('id, expense_category').in('id', linkedExpenseIds)
+      : Promise.resolve({ data: [] as { id: string; expense_category: string | null }[], error: null });
 
-  if (!hasCurrentMonthCharge && templateCharge) {
-    const currentTitle = buildCurrentMonthChargeTitle();
-    const looksLikeCurrentChargeAlreadyExists = charges.some(
-      (row) => normalizeTitle(row.title) === normalizeTitle(currentTitle),
-    );
-    if (!looksLikeCurrentChargeAlreadyExists) {
-      const { error: createMonthErr } = await supabase.from('maintenance_charges').insert([
-        {
-          title: currentTitle,
-          amount: Number(templateCharge.amount) || 0,
-          frequency: 'monthly',
-          due_day: reminderDueDay,
-          created_by: adminName,
-          society_id: societyId,
-        },
-      ]);
-      if (!createMonthErr) {
-        const { data: refreshedCharges } = await supabase
-          .from('maintenance_charges')
-          .select('*')
-          .eq('society_id', societyId)
-          .order('created_at', { ascending: false });
-        charges = refreshedCharges ?? charges;
-      }
-    }
-  }
-
-  const { data: paymentGroups } = await supabase
-    .from('expense_groups')
-    .select('id, name, major_head, description')
-    .eq('society_id', societyId)
-    .eq('group_kind', 'general')
-    .order('name');
-  const paymentExpenseGroups = (paymentGroups ?? []) as SocietyFinanceCoreData['paymentExpenseGroups'];
-
+  const charges = await ensureCurrentMonthMaintenanceCharge(
+    societyId,
+    adminName,
+    chargesRes.data ?? [],
+    reminderDueDay,
+  );
   const chargeIds = charges.map((x) => x.id);
-  let payments: unknown[] = [];
-  if (chargeIds.length > 0) {
-    const { data: paymentRows, error: paymentError } = await supabase
-      .from('maintenance_payments')
-      .select('*')
-      .in('charge_id', chargeIds)
-      .order('created_at', { ascending: false })
-      .limit(2500);
-    if (paymentError) throw new Error(paymentError.message);
-    payments = paymentRows ?? [];
-  }
 
-  const { data: ledgerRows, error: ledgerError } = await supabase
-    .from('finance_entries')
-    .select('*, finance_entry_counterparties(*), finance_entry_allocations(*)')
-    .eq('society_id', societyId)
-    .order('created_at', { ascending: false })
-    .limit(2500);
-  if (ledgerError) throw new Error(ledgerError.message);
-  const ledgerEntries = (ledgerRows ?? []) as FinanceLedgerRow[];
+  const [membersRes, residentsRes, paymentsRes, expenseCategoriesRes] = await Promise.all([
+    membersPromise,
+    residentsPromise,
+    chargeIds.length > 0
+      ? supabase
+          .from('maintenance_payments')
+          .select('*')
+          .in('charge_id', chargeIds)
+          .order('created_at', { ascending: false })
+          .limit(2500)
+      : Promise.resolve({ data: [] as unknown[], error: null }),
+    expenseCategoriesPromise,
+  ]);
+
+  if (paymentsRes.error) throw new Error(paymentsRes.error.message);
+  if (expenseCategoriesRes.error) throw new Error(expenseCategoriesRes.error.message);
+
+  const primaryByFlatId: Record<string, string> = {};
+  for (const row of membersRes.data ?? []) {
+    if (row.flat_id && row.name?.trim()) primaryByFlatId[row.flat_id] = row.name.trim();
+  }
 
   const expenseCategoryById: Record<string, string> = {};
-  const linkedExpenseIds = ledgerEntries.map((e) => e.expense_id).filter((id): id is string => Boolean(id));
-  if (linkedExpenseIds.length > 0) {
-    const { data: expenseCategories, error: categoryError } = await supabase
-      .from('expenses')
-      .select('id, expense_category')
-      .in('id', linkedExpenseIds);
-    if (categoryError) throw new Error(categoryError.message);
-    for (const row of expenseCategories ?? []) {
-      expenseCategoryById[String(row.id)] = String(row.expense_category ?? '');
-    }
+  for (const row of expenseCategoriesRes.data ?? []) {
+    expenseCategoryById[String(row.id)] = String(row.expense_category ?? '');
   }
-
-  const { data: reserveRows, error: reserveError } = await supabase
-    .from('reserve_fund_transfers')
-    .select('id, entry_month, amount, direction, payment_method, notes, created_at')
-    .eq('society_id', societyId)
-    .order('entry_month', { ascending: false })
-    .limit(500);
-  if (reserveError) throw new Error(reserveError.message);
 
   return {
     flats,
     primaryByFlatId,
     societyName,
-    residentUsers,
+    residentUsers: (residentsRes.data ?? []) as SocietyFinanceCoreData['residentUsers'],
     autoReminderEnabled,
     autoReminderSchedule,
     reminderDueDay,
     charges,
     paymentExpenseGroups,
-    payments,
+    payments: paymentsRes.data ?? [],
     ledgerEntries,
     expenseCategoryById,
-    reserveTransfers: (reserveRows ?? []) as FinancePeriodReserveTransfer[],
+    reserveTransfers: (reserveRes.data ?? []) as FinancePeriodReserveTransfer[],
   };
 }
 
@@ -253,61 +272,61 @@ export async function fetchFinanceFlatReport(societyId: string): Promise<Finance
   if (groupError) throw new Error(groupError.message);
 
   const groupIds = (groupRows ?? []).map((g) => g.id);
-  let expenses: FinanceFlatReportData['expenses'] = [];
+  if (groupIds.length === 0) return { expenses: [], splits: [] };
+
+  const groupNameById = new Map((groupRows ?? []).map((g) => [g.id, g.name]));
+
+  const { data: expenseRows, error: expenseError } = await supabase
+    .from('expenses')
+    .select(
+      'id, title, total_amount, expense_date, payment_method, vendor_or_service, service_kind, group_id, split_type, paid_by_flat, paid_by_flats, record_status',
+    )
+    .in('group_id', groupIds)
+    .eq('record_status', 'active')
+    .eq('expense_category', 'payment');
+  if (expenseError) throw new Error(expenseError.message);
+
+  const expRows = expenseRows ?? [];
+  const expIds = expRows.map((e) => e.id);
   let splits: FinanceFlatReportData['splits'] = [];
-
-  if (groupIds.length > 0) {
-    const { data: expenseRows, error: expenseError } = await supabase
-      .from('expenses')
-      .select(
-        'id, title, total_amount, expense_date, payment_method, vendor_or_service, service_kind, group_id, split_type, paid_by_flat, paid_by_flats, record_status',
-      )
-      .in('group_id', groupIds)
-      .eq('record_status', 'active')
-      .eq('expense_category', 'payment');
-    if (expenseError) throw new Error(expenseError.message);
-
-    const expRows = expenseRows ?? [];
-    const expIds = expRows.map((e) => e.id);
-    if (expIds.length > 0) {
-      const { data: splitRows, error: splitError } = await supabase
-        .from('expense_splits')
-        .select('id, expense_id, flat_number, amount, is_settled, settled_at')
-        .in('expense_id', expIds);
-      if (splitError) throw new Error(splitError.message);
-      splits = splitRows ?? [];
-    }
-
-    expenses = expRows.map((e) => ({
-      ...e,
-      group_name: groupRows?.find((g) => g.id === e.group_id)?.name ?? 'Unknown group',
-    }));
+  if (expIds.length > 0) {
+    const { data: splitRows, error: splitError } = await supabase
+      .from('expense_splits')
+      .select('id, expense_id, flat_number, amount, is_settled, settled_at')
+      .in('expense_id', expIds);
+    if (splitError) throw new Error(splitError.message);
+    splits = splitRows ?? [];
   }
+
+  const expenses = expRows.map((e) => ({
+    ...e,
+    group_name: groupNameById.get(e.group_id) ?? 'Unknown group',
+  }));
 
   return { expenses, splits };
 }
 
 export async function fetchFinanceEventReference(societyId: string): Promise<FinanceEventReferenceData> {
-  const { data: events, error: eventsError } = await supabase
-    .from('events')
-    .select('id, title')
-    .eq('society_id', societyId)
-    .order('event_date', { ascending: false })
-    .limit(100);
-  if (eventsError) throw new Error(eventsError.message);
+  const [eventsRes, groupsRes] = await Promise.all([
+    supabase
+      .from('events')
+      .select('id, title')
+      .eq('society_id', societyId)
+      .order('event_date', { ascending: false })
+      .limit(100),
+    supabase
+      .from('expense_groups')
+      .select('id, name, event_id')
+      .eq('society_id', societyId)
+      .eq('group_kind', 'event'),
+  ]);
+  if (eventsRes.error) throw new Error(eventsRes.error.message);
+  if (groupsRes.error) throw new Error(groupsRes.error.message);
 
-  const eventIds = (events ?? []).map((e) => e.id);
-  const eventTitleById = new Map((events ?? []).map((e) => [String(e.id), String(e.title)]));
-
-  const { data: groups, error: groupsError } = await supabase
-    .from('expense_groups')
-    .select('id, name, event_id')
-    .eq('society_id', societyId)
-    .eq('group_kind', 'event');
-  if (groupsError) throw new Error(groupsError.message);
-
-  const groupIds = (groups ?? []).map((g) => g.id);
-  const groupById = new Map((groups ?? []).map((g) => [String(g.id), g]));
+  const eventIds = (eventsRes.data ?? []).map((e) => e.id);
+  const eventTitleById = new Map((eventsRes.data ?? []).map((e) => [String(e.id), String(e.title)]));
+  const groupIds = (groupsRes.data ?? []).map((g) => g.id);
+  const groupById = new Map((groupsRes.data ?? []).map((g) => [String(g.id), g]));
 
   const [contribRes, expRes] = await Promise.all([
     eventIds.length

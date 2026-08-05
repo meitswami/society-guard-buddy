@@ -7,6 +7,7 @@ export function useFinanceFlatReport(societyId: string | null | undefined, enabl
     queryKey: financeQueryKeys.flatReport(societyId),
     queryFn: () => fetchFinanceFlatReport(societyId!),
     enabled: Boolean(societyId) && enabled,
+    staleTime: 60_000,
   });
 
   return {

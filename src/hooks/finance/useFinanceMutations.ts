@@ -51,7 +51,8 @@ export function useFinanceMutations(societyId: string | null) {
   const withInvalidate = useCallback(
     <T, V>(mutationFn: (vars: V) => Promise<{ data: T; error: null } | { data: null; error: string }>) => ({
       mutationFn: async (vars: V) => assertNoError(await mutationFn(vars)),
-      onSuccess: () => void invalidateAll(),
+      // Await so mutateAsync callers don't need a second loadAll()/invalidate.
+      onSuccess: () => invalidateAll(),
     }),
     [invalidateAll],
   );

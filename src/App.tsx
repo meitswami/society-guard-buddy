@@ -15,7 +15,16 @@ import SocietySignupStatusPage from "./pages/SocietySignupStatusPage";
 import AboutPage from "./pages/AboutPage";
 import { EntryCapsBodySync } from "./components/EntryCapsBodySync";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

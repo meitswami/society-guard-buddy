@@ -16,6 +16,8 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
     queryKey: financeQueryKeys.core(societyId),
     queryFn: () => fetchSocietyFinanceCoreSafe(societyId, adminName),
     enabled: Boolean(societyId),
+    staleTime: 60_000,
+    placeholderData: (previousData) => previousData,
   });
 
   const expenseCategoryById = useMemo(

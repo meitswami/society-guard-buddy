@@ -452,7 +452,6 @@ const FinanceManager = ({
     }
     setForm(emptyMaintenanceChargeForm());
     setShowForm(false);
-    await loadAll();
   };
 
   const startEditCharge = (charge: {
@@ -502,7 +501,6 @@ const FinanceManager = ({
       setForm(emptyMaintenanceChargeForm());
       setShowForm(false);
     }
-    await loadAll();
   };
 
   const addPaymentHead = async () => {
@@ -552,7 +550,6 @@ const FinanceManager = ({
     }
     setPaymentHeadForm(emptyPaymentHeadForm());
     setShowPaymentHeadForm(false);
-    await loadAll();
   };
 
   const startEditPaymentGroup = (group: {
@@ -590,7 +587,6 @@ const FinanceManager = ({
       setPaymentHeadForm(emptyPaymentHeadForm());
       setShowPaymentHeadForm(false);
     }
-    await loadAll();
   };
 
   const distributePoolToAllFlats = async (entry: FinanceLedgerRow) => {
@@ -690,7 +686,6 @@ const FinanceManager = ({
 
       toast.success(`Distributed across ${scopeFlats.length} flat(s)`);
       setSelectedLedger(null);
-      await loadAll();
     } finally {
       setDistributingPoolEntryId(null);
     }
@@ -1048,7 +1043,6 @@ const FinanceManager = ({
     toast.success(
       (recordedCount > 1 ? `Recorded ${recordedCount} flat lines` : 'Finance entry recorded') + notifySuffix,
     );
-    await loadAll();
     bumpHeadReconciliation();
   };
 
@@ -1128,7 +1122,6 @@ const FinanceManager = ({
       next.delete(`mp-${p.id}`);
       return next;
     });
-    await loadAll();
   };
 
   const updateLedgerEntryStatus = async (entryId: string, payment_status: string) => {
@@ -1161,7 +1154,6 @@ const FinanceManager = ({
       next.delete(`ledger-${e.id}`);
       return next;
     });
-    await loadAll();
   };
 
   const applyMaintenancePaymentStatus = async (
@@ -1320,7 +1312,7 @@ const FinanceManager = ({
     }
     setSelectedReceiptKeys(new Set());
     toast.success('Selected entries deleted');
-    await loadAll();
+    await financeMutations.invalidateAll();
   };
 
   const bulkSetPaymentStatus = async (nextStatus: 'pending' | 'verified' | 'rejected') => {
@@ -1353,7 +1345,7 @@ const FinanceManager = ({
     }
     setSelectedReceiptKeys(new Set());
     toast.success('Status updated for selected payments');
-    await loadAll();
+    await financeMutations.invalidateAll();
   };
 
   const toggleReceiptKey = (key: string, checked: boolean) => {

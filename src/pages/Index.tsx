@@ -1,15 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
 import { readPersistedSession, writePersistedSession, clearPersistedSession } from '@/lib/appSession';
 import type { TabType } from '@/types';
 import LoginPage from '@/pages/LoginPage';
 import ResidentLoginPage from '@/pages/ResidentLoginPage';
-import ResidentDashboard from '@/pages/ResidentDashboard';
 import AdminLoginPage from '@/pages/AdminLoginPage';
-import AdminDashboard from '@/pages/AdminDashboard';
 import SuperadminLoginPage from '@/pages/SuperadminLoginPage';
-import SuperadminDashboard from '@/pages/SuperadminDashboard';
 import { permissionsFromAdminJoin, type AdminPanelPermissions } from '@/lib/adminPermissions';
 import DashboardPage from '@/pages/DashboardPage';
 import UnifiedLoginPage from '@/pages/UnifiedLoginPage';
@@ -34,6 +31,16 @@ import { LoginFooter } from '@/components/LoginFooter';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useGuardGeofenceMonitor } from '@/hooks/useGuardGeofenceMonitor';
 import { toast } from 'sonner';
+
+const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
+const ResidentDashboard = lazy(() => import('@/pages/ResidentDashboard'));
+const SuperadminDashboard = lazy(() => import('@/pages/SuperadminDashboard'));
+
+const RouteFallback = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <p className="text-muted-foreground text-sm animate-pulse">Loading…</p>
+  </div>
+);
 
 type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 
@@ -200,45 +207,51 @@ const AppContent = () => {
   // Superadmin logged in
   if (superadminUser) {
     return (
-      <SuperadminDashboard
-        superadmin={superadminUser}
-        onLogout={() => {
-          clearPersistedSession();
-          setSuperadminUser(null);
-          setUserMode('choosing');
-          setLoginSociety(null);
-        }}
-      />
+      <Suspense fallback={<RouteFallback />}>
+        <SuperadminDashboard
+          superadmin={superadminUser}
+          onLogout={() => {
+            clearPersistedSession();
+            setSuperadminUser(null);
+            setUserMode('choosing');
+            setLoginSociety(null);
+          }}
+        />
+      </Suspense>
     );
   }
 
   // Admin logged in
   if (adminUser) {
     return (
-      <AdminDashboard
-        admin={adminUser}
-        onLogout={() => {
-          clearPersistedSession();
-          setAdminUser(null);
-          setSocietyId(null);
-          setUserMode('choosing');
-        }}
-      />
+      <Suspense fallback={<RouteFallback />}>
+        <AdminDashboard
+          admin={adminUser}
+          onLogout={() => {
+            clearPersistedSession();
+            setAdminUser(null);
+            setSocietyId(null);
+            setUserMode('choosing');
+          }}
+        />
+      </Suspense>
     );
   }
 
   // Resident logged in
   if (residentUser) {
     return (
-      <ResidentDashboard
-        resident={residentUser}
-        onLogout={() => {
-          clearPersistedSession();
-          setResidentUser(null);
-          setSocietyId(null);
-          setUserMode('choosing');
-        }}
-      />
+      <Suspense fallback={<RouteFallback />}>
+        <ResidentDashboard
+          resident={residentUser}
+          onLogout={() => {
+            clearPersistedSession();
+            setResidentUser(null);
+            setSocietyId(null);
+            setUserMode('choosing');
+          }}
+        />
+      </Suspense>
     );
   }
 

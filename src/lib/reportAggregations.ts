@@ -110,84 +110,86 @@ export async function fetchReportModuleAggregations(
   const from = `${periodFrom}T00:00:00`;
   const to = `${periodTo}T23:59:59`;
 
-  const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', societyId);
-  const chargeIds = (chargeRows as { id: string }[] | null)?.map((c) => c.id) ?? [];
+  const [chargeRes, campRes, groupsRes] = await Promise.all([
+    supabase.from('maintenance_charges').select('id').eq('society_id', societyId),
+    supabase.from('donation_campaigns').select('id').eq('society_id', societyId),
+    supabase.from('expense_groups').select('id').eq('society_id', societyId).eq('group_kind', 'general'),
+  ]);
 
-  let maintenanceStatuses: StatusBucket[] = [];
-  let maintenanceLinkSummary: MaintenanceLinkSummary | null = null;
-  if (chargeIds.length > 0) {
-    const { data: mpRows } = await supabase
-      .from('maintenance_payments')
-      .select('payment_status, amount, finance_entry_id')
-      .in('charge_id', chargeIds)
-      .gte('due_date', periodFrom)
-      .lte('due_date', periodTo);
-    const rows = (mpRows as { payment_status?: string; amount: number; finance_entry_id: string | null }[] | null) ?? [];
-    maintenanceStatuses = bucketByKey(
-      rows,
-      (p) => String(p.payment_status ?? 'pending'),
-      (p) => Number(p.amount || 0),
-    );
-    let linkedCount = 0;
-    let linkedTotal = 0;
-    let unlinkedCount = 0;
-    let unlinkedTotal = 0;
-    for (const p of rows) {
-      const amt = Number(p.amount || 0);
-      if (p.finance_entry_id) {
-        linkedCount += 1;
-        linkedTotal += amt;
-      } else {
-        unlinkedCount += 1;
-        unlinkedTotal += amt;
-      }
+  const chargeIds = (chargeRes.data as { id: string }[] | null)?.map((c) => c.id) ?? [];
+  const campIds = (campRes.data as { id: string }[] | null)?.map((c) => c.id) ?? [];
+  const groupIds = (groupsRes.data as { id: string }[] | null)?.map((g) => g.id) ?? [];
+
+  const [mpRes, dpRes, exRes] = await Promise.all([
+    chargeIds.length > 0
+      ? supabase
+          .from('maintenance_payments')
+          .select('payment_status, amount, finance_entry_id')
+          .in('charge_id', chargeIds)
+          .gte('due_date', periodFrom)
+          .lte('due_date', periodTo)
+      : Promise.resolve({ data: [] as { payment_status?: string; amount: number; finance_entry_id: string | null }[], error: null }),
+    campIds.length > 0
+      ? supabase
+          .from('donation_payments')
+          .select('amount, verified_at')
+          .in('campaign_id', campIds)
+          .gte('created_at', from)
+          .lte('created_at', to)
+      : Promise.resolve({ data: [] as { amount: number; verified_at: string | null }[], error: null }),
+    groupIds.length > 0
+      ? supabase
+          .from('expenses')
+          .select('id')
+          .in('group_id', groupIds)
+          .eq('record_status', 'active')
+          .eq('expense_category', 'payment')
+          .gte('expense_date', periodFrom)
+          .lte('expense_date', periodTo)
+      : Promise.resolve({ data: [] as { id: string }[], error: null }),
+  ]);
+
+  const rows =
+    (mpRes.data as { payment_status?: string; amount: number; finance_entry_id: string | null }[] | null) ?? [];
+  const maintenanceStatuses = bucketByKey(
+    rows,
+    (p) => String(p.payment_status ?? 'pending'),
+    (p) => Number(p.amount || 0),
+  );
+  let linkedCount = 0;
+  let linkedTotal = 0;
+  let unlinkedCount = 0;
+  let unlinkedTotal = 0;
+  for (const p of rows) {
+    const amt = Number(p.amount || 0);
+    if (p.finance_entry_id) {
+      linkedCount += 1;
+      linkedTotal += amt;
+    } else {
+      unlinkedCount += 1;
+      unlinkedTotal += amt;
     }
-    maintenanceLinkSummary =
-      rows.length > 0 ? { linked: { count: linkedCount, total: linkedTotal }, unlinked: { count: unlinkedCount, total: unlinkedTotal } } : null;
   }
+  const maintenanceLinkSummary: MaintenanceLinkSummary | null =
+    rows.length > 0
+      ? { linked: { count: linkedCount, total: linkedTotal }, unlinked: { count: unlinkedCount, total: unlinkedTotal } }
+      : null;
 
-  const { data: campRows } = await supabase.from('donation_campaigns').select('id').eq('society_id', societyId);
-  const campIds = (campRows as { id: string }[] | null)?.map((c) => c.id) ?? [];
-  let donationStatuses: StatusBucket[] = [];
-  if (campIds.length > 0) {
-    const { data: dp } = await supabase
-      .from('donation_payments')
-      .select('amount, verified_at')
-      .in('campaign_id', campIds)
-      .gte('created_at', from)
-      .lte('created_at', to);
-    donationStatuses = bucketByKey(
-      (dp as { amount: number; verified_at: string | null }[] | null) ?? [],
-      (p) => (p.verified_at ? 'verified' : 'pending'),
-      (p) => Number(p.amount || 0),
-    );
-  }
+  const donationStatuses = bucketByKey(
+    (dpRes.data as { amount: number; verified_at: string | null }[] | null) ?? [],
+    (p) => (p.verified_at ? 'verified' : 'pending'),
+    (p) => Number(p.amount || 0),
+  );
 
-  const { data: groups } = await supabase
-    .from('expense_groups')
-    .select('id')
-    .eq('society_id', societyId)
-    .eq('group_kind', 'general');
-  const groupIds = (groups as { id: string }[] | null)?.map((g) => g.id) ?? [];
+  const expIds = (exRes.data as { id: string }[] | null)?.map((x) => x.id) ?? [];
   let splitStatuses: StatusBucket[] = [];
-  if (groupIds.length > 0) {
-    const { data: ex } = await supabase
-      .from('expenses')
-      .select('id')
-      .in('group_id', groupIds)
-      .eq('record_status', 'active')
-      .eq('expense_category', 'payment')
-      .gte('expense_date', periodFrom)
-      .lte('expense_date', periodTo);
-    const expIds = (ex as { id: string }[] | null)?.map((x) => x.id) ?? [];
-    if (expIds.length > 0) {
-      const { data: splits } = await supabase.from('expense_splits').select('amount, is_settled').in('expense_id', expIds);
-      splitStatuses = bucketByKey(
-        (splits as { amount: number; is_settled: boolean }[] | null) ?? [],
-        (s) => (s.is_settled ? 'settled' : 'pending'),
-        (s) => Number(s.amount || 0),
-      );
-    }
+  if (expIds.length > 0) {
+    const { data: splits } = await supabase.from('expense_splits').select('amount, is_settled').in('expense_id', expIds);
+    splitStatuses = bucketByKey(
+      (splits as { amount: number; is_settled: boolean }[] | null) ?? [],
+      (s) => (s.is_settled ? 'settled' : 'pending'),
+      (s) => Number(s.amount || 0),
+    );
   }
 
   return { maintenanceStatuses, maintenanceLinkSummary, donationStatuses, splitStatuses };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -14,7 +14,6 @@ import AdminLogsHub from '@/components/guardDuty/AdminLogsHub';
 import QuickEntryPage from '@/pages/QuickEntryPage';
 import DirectoryPage from '@/pages/DirectoryPage';
 import BlacklistPage from '@/pages/BlacklistPage';
-import ReportPage from '@/pages/ReportPage';
 import SettingsPage from '@/pages/SettingsPage';
 import GeofenceSetup from '@/components/GeofenceSetup';
 import AdminGuardManager from '@/components/AdminGuardManager';
@@ -22,16 +21,8 @@ import AdminResidentManager from '@/components/AdminResidentManager';
 import AdminPasswordChange from '@/components/AdminPasswordChange';
 import BiometricSetup from '@/components/BiometricSetup';
 import AuditLogViewer from '@/components/AuditLogViewer';
-import FinanceManager, { type FinanceSubTab } from '@/components/FinanceManager';
+import type { FinanceSubTab } from '@/lib/financeManagerTypes';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import DonationManager from '@/components/DonationManager';
-import EventsModule from '@/components/EventsModule';
-import PollManager from '@/components/PollManager';
-import MeetingManager from '@/components/MeetingManager';
-import SocietyDocumentsManager from '@/components/SocietyDocumentsManager';
-import CommitteeManager from '@/components/CommitteeManager';
-import ParkingManager from '@/components/ParkingManager';
-import FixedAssetsModule from '@/components/fixedAssets/FixedAssetsModule';
 import NotificationCenter from '@/components/NotificationCenter';
 import { useNotificationsRealtimeRevision } from '@/hooks/useNotificationsRealtimeRevision';
 import { auditLogout } from '@/lib/auditLogger';
@@ -51,6 +42,23 @@ import {
   recordLastTab,
   type AdminTabDef,
 } from '@/lib/adminNavigation';
+
+const FinanceManager = lazy(() => import('@/components/FinanceManager'));
+const ReportPage = lazy(() => import('@/pages/ReportPage'));
+const DonationManager = lazy(() => import('@/components/DonationManager'));
+const EventsModule = lazy(() => import('@/components/EventsModule'));
+const PollManager = lazy(() => import('@/components/PollManager'));
+const MeetingManager = lazy(() => import('@/components/MeetingManager'));
+const SocietyDocumentsManager = lazy(() => import('@/components/SocietyDocumentsManager'));
+const CommitteeManager = lazy(() => import('@/components/CommitteeManager'));
+const ParkingManager = lazy(() => import('@/components/ParkingManager'));
+const FixedAssetsModule = lazy(() => import('@/components/fixedAssets/FixedAssetsModule'));
+
+const ModuleFallback = () => (
+  <div className="page-container flex items-center justify-center py-16">
+    <p className="text-muted-foreground text-sm animate-pulse">Loading module…</p>
+  </div>
+);
 
 interface Props {
   admin: {
@@ -159,54 +167,58 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     ] = await Promise.all([vQ, vGuestQ, vServiceQ, gQ, fQ, rvQ, rvCarQ, rv2wQ, blQ, mtQ, flatsForMembers]);
 
     const flatIds = (flatsData.data ?? []).map((x: { id: string }) => x.id);
-    let membersCount = 0;
-    if (flatIds.length > 0) {
-      const { count: mc } = await supabase.from('members').select('id', { count: 'exact', head: true }).in('flat_id', flatIds);
-      membersCount = mc ?? 0;
-    }
+
+    const [membersRes, chargeRes, ledgerRes, groupRes] = await Promise.all([
+      flatIds.length > 0
+        ? supabase.from('members').select('id', { count: 'exact', head: true }).in('flat_id', flatIds)
+        : Promise.resolve({ count: 0 }),
+      supabase.from('maintenance_charges').select('id').eq('society_id', sid),
+      supabase
+        .from('finance_entries')
+        .select('id, total_amount, destination')
+        .eq('society_id', sid)
+        .eq('payment_status', 'verified')
+        .in('destination', ['current_month_maintenance', 'corpus']),
+      supabase.from('expense_groups').select('id').eq('society_id', sid),
+    ]);
+
+    const membersCount = membersRes.count ?? 0;
+    const chargeIds = (chargeRes.data ?? []).map((r: { id: string }) => r.id);
+    const groupIds = (groupRes.data ?? []).map((r: { id: string }) => r.id);
+
+    const [paysRes, expensesRes] = await Promise.all([
+      chargeIds.length > 0
+        ? supabase
+            .from('maintenance_payments')
+            .select('amount, finance_entry_id')
+            .in('charge_id', chargeIds)
+            .eq('payment_status', 'verified')
+        : Promise.resolve({ data: [] as { amount: number; finance_entry_id: string | null }[] }),
+      groupIds.length > 0
+        ? supabase
+            .from('expenses')
+            .select('total_amount')
+            .in('group_id', groupIds)
+            .eq('record_status', 'active')
+        : Promise.resolve({ data: [] as { total_amount: number }[] }),
+    ]);
 
     let maintenanceCollected = 0;
-    const { data: chargeRows } = await supabase.from('maintenance_charges').select('id').eq('society_id', sid);
-    const chargeIds = (chargeRows ?? []).map((r: { id: string }) => r.id);
-    let linkedEntryIds = new Set<string>();
-    if (chargeIds.length > 0) {
-      const { data: pays } = await supabase
-        .from('maintenance_payments')
-        .select('amount, finance_entry_id')
-        .in('charge_id', chargeIds)
-        .eq('payment_status', 'verified');
-      for (const p of pays ?? []) maintenanceCollected += Number((p as { amount: number }).amount ?? 0);
-      // Collect linked finance_entry_ids to avoid double-counting
-      linkedEntryIds = new Set(
-        (pays ?? []).map((p: any) => p.finance_entry_id).filter((id: unknown) => typeof id === 'string' && id.length > 0)
-      );
+    const linkedEntryIds = new Set<string>();
+    for (const p of paysRes.data ?? []) {
+      maintenanceCollected += Number((p as { amount: number }).amount ?? 0);
+      const fid = (p as { finance_entry_id?: string | null }).finance_entry_id;
+      if (typeof fid === 'string' && fid.length > 0) linkedEntryIds.add(fid);
     }
-    // Also include verified finance ledger RECEIPT entries (not expenses) NOT already linked to maintenance payments
-    const { data: ledgerRows } = await supabase
-      .from('finance_entries')
-      .select('id, total_amount, destination')
-      .eq('society_id', sid)
-      .eq('payment_status', 'verified')
-      .in('destination', ['current_month_maintenance', 'corpus']);
-    for (const le of ledgerRows ?? []) {
-      if (!linkedEntryIds.has((le as any).id)) {
+    for (const le of ledgerRes.data ?? []) {
+      if (!linkedEntryIds.has((le as { id: string }).id)) {
         maintenanceCollected += Number((le as { total_amount: number }).total_amount ?? 0);
       }
     }
 
     let splitwiseExpenseTotal = 0;
-    const { data: groupRows } = await supabase
-      .from('expense_groups')
-      .select('id')
-      .eq('society_id', sid);
-    const groupIds = (groupRows ?? []).map((r: { id: string }) => r.id);
-    if (groupIds.length > 0) {
-      const { data: expenses } = await supabase
-        .from('expenses')
-        .select('total_amount')
-        .in('group_id', groupIds)
-        .eq('record_status', 'active');
-      for (const e of expenses ?? []) splitwiseExpenseTotal += Number((e as { total_amount: number }).total_amount ?? 0);
+    for (const e of expensesRes.data ?? []) {
+      splitwiseExpenseTotal += Number((e as { total_amount: number }).total_amount ?? 0);
     }
 
     setStats({
@@ -634,28 +646,68 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
       case 'finance':
         return (
           <ErrorBoundary title="Finance module error" onReset={() => setFinanceInitialSubTab(null)}>
-            <FinanceManager
-              adminName={admin.name}
-              adminId={admin.id}
-              initialSubTab={financeInitialSubTab ?? undefined}
-              onInitialSubTabConsumed={() => setFinanceInitialSubTab(null)}
-              initialSearchQuery={pendingSearchFor('finance')}
-              onInitialSearchConsumed={() => clearModuleSearchFor('finance')}
-            />
+            <Suspense fallback={<ModuleFallback />}>
+              <FinanceManager
+                adminName={admin.name}
+                adminId={admin.id}
+                initialSubTab={financeInitialSubTab ?? undefined}
+                onInitialSubTabConsumed={() => setFinanceInitialSubTab(null)}
+                initialSearchQuery={pendingSearchFor('finance')}
+                onInitialSearchConsumed={() => clearModuleSearchFor('finance')}
+              />
+            </Suspense>
           </ErrorBoundary>
         );
       case 'fixed_assets':
-        return <FixedAssetsModule adminName={admin.name} onNavigateTab={goToTab} />;
-      case 'donations': return <DonationManager adminName={admin.name} />;
+        return (
+          <Suspense fallback={<ModuleFallback />}>
+            <FixedAssetsModule adminName={admin.name} onNavigateTab={goToTab} />
+          </Suspense>
+        );
+      case 'donations':
+        return (
+          <Suspense fallback={<ModuleFallback />}>
+            <DonationManager adminName={admin.name} />
+          </Suspense>
+        );
       case 'events':
-        return <EventsModule adminName={admin.name} onNavigateTab={goToTab} />;
+        return (
+          <Suspense fallback={<ModuleFallback />}>
+            <EventsModule adminName={admin.name} onNavigateTab={goToTab} />
+          </Suspense>
+        );
       case 'splits':
         return null;
-      case 'meetings': return <MeetingManager adminName={admin.name} />;
-      case 'documents': return <SocietyDocumentsManager adminName={admin.name} />;
-      case 'committee': return <CommitteeManager />;
-      case 'polls': return <PollManager adminName={admin.name} />;
-      case 'parking': return <ParkingManager />;
+      case 'meetings':
+        return (
+          <Suspense fallback={<ModuleFallback />}>
+            <MeetingManager adminName={admin.name} />
+          </Suspense>
+        );
+      case 'documents':
+        return (
+          <Suspense fallback={<ModuleFallback />}>
+            <SocietyDocumentsManager adminName={admin.name} />
+          </Suspense>
+        );
+      case 'committee':
+        return (
+          <Suspense fallback={<ModuleFallback />}>
+            <CommitteeManager />
+          </Suspense>
+        );
+      case 'polls':
+        return (
+          <Suspense fallback={<ModuleFallback />}>
+            <PollManager adminName={admin.name} />
+          </Suspense>
+        );
+      case 'parking':
+        return (
+          <Suspense fallback={<ModuleFallback />}>
+            <ParkingManager />
+          </Suspense>
+        );
       case 'notifications': return (
         <NotificationCenter
           adminName={admin.name}
@@ -665,12 +717,14 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         />
       );
       case 'report': return (
-        <ReportPage
-          adminName={admin.name}
-          permissions={admin.permissions}
-          initialSearchQuery={pendingSearchFor('report')}
-          onInitialSearchConsumed={() => clearModuleSearchFor('report')}
-        />
+        <Suspense fallback={<ModuleFallback />}>
+          <ReportPage
+            adminName={admin.name}
+            permissions={admin.permissions}
+            initialSearchQuery={pendingSearchFor('report')}
+            onInitialSearchConsumed={() => clearModuleSearchFor('report')}
+          />
+        </Suspense>
       );
       case 'logs': return (
         <AdminLogsHub
