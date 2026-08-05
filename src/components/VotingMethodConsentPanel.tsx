@@ -13,6 +13,7 @@ import {
   tallyFromConsents,
   type VotingMethodConsentRow,
 } from '@/lib/electionVotingMethodConsent';
+import { recordElectionVotingMethod } from '@/lib/electionAudit';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 type Props = {
@@ -34,6 +35,10 @@ type Props = {
   onReload: () => void;
 };
 
+/**
+ * Record Secret Ballot / Show of Hands before polling (bye-laws).
+ * Optional member consent (A/B); admin may finalize by meeting resolution.
+ */
 const VotingMethodConsentPanel = ({
   poll,
   societyId,
@@ -81,18 +86,14 @@ const VotingMethodConsentPanel = ({
     const o = VOTING_METHOD_OPTIONS[method];
     return hi ? o.titleHi : o.titleEn;
   };
-  const optEffect = (method: ElectionVotingMethod) => {
-    const o = VOTING_METHOD_OPTIONS[method];
-    return hi ? o.effectHi : o.effectEn;
-  };
 
   const openConsent = async () => {
     if (!societyId) return;
     const ok = await confirmAction(
       hi ? 'सदस्य सहमति खोलें?' : 'Open member consent?',
       hi
-        ? 'सदस्य विकल्प A (गुप्त मतपत्र) या विकल्प B (हाथ उठाकर) देखकर सहमति देंगे। सभी पात्र सदस्यों की सहमति के बाद ही विधि अंतिम होगी।'
-        : 'Members will see Option A (Secret Ballot) and Option B (Show of Hands), with effects, and record consent. The method is finalized only after all eligible members have consented.',
+        ? 'सदस्य विकल्प A (गुप्त मतपत्र) या विकल्प B (हाथ उठाकर) देखकर सहमति देंगे।'
+        : 'Members will see Option A (Secret Ballot) and Option B (Show of Hands) and may record consent.',
       hi ? 'खोलें' : 'Open consent',
       hi ? 'रद्द' : 'Cancel',
     );
@@ -106,59 +107,40 @@ const VotingMethodConsentPanel = ({
     setBusy(false);
     if (error) toast.error(error);
     else {
-      toast.success(hi ? 'सदस्य सहमति खुली' : 'Member consent opened');
+      toast.success(hi ? 'सहमति खुली' : 'Member consent opened');
       onReload();
-      void load();
     }
   };
 
-  const castConsent = async (choice: ElectionVotingMethod) => {
+  const castConsent = async (method: ElectionVotingMethod) => {
     if (!societyId || !memberId) {
-      toast.error(hi ? 'सदस्य प्रोफ़ाइल आवश्यक है' : 'Member profile required');
+      toast.error(hi ? 'सदस्य प्रोफ़ाइल आवश्यक है।' : 'Member profile required.');
       return;
     }
-    const label = optLabel(choice);
-    const ok = await confirmAction(
-      hi ? 'सहमति दर्ज करें?' : 'Record your consent?',
-      hi
-        ? `आप ${label} चुन रहे हैं। जमा होने के बाद बदल नहीं सकते।`
-        : `You are choosing ${label}. This cannot be changed after submission.`,
-      hi ? 'सहमति दें' : 'Confirm consent',
-      hi ? 'रद्द' : 'Cancel',
-    );
-    if (!ok) return;
     setBusy(true);
     const { error } = await submitVotingMethodConsent({
       societyId,
       pollId: poll.id,
       memberId,
-      choice,
+      choice: method,
       memberName,
       flatNumber,
     });
     setBusy(false);
     if (error) toast.error(error);
     else {
-      toast.success(hi ? 'सहमति दर्ज हो गई' : 'Consent recorded');
+      toast.success(hi ? 'सहमति दर्ज' : 'Consent recorded');
       void load();
     }
   };
 
-  const finalize = async (method: ElectionVotingMethod, allowPartial: boolean) => {
-    if (!societyId) return;
-    if (eligibleCount == null) {
-      toast.error(hi ? 'पात्र सदस्य संख्या उपलब्ध नहीं' : 'Eligible member count unavailable');
-      return;
-    }
+  const finalizeFromConsent = async (method: ElectionVotingMethod, allowPartial: boolean) => {
+    if (!societyId || eligibleCount == null) return;
     const ok = await confirmAction(
       hi ? 'मतदान विधि अंतिम करें?' : 'Finalize voting method?',
-      allowPartial
-        ? hi
-          ? `आंशिक सहमति (${tally.total}/${eligibleCount}) के साथ ${optLabel(method)} अंतिम करें? बैठक प्रस्ताव आवश्यक।`
-          : `Finalize ${optLabel(method)} with partial consent (${tally.total}/${eligibleCount})? Only if the meeting so resolves.`
-        : hi
-          ? `सभी ${eligibleCount} पात्र सदस्यों की सहमति मिल गई। ${optLabel(method)} अंतिम करें?`
-          : `All ${eligibleCount} eligible members have consented. Finalize ${optLabel(method)}?`,
+      hi
+        ? `विधि: ${optLabel(method)}${allowPartial ? ' (आंशिक सहमति / बैठक प्रस्ताव)' : ''}`
+        : `Method: ${optLabel(method)}${allowPartial ? ' (partial consent / meeting resolution)' : ''}`,
       hi ? 'अंतिम करें' : 'Finalize',
       hi ? 'रद्द' : 'Cancel',
     );
@@ -190,6 +172,35 @@ const VotingMethodConsentPanel = ({
     }
   };
 
+  /** Admin records method by meeting resolution (no full-member consent required). */
+  const recordByResolution = async (method: ElectionVotingMethod) => {
+    const ok = await confirmAction(
+      hi ? 'बैठक प्रस्ताव से विधि दर्ज करें?' : 'Record method by meeting resolution?',
+      hi
+        ? `${optLabel(method)}. मतदान खोलने से पहले विधि दर्ज होनी चाहिए।`
+        : `${optLabel(method)}. Method must be recorded before polling opens.`,
+      hi ? 'दर्ज करें' : 'Record',
+      hi ? 'रद्द' : 'Cancel',
+    );
+    if (!ok) return;
+    setBusy(true);
+    const { error } = await recordElectionVotingMethod({
+      pollId: poll.id,
+      method,
+      recordedBy: adminName,
+      separateOfficeVotes: separateOffice,
+    });
+    if (!error) {
+      await supabase.from('polls').update({ voting_method_consent_open: false }).eq('id', poll.id);
+    }
+    setBusy(false);
+    if (error) toast.error(error);
+    else {
+      toast.success(hi ? 'मतदान विधि दर्ज' : 'Voting method recorded');
+      onReload();
+    }
+  };
+
   return (
     <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-3 space-y-3">
       <div>
@@ -198,8 +209,8 @@ const VotingMethodConsentPanel = ({
         </p>
         <p className="text-[11px] text-muted-foreground mt-0.5">
           {hi
-            ? 'उपविधियाँ दोनों विधियों की अनुमति देती हैं। सदस्य प्रभाव देखें, सहमति दें; सभी पात्र सदस्यों की सहमति के बाद अंतिम।'
-            : 'Bye-laws permit both methods. Members see the effect of each option, record consent; finalize after all eligible members have consented.'}
+            ? 'उपविधि दोनों विधियाँ अनुमति देती है। मतदान खोलने से पहले विधि दर्ज करें।'
+            : 'Bye-laws permit both methods. Record the method before opening the poll.'}
         </p>
       </div>
 
@@ -219,9 +230,11 @@ const VotingMethodConsentPanel = ({
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {hi ? o.effectHi : o.effectEn}
               </p>
-              <p className="text-[10px] text-muted-foreground">
-                {hi ? 'सहमति' : 'Consents'}: <strong className="text-foreground">{count}</strong>
-              </p>
+              {poll.voting_method_consent_open && (
+                <p className="text-[10px] text-muted-foreground">
+                  {hi ? 'सहमति' : 'Consents'}: <strong className="text-foreground">{count}</strong>
+                </p>
+              )}
               {isResident && poll.voting_method_consent_open && !finalized && !myConsent && (
                 <button
                   type="button"
@@ -229,7 +242,7 @@ const VotingMethodConsentPanel = ({
                   onClick={() => void castConsent(method)}
                   className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white w-full"
                 >
-                  {hi ? `विकल्प ${o.code} की सहमति` : `Consent to Option ${o.code}`}
+                  {hi ? `विकल्प ${o.code} को सहमति` : `Consent to Option ${o.code}`}
                 </button>
               )}
               {selected && (
@@ -242,23 +255,22 @@ const VotingMethodConsentPanel = ({
         })}
       </div>
 
-      <p className="text-[11px] text-muted-foreground">
-        {hi ? 'प्रगति' : 'Progress'}:{' '}
-        <strong className="text-foreground">
-          {tally.total}
-          {eligibleCount != null ? ` / ${eligibleCount}` : ''}
-        </strong>{' '}
-        {hi ? 'पात्र सदस्यों की सहमति' : 'eligible members consented'}
-        {allConsented ? (hi ? ' — पूर्ण' : ' — complete') : null}
-        {leading ? (
-          <>
-            {' · '}
-            {hi ? 'अग्रणी' : 'Leading'}: {optLabel(leading)}
-          </>
-        ) : tally.total > 0 ? (
-          <> · {hi ? 'बराबरी / कोई स्पष्ट बहुमत नहीं' : 'Tie / no clear lead'}</>
-        ) : null}
-      </p>
+      {poll.voting_method_consent_open && !finalized && (
+        <p className="text-[11px] text-muted-foreground">
+          {hi ? 'प्रगति' : 'Progress'}:{' '}
+          <strong className="text-foreground">
+            {tally.total}
+            {eligibleCount != null ? ` / ${eligibleCount}` : ''}
+          </strong>{' '}
+          {hi ? 'पात्र सदस्यों ने सहमति दी' : 'eligible members consented'}
+          {leading ? (
+            <>
+              {' · '}
+              {hi ? 'अग्रणी' : 'Leading'}: {optLabel(leading)}
+            </>
+          ) : null}
+        </p>
+      )}
 
       {finalized ? (
         <p className="text-xs text-emerald-700 dark:text-emerald-300">
@@ -267,83 +279,79 @@ const VotingMethodConsentPanel = ({
           {poll.voting_method_recorded_by ? ` · ${poll.voting_method_recorded_by}` : ''}
           {poll.separate_office_votes
             ? hi
-              ? ' · प्रति-पद अलग मत अनुमोदित'
+              ? ' · प्रति-पद मत अनुमोदित'
               : ' · separate office votes approved'
             : ''}
         </p>
       ) : (
         !isResident && (
           <div className="space-y-2">
+            <label className="text-[11px] flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={separateOffice}
+                onChange={(e) => setSeparateOffice(e.target.checked)}
+              />
+              {hi
+                ? 'प्रति-पद मत अनुमोदित (केवल यदि स्पष्ट रूप से स्थापित)'
+                : 'Approve separate per-office votes (only if expressly established)'}
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void recordByResolution('secret_ballot')}
+                className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white"
+              >
+                {hi ? 'A दर्ज करें (प्रस्ताव)' : 'Record A (resolution)'}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void recordByResolution('show_of_hands')}
+                className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white"
+              >
+                {hi ? 'B दर्ज करें (प्रस्ताव)' : 'Record B (resolution)'}
+              </button>
+            </div>
+
             {!poll.voting_method_consent_open ? (
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => void openConsent()}
-                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white"
+                className="text-xs px-3 py-1.5 rounded-lg border border-border"
               >
-                {hi ? 'सदस्य सहमति खोलें (A / B)' : 'Open member consent (A / B)'}
+                {hi ? 'वैकल्पिक: सदस्य सहमति खोलें' : 'Optional: open member consent'}
               </button>
             ) : (
-              <>
-                <label className="text-[11px] flex items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={separateOffice}
-                    onChange={(e) => setSeparateOffice(e.target.checked)}
-                  />
-                  {hi
-                    ? 'प्रति-पद अलग मतपत्र स्पष्ट रूप से अनुमोदित'
-                    : 'Approve separate per-office votes (only if expressly established)'}
-                </label>
-                <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={busy || !leading || !allConsented}
+                  onClick={() => leading && void finalizeFromConsent(leading, false)}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-border disabled:opacity-50"
+                >
+                  {hi ? 'सभी सहमति के बाद अंतिम' : 'Finalize after all consent'}
+                </button>
+                {leading && !allConsented && tally.total > 0 && (
                   <button
                     type="button"
-                    disabled={busy || !leading || !allConsented}
-                    onClick={() => leading && void finalize(leading, false)}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white disabled:opacity-50"
+                    disabled={busy}
+                    onClick={() => void finalizeFromConsent(leading, true)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-amber-600 text-amber-800 dark:text-amber-200"
                   >
-                    {hi
-                      ? 'सभी सदस्यों की सहमति के बाद अंतिम करें'
-                      : 'Finalize after all members consent'}
+                    {hi ? 'आंशिक सहमति से अंतिम' : 'Finalize with partial consent'}
                   </button>
-                  {leading && !allConsented && (
-                    <button
-                      type="button"
-                      disabled={busy || tally.total < 1}
-                      onClick={() => void finalize(leading, true)}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-amber-600 text-amber-800 dark:text-amber-200"
-                    >
-                      {hi ? 'आंशिक सहमति से अंतिम (बैठक प्रस्ताव)' : 'Finalize with partial consent (meeting resolution)'}
-                    </button>
-                  )}
-                  {!leading && tally.total > 0 && (
-                    <>
-                      <button
-                        type="button"
-                        disabled={busy || !allConsented}
-                        onClick={() => void finalize('secret_ballot', !allConsented)}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-border"
-                      >
-                        {hi ? 'बराबरी पर A अंतिम' : 'Tie-break: finalize A'}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy || !allConsented}
-                        onClick={() => void finalize('show_of_hands', !allConsented)}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-border"
-                      >
-                        {hi ? 'बराबरी पर B अंतिम' : 'Tie-break: finalize B'}
-                      </button>
-                    </>
-                  )}
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  {hi
-                    ? 'अंतिम होने तक मतदान विंडो नहीं खोली जा सकती।'
-                    : 'Voting cannot open until a method is finalized.'}
-                </p>
-              </>
+                )}
+              </div>
             )}
+            <p className="text-[10px] text-muted-foreground">
+              {hi
+                ? 'मतदान तब तक नहीं खुल सकता जब तक विधि अंतिम न हो।'
+                : 'Voting cannot open until a method is finalized.'}
+            </p>
           </div>
         )
       )}

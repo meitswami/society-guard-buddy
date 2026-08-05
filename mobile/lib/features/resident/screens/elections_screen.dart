@@ -10,7 +10,9 @@ import '../../../utils/election_governance.dart';
 import '../../../utils/election_tally.dart';
 import '../../../utils/election_validation.dart';
 import '../../../utils/member_photo.dart';
+import '../../../utils/voting_method_consent.dart';
 import '../../../widgets/voting_charter_card.dart';
+import '../../../widgets/voting_method_consent_card.dart';
 
 class ElectionsScreen extends StatefulWidget {
   const ElectionsScreen({super.key, required this.session});
@@ -157,6 +159,13 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
     if (pollRaw == null || !isVotingWindowOpen(pollRaw)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Voting is not open')),
+      );
+      return;
+    }
+    final method = pollRaw['voting_method'] as String?;
+    if (method == null || method.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Voting method has not been finalized yet')),
       );
       return;
     }
@@ -376,6 +385,19 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                         'Voting: ${votingWindowLabel(raw)}',
                         style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
                       ),
+                      Text(
+                        'Method: ${votingMethodLabel(raw['voting_method'] as String?)}',
+                        style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+                      ),
+                      VotingMethodConsentCard(
+                        poll: raw,
+                        societyId: widget.session.societyId,
+                        isResident: true,
+                        memberId: _voterMemberId,
+                        memberName: widget.session.resident.name,
+                        flatNumber: widget.session.resident.flatNumber,
+                        onChanged: _load,
+                      ),
                     ],
                     const SizedBox(height: 12),
                     if (docs.isNotEmpty) ...[
@@ -521,9 +543,11 @@ class _ElectionsScreenState extends State<ElectionsScreen> {
                       ],
                     if (open)
                       FilledButton(
-                        onPressed: () => _submit(poll.id),
+                        onPressed: (raw?['voting_method'] as String?)?.isNotEmpty == true
+                            ? () => _submit(poll.id)
+                            : null,
                         style: FilledButton.styleFrom(backgroundColor: brand.primary),
-                        child: const Text('Submit ranked ballot'),
+                        child: const Text('Submit ballot (final)'),
                       ),
                     if (raw != null) _buildFormationSection(raw),
                   ],
