@@ -120,6 +120,8 @@ const ElectionModule = ({
     winningTreasurer: 0,
   });
   const [photoByMemberId, setPhotoByMemberId] = useState<Record<string, string>>({});
+  const [votingMethodDraft, setVotingMethodDraft] = useState<Record<string, ElectionVotingMethod>>({});
+  const [separateOfficeDraft, setSeparateOfficeDraft] = useState<Record<string, boolean>>({});
 
   const nomineeMemberIds = useMemo(() => {
     const ids = options.map((o) => o.member_id as string | null | undefined).filter(Boolean) as string[];
@@ -257,6 +259,8 @@ const ElectionModule = ({
           poll_kind: 'election',
           election_committee_seats: 0,
           target_committee_size: DEFAULT_TARGET_COMMITTEE_SIZE,
+          bye_law_mode: true,
+          separate_office_votes: false,
           election_phase: 'nomination',
           is_active: true,
           nomination_starts_at: new Date(ef.nominationStarts).toISOString(),
@@ -376,6 +380,23 @@ const ElectionModule = ({
       toast.error('You have already nominated yourself for this post.');
       return;
     }
+    if (societyId) {
+      const { data: elig, error: eligErr } = await fetchMemberElectionEligibility({
+        memberId,
+        societyId,
+      });
+      if (eligErr) {
+        toast.error(eligErr);
+        return;
+      }
+      if (elig && !elig.eligible) {
+        toast.error(
+          elig.reasons.map(eligibilityReasonLabel).join('; ') ||
+            'You are not eligible to contest under the bye-laws.',
+        );
+        return;
+      }
+    }
     const { error } = await supabase.from('poll_options').insert([
       {
         poll_id: poll.id,
@@ -408,6 +429,42 @@ const ElectionModule = ({
       toast.error('Voting is not open in the current time window.');
       return;
     }
+    if (!poll.voting_method) {
+      toast.error('Voting method has not been recorded yet (Secret Ballot or Show of Hands).');
+      return;
+    }
+
+    const existingBallot = ballots.find((b) => b.poll_id === poll.id && b.voter_id === voterId);
+    if (existingBallot) {
+      toast.error('Your ballot is already submitted and cannot be edited.');
+      return;
+    }
+
+    if (societyId && memberId) {
+      const { data: elig, error: eligErr } = await fetchMemberElectionEligibility({
+        memberId,
+        societyId,
+      });
+      if (eligErr) {
+        toast.error(eligErr);
+        return;
+      }
+      if (elig && !elig.eligible) {
+        const detail = elig.reasons.map(eligibilityReasonLabel).join('; ');
+        toast.error(detail || 'You are not eligible to vote under the bye-laws.');
+        await logElectionAudit({
+          societyId,
+          pollId: poll.id,
+          eventType: 'eligibility_checked',
+          actorType: 'resident',
+          actorId: memberId,
+          actorName: memberName || null,
+          payload: { eligible: false, reasons: elig.reasons, action: 'ballot' },
+        });
+        return;
+      }
+    }
+
     const pollOpts = options.filter((o) => o.poll_id === poll.id) as PollOptionRow[];
     const rankings = electionRanks[poll.id] ?? {};
     const err = validateElectionRankings(pollOpts, rankings);
@@ -417,8 +474,7 @@ const ElectionModule = ({
     }
 
     const phone = (voterPhone || '').replace(/\D/g, '');
-    const existingBallot = ballots.find((b) => b.poll_id === poll.id && b.voter_id === voterId);
-    if (!existingBallot && phone) {
+    if (phone) {
       const phoneVote = ballots.find(
         (b) => b.poll_id === poll.id && String(b.voter_phone || '').replace(/\D/g, '') === phone,
       );
@@ -428,16 +484,7 @@ const ElectionModule = ({
       }
     }
 
-    const sameFlat = (b: { poll_id: string; flat_id?: string | null }) =>
-      b.poll_id === poll.id && flatId && b.flat_id === flatId;
-    const flatBallots = ballots.filter(sameFlat);
-    const distinctOthers = new Set(flatBallots.filter((b) => b.voter_id !== voterId).map((b) => b.voter_id));
-    if (!existingBallot && distinctOthers.size >= 2) {
-      toast.error('This flat already has two ballots (e.g. both spouses).');
-      return;
-    }
-
-    const { error } = await supabase.from('poll_election_ballots').upsert(
+    const { error } = await supabase.from('poll_election_ballots').insert([
       {
         poll_id: poll.id,
         voter_id: voterId,
@@ -445,26 +492,113 @@ const ElectionModule = ({
         flat_number: flatNumber || null,
         voter_phone: phone || null,
         rankings,
+        choices: {},
+        ballot_method: poll.voting_method || 'ranked_legacy',
+        is_proxy_vote: false,
+        submitted_at: new Date().toISOString(),
       },
-      { onConflict: 'poll_id,voter_id' },
-    );
-    if (error) toast.error(error.message);
+    ]);
+    if (error) {
+      const msg = error.message || '';
+      if (/duplicate|unique/i.test(msg)) toast.error('Duplicate vote blocked — one ballot per member.');
+      else if (/immutable/i.test(msg)) toast.error('Ballots cannot be changed after submission.');
+      else toast.error(msg);
+      return;
+    }
+
+    if (societyId) {
+      await logElectionAudit({
+        societyId,
+        pollId: poll.id,
+        eventType: 'ballot_cast',
+        actorType: 'resident',
+        actorId: memberId || voterId,
+        actorName: memberName || null,
+        payload: { ballot_method: poll.voting_method, voter_id: voterId },
+      });
+    }
+    toast.success('Ballot submitted (final — cannot be edited)');
+    onReload();
+  };
+
+  const saveVotingMethod = async (poll: any) => {
+    const method = votingMethodDraft[poll.id] || (poll.voting_method as ElectionVotingMethod) || 'secret_ballot';
+    const separate = separateOfficeDraft[poll.id] ?? Boolean(poll.separate_office_votes);
+    const { error } = await recordElectionVotingMethod({
+      pollId: poll.id,
+      method,
+      recordedBy: adminName,
+      separateOfficeVotes: separate,
+    });
+    if (error) toast.error(error);
     else {
-      toast.success(existingBallot ? 'Ballot updated' : 'Ranked ballot submitted');
+      toast.success(
+        method === 'secret_ballot'
+          ? 'Voting method recorded: Secret Ballot'
+          : 'Voting method recorded: Show of Hands',
+      );
       onReload();
     }
   };
 
   const startVoting = async (poll: any) => {
+    if (!poll.voting_method) {
+      toast.error('Record the voting method (Secret Ballot or Show of Hands) before opening the poll.');
+      return;
+    }
     const ok = await confirmAction(
       'Open voting?',
-      'Residents can cast votes during the scheduled voting window. All members will be notified.',
+      `Method: ${poll.voting_method === 'show_of_hands' ? 'Show of Hands' : 'Secret Ballot'}. Residents cast one vote each during the scheduled window. Quorum is 3/4 of members.`,
       'Open voting',
       'Cancel',
     );
     if (!ok) return;
-    await supabase.from('polls').update({ election_phase: 'voting', is_active: true }).eq('id', poll.id);
-    toast.success('Voting phase started');
+
+    let memberCount: number | null = null;
+    let quorum: number | null = null;
+    if (societyId) {
+      const { count } = await supabase
+        .from('members')
+        .select('id, flats!inner(society_id)', { count: 'exact', head: true })
+        .eq('flats.society_id', societyId)
+        .is('date_leave', null);
+      memberCount = count ?? null;
+      if (memberCount != null) quorum = electionQuorumRequired(memberCount);
+    }
+
+    await supabase
+      .from('polls')
+      .update({
+        election_phase: 'voting',
+        is_active: true,
+        ...(memberCount != null
+          ? { member_count_at_election: memberCount, election_quorum_required: quorum }
+          : {}),
+      })
+      .eq('id', poll.id);
+
+    if (societyId) {
+      await logElectionAudit({
+        societyId,
+        pollId: poll.id,
+        eventType: 'phase_changed',
+        actorType: 'admin',
+        actorName: adminName,
+        payload: {
+          to: 'voting',
+          voting_method: poll.voting_method,
+          member_count_at_election: memberCount,
+          election_quorum_required: quorum,
+          bye_law_quorum_example_30: BYE_LAW.electionQuorumFor30,
+        },
+      });
+    }
+
+    toast.success(
+      quorum != null
+        ? `Voting open — quorum ${quorum} of ${memberCount} members (3/4)`
+        : 'Voting phase started',
+    );
     onReload();
     if (societyId) {
       await notifyElectionEvent({
@@ -502,8 +636,21 @@ const ElectionModule = ({
         is_active: false,
         election_phase: 'closed',
         election_results: results as unknown as Record<string, unknown>,
+        first_mc_meeting_deadline: new Date(Date.now() + BYE_LAW.firstMeetingWithinDays * 86400000)
+          .toISOString()
+          .slice(0, 10),
       })
       .eq('id', poll.id);
+    if (societyId) {
+      await logElectionAudit({
+        societyId,
+        pollId: poll.id,
+        eventType: 'election_tallied',
+        actorType: 'admin',
+        actorName: adminName,
+        payload: { ballot_count: bRows.length, runner_up_places: RUNNER_UP_PLACES },
+      });
+    }
     showSuccess('Election closed', 'Results are available here in the admin portal.');
     onReload();
     if (societyId) {
@@ -548,6 +695,14 @@ const ElectionModule = ({
     });
     if (!res.ok) toast.error(res.error);
     else {
+      await logElectionAudit({
+        societyId,
+        pollId: poll.id,
+        eventType: 'committee_published',
+        actorType: 'admin',
+        actorName: adminName,
+        payload: { formed, target },
+      });
       showSuccess('Published', 'Committee roster updated for residents.');
       onReload();
       await notifyElectionEvent({
@@ -872,21 +1027,27 @@ const ElectionModule = ({
             )}
             {myBallot && votingOpen && (
               <p className="text-xs text-green-600 font-medium mb-2">
-                Ballot submitted — you may update ranks until the window closes.
+                Ballot submitted — final (cannot be edited).
               </p>
             )}
-            {votingOpen && (
+            {votingOpen && !myBallot && (
               <>
+                <p className="text-xs text-muted-foreground mb-2">
+                  One vote per eligible member. Votes are final after submission.
+                  {poll.voting_method
+                    ? ` Method: ${poll.voting_method === 'show_of_hands' ? 'Show of Hands' : 'Secret Ballot'}.`
+                    : ' Voting method not yet recorded by admin.'}
+                </p>
                 {posts.map((post) => (
                   <div key={post}>{renderRankControls(poll, post)}</div>
                 ))}
                 <button
                   type="button"
-                  disabled={!flatId || !voterId}
+                  disabled={!flatId || !voterId || !poll.voting_method}
                   onClick={() => void submitElectionBallot(poll)}
                   className="btn-primary w-full text-sm mt-2"
                 >
-                  Submit ranked ballot
+                  Submit ballot (final)
                 </button>
               </>
             )}
@@ -913,6 +1074,64 @@ const ElectionModule = ({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {!isResident && (
+          <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-3 space-y-2">
+            <p className="text-xs font-semibold text-foreground">Voting method (record before polling)</p>
+            <p className="text-[11px] text-muted-foreground">
+              Bye-laws permit Secret Ballot or Show of Hands. Separate per-office votes only if expressly approved.
+            </p>
+            {poll.voting_method ? (
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                Recorded:{' '}
+                <strong>{poll.voting_method === 'show_of_hands' ? 'Show of Hands' : 'Secret Ballot'}</strong>
+                {poll.voting_method_recorded_by ? ` · by ${poll.voting_method_recorded_by}` : ''}
+                {poll.separate_office_votes ? ' · separate office votes approved' : ''}
+                {poll.election_quorum_required != null
+                  ? ` · quorum ${poll.election_quorum_required}${
+                      poll.member_count_at_election != null ? ` of ${poll.member_count_at_election}` : ''
+                    }`
+                  : ''}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2 items-end">
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Method</label>
+                  <select
+                    className="input-field mt-0.5"
+                    value={votingMethodDraft[poll.id] || 'secret_ballot'}
+                    onChange={(e) =>
+                      setVotingMethodDraft({
+                        ...votingMethodDraft,
+                        [poll.id]: e.target.value as ElectionVotingMethod,
+                      })
+                    }
+                  >
+                    <option value="secret_ballot">Secret Ballot</option>
+                    <option value="show_of_hands">Show of Hands</option>
+                  </select>
+                </div>
+                <label className="text-[11px] flex items-center gap-1.5 pb-2">
+                  <input
+                    type="checkbox"
+                    checked={separateOfficeDraft[poll.id] ?? false}
+                    onChange={(e) =>
+                      setSeparateOfficeDraft({ ...separateOfficeDraft, [poll.id]: e.target.checked })
+                    }
+                  />
+                  Approve separate per-office votes
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void saveVotingMethod(poll)}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white"
+                >
+                  Record method
+                </button>
+              </div>
+            )}
           </div>
         )}
 

@@ -304,12 +304,12 @@ export const MANUAL_AUDIT_METRICS = {
   },
   expectedTotal: {
     title: 'Expected total',
-    description: 'The amount you entered as the correct figure to compare against the system.',
-    howCalculated: 'Your manual expected amount input for this trace.',
+    description: 'Optional amount you entered as the correct figure to compare against the system.',
+    howCalculated: 'Your manual expected amount input for this trace. Leave blank to run structural checks only.',
   },
   difference: {
     title: 'Difference',
-    description: 'Gap between system total and your expected amount.',
+    description: 'Gap between system total and your expected amount (when an amount was entered).',
     howCalculated: 'computedTotal − expectedTotal. Positive = system shows more than expected.',
   },
   match: {
