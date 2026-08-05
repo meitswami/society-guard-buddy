@@ -33,3 +33,42 @@ class SocietyMeeting {
         meetingKind: row['meeting_kind'] as String? ?? 'general',
       );
 }
+
+class MeetingAgendaItem {
+  const MeetingAgendaItem({
+    required this.id,
+    required this.title,
+    required this.status,
+    required this.source,
+  });
+
+  final String id;
+  final String title;
+  final String status;
+  final String source;
+
+  factory MeetingAgendaItem.fromRow(Map<String, dynamic> row) => MeetingAgendaItem(
+        id: row['id'] as String,
+        title: row['title'] as String,
+        status: row['status'] as String? ?? 'accepted',
+        source: row['source'] as String? ?? 'admin',
+      );
+}
+
+class MeetingSuggestion {
+  const MeetingSuggestion({
+    required this.id,
+    required this.authorName,
+    required this.suggestionText,
+  });
+
+  final String id;
+  final String authorName;
+  final String suggestionText;
+
+  factory MeetingSuggestion.fromRow(Map<String, dynamic> row) => MeetingSuggestion(
+        id: row['id'] as String,
+        authorName: row['author_name'] as String? ?? 'Resident',
+        suggestionText: row['suggestion_text'] as String? ?? '',
+      );
+}

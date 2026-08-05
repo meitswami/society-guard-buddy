@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { LayoutGrid, List, ChevronRight } from 'lucide-react';
 import type { AdminTab } from '@/lib/adminPermissions';
 import type { AdminTabDef } from '@/lib/adminNavigation';
@@ -17,40 +17,45 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const drawerTabs = tabs.filter((tab) => !ADMIN_BOTTOM_NAV_TABS.includes(tab.id));
 
-  const handleEnter = useCallback(() => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    setOpen(true);
-  }, []);
-
-  const handleLeave = useCallback(() => {
-    closeTimer.current = setTimeout(() => setOpen(false), 400);
-  }, []);
+  const closeDrawer = useCallback(() => setOpen(false), []);
+  const toggleDrawer = useCallback(() => setOpen((v) => !v), []);
 
   if (drawerTabs.length === 0) return null;
 
   return (
-    <div
-      className="fixed left-0 top-0 bottom-16 z-[60] flex"
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
-    >
-      {/* Hot zone — left-edge strip (wide enough to hit on touch / trackpad) */}
+    <>
+      {/* Backdrop — only while open; closes on intentional dismiss */}
+      {open && (
+        <button
+          type="button"
+          className="fixed inset-0 z-[59] bg-black/25 border-0 cursor-default"
+          aria-label="Close modules menu"
+          onClick={closeDrawer}
+        />
+      )}
+
+      <div className="fixed left-0 top-0 bottom-16 z-[60] flex pointer-events-none">
+      {/* Edge tab — visible only as a slim control; panel stays hidden until clicked */}
       <div
-        className={`w-8 shrink-0 transition-colors duration-200 cursor-pointer touch-manipulation ${
+        className={`pointer-events-auto w-7 shrink-0 transition-colors duration-200 cursor-pointer touch-manipulation ${
           open
             ? 'bg-primary shadow-[2px_0_12px_hsl(var(--primary)/0.35)]'
-            : 'bg-primary/70 hover:bg-primary active:bg-primary'
+            : 'bg-primary/55 hover:bg-primary/80 active:bg-primary'
         }`}
-        aria-hidden
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleDrawer}
         role="button"
+        aria-expanded={open}
         aria-label={t('adminNav.allModules')}
         tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((v) => !v); } }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleDrawer();
+          }
+        }}
       >
         <div className="h-full flex items-center justify-center">
           <ChevronRight
@@ -61,9 +66,9 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
         </div>
       </div>
 
-      {/* Sliding panel */}
+      {/* Sliding panel — hidden (w-0) until intentionally opened */}
       <aside
-        className={`bg-card border-r border-border shadow-xl transition-all duration-200 overflow-hidden ${
+        className={`pointer-events-auto bg-card border-r border-border shadow-xl transition-all duration-200 overflow-hidden ${
           open ? 'w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none'
         }`}
         aria-label={t('adminNav.allModules')}
@@ -105,7 +110,10 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => onSelectTab(tab.id)}
+                    onClick={() => {
+                      onSelectTab(tab.id);
+                      closeDrawer();
+                    }}
                     className={`flex flex-col items-center gap-1 p-2 rounded-lg text-center min-h-[64px] transition-colors ${
                       isActive
                         ? 'bg-primary/15 text-primary ring-1 ring-primary/40'
@@ -121,7 +129,10 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => onSelectTab(tab.id)}
+                  onClick={() => {
+                    onSelectTab(tab.id);
+                    closeDrawer();
+                  }}
                   className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-colors ${
                     isActive
                       ? 'bg-primary/15 text-primary'
@@ -137,6 +148,7 @@ const AdminModuleDrawer = ({ tabs, activeTab, onSelectTab }: Props) => {
         </div>
       </aside>
     </div>
+    </>
   );
 };
 

@@ -2043,7 +2043,14 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
           />
         )}
 
-        {tab === 'meetings' && <MeetingManager isResident />}
+        {tab === 'meetings' && (
+          <MeetingManager
+            isResident
+            residentMemberId={myMemberRecord?.id ?? null}
+            residentName={myMemberRecord?.name ?? resident.name}
+            residentFlatNumber={resident.flatNumber}
+          />
+        )}
 
         {tab === 'documents' && (
           <SocietyDocumentsManager

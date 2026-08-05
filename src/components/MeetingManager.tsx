@@ -96,6 +96,27 @@ type SigRow = {
   signed_at: string;
   signer_label: string | null;
 };
+type AgendaItemRow = {
+  id: string;
+  meeting_id: string;
+  title: string;
+  details: string | null;
+  sort_order: number;
+  source: 'admin' | 'resident';
+  status: 'proposed' | 'accepted' | 'rejected' | 'deferred';
+  proposed_by_member_id: string | null;
+  proposed_by_name: string | null;
+  proposed_by_flat: string | null;
+};
+type SuggestionRow = {
+  id: string;
+  meeting_id: string;
+  member_id: string | null;
+  author_name: string;
+  flat_number: string | null;
+  suggestion_text: string;
+  created_at: string;
+};
 
 type MemberPick = { id: string; name: string; flat_id: string; flat_number: string; photo?: string | null };
 
@@ -109,6 +130,9 @@ type FlatWithMembers = {
 interface Props {
   adminName?: string;
   isResident?: boolean;
+  residentMemberId?: string | null;
+  residentName?: string;
+  residentFlatNumber?: string;
 }
 
 const MEETING_KIND_OPTIONS = [
@@ -160,6 +184,13 @@ function combineDateAndTimeToIso(dateStr: string, timeStr: string): string {
   const t = timeStr || '09:00';
   const dt = new Date(`${d}T${t}:00`);
   return dt.toISOString();
+}
+
+/** Session tools (attendance, minutes, recording…) unlock on/after the meeting calendar day. */
+function isSessionDayOrPast(meetingAtIso: string, ref = new Date()): boolean {
+  const meetingDay = toDateInput(meetingAtIso);
+  const today = toDateInput(ref.toISOString());
+  return Boolean(meetingDay) && meetingDay <= today;
 }
 
 /** File picker `accept` — images + PDFs (multiple selection in file manager). */
@@ -225,7 +256,13 @@ function SignaturePad({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElem
   );
 }
 
-const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
+const MeetingManager = ({
+  adminName = 'Admin',
+  isResident = false,
+  residentMemberId = null,
+  residentName = '',
+  residentFlatNumber = '',
+}: Props) => {
   const societyId = useStore((s) => s.societyId);
   const [meetings, setMeetings] = useState<MeetingRow[]>([]);
   const [members, setMembers] = useState<MemberPick[]>([]);
@@ -235,13 +272,18 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   const [decisions, setDecisions] = useState<DecisionRow[]>([]);
   const [documents, setDocuments] = useState<DocRow[]>([]);
   const [signatures, setSignatures] = useState<SigRow[]>([]);
+  const [agendaItems, setAgendaItems] = useState<AgendaItemRow[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestionRow[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [newForm, setNewForm] = useState({
     title: '',
+    purpose: '',
     meetingDate: '',
     meetingTime: '',
     location: '',
     meetingKind: 'general_body' as MeetingKind,
+    agendaText: '',
+    notifyOnCreate: true,
   });
   const [meetingKindFilter, setMeetingKindFilter] = useState<'all' | MeetingKind>('all');
   const [memberToAdd, setMemberToAdd] = useState('');
@@ -251,12 +293,20 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   const [attendeeSelection, setAttendeeSelection] = useState<Set<string>>(() => new Set());
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [memberPickerSelection, setMemberPickerSelection] = useState<Set<string>>(() => new Set());
+  const [agendaDraft, setAgendaDraft] = useState('');
+  const [suggestionDraft, setSuggestionDraft] = useState('');
+  const [residentAgendaDraft, setResidentAgendaDraft] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const selected = useMemo(() => meetings.find((m) => m.id === selectedId) ?? null, [meetings, selectedId]);
+  const sessionUnlocked = useMemo(
+    () => (selected ? isSessionDayOrPast(selected.meeting_at) : false),
+    [selected],
+  );
   const [notesDraft, setNotesDraft] = useState({ discussion: '', minutes: '' });
   const [executivesDraft, setExecutivesDraft] = useState('');
   const [metaDraft, setMetaDraft] = useState({
     title: '',
+    purpose: '',
     meetingDate: '',
     meetingTime: '',
     location: '',
@@ -278,7 +328,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       lastHydratedMeetingIdRef.current = null;
       setNotesDraft({ discussion: '', minutes: '' });
       setExecutivesDraft('');
-      setMetaDraft({ title: '', meetingDate: '', meetingTime: '', location: '', meetingKind: 'other' });
+      setMetaDraft({ title: '', purpose: '', meetingDate: '', meetingTime: '', location: '', meetingKind: 'other' });
       return;
     }
     if (lastHydratedMeetingIdRef.current === selected.id) return;
@@ -290,6 +340,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     setExecutivesDraft(selected.executives_present ?? '');
     setMetaDraft({
       title: selected.title,
+      purpose: selected.description ?? '',
       meetingDate: toDateInput(selected.meeting_at),
       meetingTime: toTimeInput(selected.meeting_at),
       location: selected.location ?? '',
@@ -395,7 +446,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   }, [societyId, isResident]);
 
   const loadDetail = useCallback(async (meetingId: string) => {
-    const [a, d, doc] = await Promise.all([
+    const [a, d, doc, ag, sug] = await Promise.all([
       supabase.from('meeting_attendees').select('*').eq('meeting_id', meetingId).order('display_name'),
       supabase.from('meeting_decisions').select('*').eq('meeting_id', meetingId).order('sort_order'),
       supabase
@@ -404,11 +455,15 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
         .eq('meeting_id', meetingId)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true }),
+      supabase.from('meeting_agenda_items').select('*').eq('meeting_id', meetingId).order('sort_order'),
+      supabase.from('meeting_suggestions').select('*').eq('meeting_id', meetingId).order('created_at', { ascending: false }),
     ]);
     setAttendees((a.data ?? []) as AttendeeRow[]);
     setDecisions((d.data ?? []) as DecisionRow[]);
     const docs = (doc.data ?? []) as DocRow[];
     setDocuments(docs);
+    setAgendaItems((ag.data ?? []) as AgendaItemRow[]);
+    setSuggestions((sug.data ?? []) as SuggestionRow[]);
     const docIds = docs.map((x) => x.id);
     if (docIds.length === 0) {
       setSignatures([]);
@@ -434,8 +489,13 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       setDecisions([]);
       setDocuments([]);
       setSignatures([]);
+      setAgendaItems([]);
+      setSuggestions([]);
     }
     setAttendeeSelection(new Set());
+    setAgendaDraft('');
+    setSuggestionDraft('');
+    setResidentAgendaDraft('');
   }, [selectedId, loadDetail]);
 
   useEffect(() => {
@@ -467,20 +527,23 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       const patch: Partial<MeetingRow> = {};
       const mt = metaDraft.title.trim() || 'Meeting';
       if (mt !== (server.title ?? '').trim()) patch.title = mt;
+      if (normText(metaDraft.purpose) !== normText(server.description)) patch.description = normText(metaDraft.purpose);
       const meeting_at = combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime);
       if (meeting_at !== server.meeting_at) patch.meeting_at = meeting_at;
       if (normText(metaDraft.location) !== normText(server.location)) patch.location = normText(metaDraft.location);
       if (normalizeMeetingKind(metaDraft.meetingKind) !== normalizeMeetingKind(server.meeting_kind)) {
         patch.meeting_kind = normalizeMeetingKind(metaDraft.meetingKind);
       }
-      if (normText(notesDraft.discussion) !== normText(server.discussion_notes)) {
-        patch.discussion_notes = normText(notesDraft.discussion);
-      }
-      if (normText(notesDraft.minutes) !== normText(server.minutes_summary)) {
-        patch.minutes_summary = normText(notesDraft.minutes);
-      }
-      if (normText(executivesDraft) !== normText(server.executives_present)) {
-        patch.executives_present = normText(executivesDraft);
+      if (sessionUnlocked) {
+        if (normText(notesDraft.discussion) !== normText(server.discussion_notes)) {
+          patch.discussion_notes = normText(notesDraft.discussion);
+        }
+        if (normText(notesDraft.minutes) !== normText(server.minutes_summary)) {
+          patch.minutes_summary = normText(notesDraft.minutes);
+        }
+        if (normText(executivesDraft) !== normText(server.executives_present)) {
+          patch.executives_present = normText(executivesDraft);
+        }
       }
       if (Object.keys(patch).length === 0) {
         if (opts?.manual) toast.message('Nothing new to save');
@@ -499,7 +562,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       if (opts?.manual && !opts?.quiet) toast.success('Saved');
       return true;
     },
-    [selectedId, meetings, isResident, metaDraft, notesDraft, executivesDraft],
+    [selectedId, meetings, isResident, metaDraft, notesDraft, executivesDraft, sessionUnlocked],
   );
 
   const visibleMeetings = useMemo(() => {
@@ -508,7 +571,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   }, [meetings, meetingKindFilter]);
 
   const flushDecisionDraftsToServer = useCallback(async () => {
-    if (!selectedId || isResident) return;
+    if (!selectedId || isResident || !sessionUnlocked) return;
     const pending = decisions.filter((d) => {
       const draft = decisionDrafts[d.id];
       return draft !== undefined && draft !== d.decision_text;
@@ -527,7 +590,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     setAutosaveStatus('saved');
     setLastSavedAt(Date.now());
     void loadDetail(selectedId);
-  }, [selectedId, isResident, decisions, decisionDrafts]);
+  }, [selectedId, isResident, decisions, decisionDrafts, sessionUnlocked]);
 
   useEffect(() => {
     if (!selectedId || isResident) return;
@@ -538,12 +601,12 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
   }, [metaDraft, notesDraft, executivesDraft, selectedId, isResident, flushMeetingDraftsToServer]);
 
   useEffect(() => {
-    if (!selectedId || isResident) return;
+    if (!selectedId || isResident || !sessionUnlocked) return;
     const tid = setTimeout(() => {
       void flushDecisionDraftsToServer();
     }, 1000);
     return () => clearTimeout(tid);
-  }, [decisionDrafts, decisions, selectedId, isResident, flushDecisionDraftsToServer]);
+  }, [decisionDrafts, decisions, selectedId, isResident, sessionUnlocked, flushDecisionDraftsToServer]);
 
   useEffect(() => {
     if (autosaveStatus !== 'saved') return;
@@ -585,25 +648,74 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
     })();
   };
 
+  const notifyResidentsOfMeeting = async (meetingId: string, title: string, body: string) => {
+    if (!societyId) return;
+    await supabase.from('notifications').insert([
+      {
+        title,
+        message: body,
+        type: 'general',
+        target_type: 'all',
+        target_id: 'all',
+        created_by: adminName,
+        society_id: societyId,
+        sound_key: 'digital',
+        sound_custom_url: null,
+      },
+    ]);
+    try {
+      await supabase.functions.invoke('send-push-notification', {
+        body: {
+          title,
+          message: body,
+          target_type: 'all',
+          society_id: societyId,
+          sound_key: 'digital',
+          sound_custom_url: '',
+        },
+      });
+    } catch (e) {
+      console.warn('Push failed', e);
+    }
+  };
+
+  const parseAgendaLines = (text: string) =>
+    text
+      .split('\n')
+      .map((l) => l.replace(/^[\s\-*•\d.)]+/, '').trim())
+      .filter(Boolean);
+
   const createMeeting = async () => {
     if (!societyId) return;
+    if (!newForm.meetingDate || !newForm.meetingTime) {
+      toast.error('Date and time are required');
+      return;
+    }
+    if (!newForm.location.trim()) {
+      toast.error('Venue is required');
+      return;
+    }
+    if (!newForm.purpose.trim()) {
+      toast.error('Purpose is required');
+      return;
+    }
     const kind = newForm.meetingKind;
     const titleFromKind = MEETING_KIND_OPTIONS.find((o) => o.value === kind)?.label ?? 'Meeting';
     const titleText = newForm.title.trim() || titleFromKind;
-    const meeting_at = combineDateAndTimeToIso(
-      newForm.meetingDate || toDateInput(new Date().toISOString()),
-      newForm.meetingTime || toTimeInput(new Date().toISOString()),
-    );
+    const meeting_at = combineDateAndTimeToIso(newForm.meetingDate, newForm.meetingTime);
+    const purpose = newForm.purpose.trim();
     const { data, error } = await supabase
       .from('meetings')
       .insert([
         {
           society_id: societyId,
           title: titleText,
+          description: purpose,
           meeting_kind: kind,
-          location: newForm.location.trim() || null,
+          location: newForm.location.trim(),
           meeting_at,
           status: 'scheduled',
+          published: newForm.notifyOnCreate,
           created_by: adminName,
         },
       ])
@@ -613,11 +725,139 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       toast.error(error.message);
       return;
     }
-    toast.success('Meeting created');
+    const agendaLines = parseAgendaLines(newForm.agendaText);
+    if (agendaLines.length > 0) {
+      const rows = agendaLines.map((title, i) => ({
+        meeting_id: data.id,
+        title,
+        sort_order: i,
+        source: 'admin' as const,
+        status: 'accepted' as const,
+      }));
+      const { error: agErr } = await supabase.from('meeting_agenda_items').insert(rows);
+      if (agErr) toast.error(agErr.message);
+    }
+    if (newForm.notifyOnCreate) {
+      const when = fmtDateTimeFull(meeting_at);
+      const venue = newForm.location.trim();
+      await notifyResidentsOfMeeting(
+        data.id,
+        `Meeting notice: ${titleText}`,
+        `${purpose}\n\nWhen: ${when}\nVenue: ${venue}\nOpen Meetings in the app for agenda and documents.`,
+      );
+      toast.success('Meeting created, published, and residents notified');
+    } else {
+      toast.success('Meeting created as draft — publish when ready to notify residents');
+    }
     setShowNew(false);
-    setNewForm({ title: '', meetingDate: '', meetingTime: '', location: '', meetingKind: 'general_body' });
+    setNewForm({
+      title: '',
+      purpose: '',
+      meetingDate: '',
+      meetingTime: '',
+      location: '',
+      meetingKind: 'general_body',
+      agendaText: '',
+      notifyOnCreate: true,
+    });
     await loadMeetings();
     setSelectedId(data.id);
+  };
+
+  const addAdminAgendaItem = async () => {
+    if (!selectedId || !agendaDraft.trim()) return;
+    const next = agendaItems.length;
+    const { error } = await supabase.from('meeting_agenda_items').insert([
+      {
+        meeting_id: selectedId,
+        title: agendaDraft.trim(),
+        sort_order: next,
+        source: 'admin',
+        status: 'accepted',
+      },
+    ]);
+    if (error) toast.error(error.message);
+    else {
+      setAgendaDraft('');
+      void loadDetail(selectedId);
+    }
+  };
+
+  const setAgendaItemStatus = async (id: string, status: AgendaItemRow['status']) => {
+    if (!selectedId || isResident) return;
+    const { error } = await supabase.from('meeting_agenda_items').update({ status }).eq('id', id);
+    if (error) toast.error(error.message);
+    else void loadDetail(selectedId);
+  };
+
+  const removeAgendaItem = async (id: string) => {
+    if (!selectedId || isResident) return;
+    const ok = await confirmAction('Remove agenda item?', 'This removes the item from the meeting agenda.', 'Remove', 'Cancel');
+    if (!ok) return;
+    const { error } = await supabase.from('meeting_agenda_items').delete().eq('id', id);
+    if (error) toast.error(error.message);
+    else void loadDetail(selectedId);
+  };
+
+  const submitResidentSuggestion = async () => {
+    if (!selectedId || !isResident || !suggestionDraft.trim()) return;
+    const { error } = await supabase.from('meeting_suggestions').insert([
+      {
+        meeting_id: selectedId,
+        member_id: residentMemberId,
+        author_name: residentName.trim() || 'Resident',
+        flat_number: residentFlatNumber || null,
+        suggestion_text: suggestionDraft.trim(),
+      },
+    ]);
+    if (error) toast.error(error.message);
+    else {
+      setSuggestionDraft('');
+      toast.success('Suggestion submitted');
+      void loadDetail(selectedId);
+    }
+  };
+
+  const submitResidentAgendaIssue = async () => {
+    if (!selectedId || !isResident || !residentAgendaDraft.trim()) return;
+    const next = agendaItems.length;
+    const { error } = await supabase.from('meeting_agenda_items').insert([
+      {
+        meeting_id: selectedId,
+        title: residentAgendaDraft.trim(),
+        sort_order: next,
+        source: 'resident',
+        status: 'proposed',
+        proposed_by_member_id: residentMemberId,
+        proposed_by_name: residentName.trim() || 'Resident',
+        proposed_by_flat: residentFlatNumber || null,
+      },
+    ]);
+    if (error) toast.error(error.message);
+    else {
+      setResidentAgendaDraft('');
+      toast.success('Agenda issue proposed for committee review');
+      void loadDetail(selectedId);
+    }
+  };
+
+  const publishNoticeToResidents = async () => {
+    if (!selectedId || !societyId || isResident) return;
+    const ok = await confirmAction(
+      'Publish meeting notice to all residents?',
+      'Marks the meeting published and sends an in-app notification (and push where configured) with date, time, venue, and purpose.',
+      'Publish & notify',
+      'Cancel',
+    );
+    if (!ok) return;
+    await flushMeetingDraftsToServer({ manual: true, quiet: true });
+    await persistMeetingPatch({ published: true } as Partial<MeetingRow>);
+    const title = `Meeting notice: ${metaDraft.title || selected?.title || 'Meeting'}`;
+    const when = fmtDateTimeFull(combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime));
+    const body = `${metaDraft.purpose || selected?.description || ''}\n\nWhen: ${when}\nVenue: ${metaDraft.location || '—'}\nOpen Meetings for agenda and documents.`;
+    await notifyResidentsOfMeeting(selectedId, title, body.slice(0, 900));
+    toast.success('Notice published and sent to residents');
+    void loadMeetings();
   };
 
   const deleteMeeting = async (id: string) => {
@@ -1351,8 +1591,8 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
             {isResident
-              ? 'Published minutes and materials from your managing committee.'
-              : 'Date, place, time, executive & flat attendance, photos, session audio, minutes (type or dictate), then publish and notify everyone.'}
+              ? 'Published meeting notices — suggest topics and propose agenda items before the day. Session records unlock on the meeting day.'
+              : 'Create a notice (date, time, venue, purpose, agenda, documents) and notify residents. Attendance, minutes, and recording unlock on the meeting day. Published notices stay editable.'}
           </p>
         </div>
         {!isResident && (
@@ -1376,10 +1616,12 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
       </div>
 
       <Dialog open={showNew} onOpenChange={setShowNew}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New meeting</DialogTitle>
-            <DialogDescription>Pick the meeting class, optional title, date, time, and venue. You can add attendance and minutes after.</DialogDescription>
+            <DialogTitle>New meeting notice</DialogTitle>
+            <DialogDescription>
+              Enter only what residents need before the meeting. Session tools (attendance, minutes, recording) unlock on the meeting day.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -1401,16 +1643,25 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
               </Select>
             </div>
             <div>
-              <Label>Title / subject</Label>
+              <Label>Short title (optional)</Label>
               <Input
                 value={newForm.title}
                 onChange={(e) => setNewForm((p) => ({ ...p, title: e.target.value }))}
-                placeholder="Optional — if blank, uses meeting type name"
+                placeholder="Defaults to meeting type name"
+              />
+            </div>
+            <div>
+              <Label>Purpose *</Label>
+              <textarea
+                className="input-field min-h-[72px] text-sm mt-1 w-full"
+                value={newForm.purpose}
+                onChange={(e) => setNewForm((p) => ({ ...p, purpose: e.target.value }))}
+                placeholder="Why this meeting is being called"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>Date</Label>
+                <Label>Date *</Label>
                 <DateInput
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={newForm.meetingDate}
@@ -1418,7 +1669,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                 />
               </div>
               <div>
-                <Label>Time</Label>
+                <Label>Time *</Label>
                 <Input
                   type="time"
                   value={newForm.meetingTime}
@@ -1427,20 +1678,46 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
               </div>
             </div>
             <div>
-              <Label>Place / venue</Label>
+              <Label>Venue *</Label>
               <Input
                 value={newForm.location}
                 onChange={(e) => setNewForm((p) => ({ ...p, location: e.target.value }))}
                 placeholder="Club house hall"
               />
             </div>
+            <div>
+              <Label>Agenda issues</Label>
+              <textarea
+                className="input-field min-h-[88px] text-sm mt-1 w-full"
+                value={newForm.agendaText}
+                onChange={(e) => setNewForm((p) => ({ ...p, agendaText: e.target.value }))}
+                placeholder={'One issue per line, e.g.\nMaintenance arrears\nParking allocation\nAGM date'}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              After create, attach PDF/images on the meeting record. You can edit the notice after publishing.
+            </p>
+            <label className="flex items-start gap-2 text-xs rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={newForm.notifyOnCreate}
+                onChange={(e) => setNewForm((p) => ({ ...p, notifyOnCreate: e.target.checked }))}
+              />
+              <span>
+                <span className="font-semibold text-foreground">Bring to notice of residents</span>
+                <span className="block text-muted-foreground mt-0.5">
+                  Publish immediately and send in-app + push notification with date, time, venue, and purpose.
+                </span>
+              </span>
+            </label>
           </div>
           <DialogFooter>
             <Button variant="secondary" type="button" onClick={() => setShowNew(false)}>
               Cancel
             </Button>
             <Button type="button" onClick={() => void createMeeting()}>
-              Create
+              {newForm.notifyOnCreate ? 'Create & notify' : 'Create draft'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1548,7 +1825,7 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
           <div className="card-section p-4 space-y-4 border border-border max-h-[calc(100vh-8rem)] overflow-y-auto">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <h3 className="font-semibold text-sm">Meeting record</h3>
+                <h3 className="font-semibold text-sm">{isResident ? 'Meeting notice' : 'Meeting notice & record'}</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   <span className="inline-flex items-center gap-1 rounded border border-border bg-muted/40 px-1.5 py-0.5 font-medium text-foreground">
                     {meetingKindLabel(selected.meeting_kind)}
@@ -1567,12 +1844,16 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
               <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5 space-y-2">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <p className="text-[11px] text-muted-foreground leading-snug min-w-0 flex-1">
-                    <span className="font-semibold text-foreground">Auto-save</span> — title, schedule, venue, discussion, minutes, and executives save about{' '}
-                    <span className="font-medium text-foreground">1 second</span> after you stop typing. Decision lines save the same way.{' '}
-                    <span className="font-medium text-foreground">Everything stays editable</span> at any stage (draft, scheduled, published, completed).
+                    <span className="font-semibold text-foreground">Auto-save</span> — notice fields (title, purpose, schedule, venue) save about{' '}
+                    <span className="font-medium text-foreground">1 second</span> after you stop typing. Published notices remain editable.
+                    {!sessionUnlocked && (
+                      <span className="block mt-1 text-amber-700 dark:text-amber-400">
+                        Session tools (attendance, minutes, recording, decisions) unlock on the meeting day.
+                      </span>
+                    )}
                   </p>
                   <Button type="button" size="sm" variant="secondary" className="shrink-0 text-xs" onClick={saveAllMeetingFieldsNow}>
-                    Save all fields now
+                    Save now
                   </Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1588,40 +1869,265 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
               </div>
             )}
 
-            {!isResident && (
-              <>
-                <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Date, time & place</p>
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground">Meeting type</Label>
-                    <Select
-                      value={metaDraft.meetingKind}
-                      onValueChange={(v) => setMetaDraft((p) => ({ ...p, meetingKind: normalizeMeetingKind(v) }))}
-                    >
-                      <SelectTrigger className="h-9 mt-0.5">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MEETING_KIND_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Input value={metaDraft.title} onChange={(e) => setMetaDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Title" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <DateInput className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={metaDraft.meetingDate} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingDate: e.target.value }))} />
-                    <Input type="time" value={metaDraft.meetingTime} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingTime: e.target.value }))} />
-                  </div>
-                  <Input
-                    value={metaDraft.location}
-                    onChange={(e) => setMetaDraft((p) => ({ ...p, location: e.target.value }))}
-                    placeholder="Place / venue"
+            {/* ——— Meeting notice (always) ——— */}
+            {!isResident ? (
+              <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Meeting notice</p>
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Meeting type</Label>
+                  <Select
+                    value={metaDraft.meetingKind}
+                    onValueChange={(v) => setMetaDraft((p) => ({ ...p, meetingKind: normalizeMeetingKind(v) }))}
+                  >
+                    <SelectTrigger className="h-9 mt-0.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEETING_KIND_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input value={metaDraft.title} onChange={(e) => setMetaDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Title" />
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Purpose</Label>
+                  <textarea
+                    className="input-field min-h-[72px] text-sm mt-0.5 w-full"
+                    value={metaDraft.purpose}
+                    onChange={(e) => setMetaDraft((p) => ({ ...p, purpose: e.target.value }))}
+                    placeholder="Purpose of the meeting"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <DateInput className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={metaDraft.meetingDate} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingDate: e.target.value }))} />
+                  <Input type="time" value={metaDraft.meetingTime} onChange={(e) => setMetaDraft((p) => ({ ...p, meetingTime: e.target.value }))} />
+                </div>
+                <Input
+                  value={metaDraft.location}
+                  onChange={(e) => setMetaDraft((p) => ({ ...p, location: e.target.value }))}
+                  placeholder="Venue"
+                />
+              </div>
+            ) : (
+              <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Meeting notice</p>
+                <p className="font-medium text-sm">{selected.title}</p>
+                {selected.description ? (
+                  <p className="text-sm whitespace-pre-wrap">{selected.description}</p>
+                ) : null}
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap">
+                  <Calendar className="w-3 h-3" />
+                  {fmtDateTimeFull(selected.meeting_at)}
+                  {selected.location ? (
+                    <>
+                      <MapPin className="w-3 h-3 shrink-0" /> {selected.location}
+                    </>
+                  ) : null}
+                </p>
+              </div>
+            )}
 
+            {/* Agenda */}
+            <div className="border border-border rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Agenda issues</p>
+              <ul className="space-y-1.5">
+                {agendaItems.length === 0 && <li className="text-xs text-muted-foreground">No agenda items yet.</li>}
+                {agendaItems.map((item, i) => (
+                  <li key={item.id} className="flex items-start gap-2 text-sm">
+                    <span className="text-[10px] text-muted-foreground w-4 shrink-0 pt-0.5">{i + 1}.</span>
+                    <div className="min-w-0 flex-1">
+                      <p className={item.status === 'rejected' ? 'line-through text-muted-foreground' : ''}>{item.title}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {item.source === 'resident' ? (
+                          <>
+                            Proposed by {item.proposed_by_name ?? 'resident'}
+                            {item.proposed_by_flat ? ` · ${item.proposed_by_flat}` : ''} · {item.status}
+                          </>
+                        ) : (
+                          <>Committee · {item.status}</>
+                        )}
+                      </p>
+                    </div>
+                    {!isResident && (
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        {item.status === 'proposed' && (
+                          <>
+                            <Button type="button" size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => void setAgendaItemStatus(item.id, 'accepted')}>
+                              Accept
+                            </Button>
+                            <Button type="button" size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => void setAgendaItemStatus(item.id, 'rejected')}>
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => void removeAgendaItem(item.id)}>
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {!isResident && (
+                <div className="flex gap-2 items-end">
+                  <Input
+                    value={agendaDraft}
+                    onChange={(e) => setAgendaDraft(e.target.value)}
+                    placeholder="Add agenda issue"
+                    className="flex-1"
+                  />
+                  <Button type="button" size="sm" variant="secondary" onClick={() => void addAdminAgendaItem()}>
+                    <Plus className="w-3 h-3 mr-1" /> Add
+                  </Button>
+                </div>
+              )}
+              {isResident && (
+                <div className="space-y-2 pt-1 border-t border-border">
+                  <Label className="text-[10px] text-muted-foreground">Propose an issue for the agenda</Label>
+                  <div className="flex gap-2 items-end">
+                    <Input
+                      value={residentAgendaDraft}
+                      onChange={(e) => setResidentAgendaDraft(e.target.value)}
+                      placeholder="Issue you want included"
+                      className="flex-1"
+                    />
+                    <Button type="button" size="sm" variant="secondary" onClick={() => void submitResidentAgendaIssue()}>
+                      Submit
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Documents (notice attachments) */}
+            <div className="border border-dashed border-border rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <FileText className="w-3 h-3" /> Documents (PDF / images)
+              </p>
+              {!isResident && (
+                <div className="flex flex-wrap gap-2">
+                  <label className="btn-primary text-xs px-3 py-2 cursor-pointer">
+                    Browse files
+                    <input
+                      type="file"
+                      multiple
+                      accept={MEETING_DOC_ACCEPT}
+                      className="hidden"
+                      onChange={(e) => {
+                        void uploadDocuments(e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  <label className="btn-secondary text-xs px-3 py-2 cursor-pointer">
+                    Take photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (f) void uploadDocuments([f]);
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
+              {documents.length === 0 && <p className="text-xs text-muted-foreground">No attachments.</p>}
+              <ul className="space-y-2">
+                {documents.map((doc, docIndex) => (
+                  <li key={doc.id} className="flex items-center justify-between gap-2 text-sm">
+                    <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-primary underline truncate min-w-0">
+                      {doc.title}
+                      {doc.file_name?.toLowerCase().endsWith('.pdf') ? (
+                        <span className="text-[10px] text-muted-foreground font-normal ml-1">(PDF)</span>
+                      ) : null}
+                    </a>
+                    {!isResident && (
+                      <div className="flex gap-0.5 shrink-0">
+                        <Button type="button" variant="outline" size="icon" className="h-7 w-7" disabled={docIndex === 0} onClick={() => void moveMeetingDocument(doc.id, 'up')}>
+                          <ChevronUp className="w-4 h-4" />
+                        </Button>
+                        <Button type="button" variant="outline" size="icon" className="h-7 w-7" disabled={docIndex === documents.length - 1} onClick={() => void moveMeetingDocument(doc.id, 'down')}>
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Bring to notice / publish */}
+            {!isResident && (
+              <div className="border border-primary/30 rounded-lg p-3 bg-primary/5 space-y-2">
+                <p className="text-sm font-medium flex items-center gap-1">
+                  <Megaphone className="w-4 h-4" /> Bring to notice of residents
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {selected.published
+                    ? 'Published — residents can open this notice. You may edit and re-notify if details change.'
+                    : 'Not yet published. Residents will not see this meeting until you publish.'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" onClick={() => void publishNoticeToResidents()}>
+                    <Send className="w-4 h-4 mr-2" />
+                    {selected.published ? 'Re-notify residents' : 'Publish & notify'}
+                  </Button>
+                  {selected.published && (
+                    <Button type="button" variant="outline" onClick={() => void onPublishedToggle(false)}>
+                      Unpublish
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Resident suggestions */}
+            <div className="border border-border rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Suggestions from residents</p>
+              <ul className="space-y-2 max-h-40 overflow-y-auto">
+                {suggestions.length === 0 && <li className="text-xs text-muted-foreground">No suggestions yet.</li>}
+                {suggestions.map((s) => (
+                  <li key={s.id} className="text-sm bg-muted/40 rounded-md p-2">
+                    <p className="whitespace-pre-wrap">{s.suggestion_text}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {s.author_name}
+                      {s.flat_number ? ` · ${s.flat_number}` : ''} · {fmtDateTimeFull(s.created_at)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              {isResident && (
+                <div className="space-y-2 pt-1 border-t border-border">
+                  <Label className="text-[10px] text-muted-foreground">Your suggestion</Label>
+                  <textarea
+                    className="input-field min-h-[64px] text-sm w-full"
+                    value={suggestionDraft}
+                    onChange={(e) => setSuggestionDraft(e.target.value)}
+                    placeholder="Share a suggestion for the committee…"
+                  />
+                  <Button type="button" size="sm" variant="secondary" onClick={() => void submitResidentSuggestion()}>
+                    Submit suggestion
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {!sessionUnlocked && (
+              <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border p-3">
+                Attendance, discussion, minutes, recording, decisions, and signatures unlock on the day of the meeting
+                ({fmtDateTimeFull(selected.meeting_at)}).
+              </p>
+            )}
+
+            {sessionUnlocked && !isResident && (
+              <>
                 <div className="border border-border rounded-lg p-3 space-y-2">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Executive members present</p>
                   <textarea
@@ -1675,14 +2181,14 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
               </>
             )}
 
-            {isResident && selected.executives_present && (
+            {sessionUnlocked && isResident && selected.executives_present && (
               <div>
                 <Label className="text-xs">Executive members recorded</Label>
                 <p className="text-sm whitespace-pre-wrap mt-1 bg-muted/40 rounded-md p-2">{selected.executives_present}</p>
               </div>
             )}
 
-            {!isResident && (
+            {sessionUnlocked && !isResident && (
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
                   <Label className="text-xs">Status</Label>
@@ -1698,17 +2204,11 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                     </SelectContent>
                   </Select>
                 </div>
-                <label className="flex items-center gap-2 text-xs mt-5">
-                  <input
-                    type="checkbox"
-                    checked={selected.published}
-                    onChange={(e) => void onPublishedToggle(e.target.checked)}
-                  />
-                  Published (residents can open)
-                </label>
               </div>
             )}
 
+            {sessionUnlocked && (
+              <>
             <div>
               <Label className="text-xs flex items-center gap-1">
                 <Megaphone className="w-3 h-3" /> Discussion & conversation
@@ -1789,46 +2289,6 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
                 </div>
               )}
             </div>
-
-            {!isResident && (
-              <div className="border border-dashed border-border rounded-lg p-3 space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Photos & documents (images + PDF)
-                </p>
-                <p className="text-[10px] text-muted-foreground leading-snug">
-                  <strong>Browse files</strong> opens the system file picker — select <strong>multiple</strong> images and/or PDFs at once. Use the arrows on each attachment below to change display order.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <label className="btn-primary text-xs px-3 py-2 cursor-pointer">
-                    Browse files
-                    <input
-                      type="file"
-                      multiple
-                      accept={MEETING_DOC_ACCEPT}
-                      className="hidden"
-                      onChange={(e) => {
-                        void uploadDocuments(e.target.files);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                  <label className="btn-secondary text-xs px-3 py-2 cursor-pointer">
-                    Take photo
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        e.target.value = '';
-                        if (f) void uploadDocuments([f]);
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
 
             <div>
               <div className="flex items-center justify-between">
@@ -2026,70 +2486,21 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
             <div>
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <Label className="text-xs flex items-center gap-1">
-                  <FileText className="w-3 h-3" /> Documents & signatures
+                  <PenLine className="w-3 h-3" /> Document signatures
                 </Label>
               </div>
-              {!isResident && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <label className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm cursor-pointer hover:bg-accent hover:text-accent-foreground">
-                    Choose files
-                    <input
-                      type="file"
-                      multiple
-                      accept={MEETING_DOC_ACCEPT}
-                      className="sr-only"
-                      onChange={(e) => {
-                        void uploadDocuments(e.target.files);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                  <span className="text-[10px] text-muted-foreground">Select several images or PDFs at once</span>
-                </div>
-              )}
-              {documents.length === 0 && <p className="text-xs text-muted-foreground mt-2">No attachments.</p>}
+              {documents.length === 0 && <p className="text-xs text-muted-foreground mt-2">Attach documents in the notice section above, then collect signatures here.</p>}
               <ul className="mt-2 space-y-3">
-                {documents.map((doc, docIndex) => (
+                {documents.map((doc) => (
                   <li key={doc.id} className="border border-border rounded-lg p-2 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <a
-                        href={doc.file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm font-medium text-primary underline min-w-0 break-words"
-                      >
-                        {doc.title}
-                        {doc.file_name?.toLowerCase().endsWith('.pdf') ? (
-                          <span className="text-[10px] text-muted-foreground font-normal ml-1">(PDF)</span>
-                        ) : null}
-                      </a>
-                      {!isResident && (
-                        <div className="flex flex-col gap-0.5 shrink-0">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Move up"
-                            disabled={docIndex === 0}
-                            onClick={() => void moveMeetingDocument(doc.id, 'up')}
-                          >
-                            <ChevronUp className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Move down"
-                            disabled={docIndex === documents.length - 1}
-                            onClick={() => void moveMeetingDocument(doc.id, 'down')}
-                          >
-                            <ChevronDown className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                    <a
+                      href={doc.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-medium text-primary underline min-w-0 break-words"
+                    >
+                      {doc.title}
+                    </a>
                     <div className="grid gap-1 sm:grid-cols-2">
                       {presentAttendees.map((att) => {
                         const sig = signatures.find(
@@ -2120,14 +2531,16 @@ const MeetingManager = ({ adminName = 'Admin', isResident = false }: Props) => {
 
             {!isResident && (
               <div className="border border-primary/30 rounded-lg p-3 bg-primary/5">
-                <p className="text-sm font-medium mb-1">Publish report to all members</p>
+                <p className="text-sm font-medium mb-1">Publish minutes to all members</p>
                 <p className="text-[11px] text-muted-foreground mb-2">
-                  Saves notes, marks published, sends in-app notification and push (FCM / OneSignal) to every resident device where configured.
+                  After the session, save notes and notify everyone that minutes are available.
                 </p>
                 <Button type="button" className="w-full sm:w-auto" onClick={() => void publishAndNotifyAll()}>
                   <Send className="w-4 h-4 mr-2" /> Publish minutes & notify all
                 </Button>
               </div>
+            )}
+              </>
             )}
           </div>
         )}
