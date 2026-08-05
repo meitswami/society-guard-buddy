@@ -309,6 +309,24 @@ class ElectionService {
     );
   }
 
+  Future<void> recordVotingMethod({
+    required String pollId,
+    required ElectionVotingMethod method,
+    required String recordedBy,
+    bool separateOfficeVotes = false,
+  }) async {
+    if (!Env.isConfigured) return;
+    await SupabaseBootstrap.client.rpc('record_election_voting_method', params: {
+      'p_poll_id': pollId,
+      'p_method': method,
+      'p_recorded_by': recordedBy,
+      'p_separate_office_votes': separateOfficeVotes,
+    });
+    await SupabaseBootstrap.client.from('polls').update({
+      'voting_method_consent_open': false,
+    }).eq('id', pollId);
+  }
+
   Future<void> finalizeVotingMethodFromConsent({
     required String pollId,
     required String societyId,

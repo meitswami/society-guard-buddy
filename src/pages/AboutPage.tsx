@@ -198,7 +198,7 @@ const AboutPage = () => {
                 { icon: <Users className="w-3.5 h-3.5" />, name: 'Resident Portal', desc: 'View committee, pay maintenance, notices, complaints, directory' },
                 { icon: <Landmark className="w-3.5 h-3.5" />, name: 'Guard Module', desc: 'Visitor entry/exit, vehicle tracking, geofence, biometric attendance' },
                 { icon: <Calendar className="w-3.5 h-3.5" />, name: 'Meetings', desc: 'GBM/AGM/EC, attendees, decisions, documents, publish & notify' },
-                { icon: <Vote className="w-3.5 h-3.5" />, name: 'Polls & Elections', desc: 'Standard polls, MC elections with ranked ballots, result banners' },
+                { icon: <Vote className="w-3.5 h-3.5" />, name: 'Polls & Elections', desc: 'Standard polls, bye-law MC elections (Secret Ballot / Show of Hands), result banners' },
                 { icon: <Bell className="w-3.5 h-3.5" />, name: 'Notifications', desc: 'FCM push, in-app center, targeted delivery, read receipts' },
                 { icon: <Split className="w-3.5 h-3.5" />, name: 'Expense Splitter', desc: 'Group expenses, per-flat splits, settlement tracking' },
                 { icon: <Car className="w-3.5 h-3.5" />, name: 'Parking & Vehicles', desc: 'Slot allocation, resident vehicles, visitor parking' },

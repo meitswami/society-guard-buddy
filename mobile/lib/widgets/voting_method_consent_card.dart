@@ -159,6 +159,33 @@ class _VotingMethodConsentCardState extends State<VotingMethodConsentCard> {
     }
   }
 
+  Future<void> _recordByResolution(ElectionVotingMethod method) async {
+    final ok = await _confirm(
+      _hi ? 'बैठक प्रस्ताव से विधि दर्ज करें?' : 'Record method by meeting resolution?',
+      _hi
+          ? '${_optLabel(method)}. मतदान खोलने से पहले विधि दर्ज होनी चाहिए।'
+          : '${_optLabel(method)}. Method must be recorded before polling opens.',
+      _hi ? 'दर्ज करें' : 'Record',
+    );
+    if (!ok) return;
+    setState(() => _busy = true);
+    try {
+      await _service.recordVotingMethod(
+        pollId: widget.poll['id'] as String,
+        method: method,
+        recordedBy: widget.adminName,
+        separateOfficeVotes: _separateOffice,
+      );
+      _toast(_hi ? 'मतदान विधि दर्ज' : 'Voting method recorded');
+      await widget.onChanged();
+      await _load();
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Bad state: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _finalize(ElectionVotingMethod method, {required bool allowPartial}) async {
     final eligible = _eligibleCount;
     if (eligible == null) {
@@ -276,32 +303,45 @@ class _VotingMethodConsentCardState extends State<VotingMethodConsentCard> {
             ),
           ] else if (!widget.isResident) ...[
             const SizedBox(height: 10),
-            if (!consentOpen)
-              FilledButton(
-                onPressed: _busy ? null : _openConsent,
-                child: Text(_hi ? 'सदस्य सहमति खोलें (A / B)' : 'Open member consent (A / B)'),
-              )
-            else ...[
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                value: _separateOffice,
-                onChanged: _busy
-                    ? null
-                    : (v) => setState(() => _separateOffice = v ?? false),
-                title: Text(
-                  _hi
-                      ? 'प्रति-पद अलग मतपत्र स्पष्ट रूप से अनुमोदित'
-                      : 'Approve separate per-office votes (only if expressly established)',
-                  style: const TextStyle(fontSize: 11),
-                ),
-                controlAffinity: ListTileControlAffinity.leading,
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: _separateOffice,
+              onChanged: _busy ? null : (v) => setState(() => _separateOffice = v ?? false),
+              title: Text(
+                _hi
+                    ? 'प्रति-पद अलग मतपत्र स्पष्ट रूप से अनुमोदित'
+                    : 'Approve separate per-office votes (only if expressly established)',
+                style: const TextStyle(fontSize: 11),
               ),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton(
+                  onPressed: _busy ? null : () => _recordByResolution(votingMethodSecretBallot),
+                  child: Text(_hi ? 'A दर्ज करें (प्रस्ताव)' : 'Record A (resolution)'),
+                ),
+                FilledButton(
+                  onPressed: _busy ? null : () => _recordByResolution(votingMethodShowOfHands),
+                  child: Text(_hi ? 'B दर्ज करें (प्रस्ताव)' : 'Record B (resolution)'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (!consentOpen)
+              OutlinedButton(
+                onPressed: _busy ? null : _openConsent,
+                child: Text(_hi ? 'वैकल्पिक: सदस्य सहमति खोलें' : 'Optional: open member consent'),
+              )
+            else
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  FilledButton(
+                  OutlinedButton(
                     onPressed: _busy || leading == null || !allConsented
                         ? null
                         : () => _finalize(leading, allowPartial: false),
@@ -334,14 +374,13 @@ class _VotingMethodConsentCardState extends State<VotingMethodConsentCard> {
                   ],
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                _hi
-                    ? 'अंतिम होने तक मतदान विंडो नहीं खोली जा सकती।'
-                    : 'Voting cannot open until a method is finalized.',
-                style: const TextStyle(fontSize: 10, color: KutumbikaColors.textMuted),
-              ),
-            ],
+            const SizedBox(height: 6),
+            Text(
+              _hi
+                  ? 'अंतिम होने तक मतदान विंडो नहीं खोली जा सकती।'
+                  : 'Voting cannot open until a method is finalized.',
+              style: const TextStyle(fontSize: 10, color: KutumbikaColors.textMuted),
+            ),
             if (_rows.isNotEmpty) ...[
               const SizedBox(height: 8),
               ExpansionTile(

@@ -163,15 +163,22 @@ const ElectionModule = ({
 
   const setOfficePick = useCallback((pollId: string, post: ElectionPost, optionId: string) => {
     setBallotDraft((prev) => {
-      const cur = { ...(prev[pollId] ?? {}) };
+      const cur: BallotChoices = { ...(prev[pollId] ?? {}) };
       if (post === 'committee') {
-        const picks = new Set(Array.isArray(cur.committee) ? cur.committee : typeof cur.committee === 'string' ? [cur.committee] : []);
+        const picks = new Set(
+          Array.isArray(cur.committee)
+            ? cur.committee
+            : typeof cur.committee === 'string'
+              ? [cur.committee]
+              : [],
+        );
         if (picks.has(optionId)) picks.delete(optionId);
         else if (picks.size < BYE_LAW.executiveMembers) picks.add(optionId);
         cur.committee = [...picks];
-      } else {
-        cur[post] = optionId;
-      }
+      } else if (post === 'president') cur.president = optionId;
+      else if (post === 'vice_president') cur.vice_president = optionId;
+      else if (post === 'secretary') cur.secretary = optionId;
+      else if (post === 'treasurer') cur.treasurer = optionId;
       return { ...prev, [pollId]: cur };
     });
   }, []);

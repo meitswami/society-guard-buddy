@@ -17,13 +17,13 @@ const TITLES: Record<ElectionNotifyEvent, string> = {
 function defaultMessage(event: ElectionNotifyEvent, electionTitle: string): string {
   switch (event) {
     case 'nomination_open':
-      return `Propose yourself for President, Secretary or Treasurer: ${electionTitle}`;
+      return `Propose yourself for the 7-member Management Committee: ${electionTitle}`;
     case 'voting_open':
-      return `Cast your ranked ballot: ${electionTitle}`;
+      return `Cast your ballot (one vote per eligible member): ${electionTitle}`;
     case 'election_closed':
       return `Voting has closed for: ${electionTitle}`;
     case 'winners_published':
-      return `Elected office-bearers are now on the Committee roster: ${electionTitle}`;
+      return `Elected Management Committee is now on the Committee roster: ${electionTitle}`;
   }
 }
 

@@ -271,7 +271,7 @@ const PollManager = ({
         <div>
           <h1 className="page-title">Polls &amp; Elections</h1>
           <p className="text-[11px] text-muted-foreground">
-            Two sections: <strong>Society Elections</strong> (committee posts, ranked voting) and <strong>General Polls</strong> (single-choice questions).
+            Two sections: <strong>Society Elections</strong> (7-member MC, one vote per member) and <strong>General Polls</strong> (single-choice questions).
           </p>
         </div>
       </div>

@@ -7,6 +7,8 @@ import '../../services/election_service.dart';
 import '../../utils/election_governance.dart';
 import '../../utils/election_tally.dart';
 import '../../widgets/voting_charter_card.dart';
+import '../../widgets/voting_method_consent_card.dart';
+import '../../utils/voting_method_consent.dart';
 
 class AdminElectionsScreen extends StatefulWidget {
   const AdminElectionsScreen({
@@ -186,11 +188,22 @@ class AdminElectionsScreenState extends State<AdminElectionsScreen> {
   }
 
   Future<void> _startVoting(String pollId, Map<String, dynamic> raw) async {
+    final method = raw['voting_method'] as String?;
+    if (method == null || method.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Finalize voting method (Option A or B) via member consent before opening the poll.'),
+        ),
+      );
+      return;
+    }
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Open voting?'),
-        content: const Text('Residents can rank candidates during the scheduled window. All members will be notified.'),
+        content: Text(
+          'Method: ${votingMethodLabel(method)}. Residents cast one vote each during the scheduled window. Quorum is 3/4 of members.',
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Open voting')),
@@ -198,15 +211,23 @@ class AdminElectionsScreenState extends State<AdminElectionsScreen> {
       ),
     );
     if (ok != true) return;
-    await _service.startVoting(
-      pollId,
-      societyId: widget.session.societyId,
-      adminName: widget.session.admin.name,
-      title: raw['question'] as String?,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voting started')));
-      await _load();
+    try {
+      await _service.startVoting(
+        pollId,
+        societyId: widget.session.societyId,
+        adminName: widget.session.admin.name,
+        title: raw['question'] as String?,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voting started')));
+        await _load();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
+        );
+      }
     }
   }
 
@@ -393,6 +414,17 @@ class AdminElectionsScreenState extends State<AdminElectionsScreen> {
                     Text(
                       'Voting: ${votingWindowLabel(raw)} · $opts candidates · $votes ballots',
                       style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+                    ),
+                    Text(
+                      'Method: ${votingMethodLabel(raw['voting_method'] as String?)}',
+                      style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
+                    ),
+                    VotingMethodConsentCard(
+                      poll: raw,
+                      societyId: widget.session.societyId,
+                      isResident: false,
+                      adminName: widget.session.admin.name,
+                      onChanged: _load,
                     ),
                     if (raw['election_results'] is Map) ...[
                       const SizedBox(height: 8),
