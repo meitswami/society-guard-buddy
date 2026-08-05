@@ -1210,7 +1210,7 @@ const ElectionModule = ({
           {showElectionForm && (
             <div className="card-section p-4 mb-4 flex flex-col gap-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase">
-                Society election — 3 posts (nomination first)
+                Society election — 7-member Management Committee (nomination first)
               </p>
               <input
                 className="input-field"
@@ -1269,40 +1269,6 @@ const ElectionModule = ({
                 </div>
               </div>
 
-              <p className="text-[11px] font-medium text-foreground">Minimum winning Borda score (0 = no threshold)</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="text-[10px] text-muted-foreground">President</label>
-                  <input
-                    type="number"
-                    min={0}
-                    className="input-field mt-0.5"
-                    value={ef.winningPresident}
-                    onChange={(e) => setEf({ ...ef, winningPresident: Number(e.target.value) || 0 })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground">Secretary</label>
-                  <input
-                    type="number"
-                    min={0}
-                    className="input-field mt-0.5"
-                    value={ef.winningSecretary}
-                    onChange={(e) => setEf({ ...ef, winningSecretary: Number(e.target.value) || 0 })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground">Treasurer</label>
-                  <input
-                    type="number"
-                    min={0}
-                    className="input-field mt-0.5"
-                    value={ef.winningTreasurer}
-                    onChange={(e) => setEf({ ...ef, winningTreasurer: Number(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-muted-foreground">Tenure from</label>
@@ -1322,9 +1288,7 @@ const ElectionModule = ({
                 </div>
               </div>
 
-              {seedFields('president')}
-              {seedFields('secretary')}
-              {seedFields('treasurer')}
+              {MANAGEMENT_COMMITTEE_POSTS.map((post) => seedFields(post as SeedPost))}
 
               <button type="button" onClick={() => void addElection()} className="btn-primary">
                 Create election (nomination phase)
@@ -1342,7 +1306,7 @@ const ElectionModule = ({
           <p className="text-sm text-muted-foreground">No society elections yet.</p>
           {!isResident && (
             <p className="text-xs text-muted-foreground mt-1">
-              Create an election to open nomination for President, Secretary and Treasurer.
+              Create an election to open nomination for the seven-member Management Committee.
             </p>
           )}
           {isResident && (

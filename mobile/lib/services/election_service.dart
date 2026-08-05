@@ -3,6 +3,7 @@ import '../core/supabase/supabase_bootstrap.dart';
 import '../models/poll_models.dart';
 import '../utils/election_governance.dart';
 import '../utils/election_tally.dart';
+import '../utils/voting_method_consent.dart';
 
 class ElectionBundle {
   const ElectionBundle({
@@ -222,8 +223,167 @@ class ElectionService {
     }).eq('id', pollId);
   }
 
+  Future<List<VotingMethodConsentRow>> fetchVotingMethodConsents(String pollId) async {
+    if (!Env.isConfigured) return [];
+    final rows = await SupabaseBootstrap.client
+        .from('election_voting_method_consents')
+        .select('id, poll_id, member_id, choice, member_name, flat_number, created_at')
+        .eq('poll_id', pollId)
+        .order('created_at', ascending: true);
+    return (rows as List)
+        .map((r) => VotingMethodConsentRow.fromRow(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  Future<int> countEligibleMembers(String societyId) async {
+    if (!Env.isConfigured) return 0;
+    final rows = await SupabaseBootstrap.client
+        .from('members')
+        .select('id, flats!inner(society_id)')
+        .eq('flats.society_id', societyId)
+        .isFilter('date_leave', null);
+    return (rows as List).length;
+  }
+
+  Future<void> openVotingMethodConsent({
+    required String pollId,
+    required String societyId,
+    required String openedBy,
+  }) async {
+    if (!Env.isConfigured) return;
+    await SupabaseBootstrap.client.from('polls').update({
+      'voting_method_consent_open': true,
+      'voting_method_consent_opened_at': DateTime.now().toIso8601String(),
+      'voting_method_consent_opened_by': openedBy,
+    }).eq('id', pollId).isFilter('voting_method', null);
+
+    await _logAudit(
+      societyId: societyId,
+      pollId: pollId,
+      eventType: 'voting_method_consent_opened',
+      actorType: 'admin',
+      actorName: openedBy,
+      payload: {
+        'options': [votingMethodSecretBallot, votingMethodShowOfHands],
+      },
+    );
+  }
+
+  Future<void> submitVotingMethodConsent({
+    required String societyId,
+    required String pollId,
+    required String memberId,
+    required ElectionVotingMethod choice,
+    String? memberName,
+    String? flatNumber,
+  }) async {
+    if (!Env.isConfigured) return;
+    try {
+      await SupabaseBootstrap.client.from('election_voting_method_consents').insert({
+        'society_id': societyId,
+        'poll_id': pollId,
+        'member_id': memberId,
+        'choice': choice,
+        'member_name': memberName,
+        'flat_number': flatNumber,
+      });
+    } catch (e) {
+      final msg = e.toString();
+      if (RegExp(r'duplicate|unique|immutable', caseSensitive: false).hasMatch(msg)) {
+        throw StateError('You have already recorded your consent for this election.');
+      }
+      rethrow;
+    }
+
+    await _logAudit(
+      societyId: societyId,
+      pollId: pollId,
+      eventType: 'voting_method_consent_cast',
+      actorType: 'resident',
+      actorId: memberId,
+      actorName: memberName,
+      payload: {
+        'choice': choice,
+        'option': choice == votingMethodSecretBallot ? 'A' : 'B',
+      },
+    );
+  }
+
+  Future<void> finalizeVotingMethodFromConsent({
+    required String pollId,
+    required String societyId,
+    required ElectionVotingMethod method,
+    required String recordedBy,
+    required int eligibleMemberCount,
+    required int consentTotal,
+    bool allowPartial = false,
+    bool separateOfficeVotes = false,
+  }) async {
+    if (!Env.isConfigured) return;
+    if (!allowPartial && consentTotal < eligibleMemberCount) {
+      throw StateError(
+        'Consent incomplete: $consentTotal of $eligibleMemberCount eligible members have consented.',
+      );
+    }
+
+    await SupabaseBootstrap.client.rpc('record_election_voting_method', params: {
+      'p_poll_id': pollId,
+      'p_method': method,
+      'p_recorded_by': recordedBy,
+      'p_separate_office_votes': separateOfficeVotes,
+    });
+
+    await SupabaseBootstrap.client.from('polls').update({
+      'voting_method_consent_open': false,
+    }).eq('id', pollId);
+
+    await _logAudit(
+      societyId: societyId,
+      pollId: pollId,
+      eventType: 'voting_method_finalized',
+      actorType: 'admin',
+      actorName: recordedBy,
+      payload: {
+        'method': method,
+        'option': method == votingMethodSecretBallot ? 'A' : 'B',
+        'consent_total': consentTotal,
+        'eligible_member_count': eligibleMemberCount,
+        'allow_partial': allowPartial,
+      },
+    );
+  }
+
+  Future<void> _logAudit({
+    required String societyId,
+    String? pollId,
+    required String eventType,
+    String? actorType,
+    String? actorId,
+    String? actorName,
+    Map<String, dynamic>? payload,
+  }) async {
+    try {
+      await SupabaseBootstrap.client.rpc('log_election_audit_event', params: {
+        'p_society_id': societyId,
+        'p_poll_id': pollId,
+        'p_event_type': eventType,
+        'p_actor_type': actorType,
+        'p_actor_id': actorId,
+        'p_actor_name': actorName,
+        'p_payload': payload ?? {},
+      });
+    } catch (_) {
+      // Audit failure must not block the primary election action.
+    }
+  }
+
   Future<void> startVoting(String pollId, {String? societyId, String? adminName, String? title}) async {
     if (!Env.isConfigured) return;
+    final raw = await fetchPollRaw(pollId);
+    final method = raw?['voting_method'] as String?;
+    if (method == null || method.isEmpty) {
+      throw StateError('Record the voting method (Secret Ballot or Show of Hands) before opening the poll.');
+    }
     await SupabaseBootstrap.client.from('polls').update({
       'election_phase': 'voting',
       'is_active': true,
