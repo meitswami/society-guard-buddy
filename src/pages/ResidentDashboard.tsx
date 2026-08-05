@@ -30,6 +30,7 @@ import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
 import ResidentFeedbackForm from '@/components/ResidentFeedbackForm';
 import Flat360ProfilePanel from '@/components/Flat360ProfilePanel';
+import { HOUSEHOLD_RELATION_TYPES, HOUSEHOLD_SERVICE_TYPES } from '@/lib/householdRoles';
 
 interface Resident {
   id: string; name: string; phone: string; flatId: string; flatNumber: string;
@@ -48,8 +49,8 @@ interface VisitorPass {
 
 interface Props { resident: Resident; onLogout: () => void; }
 
-const SERVICE_TYPES = ['Cook', 'Maid', 'Washerman', 'Newspaper', 'Driver', 'Others'] as const;
-const RELATION_TYPES = ['Owner', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Tenant', 'Others'] as const;
+const SERVICE_TYPES = HOUSEHOLD_SERVICE_TYPES;
+const RELATION_TYPES = HOUSEHOLD_RELATION_TYPES;
 
 const DOC_TYPES = {
   photoId: [
@@ -1415,7 +1416,14 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         {tab === 'family' && (
           <div className="flex flex-col gap-3">
             <div className="flex justify-between items-center">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">My Family & Staff ({myMembers.length})</p>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  My Family & Staff ({myMembers.length})
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Photos for family, servants, guards, cleaners &amp; sweepers auto-fill election nominees and elected roster.
+                </p>
+              </div>
               <button onClick={() => { setShowAddMember(true); setEditingMember(null); setMemberForm(emptyMemberForm()); }}
                 className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
                 <Plus className="w-3 h-3" /> Add
@@ -1495,24 +1503,28 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   </div>
                 </div>
 
-                {!memberForm.isServiceman && memberForm.relation !== 'Tenant' && memberForm.relation !== 'Others' && (
-                  <div className="space-y-2 border border-border/60 rounded-lg p-3 bg-secondary/10">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase">Profile photo (optional)</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handlePhotoCapture((val) => setMemberForm((f) => ({ ...f, photo: val })))}
-                        className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
-                      >
-                        <Camera className="w-3.5 h-3.5" /> Upload photo
-                      </button>
-                      {memberForm.photo && <span className="text-[10px] text-green-600">✓</span>}
-                      {memberForm.photo && (
-                        <img src={memberForm.photo} alt="" className="h-12 w-12 rounded-full object-cover border border-border" />
-                      )}
-                    </div>
+                <div className="space-y-2 border border-border/60 rounded-lg p-3 bg-secondary/10">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase">
+                    Profile photo (shown beside nominees &amp; elected members)
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Add a face photo for family, mid-servants, guards, cleaners, sweepers, and other household staff.
+                    Election ballots and the committee roster use this automatically.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handlePhotoCapture((val) => setMemberForm((f) => ({ ...f, photo: val })))}
+                      className="text-xs px-3 py-2 rounded-lg border border-border flex items-center gap-1"
+                    >
+                      <Camera className="w-3.5 h-3.5" /> Upload photo
+                    </button>
+                    {memberForm.photo && <span className="text-[10px] text-green-600">✓</span>}
+                    {memberForm.photo && (
+                      <img src={memberForm.photo} alt="" className="h-12 w-12 rounded-full object-cover border border-border" />
+                    )}
                   </div>
-                )}
+                </div>
 
                 {(memberForm.isServiceman || memberForm.relation === 'Tenant' || memberForm.relation === 'Others') && (
                   <div className="space-y-2 border border-border/60 rounded-lg p-3 bg-secondary/20">

@@ -21,9 +21,11 @@ import type { Lang } from '@/i18n/translations';
 
 type Props = {
   societyName?: string;
+  /** PDF download / WhatsApp share — admin only; members get on-screen display. */
+  isAdmin?: boolean;
 };
 
-const VotingCharterPanel = ({ societyName: societyNameProp }: Props) => {
+const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: Props) => {
   const { t, lang } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [open, setOpen] = useState(true);
@@ -104,48 +106,52 @@ const VotingCharterPanel = ({ societyName: societyNameProp }: Props) => {
       </button>
       {open && (
         <div className="px-3 pb-3 space-y-3 border-t border-indigo-500/20">
-          <div className="flex flex-wrap gap-2 pt-2">
-            <button
-              type="button"
-              disabled={!!busyLang}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                void downloadPdf('hi');
-              }}
-              className={btnClass}
-            >
-              {busyLang === 'hi' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              {busyLang === 'hi' ? 'तैयार हो रहा है…' : 'हिंदी PDF'}
-            </button>
-            <button
-              type="button"
-              disabled={!!busyLang}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                void downloadPdf('en');
-              }}
-              className={btnClass}
-            >
-              {busyLang === 'en' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              {busyLang === 'en' ? 'Preparing…' : 'English PDF'}
-            </button>
-            <SharePdfWhatsAppButton
-              getBlob={() => getBlob(lang === 'hi' ? 'hi' : 'en')}
-              filename={votingCharterPdfFilename(societyName, lang === 'hi' ? 'hi' : 'en')}
-              message={votingCharterShareMessage(lang === 'hi' ? 'hi' : 'en')}
-              label={t('votingCharter.shareWhatsApp')}
-              disabled={!!busyLang}
-            />
-          </div>
-          <p className="text-[10px] text-muted-foreground">
-            {lang === 'hi'
-              ? 'लैपटॉप पर फ़ाइल डाउनलोड होती है; मोबाइल पर Share शीट से Save to Files / Downloads चुनें। हिंदी PDF में देवनागरी फ़ॉन्ट एम्बेड है।'
-              : 'On laptop the file downloads directly; on mobile use the share sheet → Save to Files / Downloads. Hindi PDF embeds Devanagari.'}
-          </p>
+          {isAdmin && (
+            <>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={!!busyLang}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void downloadPdf('hi');
+                  }}
+                  className={btnClass}
+                >
+                  {busyLang === 'hi' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  {busyLang === 'hi' ? 'तैयार हो रहा है…' : 'हिंदी PDF'}
+                </button>
+                <button
+                  type="button"
+                  disabled={!!busyLang}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void downloadPdf('en');
+                  }}
+                  className={btnClass}
+                >
+                  {busyLang === 'en' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  {busyLang === 'en' ? 'Preparing…' : 'English PDF'}
+                </button>
+                <SharePdfWhatsAppButton
+                  getBlob={() => getBlob(lang === 'hi' ? 'hi' : 'en')}
+                  filename={votingCharterPdfFilename(societyName, lang === 'hi' ? 'hi' : 'en')}
+                  message={votingCharterShareMessage(lang === 'hi' ? 'hi' : 'en')}
+                  label={t('votingCharter.shareWhatsApp')}
+                  disabled={!!busyLang}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                {lang === 'hi'
+                  ? 'लैपटॉप पर फ़ाइल डाउनलोड होती है; मोबाइल पर Share शीट से Save to Files / Downloads चुनें। हिंदी PDF में देवनागरी फ़ॉन्ट एम्बेड है।'
+                  : 'On laptop the file downloads directly; on mobile use the share sheet → Save to Files / Downloads. Hindi PDF embeds Devanagari.'}
+              </p>
+            </>
+          )}
 
-          <div className="rounded-lg border border-indigo-500/25 bg-background/60 px-3 py-2.5 space-y-1.5">
+          <div className="rounded-lg border border-indigo-500/25 bg-background/60 px-3 py-2.5 space-y-1.5 mt-2">
             <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-200">
               {t(VOTING_CHARTER_SUMMARY.titleKey)}
             </p>

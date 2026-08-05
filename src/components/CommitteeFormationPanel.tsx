@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Users, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { PersonPhotoSide } from '@/components/PersonPhotoSide';
 import {
   emptyFormationState,
   listRunnersUp,
@@ -28,6 +29,9 @@ type Props = {
   flatNumber?: string;
   flatId?: string;
   memberId?: string;
+  /** option_id → member_id for photo lookup */
+  optionMemberIds?: Record<string, string>;
+  photoByMemberId?: Record<string, string>;
   onReload: () => void;
 };
 
@@ -42,6 +46,8 @@ const CommitteeFormationPanel = ({
   flatNumber = '',
   flatId = '',
   memberId = '',
+  optionMemberIds = {},
+  photoByMemberId = {},
   onReload,
 }: Props) => {
   const [execName, setExecName] = useState('');
@@ -171,6 +177,8 @@ const CommitteeFormationPanel = ({
             {runners.map((r) => {
               const postLabel = r.from_post ? POST_DISPLAY[r.from_post as ElectionPost] : 'Post';
               const checked = selected.has(r.option_id);
+              const mid = optionMemberIds[r.option_id];
+              const photo = mid ? photoByMemberId[mid] : undefined;
               return (
                 <li
                   key={r.option_id}
@@ -189,14 +197,14 @@ const CommitteeFormationPanel = ({
                       {checked ? '✓' : '○'}
                     </span>
                   )}
-                  <div>
-                    <p className="font-medium">
+                  <PersonPhotoSide name={r.name} photo={photo} size="sm" className="flex-1">
+                    <p className="font-medium leading-snug">
                       {r.name}{' '}
                       <span className="text-muted-foreground font-normal">
                         · {postLabel} · place {r.place ?? '—'} ({r.score} pts)
                       </span>
                     </p>
-                  </div>
+                  </PersonPhotoSide>
                 </li>
               );
             })}
@@ -211,11 +219,18 @@ const CommitteeFormationPanel = ({
         ) : (
           <ul className="space-y-1 text-xs">
             {(formation.voluntary ?? []).map((v) => (
-              <li key={v.key} className="flex justify-between gap-2">
-                <span>
-                  {v.name}
-                  {v.flat_number ? ` · Flat ${v.flat_number}` : ''}
-                </span>
+              <li key={v.key} className="flex justify-between gap-2 items-center">
+                <PersonPhotoSide
+                  name={v.name}
+                  photo={v.member_id ? photoByMemberId[v.member_id] : undefined}
+                  size="sm"
+                  className="flex-1"
+                >
+                  <span>
+                    {v.name}
+                    {v.flat_number ? ` · Flat ${v.flat_number}` : ''}
+                  </span>
+                </PersonPhotoSide>
                 {!isResident && (
                   <button type="button" className="text-destructive underline text-[10px]" onClick={() => removeVoluntary(v.key)}>
                     Remove
@@ -243,11 +258,18 @@ const CommitteeFormationPanel = ({
           {(formation.executive_proposed ?? []).length > 0 && (
             <ul className="space-y-1 text-xs mb-2">
               {(formation.executive_proposed ?? []).map((e) => (
-                <li key={e.key} className="flex justify-between gap-2">
-                  <span>
-                    {e.name}
-                    {e.flat_number ? ` · Flat ${e.flat_number}` : ''}
-                  </span>
+                <li key={e.key} className="flex justify-between gap-2 items-center">
+                  <PersonPhotoSide
+                    name={e.name}
+                    photo={e.member_id ? photoByMemberId[e.member_id] : undefined}
+                    size="sm"
+                    className="flex-1"
+                  >
+                    <span>
+                      {e.name}
+                      {e.flat_number ? ` · Flat ${e.flat_number}` : ''}
+                    </span>
+                  </PersonPhotoSide>
                   <button type="button" className="text-destructive underline text-[10px]" onClick={() => removeExec(e.key)}>
                     Remove
                   </button>

@@ -6,6 +6,7 @@ import type {
   PollOptionRow,
 } from '@/lib/electionTally';
 import { listRunnersUp } from '@/lib/electionTally';
+import { fetchMemberPhotoMap } from '@/lib/memberPhotos';
 
 const POST_TO_COMMITTEE_POSITION: Record<string, string> = {
   president: 'President',
@@ -35,7 +36,10 @@ function formationInsert(
   member: FormationMember,
   selection_type: string,
   opt?: PollOptionRow,
+  photoByMemberId: Record<string, string> = {},
 ): Record<string, unknown> {
+  const memberId = member.member_id ?? opt?.member_id ?? null;
+  const photo = (memberId && photoByMemberId[memberId]) || null;
   return {
     society_id: societyId,
     flat_id: member.flat_id ?? opt?.flat_id ?? null,
@@ -43,6 +47,7 @@ function formationInsert(
     flat_owner_name: opt?.option_text ?? member.name,
     name: member.name,
     position: 'Committee Member',
+    photo,
     selection_type,
     term_from,
     term_to,
@@ -59,6 +64,13 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
   const term_from = termFrom || new Date().toISOString().slice(0, 10);
   const term_to = termTo || null;
 
+  const memberIds = [
+    ...options.map((o) => o.member_id).filter(Boolean),
+    ...(results.formation?.voluntary ?? []).map((v) => v.member_id).filter(Boolean),
+    ...(results.formation?.executive_proposed ?? []).map((e) => e.member_id).filter(Boolean),
+  ] as string[];
+  const photoByMemberId = await fetchMemberPhotoMap(memberIds);
+
   const inserts: Record<string, unknown>[] = [];
   let sort = 0;
 
@@ -67,6 +79,7 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
     if (!winner || typeof winner !== 'object' || !('option_id' in winner)) continue;
     const w = winner as { option_id: string; name: string };
     const opt = optById.get(w.option_id);
+    const mid = opt?.member_id ?? null;
     inserts.push({
       society_id: societyId,
       flat_id: opt?.flat_id ?? null,
@@ -74,6 +87,7 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
       flat_owner_name: opt?.option_text ?? w.name,
       name: w.name,
       position: POST_TO_COMMITTEE_POSITION[post] ?? post,
+      photo: (mid && photoByMemberId[mid]) || null,
       selection_type: 'elected',
       term_from,
       term_to,
@@ -86,6 +100,7 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
 
   for (const w of results.committee ?? []) {
     const opt = optById.get(w.option_id);
+    const mid = opt?.member_id ?? null;
     inserts.push({
       society_id: societyId,
       flat_id: opt?.flat_id ?? null,
@@ -93,6 +108,7 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
       flat_owner_name: opt?.option_text ?? w.name,
       name: w.name,
       position: 'Committee Member',
+      photo: (mid && photoByMemberId[mid]) || null,
       selection_type: 'elected',
       term_from,
       term_to,
@@ -132,19 +148,23 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
           source: 'runner_up',
           flat_id: opt?.flat_id,
           flat_number: opt?.flat_number,
+          member_id: opt?.member_id ?? null,
         },
         'runner_up',
         opt,
+        photoByMemberId,
       ),
     );
   }
 
   for (const v of formation?.voluntary ?? []) {
-    inserts.push(formationInsert(societyId, pollId, term_from, term_to, sort++, v, 'voluntary'));
+    inserts.push(formationInsert(societyId, pollId, term_from, term_to, sort++, v, 'voluntary', undefined, photoByMemberId));
   }
 
   for (const e of formation?.executive_proposed ?? []) {
-    inserts.push(formationInsert(societyId, pollId, term_from, term_to, sort++, e, 'executive_proposed'));
+    inserts.push(
+      formationInsert(societyId, pollId, term_from, term_to, sort++, e, 'executive_proposed', undefined, photoByMemberId),
+    );
   }
 
   if (inserts.length === 0) {

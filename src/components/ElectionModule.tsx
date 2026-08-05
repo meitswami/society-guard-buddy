@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Landmark, Trash2, UserPlus, Award, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,6 +7,8 @@ import { DateInput } from '@/components/DateInput';
 import VotingCharterPanel from '@/components/VotingCharterPanel';
 import CommitteeFormationPanel from '@/components/CommitteeFormationPanel';
 import PollDocumentsPanel from '@/components/PollDocumentsPanel';
+import { PersonPhotoSide } from '@/components/PersonPhotoSide';
+import { fetchMemberPhotoMap, photoForOption } from '@/lib/memberPhotos';
 import {
   validateElectionRankings,
   tallyElection,
@@ -109,6 +111,26 @@ const ElectionModule = ({
     winningSecretary: 0,
     winningTreasurer: 0,
   });
+  const [photoByMemberId, setPhotoByMemberId] = useState<Record<string, string>>({});
+
+  const nomineeMemberIds = useMemo(() => {
+    const ids = options.map((o) => o.member_id as string | null | undefined).filter(Boolean) as string[];
+    return [...new Set(ids)].sort().join(',');
+  }, [options]);
+
+  useEffect(() => {
+    if (!nomineeMemberIds) {
+      setPhotoByMemberId({});
+      return;
+    }
+    let cancelled = false;
+    void fetchMemberPhotoMap(nomineeMemberIds.split(',')).then((map) => {
+      if (!cancelled) setPhotoByMemberId(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [nomineeMemberIds]);
 
   useEffect(() => {
     if (!voterId) return;
@@ -534,8 +556,22 @@ const ElectionModule = ({
     if (!raw || typeof raw !== 'object') return null;
     const r = raw as ElectionResultsPayload;
     const wv = parseWinningVotes(poll.winning_votes);
+    const optById = new Map(options.filter((o) => o.poll_id === poll.id).map((o) => [o.id as string, o]));
+    const winnerRow = (label: string, optionId: string | undefined, name: string, scoreNote: string) => {
+      const opt = optionId ? optById.get(optionId) : undefined;
+      const photo = opt ? photoForOption(opt, photoByMemberId) : undefined;
+      return (
+        <PersonPhotoSide key={optionId || label} name={name} photo={photo} size="sm" className="py-0.5">
+          <p className="text-sm leading-snug">
+            <span className="text-muted-foreground">{label}:</span>{' '}
+            <strong>{name}</strong>
+            <span className="text-[10px] text-muted-foreground ml-1">{scoreNote}</span>
+          </p>
+        </PersonPhotoSide>
+      );
+    };
     return (
-      <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-1 text-sm">
+      <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-1.5 text-sm">
         <p className="text-xs font-semibold text-primary uppercase tracking-wide flex items-center gap-1">
           <Award className="w-3.5 h-3.5" /> {adminView ? 'Tallied results (admin only)' : 'Results'}
         </p>
@@ -544,50 +580,57 @@ const ElectionModule = ({
           const vacant = r.vacant?.[post];
           const req = wv[post] ?? 0;
           if (!w && !vacant) return null;
+          if (w) {
+            return winnerRow(
+              POST_DISPLAY[post],
+              w.option_id,
+              w.name,
+              `(${w.score} pts${req > 0 ? `, min ${req}` : ''})`,
+            );
+          }
           return (
             <p key={post}>
               <span className="text-muted-foreground">{POST_DISPLAY[post]}:</span>{' '}
-              {w ? (
-                <>
-                  <strong>{w.name}</strong>
-                  <span className="text-[10px] text-muted-foreground ml-1">
-                    ({w.score} pts{req > 0 ? `, min ${req}` : ''})
-                  </span>
-                </>
-              ) : (
-                <span className="text-amber-700">
-                  Vacant — top {vacant?.top_score ?? 0} below required {vacant?.required ?? req}
-                </span>
-              )}
+              <span className="text-amber-700">
+                Vacant — top {vacant?.top_score ?? 0} below required {vacant?.required ?? req}
+              </span>
             </p>
           );
         })}
         {listRunnersUp(r).length > 0 && (
-          <div>
-            <p className="text-muted-foreground text-xs mt-2">Other tallied places (not auto-seated under bye-laws)</p>
-            <ul className="list-disc list-inside text-xs">
-              {listRunnersUp(r).map((c) => (
-                <li key={c.option_id}>
-                  {c.name}
-                  <span className="text-[10px] text-muted-foreground ml-1">
-                    {c.from_post ? POST_DISPLAY[c.from_post] : ''} · place {c.place ?? '—'} ({c.score} pts)
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <div className="space-y-1.5 pt-1">
+            <p className="text-muted-foreground text-xs">Other tallied places (not auto-seated under bye-laws)</p>
+            {listRunnersUp(r).map((c) => {
+              const opt = optById.get(c.option_id);
+              const photo = opt ? photoForOption(opt, photoByMemberId) : undefined;
+              return (
+                <PersonPhotoSide key={c.option_id} name={c.name} photo={photo} size="sm">
+                  <p className="text-xs leading-snug">
+                    {c.name}
+                    <span className="text-[10px] text-muted-foreground ml-1">
+                      {c.from_post ? POST_DISPLAY[c.from_post] : ''} · place {c.place ?? '—'} ({c.score} pts)
+                    </span>
+                  </p>
+                </PersonPhotoSide>
+              );
+            })}
           </div>
         )}
         {r.committee?.length > 0 && (
-          <div>
-            <p className="text-muted-foreground text-xs mt-1">Executive Members ({r.committee.length})</p>
-            <ul className="list-disc list-inside font-medium">
-              {r.committee.map((c) => (
-                <li key={c.option_id}>
-                  {c.name}
-                  <span className="text-[10px] text-muted-foreground font-normal ml-1">({c.score} pts)</span>
-                </li>
-              ))}
-            </ul>
+          <div className="space-y-1.5 pt-1">
+            <p className="text-muted-foreground text-xs">Executive Members ({r.committee.length})</p>
+            {r.committee.map((c) => {
+              const opt = optById.get(c.option_id);
+              const photo = opt ? photoForOption(opt, photoByMemberId) : undefined;
+              return (
+                <PersonPhotoSide key={c.option_id} name={c.name} photo={photo} size="sm">
+                  <p className="text-sm font-medium leading-snug">
+                    {c.name}
+                    <span className="text-[10px] text-muted-foreground font-normal ml-1">({c.score} pts)</span>
+                  </p>
+                </PersonPhotoSide>
+              );
+            })}
           </div>
         )}
       </div>
@@ -602,15 +645,17 @@ const ElectionModule = ({
         <p className="text-xs font-semibold text-muted-foreground">{POST_DISPLAY[post]} — nominees</p>
         {postOpts.map((opt) => (
           <div key={opt.id} className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2 text-sm">
-            <p className="font-medium">
-              {opt.option_text}
-              {opt.flat_number ? (
-                <span className="text-[10px] text-muted-foreground font-normal ml-1">· Flat {opt.flat_number}</span>
-              ) : null}
-            </p>
-            {opt.nomination_statement && (
-              <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{opt.nomination_statement}</p>
-            )}
+            <PersonPhotoSide name={opt.option_text} photo={photoForOption(opt, photoByMemberId)}>
+              <p className="font-medium leading-snug">
+                {opt.option_text}
+                {opt.flat_number ? (
+                  <span className="text-[10px] text-muted-foreground font-normal ml-1">· Flat {opt.flat_number}</span>
+                ) : null}
+              </p>
+              {opt.nomination_statement && (
+                <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{opt.nomination_statement}</p>
+              )}
+            </PersonPhotoSide>
           </div>
         ))}
       </div>
@@ -629,29 +674,31 @@ const ElectionModule = ({
         </p>
         {postOpts.map((opt) => (
           <div key={opt.id} className="rounded-md border border-border/60 px-2.5 py-2 space-y-1.5">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className="min-w-0 flex-1 font-medium">
-                {opt.option_text}
-                {opt.flat_number ? (
-                  <span className="text-[10px] text-muted-foreground font-normal ml-1">· Flat {opt.flat_number}</span>
-                ) : null}
-              </span>
-              <select
-                className="input-field w-24 text-sm py-1"
-                value={ranks[opt.id] ?? ''}
-                onChange={(e) => setRank(poll.id, post, opt.id, e.target.value)}
-              >
-                <option value="">—</option>
-                {Array.from({ length: m }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {opt.nomination_statement && (
-              <p className="text-[11px] text-muted-foreground whitespace-pre-wrap">{opt.nomination_statement}</p>
-            )}
+            <PersonPhotoSide name={opt.option_text} photo={photoForOption(opt, photoByMemberId)}>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="min-w-0 flex-1 font-medium">
+                  {opt.option_text}
+                  {opt.flat_number ? (
+                    <span className="text-[10px] text-muted-foreground font-normal ml-1">· Flat {opt.flat_number}</span>
+                  ) : null}
+                </span>
+                <select
+                  className="input-field w-24 text-sm py-1"
+                  value={ranks[opt.id] ?? ''}
+                  onChange={(e) => setRank(poll.id, post, opt.id, e.target.value)}
+                >
+                  <option value="">—</option>
+                  {Array.from({ length: m }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {opt.nomination_statement && (
+                <p className="text-[11px] text-muted-foreground whitespace-pre-wrap">{opt.nomination_statement}</p>
+              )}
+            </PersonPhotoSide>
           </div>
         ))}
       </div>
@@ -736,6 +783,12 @@ const ElectionModule = ({
             flatNumber={flatNumber}
             flatId={flatId}
             memberId={memberId}
+            optionMemberIds={Object.fromEntries(
+              options
+                .filter((o) => o.poll_id === poll.id && o.member_id)
+                .map((o) => [o.id as string, o.member_id as string]),
+            )}
+            photoByMemberId={photoByMemberId}
             onReload={onReload}
           />
         )}
@@ -983,7 +1036,7 @@ const ElectionModule = ({
 
   return (
     <div className={embedded ? 'space-y-3' : ''}>
-      <VotingCharterPanel />
+      <VotingCharterPanel isAdmin={!isResident} />
 
       {!embedded && (
         <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
@@ -991,7 +1044,8 @@ const ElectionModule = ({
             <strong className="text-foreground">Society Elections</strong> — elect the seven-member
             Management Committee (President, Vice-President, Secretary, Treasurer, 3 Executive Members) under
             the registered bye-laws: one vote per eligible member, Secret Ballot or Show of Hands, election
-            quorum 3/4, 2-year term. Download the Election Charter to circulate to members.
+            quorum 3/4, 2-year term.
+            {!isResident && ' Download the Election Charter to circulate to members.'}
           </p>
         </div>
       )}

@@ -1,7 +1,9 @@
 import type { Member, Visitor } from '@/types';
 
+import { HOUSEHOLD_SERVICE_TYPE_LC } from '@/lib/householdRoles';
+
 /** Lowercase service types when a resident picks a fixed role (not "Others", which overlaps with family). */
-const KNOWN_SERVICE_TYPE_LC = ['cook', 'maid', 'washerman', 'newspaper', 'driver'] as const;
+const KNOWN_SERVICE_TYPE_LC = HOUSEHOLD_SERVICE_TYPE_LC.filter((s) => s !== 'others') as readonly string[];
 
 /** Family / household relations (resident + admin member forms). Staff should not use these. */
 const FAMILY_RELATION_LC = new Set([
@@ -27,7 +29,7 @@ export function isQuickEntryStaffMember(m: Member): boolean {
   if (m.isPrimary) return false;
   const r = (m.relation || '').toLowerCase();
   if (!r) return false;
-  if (KNOWN_SERVICE_TYPE_LC.includes(r as (typeof KNOWN_SERVICE_TYPE_LC)[number])) return true;
+  if (KNOWN_SERVICE_TYPE_LC.includes(r)) return true;
   return !FAMILY_RELATION_LC.has(r);
 }
 
