@@ -5,7 +5,6 @@ import type {
   FormationMember,
   PollOptionRow,
 } from '@/lib/electionTally';
-import { listRunnersUp } from '@/lib/electionTally';
 import { fetchMemberPhotoMap } from '@/lib/memberPhotos';
 
 const POST_TO_COMMITTEE_POSITION: Record<string, string> = {
@@ -16,7 +15,7 @@ const POST_TO_COMMITTEE_POSITION: Record<string, string> = {
   committee: 'Committee Member',
 };
 
-const EXEC_ORDER: ElectionPost[] = ['president', 'secretary', 'treasurer', 'vice_president'];
+const OFFICE_ORDER: ElectionPost[] = ['president', 'vice_president', 'secretary', 'treasurer'];
 
 type ApplyInput = {
   societyId: string;
@@ -74,18 +73,17 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
   const inserts: Record<string, unknown>[] = [];
   let sort = 0;
 
-  for (const post of EXEC_ORDER) {
-    const winner = results[post as keyof ElectionResultsPayload];
+  for (const post of OFFICE_ORDER) {
+    const winner = results[post];
     if (!winner || typeof winner !== 'object' || !('option_id' in winner)) continue;
-    const w = winner as { option_id: string; name: string };
-    const opt = optById.get(w.option_id);
+    const opt = optById.get(winner.option_id);
     const mid = opt?.member_id ?? null;
     inserts.push({
       society_id: societyId,
       flat_id: opt?.flat_id ?? null,
       flat_number: opt?.flat_number ?? null,
-      flat_owner_name: opt?.option_text ?? w.name,
-      name: w.name,
+      flat_owner_name: opt?.option_text ?? winner.name,
+      name: winner.name,
       position: POST_TO_COMMITTEE_POSITION[post] ?? post,
       photo: (mid && photoByMemberId[mid]) || null,
       selection_type: 'elected',
@@ -94,7 +92,7 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
       sort_order: sort++,
       is_active: true,
       source_poll_id: pollId,
-      source_option_id: w.option_id,
+      source_option_id: winner.option_id,
     });
   }
 
@@ -120,42 +118,6 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
   }
 
   const formation = results.formation;
-  const selectedIds = new Set(formation?.selected_runner_up_ids ?? []);
-  const winnerIds = new Set(
-    EXEC_ORDER.map((p) => {
-      const w = results[p as keyof ElectionResultsPayload];
-      return w && typeof w === 'object' && 'option_id' in w ? (w as { option_id: string }).option_id : null;
-    }).filter(Boolean) as string[],
-  );
-
-  for (const runner of listRunnersUp(results)) {
-    if (!selectedIds.has(runner.option_id)) continue;
-    if (winnerIds.has(runner.option_id)) continue;
-    const opt = optById.get(runner.option_id);
-    inserts.push(
-      formationInsert(
-        societyId,
-        pollId,
-        term_from,
-        term_to,
-        sort++,
-        {
-          key: runner.option_id,
-          name: runner.name,
-          option_id: runner.option_id,
-          from_post: runner.from_post ?? null,
-          place: runner.place ?? null,
-          source: 'runner_up',
-          flat_id: opt?.flat_id,
-          flat_number: opt?.flat_number,
-          member_id: opt?.member_id ?? null,
-        },
-        'runner_up',
-        opt,
-        photoByMemberId,
-      ),
-    );
-  }
 
   for (const v of formation?.voluntary ?? []) {
     inserts.push(formationInsert(societyId, pollId, term_from, term_to, sort++, v, 'voluntary', undefined, photoByMemberId));
@@ -189,14 +151,13 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
 
 export function countFormedCommittee(results: ElectionResultsPayload): number {
   let n = 0;
-  for (const post of EXEC_ORDER) {
-    const w = results[post as keyof ElectionResultsPayload];
+  for (const post of OFFICE_ORDER) {
+    const w = results[post];
     if (w && typeof w === 'object' && 'option_id' in w) n += 1;
   }
   n += results.committee?.length ?? 0;
   const formation = results.formation;
   if (formation) {
-    n += formation.selected_runner_up_ids?.length ?? 0;
     n += formation.voluntary?.length ?? 0;
     n += formation.executive_proposed?.length ?? 0;
   }

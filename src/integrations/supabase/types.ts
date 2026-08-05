@@ -841,6 +841,61 @@ export type Database = {
           },
         ]
       }
+      election_voting_method_consents: {
+        Row: {
+          choice: string
+          created_at: string
+          flat_number: string | null
+          id: string
+          member_id: string
+          member_name: string | null
+          poll_id: string
+          society_id: string
+        }
+        Insert: {
+          choice: string
+          created_at?: string
+          flat_number?: string | null
+          id?: string
+          member_id: string
+          member_name?: string | null
+          poll_id: string
+          society_id: string
+        }
+        Update: {
+          choice?: string
+          created_at?: string
+          flat_number?: string | null
+          id?: string
+          member_id?: string
+          member_name?: string | null
+          poll_id?: string
+          society_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_voting_method_consents_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_voting_method_consents_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_voting_method_consents_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emergency_alerts: {
         Row: {
           created_at: string
@@ -3373,6 +3428,9 @@ export type Database = {
           target_committee_size: number
           voting_ends_at: string | null
           voting_method: string | null
+          voting_method_consent_open: boolean
+          voting_method_consent_opened_at: string | null
+          voting_method_consent_opened_by: string | null
           voting_method_recorded_at: string | null
           voting_method_recorded_by: string | null
           voting_starts_at: string | null
@@ -3406,6 +3464,9 @@ export type Database = {
           target_committee_size?: number
           voting_ends_at?: string | null
           voting_method?: string | null
+          voting_method_consent_open?: boolean
+          voting_method_consent_opened_at?: string | null
+          voting_method_consent_opened_by?: string | null
           voting_method_recorded_at?: string | null
           voting_method_recorded_by?: string | null
           voting_starts_at?: string | null
@@ -3439,6 +3500,9 @@ export type Database = {
           target_committee_size?: number
           voting_ends_at?: string | null
           voting_method?: string | null
+          voting_method_consent_open?: boolean
+          voting_method_consent_opened_at?: string | null
+          voting_method_consent_opened_by?: string | null
           voting_method_recorded_at?: string | null
           voting_method_recorded_by?: string | null
           voting_starts_at?: string | null

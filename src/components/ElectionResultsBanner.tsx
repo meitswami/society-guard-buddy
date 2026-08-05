@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Award } from 'lucide-react';
 import type { ElectionResultsPayload } from '@/lib/electionTally';
-import { listRunnersUp } from '@/lib/electionTally';
-import { POST_DISPLAY } from '@/lib/electionGovernance';
 import { PersonPhotoSide } from '@/components/PersonPhotoSide';
 import { fetchMemberPhotoMap } from '@/lib/memberPhotos';
 
@@ -22,7 +20,6 @@ function ResultsBlock({
   optionMemberIds: Record<string, string>;
   photoByMemberId: Record<string, string>;
 }) {
-  const runners = listRunnersUp(results);
   const photoFor = (optionId?: string) => {
     if (!optionId) return undefined;
     const mid = optionMemberIds[optionId];
@@ -34,7 +31,7 @@ function ResultsBlock({
         <p className="text-sm leading-snug">
           <span className="text-muted-foreground">{label}:</span>{' '}
           <span className="font-semibold text-foreground">{w.name}</span>
-          <span className="text-[10px] text-muted-foreground ml-1">({w.score} pts)</span>
+          <span className="text-[10px] text-muted-foreground ml-1">({w.score} votes)</span>
         </p>
       </PersonPhotoSide>
     ) : null;
@@ -44,21 +41,6 @@ function ResultsBlock({
       {line('Vice-President', results.vice_president)}
       {line('Secretary', results.secretary)}
       {line('Treasurer', results.treasurer)}
-      {runners.length > 0 && (
-        <div className="space-y-1 pt-1">
-          <p className="text-xs text-muted-foreground">Other tallied places (not auto-seated under bye-laws)</p>
-          {runners.map((c) => (
-            <PersonPhotoSide key={c.option_id} name={c.name} photo={photoFor(c.option_id)} size="sm">
-              <p className="text-sm leading-snug">
-                {c.name}
-                <span className="text-[10px] text-muted-foreground ml-1">
-                  {c.from_post ? POST_DISPLAY[c.from_post] : ''} · place {c.place ?? '—'}
-                </span>
-              </p>
-            </PersonPhotoSide>
-          ))}
-        </div>
-      )}
       {results.committee?.length > 0 && (
         <div className="space-y-1 pt-1">
           <p className="text-xs text-muted-foreground">Executive Members</p>
@@ -66,7 +48,7 @@ function ResultsBlock({
             <PersonPhotoSide key={c.option_id} name={c.name} photo={photoFor(c.option_id)} size="sm">
               <p className="text-sm font-medium leading-snug">
                 {c.name}
-                <span className="text-[10px] text-muted-foreground font-normal ml-1">({c.score} pts)</span>
+                <span className="text-[10px] text-muted-foreground font-normal ml-1">({c.score} votes)</span>
               </p>
             </PersonPhotoSide>
           ))}

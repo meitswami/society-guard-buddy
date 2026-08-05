@@ -2,6 +2,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type ElectionAuditEventType =
   | 'voting_method_recorded'
+  | 'voting_method_consent_opened'
+  | 'voting_method_consent_cast'
+  | 'voting_method_finalized'
   | 'nomination_submitted'
   | 'ballot_cast'
   | 'proxy_submitted'

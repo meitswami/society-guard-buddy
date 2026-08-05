@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { PersonPhotoSide } from '@/components/PersonPhotoSide';
 import {
   emptyFormationState,
-  listRunnersUp,
   type CommitteeFormationState,
   type ElectionResultsPayload,
   type FormationMember,
@@ -14,8 +13,6 @@ import { countFormedCommittee } from '@/lib/electionApply';
 import {
   DEFAULT_TARGET_COMMITTEE_SIZE,
   MIN_COMMITTEE_SIZE,
-  POST_DISPLAY,
-  type ElectionPost,
 } from '@/lib/electionGovernance';
 
 type Props = {
@@ -29,7 +26,6 @@ type Props = {
   flatNumber?: string;
   flatId?: string;
   memberId?: string;
-  /** option_id → member_id for photo lookup */
   optionMemberIds?: Record<string, string>;
   photoByMemberId?: Record<string, string>;
   onReload: () => void;
@@ -39,6 +35,10 @@ function formationOf(results: ElectionResultsPayload | null | undefined): Commit
   return results?.formation ?? emptyFormationState();
 }
 
+/**
+ * Vacancy fill after tally — bye-laws: majority of remaining committee (not runner-up seating).
+ * Voluntary interest + admin-proposed names only; no 2nd/3rd-place checkboxes.
+ */
 const CommitteeFormationPanel = ({
   poll,
   isResident,
@@ -46,7 +46,6 @@ const CommitteeFormationPanel = ({
   flatNumber = '',
   flatId = '',
   memberId = '',
-  optionMemberIds = {},
   photoByMemberId = {},
   onReload,
 }: Props) => {
@@ -59,9 +58,7 @@ const CommitteeFormationPanel = ({
 
   const target = Number(poll.target_committee_size) || DEFAULT_TARGET_COMMITTEE_SIZE;
   const formation = formationOf(results);
-  const runners = listRunnersUp(results);
   const formed = countFormedCommittee(results);
-  const selected = new Set(formation.selected_runner_up_ids ?? []);
   const remaining = Math.max(0, target - formed);
 
   const persistFormation = async (next: CommitteeFormationState) => {
@@ -78,14 +75,6 @@ const CommitteeFormationPanel = ({
     }
     toast.success('Committee formation updated');
     onReload();
-  };
-
-  const toggleRunner = (optionId: string) => {
-    if (isResident) return;
-    const ids = new Set(formation.selected_runner_up_ids ?? []);
-    if (ids.has(optionId)) ids.delete(optionId);
-    else ids.add(optionId);
-    void persistFormation({ ...formation, selected_runner_up_ids: [...ids] });
   };
 
   const volunteerSelf = () => {
@@ -157,60 +146,13 @@ const CommitteeFormationPanel = ({
             Management Committee ({MIN_COMMITTEE_SIZE} seats)
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Progress: <strong className="text-foreground">{formed}</strong> / {target} (bye-law fixed size{' '}
-            {MIN_COMMITTEE_SIZE}). {remaining > 0 ? `${remaining} seat(s) still open.` : 'Full roster.'} Vacancies
-            follow the bye-law majority-of-remaining-committee procedure — runners-up are not auto-seated.
+            Progress: <strong className="text-foreground">{formed}</strong> / {target}.{' '}
+            {remaining > 0
+              ? `${remaining} seat(s) open — fill by vacancy procedure (majority of remaining committee), not runner-up seating.`
+              : 'Full roster.'}
           </p>
         </div>
       </div>
-
-      {runners.length > 0 && (
-        <div>
-          <p className="text-[11px] font-semibold text-foreground mb-1.5">
-            Other tallied places (legacy — not auto-nominated under bye-laws)
-          </p>
-          <p className="text-[10px] text-muted-foreground mb-1.5">
-            Bye-laws do not make 2nd/3rd place candidates Management Committee members automatically. Prefer filling
-            vacant seats via the vacancy procedure after election.
-          </p>
-          <ul className="space-y-1.5">
-            {runners.map((r) => {
-              const postLabel = r.from_post ? POST_DISPLAY[r.from_post as ElectionPost] : 'Post';
-              const checked = selected.has(r.option_id);
-              const mid = optionMemberIds[r.option_id];
-              const photo = mid ? photoByMemberId[mid] : undefined;
-              return (
-                <li
-                  key={r.option_id}
-                  className="flex items-start gap-2 text-xs rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
-                >
-                  {!isResident ? (
-                    <input
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={checked}
-                      disabled={saving}
-                      onChange={() => toggleRunner(r.option_id)}
-                    />
-                  ) : (
-                    <span className={`mt-0.5 text-[10px] ${checked ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                      {checked ? '✓' : '○'}
-                    </span>
-                  )}
-                  <PersonPhotoSide name={r.name} photo={photo} size="sm" className="flex-1">
-                    <p className="font-medium leading-snug">
-                      {r.name}{' '}
-                      <span className="text-muted-foreground font-normal">
-                        · {postLabel} · place {r.place ?? '—'} ({r.score} pts)
-                      </span>
-                    </p>
-                  </PersonPhotoSide>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
 
       <div>
         <p className="text-[11px] font-semibold text-foreground mb-1">Voluntary interest</p>
@@ -254,7 +196,7 @@ const CommitteeFormationPanel = ({
 
       {!isResident && (
         <div>
-          <p className="text-[11px] font-semibold text-foreground mb-1">Executive-proposed members</p>
+          <p className="text-[11px] font-semibold text-foreground mb-1">Proposed for vacancy fill</p>
           {(formation.executive_proposed ?? []).length > 0 && (
             <ul className="space-y-1 text-xs mb-2">
               {(formation.executive_proposed ?? []).map((e) => (
