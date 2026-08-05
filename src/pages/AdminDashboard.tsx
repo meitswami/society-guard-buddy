@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, IndianRupee, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench, Landmark, X, FolderLock, Building2 } from 'lucide-react';
+import { Shield, Users, Car, FileText, BarChart3, Settings, MapPin, LogOut, Home, UserPlus, Truck, ShieldAlert, BookUser, Zap, Lock, UserCheck, Fingerprint, ClipboardList, IndianRupee, Heart, Calendar, Vote, Bell, Split, ParkingSquare, AlertTriangle, Sparkles, ScrollText, Wrench, Landmark, X, FolderLock, Building2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { resolveGroupMajorHead } from '@/lib/financeExpenseHead';
 import { confirmAction } from '@/lib/swal';
 import { toast } from 'sonner';
 import DashboardPage from '@/pages/DashboardPage';
@@ -197,16 +198,14 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     const { data: groupRows } = await supabase
       .from('expense_groups')
       .select('id')
-      .eq('society_id', sid)
-      .eq('group_kind', 'event');
+      .eq('society_id', sid);
     const groupIds = (groupRows ?? []).map((r: { id: string }) => r.id);
     if (groupIds.length > 0) {
       const { data: expenses } = await supabase
         .from('expenses')
         .select('total_amount')
         .in('group_id', groupIds)
-        .eq('record_status', 'active')
-        .eq('expense_category', 'food');
+        .eq('record_status', 'active');
       for (const e of expenses ?? []) splitwiseExpenseTotal += Number((e as { total_amount: number }).total_amount ?? 0);
     }
 
@@ -239,9 +238,18 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
   const [maintenanceMonthlyData, setMaintenanceMonthlyData] = useState<{ month: string; total: number; count: number }[]>([]);
   const [maintenanceMonthlyLoading, setMaintenanceMonthlyLoading] = useState(false);
 
-  const [splitwiseMonthlyModal, setSplitwiseMonthlyModal] = useState(false);
-  const [splitwiseMonthlyData, setSplitwiseMonthlyData] = useState<{ month: string; total: number; count: number }[]>([]);
-  const [splitwiseMonthlyLoading, setSplitwiseMonthlyLoading] = useState(false);
+  type ExpenseDetailBucket = {
+    key: string;
+    label: string;
+    kind: 'event_food' | 'society_payment';
+    total: number;
+    count: number;
+    months: { month: string; total: number; count: number }[];
+  };
+  const [expenseDetailModal, setExpenseDetailModal] = useState(false);
+  const [expenseDetailLoading, setExpenseDetailLoading] = useState(false);
+  const [expenseDetailBuckets, setExpenseDetailBuckets] = useState<ExpenseDetailBucket[]>([]);
+  const [expenseDetailSelectedKey, setExpenseDetailSelectedKey] = useState<string | null>(null);
 
   const openMaintenanceMonthlyModal = async () => {
     setMaintenanceMonthlyModal(true);
@@ -304,40 +312,103 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
     }
   };
 
-  const openSplitwiseMonthlyModal = async () => {
-    setSplitwiseMonthlyModal(true);
-    setSplitwiseMonthlyLoading(true);
+  const openExpenseDetailModal = async () => {
+    setExpenseDetailModal(true);
+    setExpenseDetailSelectedKey(null);
+    setExpenseDetailLoading(true);
     try {
       const sid = admin.societyId;
-      if (!sid) { setSplitwiseMonthlyData([]); return; }
+      if (!sid) {
+        setExpenseDetailBuckets([]);
+        return;
+      }
       const { data: groupRows } = await supabase
         .from('expense_groups')
-        .select('id')
-        .eq('society_id', sid)
-        .eq('group_kind', 'event');
-      const groupIds = (groupRows ?? []).map((r: { id: string }) => r.id);
-      if (groupIds.length === 0) { setSplitwiseMonthlyData([]); return; }
+        .select('id, name, major_head, group_kind')
+        .eq('society_id', sid);
+      const groups = (groupRows ?? []) as {
+        id: string;
+        name: string;
+        major_head?: string | null;
+        group_kind?: string | null;
+      }[];
+      const groupIds = groups.map((r) => r.id);
+      if (groupIds.length === 0) {
+        setExpenseDetailBuckets([]);
+        return;
+      }
+      const groupById = new Map(groups.map((g) => [g.id, g]));
       const { data: expenses } = await supabase
         .from('expenses')
-        .select('total_amount, expense_date')
+        .select('total_amount, expense_date, expense_category, group_id')
         .in('group_id', groupIds)
-        .eq('record_status', 'active')
-        .eq('expense_category', 'food');
-      const monthMap = new Map<string, { total: number; count: number }>();
+        .eq('record_status', 'active');
+
+      type Acc = {
+        label: string;
+        kind: 'event_food' | 'society_payment';
+        total: number;
+        count: number;
+        monthMap: Map<string, { total: number; count: number }>;
+      };
+      const bucketMap = new Map<string, Acc>();
+
       for (const e of expenses ?? []) {
-        const dateStr = String((e as any).expense_date || '');
+        const row = e as {
+          total_amount: number;
+          expense_date: string | null;
+          expense_category: string | null;
+          group_id: string;
+        };
+        const amount = Number(row.total_amount ?? 0);
+        const dateStr = String(row.expense_date || '');
         const month = dateStr.slice(0, 7) || 'Unknown';
-        const entry = monthMap.get(month) || { total: 0, count: 0 };
-        entry.total += Number((e as any).total_amount ?? 0);
-        entry.count += 1;
-        monthMap.set(month, entry);
+        const isFood = String(row.expense_category || '') === 'food';
+        let key: string;
+        let label: string;
+        let kind: 'event_food' | 'society_payment';
+        if (isFood) {
+          key = 'event_food';
+          label = 'Event food expenses';
+          kind = 'event_food';
+        } else {
+          const group = groupById.get(row.group_id);
+          const major = resolveGroupMajorHead({
+            name: group?.name ?? 'MISCELLANEOUS',
+            major_head: group?.major_head,
+          });
+          key = `payment:${major}`;
+          label = major;
+          kind = 'society_payment';
+        }
+        let acc = bucketMap.get(key);
+        if (!acc) {
+          acc = { label, kind, total: 0, count: 0, monthMap: new Map() };
+          bucketMap.set(key, acc);
+        }
+        acc.total += amount;
+        acc.count += 1;
+        const monthEntry = acc.monthMap.get(month) || { total: 0, count: 0 };
+        monthEntry.total += amount;
+        monthEntry.count += 1;
+        acc.monthMap.set(month, monthEntry);
       }
-      const sorted = [...monthMap.entries()]
-        .sort(([a], [b]) => b.localeCompare(a))
-        .map(([month, data]) => ({ month, ...data }));
-      setSplitwiseMonthlyData(sorted);
+
+      const buckets: ExpenseDetailBucket[] = [...bucketMap.entries()]
+        .map(([key, acc]) => ({
+          key,
+          label: acc.label,
+          kind: acc.kind,
+          total: acc.total,
+          count: acc.count,
+          months: [...acc.monthMap.entries()]
+            .sort(([a], [b]) => b.localeCompare(a))
+            .map(([month, data]) => ({ month, ...data })),
+        }))
+        .sort((a, b) => b.total - a.total);
+      setExpenseDetailBuckets(buckets);
     } finally {
-      setSplitwiseMonthlyLoading(false);
+      setExpenseDetailLoading(false);
     }
   };
 
@@ -681,8 +752,8 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
               icon={<Split className="w-5 h-5 text-teal-600" />}
               value={`₹${stats.splitwiseExpenseTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
               valueClassName="text-xl"
-              onNavigate={() => void openSplitwiseMonthlyModal()}
-              navigateLabel="Monthly breakdown"
+              onNavigate={() => void openExpenseDetailModal()}
+              navigateLabel="Expense breakdown"
               className="hover:ring-teal-500/30"
             />
           </div>
@@ -866,54 +937,142 @@ const AdminDashboard = ({ admin, onLogout }: Props) => {
         </div>
       )}
 
-      {/* Event food expenses — monthly breakdown */}
-      {splitwiseMonthlyModal && (
-        <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
-          <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3 max-h-[80vh] overflow-auto">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Split className="w-4 h-4 text-teal-600" />
-                <p className="text-sm font-semibold">Event food expenses — Monthly</p>
-              </div>
-              <button type="button" onClick={() => setSplitwiseMonthlyModal(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-[10px] text-muted-foreground">Active event/function expenses grouped by month</p>
-            {splitwiseMonthlyLoading ? (
-              <p className="text-xs text-muted-foreground text-center py-6">Loading…</p>
-            ) : splitwiseMonthlyData.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-6">No active expenses found</p>
-            ) : (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase font-medium px-2 pb-1 border-b border-border">
-                  <span>Month</span>
-                  <div className="flex gap-4">
-                    <span className="w-12 text-right">Count</span>
-                    <span className="w-24 text-right">Amount</span>
-                  </div>
+      {/* Total expenses — category then monthly drill-in */}
+      {expenseDetailModal && (() => {
+        const selected = expenseDetailSelectedKey
+          ? expenseDetailBuckets.find((b) => b.key === expenseDetailSelectedKey) ?? null
+          : null;
+        const closeExpenseModal = () => {
+          setExpenseDetailModal(false);
+          setExpenseDetailSelectedKey(null);
+        };
+        return (
+          <div className="fixed inset-0 z-[70] bg-black/45 p-4 flex items-center justify-center">
+            <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3 max-h-[80vh] overflow-auto">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  {selected ? (
+                    <button
+                      type="button"
+                      onClick={() => setExpenseDetailSelectedKey(null)}
+                      className="p-0.5 rounded text-muted-foreground hover:text-foreground shrink-0"
+                      aria-label="Back to categories"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <Split className="w-4 h-4 text-teal-600 shrink-0" />
+                  )}
+                  <p className="text-sm font-semibold truncate">
+                    {selected ? selected.label : 'Total expenses'}
+                  </p>
                 </div>
-                {splitwiseMonthlyData.map((row) => (
-                  <div key={row.month} className="flex items-center justify-between text-xs px-2 py-1.5 rounded hover:bg-muted/40">
-                    <span className="font-medium">{formatMonthLabel(row.month)}</span>
+                <button type="button" onClick={closeExpenseModal} className="text-muted-foreground hover:text-foreground shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                {selected
+                  ? 'Monthly breakdown — tap a month or open the module below'
+                  : 'Active expenses by category — tap a row to go inside'}
+              </p>
+              {expenseDetailLoading ? (
+                <p className="text-xs text-muted-foreground text-center py-6">Loading…</p>
+              ) : expenseDetailBuckets.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">No active expenses found</p>
+              ) : selected ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase font-medium px-2 pb-1 border-b border-border">
+                    <span>Month</span>
                     <div className="flex gap-4">
-                      <span className="w-12 text-right text-muted-foreground">{row.count}</span>
-                      <span className="w-24 text-right font-mono font-semibold">₹{row.total.toLocaleString('en-IN')}</span>
+                      <span className="w-12 text-right">Count</span>
+                      <span className="w-24 text-right">Amount</span>
                     </div>
                   </div>
-                ))}
-                <div className="flex items-center justify-between text-xs px-2 py-2 border-t border-border font-semibold">
-                  <span>Total</span>
-                  <span className="font-mono">₹{splitwiseMonthlyData.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}</span>
+                  {selected.months.map((row) => (
+                    <button
+                      key={row.month}
+                      type="button"
+                      onClick={() => {
+                        closeExpenseModal();
+                        if (selected.kind === 'event_food') goToTab('events');
+                        else goToTab('finance', { financeSubTab: 'payments' });
+                      }}
+                      className="w-full flex items-center justify-between text-xs px-2 py-1.5 rounded hover:bg-muted/40 text-left"
+                    >
+                      <span className="font-medium">{formatMonthLabel(row.month)}</span>
+                      <div className="flex gap-4 items-center">
+                        <span className="w-12 text-right text-muted-foreground">{row.count}</span>
+                        <span className="w-24 text-right font-mono font-semibold">₹{row.total.toLocaleString('en-IN')}</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      </div>
+                    </button>
+                  ))}
+                  <div className="flex items-center justify-between text-xs px-2 py-2 border-t border-border font-semibold">
+                    <span>Total</span>
+                    <span className="font-mono">₹{selected.total.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            <button type="button" className="btn-secondary text-xs w-full" onClick={() => { setSplitwiseMonthlyModal(false); goToTab('events'); }}>
-              Go to Events &amp; food
-            </button>
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase font-medium px-2 pb-1 border-b border-border">
+                    <span>Category</span>
+                    <div className="flex gap-4">
+                      <span className="w-12 text-right">Count</span>
+                      <span className="w-24 text-right">Amount</span>
+                    </div>
+                  </div>
+                  {expenseDetailBuckets.map((bucket) => (
+                    <button
+                      key={bucket.key}
+                      type="button"
+                      onClick={() => setExpenseDetailSelectedKey(bucket.key)}
+                      className="w-full flex items-center justify-between text-xs px-2 py-1.5 rounded hover:bg-muted/40 text-left"
+                    >
+                      <span className="font-medium truncate pr-2">{bucket.label}</span>
+                      <div className="flex gap-4 items-center shrink-0">
+                        <span className="w-12 text-right text-muted-foreground">{bucket.count}</span>
+                        <span className="w-24 text-right font-mono font-semibold">₹{bucket.total.toLocaleString('en-IN')}</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      </div>
+                    </button>
+                  ))}
+                  <div className="flex items-center justify-between text-xs px-2 py-2 border-t border-border font-semibold">
+                    <span>Total</span>
+                    <span className="font-mono">
+                      ₹{expenseDetailBuckets.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {selected ? (
+                <button
+                  type="button"
+                  className="btn-secondary text-xs w-full"
+                  onClick={() => {
+                    closeExpenseModal();
+                    if (selected.kind === 'event_food') goToTab('events');
+                    else goToTab('finance', { financeSubTab: 'payments' });
+                  }}
+                >
+                  {selected.kind === 'event_food' ? 'Go to Events & food' : 'Go to Finance — Payments'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-secondary text-xs w-full"
+                  onClick={() => {
+                    closeExpenseModal();
+                    goToTab('finance', { financeSubTab: 'payments' });
+                  }}
+                >
+                  Go to Finance — Payments
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
         <div className="max-w-lg mx-auto flex items-center justify-around gap-0 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-2">
