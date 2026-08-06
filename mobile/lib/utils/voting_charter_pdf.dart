@@ -23,12 +23,20 @@ Future<Uint8List> buildVotingCharterPdfBytes({
   final content = votingCharterContent(lang);
   final isHi = lang == CharterLang.hi;
 
-  // Always embed Devanagari (same as web) so Hindi society names render in English PDFs too.
-  final fontData = await rootBundle.load('assets/fonts/NotoSansDevanagari-Regular.ttf');
-  final boldData = await rootBundle.load('assets/fonts/NotoSansDevanagari-Bold.ttf');
-  final font = pw.Font.ttf(fontData);
-  final fontBold = pw.Font.ttf(boldData);
-  final theme = pw.ThemeData.withFont(base: font, bold: fontBold);
+  // English needs Noto Sans (Latin). Devanagari-only TTF has no Latin glyphs → blank English PDF.
+  // Hindi uses Noto Sans Devanagari; also load Latin so society names with English letters render.
+  final latinReg = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+  final latinBold = await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+  final devReg = await rootBundle.load('assets/fonts/NotoSansDevanagari-Regular.ttf');
+  final devBold = await rootBundle.load('assets/fonts/NotoSansDevanagari-Bold.ttf');
+  final font = pw.Font.ttf(isHi ? devReg : latinReg);
+  final fontBold = pw.Font.ttf(isHi ? devBold : latinBold);
+  final fontFallback = pw.Font.ttf(isHi ? latinReg : devReg);
+  final theme = pw.ThemeData.withFont(
+    base: font,
+    bold: fontBold,
+    fontFallback: [fontFallback],
+  );
 
   final doc = pw.Document(theme: theme);
   final indigo = PdfColor.fromInt(0xFF4338CA);
@@ -36,7 +44,7 @@ Future<Uint8List> buildVotingCharterPdfBytes({
   final body = PdfColor.fromInt(0xFF1F2937);
   final heading = PdfColor.fromInt(0xFF312E81);
   final societyLabel =
-      (societyName != null && societyName.trim().isNotEmpty) ? societyName.trim() : (isHi ? 'सोसाइटी' : 'Society');
+      (societyName != null && societyName.trim().isNotEmpty) ? societyName.trim() : (isHi ? 'सोसायटी' : 'Society');
 
   doc.addPage(
     pw.MultiPage(
@@ -62,8 +70,8 @@ Future<Uint8List> buildVotingCharterPdfBytes({
         pw.SizedBox(height: 2),
         pw.Text(
           isHi
-              ? 'इस पीडीएफ में नोतो सैंस देवनागरी अक्षर जुड़े हैं।'
-              : 'This PDF embeds Noto Sans Devanagari for Hindi glyphs and society names.',
+              ? 'इस पीडीएफ में नोतो सैंस देवनागरी अक्षर जुड़े हैं। अंग्रेज़ी नामों हेतु लैटिन अक्षर भी उपलब्ध हैं।'
+              : 'This PDF embeds Noto Sans (Latin). Use the Hindi PDF for Devanagari text.',
           style: pw.TextStyle(font: font, fontSize: 7.5, color: muted),
         ),
         pw.SizedBox(height: 8),
