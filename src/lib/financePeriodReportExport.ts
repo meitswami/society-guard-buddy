@@ -7,8 +7,8 @@ import {
   htmlToWordBlob,
   moneyInr,
   rowsToCsvBlob,
-  rowsToXlsxBlob,
 } from '@/lib/reportExportUtils';
+import { rowsToXlsxBlob } from '@/lib/xlsxExport';
 
 export type FinancePeriodReportExportInput = FinancePeriodReportPdfInput & {
   openingCash?: number;

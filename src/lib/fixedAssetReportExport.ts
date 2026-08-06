@@ -4,10 +4,10 @@ import {
   htmlToWordBlob,
   moneyInr,
   rowsToCsvBlob,
-  rowsToXlsxBlob,
   triggerDownload,
   type ExportFormat,
 } from '@/lib/reportExportUtils';
+import { rowsToXlsxBlob } from '@/lib/xlsxExport';
 import {
   computeFixedAssetReport,
   FIXED_ASSET_REGISTER_HEADERS,

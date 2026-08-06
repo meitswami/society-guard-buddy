@@ -5,10 +5,10 @@ import {
   htmlToWordBlob,
   moneyInr,
   rowsToCsvBlob,
-  rowsToXlsxBlob,
   type ExportFormat,
   triggerDownload,
 } from '@/lib/reportExportUtils';
+import { rowsToXlsxBlob } from '@/lib/xlsxExport';
 import { monthlyAmountTotals, sumAmountRows } from '@/lib/statementAmountTotals';
 import type { ChannelByHeadRow } from '@/lib/financePeriodReport';
 

@@ -13,10 +13,10 @@ import {
   htmlToWordBlob,
   moneyInr,
   rowsToCsvBlob,
-  rowsToXlsxBlob,
   type ExportFormat,
   triggerDownload,
 } from '@/lib/reportExportUtils';
+import { rowsToXlsxBlob } from '@/lib/xlsxExport';
 
 export type TransactionExportRow = {
   date: string;

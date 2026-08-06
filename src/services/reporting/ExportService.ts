@@ -4,10 +4,10 @@ import {
   htmlToWordBlob,
   moneyInr,
   rowsToCsvBlob,
-  rowsToXlsxBlob,
   triggerDownload,
   type ExportFormat,
 } from '@/lib/reportExportUtils';
+import { rowsToXlsxBlob } from '@/lib/xlsxExport';
 import type { ReportColumnDef, ReportResult, ReportTotal } from './types';
 
 function formatCell(col: ReportColumnDef | undefined, value: unknown): string {

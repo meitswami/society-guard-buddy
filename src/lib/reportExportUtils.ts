@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx';
-
 export type ExportFormat = 'pdf' | 'excel' | 'word' | 'csv';
 
 export function triggerDownload(blob: Blob, filename: string) {
@@ -81,21 +79,6 @@ function escapeCsvCell(value: unknown): string {
 export function rowsToCsvBlob(headers: string[], rows: unknown[][]): Blob {
   const lines = [headers.map(escapeCsvCell).join(','), ...rows.map((r) => r.map(escapeCsvCell).join(','))];
   return new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-}
-
-export function rowsToXlsxBlob(
-  sheets: { name: string; headers: string[]; rows: unknown[][] }[],
-): Blob {
-  const wb = XLSX.utils.book_new();
-  for (const sheet of sheets) {
-    const data = [sheet.headers, ...sheet.rows];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31));
-  }
-  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  return new Blob([buf], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
 }
 
 function escapeHtml(text: string): string {

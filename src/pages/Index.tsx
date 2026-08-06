@@ -3,30 +3,12 @@ import { useStore } from '@/store/useStore';
 import { supabase } from '@/integrations/supabase/client';
 import { readPersistedSession, writePersistedSession, clearPersistedSession } from '@/lib/appSession';
 import type { TabType } from '@/types';
-import LoginPage from '@/pages/LoginPage';
-import ResidentLoginPage from '@/pages/ResidentLoginPage';
-import AdminLoginPage from '@/pages/AdminLoginPage';
-import SuperadminLoginPage from '@/pages/SuperadminLoginPage';
 import { permissionsFromAdminJoin, type AdminPanelPermissions } from '@/lib/adminPermissions';
-import DashboardPage from '@/pages/DashboardPage';
 import UnifiedLoginPage from '@/pages/UnifiedLoginPage';
 import SocietyLoginGate from '@/components/SocietyLoginGate';
 import { useUnifiedLoginFlow } from '@/hooks/use-unified-login-flow';
-import GuardLoginPreview from '@/components/GuardLoginPreview';
 import { useShowSuperadminLogin } from '@/hooks/use-show-superadmin-login';
-import VisitorEntryPage from '@/pages/VisitorEntryPage';
-import DeliveryEntryPage from '@/pages/DeliveryEntryPage';
-import VehiclePage from '@/pages/VehiclePage';
-import LogsPage from '@/pages/LogsPage';
-import QuickEntryPage from '@/pages/QuickEntryPage';
-import DirectoryPage from '@/pages/DirectoryPage';
-import BlacklistPage from '@/pages/BlacklistPage';
-import SettingsPage from '@/pages/SettingsPage';
-import EmergencyAlertPanel from '@/components/EmergencyAlertPanel';
-import GuardDutyPage from '@/pages/GuardDutyPage';
 import BottomNav from '@/components/BottomNav';
-import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
-import TourGuideHub from '@/components/TourGuideHub';
 import { LoginFooter } from '@/components/LoginFooter';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useGuardGeofenceMonitor } from '@/hooks/useGuardGeofenceMonitor';
@@ -35,6 +17,25 @@ import { toast } from 'sonner';
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const ResidentDashboard = lazy(() => import('@/pages/ResidentDashboard'));
 const SuperadminDashboard = lazy(() => import('@/pages/SuperadminDashboard'));
+
+const LoginPage = lazy(() => import('@/pages/LoginPage'));
+const ResidentLoginPage = lazy(() => import('@/pages/ResidentLoginPage'));
+const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'));
+const SuperadminLoginPage = lazy(() => import('@/pages/SuperadminLoginPage'));
+const GuardLoginPreview = lazy(() => import('@/components/GuardLoginPreview'));
+
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const VisitorEntryPage = lazy(() => import('@/pages/VisitorEntryPage'));
+const DeliveryEntryPage = lazy(() => import('@/pages/DeliveryEntryPage'));
+const VehiclePage = lazy(() => import('@/pages/VehiclePage'));
+const QuickEntryPage = lazy(() => import('@/pages/QuickEntryPage'));
+const DirectoryPage = lazy(() => import('@/pages/DirectoryPage'));
+const BlacklistPage = lazy(() => import('@/pages/BlacklistPage'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const EmergencyAlertPanel = lazy(() => import('@/components/EmergencyAlertPanel'));
+const GuardDutyPage = lazy(() => import('@/pages/GuardDutyPage'));
+const TourGuideFirstLogin = lazy(() => import('@/components/TourGuideFirstLogin'));
+const TourGuideHub = lazy(() => import('@/components/TourGuideHub'));
 
 const RouteFallback = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -54,7 +55,6 @@ const AppContent = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const guardTabRef = useRef<TabType>('dashboard');
   const guardExitBackTsRef = useRef(0);
-  const [loaded, setLoaded] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>('choosing');
   const [residentUser, setResidentUser] = useState<{ id: string; name: string; phone: string; flatId: string; flatNumber: string } | null>(null);
@@ -74,16 +74,8 @@ const AppContent = () => {
     guardTabRef.current = activeTab;
   }, [activeTab]);
 
+  // Restore session immediately — do not wait on loadGuards before first paint.
   useEffect(() => {
-    const init = async () => {
-      await loadGuards();
-      setLoaded(true);
-    };
-    init();
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
     let cancelled = false;
     (async () => {
       const s = readPersistedSession();
@@ -144,7 +136,7 @@ const AppContent = () => {
     return () => {
       cancelled = true;
     };
-  }, [loaded, hydrateGuardSession, setSocietyId]);
+  }, [hydrateGuardSession, setSocietyId]);
 
   useEffect(() => {
     if (currentGuard) {
@@ -196,7 +188,7 @@ const AppContent = () => {
     }
   }, [theme]);
 
-  if (!loaded || !sessionChecked) {
+  if (!sessionChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground text-sm animate-pulse">{t('app.loading')}</p>
@@ -286,13 +278,15 @@ const AppContent = () => {
 
     if (userMode === 'superadmin') {
       return (
-        <SuperadminLoginPage
-          onLogin={(sa) => {
-            writePersistedSession({ v: 1, role: 'superadmin', superadmin: sa });
-            setSuperadminUser(sa);
-          }}
-          onBack={() => setUserMode('choosing')}
-        />
+        <Suspense fallback={<RouteFallback />}>
+          <SuperadminLoginPage
+            onLogin={(sa) => {
+              writePersistedSession({ v: 1, role: 'superadmin', superadmin: sa });
+              setSuperadminUser(sa);
+            }}
+            onBack={() => setUserMode('choosing')}
+          />
+        </Suspense>
       );
     }
 
@@ -350,7 +344,9 @@ const AppContent = () => {
           </div>
           <LoginFooter />
           {guardPreviewOpen && (
-            <GuardLoginPreview variant="fullscreen" onClose={() => setGuardPreviewOpen(false)} />
+            <Suspense fallback={null}>
+              <GuardLoginPreview variant="fullscreen" onClose={() => setGuardPreviewOpen(false)} />
+            </Suspense>
           )}
         </div>
       );
@@ -358,38 +354,44 @@ const AppContent = () => {
 
     if (userMode === 'admin') {
       return (
-        <AdminLoginPage
-          societyId={loginSociety.id}
-          onLogin={(admin) => {
-            const sid = admin.societyId ?? loginSociety.id;
-            setSocietyId(sid);
-            writePersistedSession({ v: 1, role: 'admin', societyId: sid, admin });
-            setAdminUser(admin);
-          }}
-          onBack={() => setUserMode('choosing')}
-        />
+        <Suspense fallback={<RouteFallback />}>
+          <AdminLoginPage
+            societyId={loginSociety.id}
+            onLogin={(admin) => {
+              const sid = admin.societyId ?? loginSociety.id;
+              setSocietyId(sid);
+              writePersistedSession({ v: 1, role: 'admin', societyId: sid, admin });
+              setAdminUser(admin);
+            }}
+            onBack={() => setUserMode('choosing')}
+          />
+        </Suspense>
       );
     }
 
     if (userMode === 'resident') {
       return (
-        <ResidentLoginPage
-          societyId={loginSociety.id}
-          onLogin={(resident) => {
-            setSocietyId(loginSociety.id);
-            writePersistedSession({ v: 1, role: 'resident', societyId: loginSociety.id, resident });
-            setResidentUser(resident);
-          }}
-          onSwitchToGuard={() => setUserMode('guard')}
-        />
+        <Suspense fallback={<RouteFallback />}>
+          <ResidentLoginPage
+            societyId={loginSociety.id}
+            onLogin={(resident) => {
+              setSocietyId(loginSociety.id);
+              writePersistedSession({ v: 1, role: 'resident', societyId: loginSociety.id, resident });
+              setResidentUser(resident);
+            }}
+            onSwitchToGuard={() => setUserMode('guard')}
+          />
+        </Suspense>
       );
     }
 
     return (
-      <LoginPage
-        societyId={loginSociety.id}
-        onSwitchToResident={() => setUserMode('resident')}
-      />
+      <Suspense fallback={<RouteFallback />}>
+        <LoginPage
+          societyId={loginSociety.id}
+          onSwitchToResident={() => setUserMode('resident')}
+        />
+      </Suspense>
     );
   }
 
@@ -398,24 +400,26 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {currentGuard && <TourGuideFirstLogin role="guard" userId={currentGuard.id} t={t} />}
-      {activeTab === 'dashboard' && <DashboardPage />}
-      {activeTab === 'duty' && <GuardDutyPage />}
-      {activeTab === 'quick' && <QuickEntryPage />}
-      {activeTab === 'visitor' && <VisitorEntryPage onDone={goHome} />}
-      {activeTab === 'delivery' && <DeliveryEntryPage onDone={goHome} />}
-      {activeTab === 'vehicle' && <VehiclePage />}
-      {activeTab === 'blacklist' && <BlacklistPage />}
-      {activeTab === 'emergency' && societyId && currentGuard && (
-        <EmergencyAlertPanel
-          societyId={societyId}
-          senderName={currentGuard.name}
-          senderRole="guard"
-        />
-      )}
-      {activeTab === 'directory' && <DirectoryPage />}
-      {activeTab === 'settings' && <SettingsPage />}
-      {activeTab === 'tour' && currentGuard && <TourGuideHub role="guard" t={t} />}
+      <Suspense fallback={<RouteFallback />}>
+        {currentGuard && <TourGuideFirstLogin role="guard" userId={currentGuard.id} t={t} />}
+        {activeTab === 'dashboard' && <DashboardPage />}
+        {activeTab === 'duty' && <GuardDutyPage />}
+        {activeTab === 'quick' && <QuickEntryPage />}
+        {activeTab === 'visitor' && <VisitorEntryPage onDone={goHome} />}
+        {activeTab === 'delivery' && <DeliveryEntryPage onDone={goHome} />}
+        {activeTab === 'vehicle' && <VehiclePage />}
+        {activeTab === 'blacklist' && <BlacklistPage />}
+        {activeTab === 'emergency' && societyId && currentGuard && (
+          <EmergencyAlertPanel
+            societyId={societyId}
+            senderName={currentGuard.name}
+            senderRole="guard"
+          />
+        )}
+        {activeTab === 'directory' && <DirectoryPage />}
+        {activeTab === 'settings' && <SettingsPage />}
+        {activeTab === 'tour' && currentGuard && <TourGuideHub role="guard" t={t} />}
+      </Suspense>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} guardTabs={guardTabs} />
     </div>
   );
