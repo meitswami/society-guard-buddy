@@ -8,8 +8,19 @@ declare global {
 }
 
 const APP_ID = '56605d90-2aff-4fb3-b97d-e423ad959d0b';
+const ONESIGNAL_SDK = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
 
 let initialized = false;
+
+function ensureOneSignalScript(): void {
+  if (typeof document === 'undefined') return;
+  if (document.querySelector('script[data-kutumbika-onesignal]')) return;
+  const s = document.createElement('script');
+  s.src = ONESIGNAL_SDK;
+  s.defer = true;
+  s.dataset.kutumbikaOnesignal = '1';
+  document.head.appendChild(s);
+}
 
 export const initOneSignal = () => {
   if (initialized) return;
@@ -18,6 +29,7 @@ export const initOneSignal = () => {
   window.OneSignalDeferred.push(async (OneSignal: any) => {
     await OneSignal.init({ appId: APP_ID });
   });
+  ensureOneSignalScript();
 };
 
 /** Register this user with OneSignal and tag them for targeted notifications */

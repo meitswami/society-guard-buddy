@@ -16,13 +16,21 @@ Future<void> main() async {
     // Demo mode when .env is missing (theme preview).
   }
 
-  await SupabaseBootstrap.init();
-  await FirebaseBootstrap.init();
+  // Parallelize independent SDKs; do not block first frame on push listeners.
+  await Future.wait([
+    SupabaseBootstrap.init(),
+    FirebaseBootstrap.init(),
+  ]);
   await PushNotificationService.ensureBackgroundHandler();
-  await PushNotificationService().initForegroundListener();
+
   runApp(
     const ProviderScope(
       child: KutumbikaApp(),
     ),
   );
+
+  // Foreground FCM after first frame so cold start is not gated on notification setup.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    PushNotificationService().initForegroundListener();
+  });
 }

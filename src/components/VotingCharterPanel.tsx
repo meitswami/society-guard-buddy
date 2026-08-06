@@ -3,7 +3,6 @@ import { Download, ChevronDown, ChevronUp, ScrollText, Loader2 } from 'lucide-re
 import { toast } from 'sonner';
 import {
   ELECTION_PROGRAM_STEPS,
-  VOTING_CHARTER_SECTIONS,
   VOTING_CHARTER_SUMMARY,
   VOTING_CHARTER_TITLE_KEY,
 } from '@/lib/votingCharter';
@@ -177,17 +176,28 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
               )}
             </button>
             {programOpen && (
-              <div className="px-2.5 pb-2.5 space-y-2 border-t border-indigo-500/15">
-                <p className="text-[11px] text-muted-foreground pt-2">{t('votingCharter.program.intro')}</p>
-                <ol className="space-y-2">
+              <div className="px-2.5 pb-2.5 space-y-3 border-t border-indigo-500/15">
+                <p className="text-[11px] text-muted-foreground pt-2 leading-relaxed">
+                  {t('votingCharter.program.intro')}
+                </p>
+                <ol className="space-y-3">
                   {ELECTION_PROGRAM_STEPS.map((step, i) => (
                     <li key={step.stepKey} className="flex gap-2 text-xs">
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold flex items-center justify-center">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold flex items-center justify-center mt-0.5">
                         {i + 1}
                       </span>
-                      <div>
-                        <p className="font-semibold text-foreground">{t(step.stepKey)}</p>
-                        <p className="text-muted-foreground mt-0.5 leading-relaxed">{t(step.detailKey)}</p>
+                      <div className="min-w-0 space-y-1.5">
+                        <p className="font-semibold text-foreground leading-snug">{t(step.stepKey)}</p>
+                        <p className="text-muted-foreground leading-relaxed">{t(step.detailKey)}</p>
+                        {step.pointKeys.length > 0 && (
+                          <ul className="list-disc pl-4 space-y-1 text-foreground/90">
+                            {step.pointKeys.map((key) => (
+                              <li key={key} className="leading-relaxed">
+                                {t(key)}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     </li>
                   ))}
@@ -195,22 +205,6 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
               </div>
             )}
           </div>
-
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {t('votingCharter.rulesHeading')}
-          </p>
-          {VOTING_CHARTER_SECTIONS.map((sec) => (
-            <div key={sec.headingKey}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-2">
-                {t(sec.headingKey)}
-              </p>
-              <ul className="mt-1 space-y-1 text-xs text-foreground list-disc pl-4">
-                {sec.pointKeys.map((key) => (
-                  <li key={key}>{t(key)}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
         </div>
       )}
     </div>

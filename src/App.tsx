@@ -3,17 +3,19 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { LanguageProvider } from "./i18n/LanguageContext";
 import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
-import TermsOfServicePage from "./pages/TermsOfServicePage";
-import ContactPage from "./pages/ContactPage";
-import DeleteAccountPage from "./pages/DeleteAccountPage";
-import NewSocietySignupPage from "./pages/NewSocietySignupPage";
-import SocietySignupStatusPage from "./pages/SocietySignupStatusPage";
-import AboutPage from "./pages/AboutPage";
 import { EntryCapsBodySync } from "./components/EntryCapsBodySync";
+
+const NotFound = lazy(() => import("./pages/NotFound"));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
+const TermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
+const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
+const NewSocietySignupPage = lazy(() => import("./pages/NewSocietySignupPage"));
+const SocietySignupStatusPage = lazy(() => import("./pages/SocietySignupStatusPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,6 +28,12 @@ const queryClient = new QueryClient({
   },
 });
 
+const PageFallback = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <p className="text-muted-foreground text-sm animate-pulse">Loading…</p>
+  </div>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -34,6 +42,7 @@ const App = () => (
       <BrowserRouter>
         <LanguageProvider>
         <EntryCapsBodySync />
+        <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/society-signup" element={<NewSocietySignupPage />} />
@@ -46,6 +55,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
         </LanguageProvider>
       </BrowserRouter>
     </TooltipProvider>

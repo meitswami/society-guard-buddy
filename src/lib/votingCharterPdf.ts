@@ -4,7 +4,6 @@ import { fmtDateTimeFull } from '@/lib/dateFormat';
 import translations, { type Lang } from '@/i18n/translations';
 import {
   ELECTION_PROGRAM_STEPS,
-  VOTING_CHARTER_SECTIONS,
   VOTING_CHARTER_TITLE_KEY,
 } from '@/lib/votingCharter';
 
@@ -53,17 +52,14 @@ function buildCharterHtml(opts: {
         <div>
           <p class="step-title">${t(step.stepKey)}</p>
           <p class="step-detail">${t(step.detailKey)}</p>
+          ${
+            step.pointKeys.length
+              ? `<ul class="step-points">${step.pointKeys
+                  .map((key) => `<li>${t(key)}</li>`)
+                  .join('')}</ul>`
+              : ''
+          }
         </div>
-      </div>`,
-  ).join('');
-
-  const sections = VOTING_CHARTER_SECTIONS.map(
-    (sec) => `
-      <div class="section">
-        <h3>${t(sec.headingKey)}</h3>
-        <ul>
-          ${sec.pointKeys.map((key) => `<li>${t(key)}</li>`).join('')}
-        </ul>
       </div>`,
   ).join('');
 
@@ -117,7 +113,6 @@ function buildCharterHtml(opts: {
   .note { font-size: 10px; color: #6b7280; margin-bottom: 14px; }
   hr { border: none; border-top: 1.5px solid #c7d2fe; margin: 12px 0 16px; }
   h2 { font-size: 16px; font-weight: 700; color: #312e81; margin: 18px 0 8px; }
-  h2.rules { margin-top: 22px; }
   .summary-box {
     border: 1px solid #c7d2fe;
     background: #f8fafc;
@@ -129,7 +124,7 @@ function buildCharterHtml(opts: {
   .summary-box ul { padding-left: 18px; color: #374151; font-size: 12.5px; }
   .summary-box li { margin-bottom: 4px; }
   .intro { color: #4b5563; font-size: 13px; margin-bottom: 12px; }
-  .step { display: flex; gap: 10px; margin-bottom: 12px; align-items: flex-start; }
+  .step { display: flex; gap: 10px; margin-bottom: 16px; align-items: flex-start; }
   .badge {
     flex-shrink: 0;
     width: 22px; height: 22px;
@@ -141,19 +136,10 @@ function buildCharterHtml(opts: {
     display: flex; align-items: center; justify-content: center;
     margin-top: 1px;
   }
-  .step-title { font-weight: 700; font-size: 14px; color: #111827; margin-bottom: 2px; }
-  .step-detail { color: #4b5563; font-size: 12.5px; }
-  .section { margin-bottom: 14px; }
-  .section h3 {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #1e1b4b;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    margin-bottom: 6px;
-  }
-  .section ul { padding-left: 18px; }
-  .section li { margin-bottom: 5px; color: #1f2937; font-size: 12.5px; }
+  .step-title { font-weight: 700; font-size: 14px; color: #111827; margin-bottom: 4px; }
+  .step-detail { color: #4b5563; font-size: 12.5px; margin-bottom: 6px; }
+  .step-points { padding-left: 18px; margin-top: 2px; }
+  .step-points li { margin-bottom: 4px; color: #1f2937; font-size: 12px; }
   .footer { font-size: 11px; color: #6b7280; margin-top: 8px; }
 </style>
 </head>
@@ -163,8 +149,8 @@ function buildCharterHtml(opts: {
   <p class="meta">${isHi ? 'तैयार' : 'Generated'}: ${generated}  ·  ${isHi ? 'भाषा' : 'Language'}: ${isHi ? 'हिन्दी' : 'English'}</p>
   <p class="note">${
     isHi
-      ? 'इस पीडीएफ में देवनागरी लिपि ब्राउज़र द्वारा सही रूप से संयोजित है (नोतो सैंस देवनागरी)।'
-      : 'This PDF uses Noto Sans for English. Hindi PDFs use browser-shaped Devanagari.'
+      ? 'नियमपत्र + पंजीकृत उपविधियाँ — एक चरणबद्ध मार्गदर्शिका। देवनागरी ब्राउज़र द्वारा सही रूप से संयोजित।'
+      : 'Charter + registered bye-laws as one step-by-step guide. Noto Sans for English; browser-shaped Devanagari for Hindi.'
   }</p>
   <hr/>
 
@@ -178,10 +164,6 @@ function buildCharterHtml(opts: {
   <hr style="margin-top:4px;margin-bottom:10px;border-top-color:#e0e7ff"/>
   <p class="intro">${t('votingCharter.program.intro')}</p>
   ${steps}
-
-  <h2 class="rules">${t('votingCharter.rulesHeading')}</h2>
-  <hr style="margin-top:4px;margin-bottom:10px;border-top-color:#e0e7ff"/>
-  ${sections}
 
   <hr/>
   <p class="footer">${t('votingCharter.docs.p4')}</p>

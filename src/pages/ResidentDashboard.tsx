@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Home, Bell, KeyRound, LogOut, Check, X, Clock, Plus, Copy, Calendar, Vote, IndianRupee, User, Eye, EyeOff, Lock, Car, Users, Trash2, Edit2, Camera, BookUser, Sparkles, MessageSquare, ScrollText, Landmark, FolderLock } from 'lucide-react';
@@ -12,12 +12,8 @@ import ThemeToggle from '@/components/ThemeToggle';
 import BiometricSetup from '@/components/BiometricSetup';
 import NotificationCenter from '@/components/NotificationCenter';
 import EmergencyAlertPanel from '@/components/EmergencyAlertPanel';
-import PollManager from '@/components/PollManager';
 import { isMemberOnCommitteeRoster } from '@/lib/committeeProtection';
 import type { CommitteeMemberRow } from '@/lib/committeeMember';
-import MeetingManager from '@/components/MeetingManager';
-import SocietyDocumentsManager from '@/components/SocietyDocumentsManager';
-import CommitteeManager from '@/components/CommitteeManager';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
 import { allowsPrimaryMember, allowsResidentLogin, isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
@@ -34,6 +30,16 @@ import { HOUSEHOLD_RELATION_TYPES, HOUSEHOLD_SERVICE_TYPES } from '@/lib/househo
 import { propagateMemberPhoto } from '@/lib/memberPhotos';
 import { PersonAvatar } from '@/components/PersonAvatar';
 
+const PollManager = lazy(() => import('@/components/PollManager'));
+const MeetingManager = lazy(() => import('@/components/MeetingManager'));
+const SocietyDocumentsManager = lazy(() => import('@/components/SocietyDocumentsManager'));
+const CommitteeManager = lazy(() => import('@/components/CommitteeManager'));
+
+const ModuleFallback = () => (
+  <div className="flex items-center justify-center py-12">
+    <p className="text-muted-foreground text-sm animate-pulse">Loading…</p>
+  </div>
+);
 interface Resident {
   id: string; name: string; phone: string; flatId: string; flatNumber: string;
 }
@@ -2032,34 +2038,44 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
         )}
 
         {tab === 'polls' && (
-          <PollManager
-            isResident
-            voterId={resident.id}
-            voterPhone={resident.phone}
-            memberId={myMemberRecord?.id}
-            memberName={myMemberRecord?.name ?? resident.name}
-            flatNumber={resident.flatNumber}
-            flatId={resident.flatId}
-          />
+          <Suspense fallback={<ModuleFallback />}>
+            <PollManager
+              isResident
+              voterId={resident.id}
+              voterPhone={resident.phone}
+              memberId={myMemberRecord?.id}
+              memberName={myMemberRecord?.name ?? resident.name}
+              flatNumber={resident.flatNumber}
+              flatId={resident.flatId}
+            />
+          </Suspense>
         )}
 
         {tab === 'meetings' && (
-          <MeetingManager
-            isResident
-            residentMemberId={myMemberRecord?.id ?? null}
-            residentName={myMemberRecord?.name ?? resident.name}
-            residentFlatNumber={resident.flatNumber}
-          />
+          <Suspense fallback={<ModuleFallback />}>
+            <MeetingManager
+              isResident
+              residentMemberId={myMemberRecord?.id ?? null}
+              residentName={myMemberRecord?.name ?? resident.name}
+              residentFlatNumber={resident.flatNumber}
+            />
+          </Suspense>
         )}
 
         {tab === 'documents' && (
-          <SocietyDocumentsManager
-            isResident
-            viewerLabel={`${resident.flatNumber} · ${resident.name}`}
-          />
+          <Suspense fallback={<ModuleFallback />}>
+            <SocietyDocumentsManager
+              isResident
+              viewerLabel={`${resident.flatNumber} · ${resident.name}`}
+            />
+          </Suspense>
         )}
 
-        {tab === 'committee' && <CommitteeManager isResident />}
+        {tab === 'committee' && (
+          <Suspense fallback={<ModuleFallback />}>
+            <CommitteeManager isResident />
+          </Suspense>
+        )}
 
         {tab === 'payments' && (
           <div className="flex flex-col gap-3">

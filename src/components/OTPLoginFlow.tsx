@@ -8,7 +8,7 @@ import {
   signOut,
   type ConfirmationResult,
 } from 'firebase/auth';
-import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase';
+import { getFirebaseAuth, injectRecaptchaEnterpriseScript, isFirebaseConfigured } from '@/lib/firebase';
 import { executeRecaptchaEnterpriseAction, RECAPTCHA_PHONE_ACTION } from '@/lib/recaptchaEnterprise';
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -248,6 +248,8 @@ const OTPLoginFlow = ({
         }
       }
 
+      injectRecaptchaEnterpriseScript();
+      injectRecaptchaEnterpriseScript();
       await initializeRecaptchaConfig(auth).catch(() => {});
 
       const el = recaptchaContainerRef.current;

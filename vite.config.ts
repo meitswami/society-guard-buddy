@@ -20,4 +20,19 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("xlsx")) return "vendor-xlsx";
+          if (id.includes("jspdf") || id.includes("html2canvas")) return "vendor-pdf";
+          if (id.includes("firebase")) return "vendor-firebase";
+          if (id.includes("sweetalert2")) return "vendor-swal";
+          if (id.includes("recharts")) return "vendor-charts";
+          if (id.includes("@supabase")) return "vendor-supabase";
+        },
+      },
+    },
+  },
 }));

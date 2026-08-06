@@ -211,24 +211,20 @@ class _VotingCharterCardState extends State<VotingCharterCard> {
                               content.steps[i].detail,
                               style: const TextStyle(fontSize: 12, color: KutumbikaColors.textMuted),
                             ),
+                            if (content.steps[i].points.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              for (final p in content.steps[i].points)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 2, bottom: 4),
+                                  child: Text('• $p', style: const TextStyle(fontSize: 12)),
+                                ),
+                            ],
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                ],
-                Text(content.rulesHeading, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                for (final sec in content.sections) ...[
-                  Text(sec.heading, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  for (final p in sec.points)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8, bottom: 4),
-                      child: Text('• $p', style: const TextStyle(fontSize: 12)),
-                    ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ],
               ],
             ),

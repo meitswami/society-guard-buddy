@@ -70,12 +70,25 @@ Future<Uint8List> buildVotingCharterPdfBytes({
         pw.SizedBox(height: 2),
         pw.Text(
           isHi
-              ? 'इस पीडीएफ में नोतो सैंस देवनागरी अक्षर जुड़े हैं। अंग्रेज़ी नामों हेतु लैटिन अक्षर भी उपलब्ध हैं।'
-              : 'This PDF embeds Noto Sans (Latin). Use the Hindi PDF for Devanagari text.',
+              ? 'नियमपत्र + पंजीकृत उपविधियाँ — एक चरणबद्ध मार्गदर्शिका।'
+              : 'Charter + registered bye-laws as one step-by-step guide.',
           style: pw.TextStyle(font: font, fontSize: 7.5, color: muted),
         ),
         pw.SizedBox(height: 8),
         pw.Divider(color: PdfColor.fromInt(0xFFC7D2FE), thickness: 1),
+        pw.SizedBox(height: 10),
+        pw.Text(
+          content.summaryTitle,
+          style: pw.TextStyle(font: fontBold, fontSize: 12, color: heading),
+        ),
+        pw.SizedBox(height: 2),
+        pw.Text(content.summaryPosts, style: pw.TextStyle(font: font, fontSize: 10, color: body)),
+        pw.SizedBox(height: 4),
+        for (final p in content.summaryPoints)
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 2),
+            child: pw.Text('• $p', style: pw.TextStyle(font: font, fontSize: 9.5, color: muted)),
+          ),
         pw.SizedBox(height: 10),
         pw.Text(
           content.programHeading,
@@ -109,43 +122,28 @@ Future<Uint8List> buildVotingCharterPdfBytes({
                     pw.Text(content.steps[i].title, style: pw.TextStyle(font: fontBold, fontSize: 11, color: body)),
                     pw.SizedBox(height: 2),
                     pw.Text(content.steps[i].detail, style: pw.TextStyle(font: font, fontSize: 9.5, color: muted)),
+                    if (content.steps[i].points.isNotEmpty) ...[
+                      pw.SizedBox(height: 4),
+                      for (final p in content.steps[i].points)
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.only(left: 2, bottom: 3),
+                          child: pw.Row(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text('•  ', style: pw.TextStyle(font: fontBold, fontSize: 9, color: indigo)),
+                              pw.Expanded(
+                                child: pw.Text(p, style: pw.TextStyle(font: font, fontSize: 9, color: body)),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
-          pw.SizedBox(height: 8),
-        ],
-        pw.SizedBox(height: 6),
-        pw.Text(
-          content.rulesHeading,
-          style: pw.TextStyle(font: fontBold, fontSize: 13, color: heading),
-        ),
-        pw.SizedBox(height: 8),
-        for (final sec in content.sections) ...[
-          pw.Text(
-            sec.heading,
-            style: pw.TextStyle(
-              font: fontBold,
-              fontSize: 11,
-              color: PdfColor.fromInt(0xFF1E1B4B),
-              decoration: pw.TextDecoration.underline,
-            ),
-          ),
-          pw.SizedBox(height: 4),
-          for (final p in sec.points) ...[
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(left: 4, bottom: 4),
-              child: pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text('•  ', style: pw.TextStyle(font: fontBold, fontSize: 10, color: indigo)),
-                  pw.Expanded(child: pw.Text(p, style: pw.TextStyle(font: font, fontSize: 9.5, color: body))),
-                ],
-              ),
-            ),
-          ],
-          pw.SizedBox(height: 8),
+          pw.SizedBox(height: 10),
         ],
         pw.Divider(color: PdfColor.fromInt(0xFFC7D2FE), thickness: 0.8),
         pw.SizedBox(height: 6),

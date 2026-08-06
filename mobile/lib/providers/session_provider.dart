@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/config/env.dart';
 import '../core/session/app_session.dart';
+import '../core/supabase/supabase_bootstrap.dart';
 import '../models/admin_user.dart';
 import '../models/guard_session.dart';
 import '../models/resident_user.dart';
@@ -48,7 +52,8 @@ class SessionNotifier extends AsyncNotifier<AppSessionState> {
         societyName: societyName,
         resident: resident,
       );
-      await ref.read(pushNotificationServiceProvider).registerForSession(session);
+      // Push registration must not delay first authenticated frame.
+      unawaited(ref.read(pushNotificationServiceProvider).registerForSession(session));
       return session;
     }
 
@@ -67,7 +72,7 @@ class SessionNotifier extends AsyncNotifier<AppSessionState> {
         societyName: societyName,
         admin: admin,
       );
-      await ref.read(pushNotificationServiceProvider).registerForSession(session);
+      unawaited(ref.read(pushNotificationServiceProvider).registerForSession(session));
       return session;
     }
 
@@ -93,7 +98,7 @@ class SessionNotifier extends AsyncNotifier<AppSessionState> {
         guard: guard,
         shiftId: shiftId,
       );
-      await ref.read(pushNotificationServiceProvider).registerForSession(session);
+      unawaited(ref.read(pushNotificationServiceProvider).registerForSession(session));
       return session;
     }
 
@@ -101,11 +106,17 @@ class SessionNotifier extends AsyncNotifier<AppSessionState> {
   }
 
   Future<String> _societyName(String societyId) async {
-    final societies = await ref.read(societyServiceProvider).fetchActiveSocieties();
-    return societies
-        .where((s) => s.id == societyId)
-        .map((s) => s.name)
-        .firstOrNull ?? 'Your Society';
+    if (!Env.isConfigured) return 'Your Society';
+    try {
+      final row = await SupabaseBootstrap.client
+          .from('societies')
+          .select('name')
+          .eq('id', societyId)
+          .maybeSingle();
+      final name = row?['name'] as String?;
+      if (name != null && name.isNotEmpty) return name;
+    } catch (_) {}
+    return 'Your Society';
   }
 
   Future<void> loginResident({

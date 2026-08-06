@@ -1208,44 +1208,65 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Election quorum: 3/4 of members. For 30 members, minimum 23 members.',
     hi: 'कोरम: कुल सदस्यों का 3/4। 30 सदस्यों के लिए न्यूनतम 23 सदस्य।',
   },
-  'votingCharter.rulesHeading': { en: 'Bye-law rules', hi: 'उपविधि के नियम' },
-  'votingCharter.program.heading': { en: 'Step-by-step program for members', hi: 'सदस्यों के लिए चरणबद्ध कार्यक्रम' },
+  'votingCharter.rulesHeading': {
+    en: 'Charter & registered bye-laws (step by step)',
+    hi: 'नियमपत्र एवं पंजीकृत उपविधियाँ (चरणबद्ध)',
+  },
+  'votingCharter.program.heading': {
+    en: 'Charter & bye-laws — step by step for members',
+    hi: 'नियमपत्र एवं उपविधियाँ — सदस्यों के लिए चरणबद्ध मार्गदर्शिका',
+  },
   'votingCharter.program.intro': {
-    en: 'Follow these steps for electing the Society’s seven-member Management Committee under the registered bye-laws.',
-    hi: 'पंजीकृत उपविधियों के अनुसार सोसायटी की सात-सदस्यीय प्रबंध समिति के चुनाव हेतु निम्नलिखित चरण अपनाएँ।',
+    en: 'This guide merges the Election Charter with the Society’s registered bye-laws. Follow each step in order for electing the seven-member Management Committee (30 flats).',
+    hi: 'यह मार्गदर्शिका चुनाव नियमपत्र को सोसायटी की पंजीकृत उपविधियों से मिलाकर बनाई गई है। सात-सदस्यीय प्रबंध समिति (30 फ्लैट) के चुनाव हेतु प्रत्येक चरण क्रम से अपनाएँ।',
   },
   'votingCharter.program.s1.title': {
-    en: 'Know the seven Management Committee seats',
-    hi: 'प्रबंध समिति के सात पद जानें',
+    en: 'Step 1 — Know the seven Management Committee seats',
+    hi: 'चरण 1 — प्रबंध समिति के सात पद जानें',
   },
   'votingCharter.program.s1.detail': {
-    en: 'The Management Committee has seven members: President, Vice-President, Secretary, Treasurer, and three Executive Members. The term is two years; retiring members may seek re-election.',
-    hi: 'प्रबंध समिति में सात सदस्य होते हैं—अध्यक्ष, उपाध्यक्ष, सचिव, कोषाध्यक्ष तथा तीन कार्यकारिणी सदस्य। कार्यकाल दो वर्ष का है; निवृत्त सदस्य पुनः निर्वाचन हेतु खड़े हो सकते हैं।',
+    en: 'Under the bye-laws the Management Committee has exactly seven seats. Know the posts and the two-year term before you nominate or vote. Second- or third-place finishers are not automatically given a committee seat.',
+    hi: 'उपविधियों के अनुसार प्रबंध समिति में ठीक सात पद हैं। नामांकन या मतदान से पहले पद और दो-वर्ष का कार्यकाल समझ लें। द्वितीय या तृतीय स्थान पर आने वाले अभ्यर्थी स्वतः समिति सदस्य नहीं बनते।',
   },
-  'votingCharter.program.s2.title': { en: 'Nominate during the nomination window', hi: 'नामांकन अवधि में नामांकन करें' },
+  'votingCharter.program.s2.title': {
+    en: 'Step 2 — Confirm you are eligible',
+    hi: 'चरण 2 — अपनी पात्रता सुनिश्चित करें',
+  },
   'votingCharter.program.s2.detail': {
-    en: 'When nominations are open, eligible members (not in maintenance arrears over 60 days) may self-nominate for an open seat with a short statement.',
-    hi: 'नामांकन खुला होने पर पात्र सदस्य (चुनाव तिथि पर 60 दिनों से अधिक अनुरक्षण बकाया न हो) रिक्त पद के लिए संक्षिप्त विवरण सहित स्वयं नामांकन कर सकते हैं।',
+    en: 'Before nominating or voting, check the bye-law eligibility rules: one vote per member, designated member for joint ownership, arrears over 60 days on election day disqualify, and proxy only with written authorisation at least 48 hours before the meeting (max one proxy per person).',
+    hi: 'नामांकन या मतदान से पहले उपविधि की पात्रता जाँचें: प्रत्येक सदस्य को एक मत, संयुक्त स्वामित्व में नामित सदस्य, चुनाव तिथि पर 60 दिनों से अधिक बकाया होने पर अयोग्यता, तथा प्रॉक्सी केवल बैठक से कम-से-कम 48 घंटे पूर्व लिखित प्राधिकरण से (प्रति व्यक्ति अधिकतम एक प्रॉक्सी)।',
   },
-  'votingCharter.program.s3.title': { en: 'Cast your vote', hi: 'अपना मत डालें' },
+  'votingCharter.program.s3.title': {
+    en: 'Step 3 — Nominate during the nomination window',
+    hi: 'चरण 3 — नामांकन अवधि में नामांकन करें',
+  },
   'votingCharter.program.s3.detail': {
-    en: 'Each eligible member has one vote. Voting is by Secret Ballot or Show of Hands — the method is recorded before polling. Proxy voting needs written authorisation at least 48 hours before the meeting (one person may proxy for only one member).',
-    hi: 'प्रत्येक पात्र सदस्य को एक मत है। मतदान गुप्त मतपत्र अथवा हाथ उठाकर होगा—विधि मतदान आरंभ होने से पूर्व दर्ज की जाएगी। प्रॉक्सी हेतु बैठक से कम-से-कम 48 घंटे पूर्व लिखित प्राधिकरण आवश्यक है (एक व्यक्ति केवल एक सदस्य का प्रॉक्सी हो सकता है)।',
+    en: 'When the admin opens nominations, eligible members may self-nominate for President, Vice-President, Secretary, Treasurer, or Executive Member with a short statement. Retiring members may seek re-election. Nominations are allowed only inside the admin-set dates and only if you are not disqualified by arrears.',
+    hi: 'जब प्रशासक नामांकन खोलता है, पात्र सदस्य अध्यक्ष, उपाध्यक्ष, सचिव, कोषाध्यक्ष या कार्यकारिणी सदस्य हेतु संक्षिप्त विवरण सहित स्वयं नामांकन कर सकते हैं। निवृत्त सदस्य पुनः निर्वाचन लड़ सकते हैं। नामांकन केवल निर्धारित तिथियों में और बकाया से अयोग्य न होने पर अनुमत है।',
   },
-  'votingCharter.program.s4.title': { en: 'Quorum and eligibility', hi: 'कोरम और पात्रता' },
+  'votingCharter.program.s4.title': {
+    en: 'Step 4 — Meet quorum, then cast your vote',
+    hi: 'चरण 4 — कोरम पूरा करें, फिर मत डालें',
+  },
   'votingCharter.program.s4.detail': {
-    en: 'Election quorum is 3/4 of members (for 30 members: at least 23 represented). A member with maintenance/common-expense arrears exceeding 60 days on election day cannot vote or contest. Joint owners follow the designated-member rule.',
-    hi: 'चुनाव कोरम कुल सदस्यों का 3/4 है (30 सदस्यों के लिए न्यूनतम 23)। चुनाव तिथि पर 60 दिनों से अधिक अनुरक्षण/साझा व्यय बकाया वाले सदस्य मतदान अथवा निर्वाचन नहीं कर सकते। संयुक्त स्वामित्व में नामित-सदस्य नियम लागू होता है।',
+    en: 'Election quorum is 3/4 of members (for 30 members: at least 23). Voting opens only inside the admin-set window once quorum is met. Record Secret Ballot or Show of Hands before polling. One member, one vote — separate per-office ballots only if that method is expressly approved. Votes are final; duplicates are blocked.',
+    hi: 'चुनाव कोरम कुल सदस्यों का 3/4 है (30 सदस्यों के लिए न्यूनतम 23)। मतदान केवल निर्धारित अवधि में और कोरम पूरा होने पर खुलता है। मतदान से पहले गुप्त मतपत्र या हाथ उठाना दर्ज करें। एक सदस्य, एक मत—प्रति-पद अलग मतपत्र केवल स्पष्ट अनुमोदन पर। मत अंतिम हैं; दोहरा मतदान निषिद्ध है।',
   },
-  'votingCharter.program.s5.title': { en: 'Results and the seven seats', hi: 'परिणाम और सात पद' },
+  'votingCharter.program.s5.title': {
+    en: 'Step 5 — Results, audit, vacancies and removal',
+    hi: 'चरण 5 — परिणाम, लेखापरीक्षा, रिक्ति और निष्कासन',
+  },
   'votingCharter.program.s5.detail': {
-    en: 'Declared results fill the seven Management Committee seats. Second- or third-place candidates are not automatically made committee members. Vacancies follow the bye-law vacancy procedure.',
-    hi: 'घोषित परिणाम प्रबंध समिति के सात पद भरते हैं। द्वितीय अथवा तृतीय स्थान के अभ्यर्थी स्वतः समिति सदस्य नहीं बनते। रिक्तियाँ उपविधि की रिक्ति-प्रक्रिया के अनुसार भरी जाती हैं।',
+    en: 'After voting closes, results are tallied and audited. Declared winners fill the seven seats. Vacancies are filled by majority of the remaining committee. Removal needs Special Resolution and hearing; removed members are disqualified for two years. A full Election Report and AGM Election Minutes are produced on completion.',
+    hi: 'मतदान बंद होने के पश्चात् परिणाम गिने जाते हैं और लेखापरीक्षा होती है। घोषित विजेता सात पद भरते हैं। रिक्तियाँ शेष समिति के बहुमत से भरी जाती हैं। निष्कासन हेतु विशेष प्रस्ताव एवं सुनवाई आवश्यक है; निष्कासित सदस्य दो वर्ष तक अयोग्य रहते हैं। पूर्ण होने पर चुनाव प्रतिवेदन तथा वार्षिक आम सभा का चुनाव कार्यवृत्त तैयार होते हैं।',
   },
-  'votingCharter.program.s6.title': { en: 'Publish roster and first meeting', hi: 'सूची प्रकाशित करें और पहली बैठक' },
+  'votingCharter.program.s6.title': {
+    en: 'Step 6 — Documents, publish roster and first meeting',
+    hi: 'चरण 6 — दस्तावेज़, सूची प्रकाशन और पहली बैठक',
+  },
   'votingCharter.program.s6.detail': {
-    en: 'After publication, members see the committee in the Committee module. The first Management Committee meeting must be scheduled within 30 days of the election. Ordinary MC quorum is 5 of 7; regular meetings are at least monthly with seven clear days’ notice.',
-    hi: 'प्रकाशन के पश्चात् सदस्य समिति खंड में समिति देख सकते हैं। प्रबंध समिति की प्रथम बैठक चुनाव के 30 दिनों के भीतर निर्धारित होनी चाहिए। सामान्य बैठक का कोरम 7 में से 5 है; नियमित बैठकें कम-से-कम मासिक, सात स्पष्ट दिनों की सूचना सहित।',
+    en: 'Admins may attach circulars and society documents to the election. Elected names appear for residents only after the roster is published. The first Management Committee meeting must be within 30 days of the election. Ordinary MC quorum is 5 of 7; regular meetings are at least monthly with seven clear days’ notice. Share this charter PDF with all members.',
+    hi: 'प्रशासक चुनाव में परिपत्र और सोसायटी दस्तावेज़ संलग्न कर सकते हैं। निर्वाचित नाम निवासियों को तभी दिखते हैं जब सूची प्रकाशित हो। प्रबंध समिति की प्रथम बैठक चुनाव के 30 दिनों के भीतर होनी चाहिए। सामान्य बैठक कोरम 7 में से 5; नियमित बैठकें कम-से-कम मासिक, सात स्पष्ट दिनों की सूचना सहित। यह नियमपत्र पीडीएफ सभी सदस्यों को परिचालित करें।',
   },
   'votingCharter.eligibility.heading': { en: 'Eligibility', hi: 'पात्रता' },
   'votingCharter.eligibility.p1': {

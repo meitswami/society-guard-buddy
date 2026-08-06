@@ -18,10 +18,8 @@ class KutumbikaApp extends ConsumerWidget {
     final branding = brandingAsync.value;
     final router = ref.watch(appRouterProvider);
 
-    final showSplash = (brandingAsync.isLoading && branding == null) ||
-        sessionAsync.isLoading;
-
-    if (showSplash) {
+    // Only block on session restore — branding can paint with defaults.
+    if (sessionAsync.isLoading) {
       return MaterialApp(
         title: 'Kutumbika',
         debugShowCheckedModeBanner: false,
