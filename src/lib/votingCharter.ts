@@ -78,7 +78,6 @@ export const ELECTION_PROGRAM_STEPS: readonly ElectionProgramStep[] = [
       'votingCharter.docs.p1',
       'votingCharter.docs.p3',
       'votingCharter.committee.p4',
-      'votingCharter.docs.p4',
     ],
   },
 ] as const;

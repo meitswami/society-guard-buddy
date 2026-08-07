@@ -114,10 +114,6 @@ class _VotingCharterCardState extends State<VotingCharterCard> {
         initiallyExpanded: widget.initiallyExpanded,
         leading: Icon(Icons.menu_book_outlined, color: brand.primary),
         title: Text(content.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-        subtitle: Text(
-          isHiView ? 'पीडीएफ प्राप्त करें · व्हाट्सऐप साझा करें' : 'Download PDF · WhatsApp share',
-          style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
-        ),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -145,13 +141,6 @@ class _VotingCharterCardState extends State<VotingCharterCard> {
                       label: Text(isHiView ? 'व्हाट्सऐप पाठ' : 'WhatsApp text'),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isHiView
-                      ? 'पीडीएफ साझा पत्रक खोलता है — «फ़ाइलों में सहेजें» या व्हाट्सऐप चुनें। देवनागरी अक्षर जुड़े हैं।'
-                      : 'PDF opens the share sheet — choose Save to Files / Downloads or WhatsApp. Devanagari font is embedded.',
-                  style: const TextStyle(fontSize: 11, color: KutumbikaColors.textMuted),
                 ),
                 const SizedBox(height: 12),
                 Container(

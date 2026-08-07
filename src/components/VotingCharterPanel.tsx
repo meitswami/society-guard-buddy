@@ -142,11 +142,6 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
                   disabled={!!busyLang}
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                {lang === 'hi'
-                  ? 'लैपटॉप पर फ़ाइल सीधे प्राप्त होती है; मोबाइल पर साझा पत्रक से «फ़ाइलों में सहेजें» चुनें। अंग्रेज़ी पीडीएफ में लैटिन अक्षर; हिन्दी पीडीएफ में सही देवनागरी लिपि।'
-                  : 'On laptop the file downloads directly; on mobile use the share sheet → Save to Files / Downloads. English PDF uses Latin fonts; Hindi PDF uses properly shaped Devanagari.'}
-              </p>
             </>
           )}
 

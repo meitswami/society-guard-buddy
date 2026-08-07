@@ -24,7 +24,6 @@ class VotingCharterContent {
     required this.programHeading,
     required this.programIntro,
     required this.steps,
-    required this.footerNote,
     required this.shareMessage,
   });
 
@@ -35,7 +34,6 @@ class VotingCharterContent {
   final String programHeading;
   final String programIntro;
   final List<VotingCharterStep> steps;
-  final String footerNote;
   final String shareMessage;
 }
 
@@ -98,12 +96,11 @@ const _enSteps = <VotingCharterStep>[
   VotingCharterStep(
     title: 'Step 6 — Documents, publish roster and first meeting',
     detail:
-        'Admins may attach circulars and society documents to the election. Elected names appear for residents only after the roster is published. The first Management Committee meeting must be within 30 days of the election. Ordinary MC quorum is 5 of 7; regular meetings are at least monthly with seven clear days’ notice. Share this charter PDF with all members.',
+        'Admins may attach circulars and society documents to the election. Elected names appear for residents only after the roster is published. The first Management Committee meeting must be within 30 days of the election. Ordinary MC quorum is 5 of 7; regular meetings are at least monthly with seven clear days’ notice.',
     points: [
       'Admin may attach circulars, letters, or other society documents to the election; members can open them from the poll.',
       'Elected committee names appear in the residents’ Committee module only after the admin publishes the roster.',
       'The first committee meeting must be within 30 days of election. Ordinary meeting quorum is 5 of 7; regular meetings at least monthly with seven clear days’ notice.',
-      'This charter can be downloaded as a PDF and shared with all members (for example via WhatsApp).',
     ],
   ),
 ];
@@ -162,12 +159,11 @@ const _hiSteps = <VotingCharterStep>[
   VotingCharterStep(
     title: 'चरण 6 — दस्तावेज़, सूची प्रकाशन और पहली बैठक',
     detail:
-        'प्रशासक चुनाव में परिपत्र और सोसायटी दस्तावेज़ संलग्न कर सकते हैं। निर्वाचित नाम निवासियों को तभी दिखते हैं जब सूची प्रकाशित हो। प्रबंध समिति की प्रथम बैठक चुनाव के 30 दिनों के भीतर होनी चाहिए। सामान्य बैठक कोरम 7 में से 5; नियमित बैठकें कम-से-कम मासिक, सात स्पष्ट दिनों की सूचना सहित। यह नियमपत्र पीडीएफ सभी सदस्यों को परिचालित करें।',
+        'प्रशासक चुनाव में परिपत्र और सोसायटी दस्तावेज़ संलग्न कर सकते हैं। निर्वाचित नाम निवासियों को तभी दिखते हैं जब सूची प्रकाशित हो। प्रबंध समिति की प्रथम बैठक चुनाव के 30 दिनों के भीतर होनी चाहिए। सामान्य बैठक कोरम 7 में से 5; नियमित बैठकें कम-से-कम मासिक, सात स्पष्ट दिनों की सूचना सहित।',
     points: [
       'प्रशासक चुनाव में परिपत्र, पत्र अथवा अन्य सोसायटी दस्तावेज़ संलग्न कर सकता है; सदस्य उन्हें मतदान से खोल सकते हैं।',
       'निर्वाचित समिति के नाम निवासी समिति खंड में तभी दिखते हैं जब प्रशासक सूची प्रकाशित करता है।',
       'समिति की प्रथम बैठक चुनाव के 30 दिनों के भीतर होनी चाहिए। सामान्य बैठक का कोरम 7 में से 5; नियमित बैठकें कम-से-कम मासिक, सात स्पष्ट दिनों की सूचना सहित।',
-      'यह नियमपत्र पीडीएफ के रूप में प्राप्त कर सभी सदस्यों को (उदाहरणार्थ व्हाट्सऐप द्वारा) परिचालित किया जा सकता है।',
     ],
   ),
 ];
@@ -187,8 +183,6 @@ VotingCharterContent votingCharterContent(CharterLang lang) {
       programIntro:
           'यह मार्गदर्शिका चुनाव नियमपत्र को सोसायटी की पंजीकृत उपविधियों से मिलाकर बनाई गई है। सात-सदस्यीय प्रबंध समिति (30 फ्लैट) के चुनाव हेतु प्रत्येक चरण क्रम से अपनाएँ।',
       steps: _hiSteps,
-      footerNote:
-          'यह नियमपत्र पीडीएफ के रूप में प्राप्त कर सभी सदस्यों को (उदाहरणार्थ व्हाट्सऐप द्वारा) परिचालित किया जा सकता है।',
       shareMessage:
           'सोसायटी चुनाव नियमपत्र — पंजीकृत उपविधियों के अनुसार समिति के 7 सदस्यों का चुनाव।',
     );
@@ -206,8 +200,6 @@ VotingCharterContent votingCharterContent(CharterLang lang) {
     programIntro:
         'This guide merges the Election Charter with the Society’s registered bye-laws. Follow each step in order for electing the seven-member Management Committee (30 flats).',
     steps: _enSteps,
-    footerNote:
-        'This charter can be downloaded as a PDF and shared with all members (for example via WhatsApp).',
     shareMessage: votingCharterShareMessage,
   );
 }

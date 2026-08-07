@@ -48,7 +48,7 @@ Future<Uint8List> buildVotingCharterPdfBytes({
 
   doc.addPage(
     pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
+      pageFormat: PdfPageFormat.letter,
       margin: const pw.EdgeInsets.all(48),
       build: (ctx) => [
         pw.Text(
@@ -66,13 +66,6 @@ Future<Uint8List> buildVotingCharterPdfBytes({
               ? 'तैयार: ${_formatGeneratedAt(DateTime.now())}  ·  भाषा: हिंदी'
               : 'Generated: ${_formatGeneratedAt(DateTime.now())}  ·  Language: English',
           style: pw.TextStyle(font: font, fontSize: 8, color: muted),
-        ),
-        pw.SizedBox(height: 2),
-        pw.Text(
-          isHi
-              ? 'नियमपत्र + पंजीकृत उपविधियाँ — एक चरणबद्ध मार्गदर्शिका।'
-              : 'Charter + registered bye-laws as one step-by-step guide.',
-          style: pw.TextStyle(font: font, fontSize: 7.5, color: muted),
         ),
         pw.SizedBox(height: 8),
         pw.Divider(color: PdfColor.fromInt(0xFFC7D2FE), thickness: 1),
@@ -145,12 +138,6 @@ Future<Uint8List> buildVotingCharterPdfBytes({
           ),
           pw.SizedBox(height: 10),
         ],
-        pw.Divider(color: PdfColor.fromInt(0xFFC7D2FE), thickness: 0.8),
-        pw.SizedBox(height: 6),
-        pw.Text(
-          content.footerNote,
-          style: pw.TextStyle(font: font, fontSize: 8.5, color: muted),
-        ),
       ],
     ),
   );

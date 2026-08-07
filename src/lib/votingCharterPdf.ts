@@ -102,15 +102,14 @@ function buildCharterHtml(opts: {
     color: #1a1a1a;
     font-size: 13px;
     line-height: 1.55;
-    width: 794px;
+    width: 816px;
     padding: 48px 56px;
     background: #fff;
     -webkit-font-smoothing: antialiased;
   }
   .society { color: #4338ca; font-weight: 700; font-size: 14px; margin-bottom: 6px; }
   h1 { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 6px; line-height: 1.35; }
-  .meta { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
-  .note { font-size: 10px; color: #6b7280; margin-bottom: 14px; }
+  .meta { font-size: 11px; color: #6b7280; margin-bottom: 12px; }
   hr { border: none; border-top: 1.5px solid #c7d2fe; margin: 12px 0 16px; }
   h2 { font-size: 16px; font-weight: 700; color: #312e81; margin: 18px 0 8px; }
   .summary-box {
@@ -140,18 +139,12 @@ function buildCharterHtml(opts: {
   .step-detail { color: #4b5563; font-size: 12.5px; margin-bottom: 6px; }
   .step-points { padding-left: 18px; margin-top: 2px; }
   .step-points li { margin-bottom: 4px; color: #1f2937; font-size: 12px; }
-  .footer { font-size: 11px; color: #6b7280; margin-top: 8px; }
 </style>
 </head>
 <body>
   <p class="society">${society}</p>
   <h1>${t(VOTING_CHARTER_TITLE_KEY)}</h1>
   <p class="meta">${isHi ? 'तैयार' : 'Generated'}: ${generated}  ·  ${isHi ? 'भाषा' : 'Language'}: ${isHi ? 'हिन्दी' : 'English'}</p>
-  <p class="note">${
-    isHi
-      ? 'नियमपत्र + पंजीकृत उपविधियाँ — एक चरणबद्ध मार्गदर्शिका। देवनागरी ब्राउज़र द्वारा सही रूप से संयोजित।'
-      : 'Charter + registered bye-laws as one step-by-step guide. Noto Sans for English; browser-shaped Devanagari for Hindi.'
-  }</p>
   <hr/>
 
   <div class="summary-box">
@@ -164,9 +157,6 @@ function buildCharterHtml(opts: {
   <hr style="margin-top:4px;margin-bottom:10px;border-top-color:#e0e7ff"/>
   <p class="intro">${t('votingCharter.program.intro')}</p>
   ${steps}
-
-  <hr/>
-  <p class="footer">${t('votingCharter.docs.p4')}</p>
 </body>
 </html>`;
 }
@@ -213,9 +203,9 @@ async function ensureFontsLoaded(doc: Document, isHi: boolean): Promise<void> {
   await new Promise((r) => setTimeout(r, 100));
 }
 
-/** Slice a tall canvas into A4 PDF pages. */
+/** Slice a tall canvas into US Letter PDF pages. */
 function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  const pdf = new jsPDF({ unit: 'mm', format: 'letter', compress: true });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
   const imgW = pageW;
@@ -262,7 +252,7 @@ export async function buildVotingCharterPdfBlob(opts: {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
   iframe.style.cssText =
-    'position:fixed;left:-10000px;top:0;width:794px;height:1200px;border:0;opacity:0;pointer-events:none;';
+    'position:fixed;left:-10000px;top:0;width:816px;height:1200px;border:0;opacity:0;pointer-events:none;';
   document.body.appendChild(iframe);
 
   try {
@@ -282,10 +272,10 @@ export async function buildVotingCharterPdfBlob(opts: {
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
-      windowWidth: 794,
-      width: 794,
+      windowWidth: 816,
+      width: 816,
       onclone: (_clonedDoc, el) => {
-        el.style.width = '794px';
+        el.style.width = '816px';
         el.style.background = '#ffffff';
       },
     });

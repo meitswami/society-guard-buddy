@@ -1265,8 +1265,8 @@ const translations: Record<string, Record<Lang, string>> = {
     hi: 'चरण 6 — दस्तावेज़, सूची प्रकाशन और पहली बैठक',
   },
   'votingCharter.program.s6.detail': {
-    en: 'Admins may attach circulars and society documents to the election. Elected names appear for residents only after the roster is published. The first Management Committee meeting must be within 30 days of the election. Ordinary MC quorum is 5 of 7; regular meetings are at least monthly with seven clear days’ notice. Share this charter PDF with all members.',
-    hi: 'प्रशासक चुनाव में परिपत्र और सोसायटी दस्तावेज़ संलग्न कर सकते हैं। निर्वाचित नाम निवासियों को तभी दिखते हैं जब सूची प्रकाशित हो। प्रबंध समिति की प्रथम बैठक चुनाव के 30 दिनों के भीतर होनी चाहिए। सामान्य बैठक कोरम 7 में से 5; नियमित बैठकें कम-से-कम मासिक, सात स्पष्ट दिनों की सूचना सहित। यह नियमपत्र पीडीएफ सभी सदस्यों को परिचालित करें।',
+    en: 'Admins may attach circulars and society documents to the election. Elected names appear for residents only after the roster is published. The first Management Committee meeting must be within 30 days of the election. Ordinary MC quorum is 5 of 7; regular meetings are at least monthly with seven clear days’ notice.',
+    hi: 'प्रशासक चुनाव में परिपत्र और सोसायटी दस्तावेज़ संलग्न कर सकते हैं। निर्वाचित नाम निवासियों को तभी दिखते हैं जब सूची प्रकाशित हो। प्रबंध समिति की प्रथम बैठक चुनाव के 30 दिनों के भीतर होनी चाहिए। सामान्य बैठक कोरम 7 में से 5; नियमित बैठकें कम-से-कम मासिक, सात स्पष्ट दिनों की सूचना सहित।',
   },
   'votingCharter.eligibility.heading': { en: 'Eligibility', hi: 'पात्रता' },
   'votingCharter.eligibility.p1': {
@@ -1346,8 +1346,8 @@ const translations: Record<string, Record<Lang, string>> = {
     hi: 'निर्वाचित समिति के नाम निवासी समिति खंड में तभी दिखते हैं जब प्रशासक सूची प्रकाशित करता है।',
   },
   'votingCharter.docs.p4': {
-    en: 'This charter can be downloaded as a PDF and shared with all members (for example via WhatsApp).',
-    hi: 'यह नियमपत्र पीडीएफ के रूप में प्राप्त कर सभी सदस्यों को (उदाहरणार्थ व्हाट्सऐप द्वारा) परिचालित किया जा सकता है।',
+    en: 'Keep the election record and minutes with the Society’s official papers.',
+    hi: 'चुनाव अभिलेख तथा कार्यवृत्त सोसायटी के आधिकारिक दस्तावेज़ों के साथ सुरक्षित रखें।',
   },
   'votingCharter.download': { en: 'Download charter PDF', hi: 'नियमपत्र पीडीएफ प्राप्त करें' },
   'votingCharter.shareWhatsApp': { en: 'Share on WhatsApp', hi: 'व्हाट्सऐप पर साझा करें' },

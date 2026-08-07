@@ -59,7 +59,6 @@ export const CONTENT_TRANSLATION_GROUPS: ContentTranslationGroup[] = [
       { key: 'votingCharter.docs.p1', label: 'Step 6 — attached documents', multiline: true },
       { key: 'votingCharter.docs.p3', label: 'Step 6 — publish roster', multiline: true },
       { key: 'votingCharter.committee.p4', label: 'Step 6 — first meeting / MC quorum', multiline: true },
-      { key: 'votingCharter.docs.p4', label: 'Step 6 — share charter PDF', multiline: true },
       { key: 'votingCharter.download', label: 'Download button label' },
       { key: 'votingCharter.shareWhatsApp', label: 'WhatsApp share button label' },
       { key: 'votingCharter.shareMessage', label: 'WhatsApp share message', multiline: true },
