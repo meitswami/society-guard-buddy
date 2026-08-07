@@ -154,7 +154,7 @@ serve(async (req) => {
     let settingsQuery = supabase
       .from("finance_reminder_settings")
       .select(
-        "society_id, enabled, timezone, due_day, auto_issue_enabled, auto_issue_whatsapp, bill_sound_key",
+        "society_id, enabled, timezone, due_day, auto_issue_enabled, auto_issue_whatsapp, auto_issue_email, bill_sound_key",
       );
     if (payload.society_id) {
       settingsQuery = settingsQuery.eq("society_id", payload.society_id);
@@ -177,6 +177,7 @@ serve(async (req) => {
       due_day: number;
       auto_issue_enabled: boolean;
       auto_issue_whatsapp: boolean;
+      auto_issue_email: boolean;
       bill_sound_key: string;
     }> = (settingsRows ?? []).map((s) => ({
       society_id: String(s.society_id),
@@ -184,6 +185,7 @@ serve(async (req) => {
       due_day: Math.min(28, Math.max(1, Number(s.due_day) || 1)),
       auto_issue_enabled: s.auto_issue_enabled !== false,
       auto_issue_whatsapp: s.auto_issue_whatsapp !== false,
+      auto_issue_email: s.auto_issue_email === true,
       bill_sound_key: String(s.bill_sound_key || "melody"),
     }));
 
@@ -194,6 +196,7 @@ serve(async (req) => {
         due_day: 1,
         auto_issue_enabled: true,
         auto_issue_whatsapp: true,
+        auto_issue_email: false,
         bill_sound_key: "melody",
       }];
     }
@@ -408,6 +411,30 @@ serve(async (req) => {
           }
           await new Promise((r) => setTimeout(r, 120));
         }
+      }
+
+      if (setting.auto_issue_email) {
+        const emailTitle = chargeTitle;
+        const emailMessage =
+          `${chargeTitle}\n` +
+          `Amount: ₹${amount.toLocaleString("en-IN")}\n` +
+          `Due day: ${dueDay} ${monthNameUtc(zoned.year, zoned.month)} ${zoned.year}\n\n` +
+          `Please pay maintenance at the earliest.\n` +
+          `— Society Guard Buddy`;
+        await fetch(`${SUPABASE_URL}/functions/v1/dispatch-directory-message`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({
+            society_id: societyId,
+            title: emailTitle,
+            message: emailMessage,
+            channels: { whatsapp: false, email: true },
+            target_type: "all",
+          }),
+        });
       }
 
       const logPayload = {

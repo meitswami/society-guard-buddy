@@ -51,7 +51,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     if (flatIds.isNotEmpty) {
       final memRows = await SupabaseBootstrap.client
           .from('members')
-          .select('id, flat_id, name, phone, relation, photo, is_primary')
+          .select('id, flat_id, name, phone, whatsapp_phone, email, relation, photo, is_primary')
           .inFilter('flat_id', flatIds)
           .order('is_primary', ascending: false)
           .order('name');
@@ -76,7 +76,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     return _flats.where((f) {
       final members = _membersByFlat[f['id']] ?? const [];
       final memberHay = members
-          .map((m) => [m['name'], m['phone'], m['relation']].whereType<String>().join(' '))
+          .map((m) => [m['name'], m['phone'], m['whatsapp_phone'], m['email'], m['relation']].whereType<String>().join(' '))
           .join(' ')
           .toLowerCase();
       final hay = [
@@ -93,7 +93,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     final q = _searchCtrl.text.trim().toLowerCase();
     if (q.isEmpty) return const [];
     return (_membersByFlat[flatId] ?? const []).where((m) {
-      final hay = [m['name'], m['phone'], m['relation']].whereType<String>().join(' ').toLowerCase();
+      final hay = [m['name'], m['phone'], m['whatsapp_phone'], m['email'], m['relation']].whereType<String>().join(' ').toLowerCase();
       return hay.contains(q);
     }).toList();
   }
@@ -196,6 +196,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                     if (m['is_primary'] == true) 'Primary',
                                     if (m['relation'] != null) m['relation'] as String,
                                     if (m['phone'] != null) m['phone'] as String,
+                                    if (m['whatsapp_phone'] != null) 'WA ${m['whatsapp_phone']}',
+                                    if (m['email'] != null) m['email'] as String,
                                   ].join(' · '),
                                 ),
                               );

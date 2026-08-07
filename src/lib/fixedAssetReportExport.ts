@@ -29,6 +29,8 @@ type ExportOpts = {
   societyName: string;
   assets: FixedAsset[];
   format: ExportFormat;
+  letterhead?: import('@/lib/pdfLetterhead').SocietyLetterhead | null;
+  pdfMode?: import('@/lib/pdfLetterhead').ReportPdfMode;
 };
 
 function pdfRows(assets: FixedAsset[]): string[][] {
@@ -80,7 +82,7 @@ function drawPdfTable(
   return y;
 }
 
-export function exportFixedAssetReport({ societyName, assets, format }: ExportOpts): void {
+export function exportFixedAssetReport({ societyName, assets, format, letterhead, pdfMode }: ExportOpts): void {
   const summary = computeFixedAssetReport(assets);
   const rows = fixedAssetRegisterRows(assets);
   const stamp = new Date().toLocaleDateString('en-IN');
@@ -130,9 +132,10 @@ export function exportFixedAssetReport({ societyName, assets, format }: ExportOp
     return;
   }
 
-  const lh = societyName || 'Society';
+  const mode = pdfMode ?? 'letterhead';
+  const lh = letterhead ?? (societyName || 'Society');
   const doc = createSocietyPdf({ orientation: 'landscape' });
-  const layout = applyLetterheadPage(doc, lh);
+  const layout = applyLetterheadPage(doc, lh, { mode });
   let y = layout.contentTop;
   doc.setFontSize(12);
   doc.text('Fixed Assets Register', layout.margin, y);
@@ -144,6 +147,6 @@ export function exportFixedAssetReport({ societyName, assets, format }: ExportOp
     y,
   );
   drawPdfTable(doc, y + 8, PDF_HEADERS, pdfRows(assets), PDF_COL_WIDTHS, lh, layout);
-  finalizeLetterheadFooters(doc, lh);
+  finalizeLetterheadFooters(doc, lh, { mode });
   doc.save(`${baseName}.pdf`);
 }

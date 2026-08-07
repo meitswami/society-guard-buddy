@@ -145,12 +145,18 @@ export function useFinanceMutations(societyId: string | null) {
       dueDay: number;
       autoIssueEnabled?: boolean;
       autoIssueWhatsapp?: boolean;
+      autoIssueEmail?: boolean;
+      reminderWhatsapp?: boolean;
+      reminderEmail?: boolean;
       billSoundKey?: string;
     }) => {
       if (!societyId) return Promise.resolve({ data: null, error: 'No society selected' });
       return upsertFinanceReminderSettings(societyId, input.enabled, input.schedule, input.dueDay, {
         autoIssueEnabled: input.autoIssueEnabled,
         autoIssueWhatsapp: input.autoIssueWhatsapp,
+        autoIssueEmail: input.autoIssueEmail,
+        reminderWhatsapp: input.reminderWhatsapp,
+        reminderEmail: input.reminderEmail,
         billSoundKey: input.billSoundKey,
       });
     }),

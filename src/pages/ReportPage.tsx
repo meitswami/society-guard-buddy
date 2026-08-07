@@ -46,6 +46,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { openBlobInNewTab } from '@/lib/reportExportUtils';
+import { resolveLetterheadReportContext } from '@/lib/letterheadReportEngine';
+import type { ReportPdfMode, SocietyLetterhead } from '@/lib/pdfLetterhead';
 import { toast } from 'sonner';
 
 interface ShiftRow { id: string; guard_id: string; guard_name: string; login_time: string; logout_time: string | null; }

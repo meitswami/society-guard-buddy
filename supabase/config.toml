@@ -18,3 +18,7 @@ verify_jwt = false
 # Monthly bill auto-issue (1st of month cron + admin "Issue now").
 [functions.issue-monthly-maintenance]
 verify_jwt = false
+
+# Directory WhatsApp / email despatch from in-app admin session (not Supabase Auth JWT).
+[functions.dispatch-directory-message]
+verify_jwt = false

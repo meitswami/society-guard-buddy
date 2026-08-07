@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { dispatchDirectoryChannels } from '@/lib/dispatchDirectoryChannels';
 
 export type AdminRecordNotifyAudience = 'none' | 'selected_flats' | 'all';
 
@@ -26,6 +27,7 @@ export async function notifyResidentsOfRecord(opts: {
   billUrl: string | null;
   /** Shown if DB insert or push invoke fails */
   saveSucceededHint?: string;
+  channels?: { whatsapp?: boolean; email?: boolean };
 }): Promise<boolean> {
   const {
     societyId,
@@ -37,6 +39,7 @@ export async function notifyResidentsOfRecord(opts: {
     notificationType,
     billUrl,
     saveSucceededHint = 'Record saved, but notifying residents failed. You can send a manual notice from Notifications.',
+    channels,
   } = opts;
 
   const mediaItems = mediaItemsFromReceiptUrl(billUrl);
@@ -99,6 +102,20 @@ export async function notifyResidentsOfRecord(opts: {
           sound_key: 'digital',
           sound_custom_url: '',
         },
+      });
+    }
+    if (channels?.whatsapp || channels?.email) {
+      const imageUrl = mediaItems?.[0]?.url ?? null;
+      await dispatchDirectoryChannels({
+        societyId,
+        title,
+        message,
+        channels: { whatsapp: !!channels.whatsapp, email: !!channels.email },
+        target:
+          audience === 'all'
+            ? { type: 'all' }
+            : { type: 'flat', flatNumbers: [...new Set(selectedFlatNumbers.filter(Boolean))] },
+        imageUrl,
       });
     }
     return true;

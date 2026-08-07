@@ -48,6 +48,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { uploadMeetingFile } from '@/lib/notificationMediaStorage';
+import { dispatchDirectoryChannels } from '@/lib/dispatchDirectoryChannels';
 
 type MeetingRow = {
   id: string;
@@ -284,6 +285,8 @@ const MeetingManager = ({
     meetingKind: 'general_body' as MeetingKind,
     agendaText: '',
     notifyOnCreate: true,
+    notifyWhatsapp: false,
+    notifyEmail: false,
   });
   const [meetingKindFilter, setMeetingKindFilter] = useState<'all' | MeetingKind>('all');
   const [memberToAdd, setMemberToAdd] = useState('');
@@ -293,6 +296,8 @@ const MeetingManager = ({
   const [attendeeSelection, setAttendeeSelection] = useState<Set<string>>(() => new Set());
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [memberPickerSelection, setMemberPickerSelection] = useState<Set<string>>(() => new Set());
+  const [detailNotifyWhatsapp, setDetailNotifyWhatsapp] = useState(false);
+  const [detailNotifyEmail, setDetailNotifyEmail] = useState(false);
   const [agendaDraft, setAgendaDraft] = useState('');
   const [suggestionDraft, setSuggestionDraft] = useState('');
   const [residentAgendaDraft, setResidentAgendaDraft] = useState('');
@@ -648,7 +653,12 @@ const MeetingManager = ({
     })();
   };
 
-  const notifyResidentsOfMeeting = async (meetingId: string, title: string, body: string) => {
+  const notifyResidentsOfMeeting = async (
+    meetingId: string,
+    title: string,
+    body: string,
+    channels?: { whatsapp?: boolean; email?: boolean },
+  ) => {
     if (!societyId) return;
     await supabase.from('notifications').insert([
       {
@@ -677,6 +687,16 @@ const MeetingManager = ({
     } catch (e) {
       console.warn('Push failed', e);
     }
+    if (channels?.whatsapp || channels?.email) {
+      await dispatchDirectoryChannels({
+        societyId,
+        title,
+        message: body,
+        channels: { whatsapp: !!channels.whatsapp, email: !!channels.email },
+        target: { type: 'all' },
+      });
+    }
+    void meetingId;
   };
 
   const parseAgendaLines = (text: string) =>
@@ -744,6 +764,7 @@ const MeetingManager = ({
         data.id,
         `Meeting notice: ${titleText}`,
         `${purpose}\n\nWhen: ${when}\nVenue: ${venue}\nOpen Meetings in the app for agenda and documents.`,
+        { whatsapp: newForm.notifyWhatsapp, email: newForm.notifyEmail },
       );
       toast.success('Meeting created, published, and residents notified');
     } else {
@@ -759,6 +780,8 @@ const MeetingManager = ({
       meetingKind: 'general_body',
       agendaText: '',
       notifyOnCreate: true,
+      notifyWhatsapp: false,
+      notifyEmail: false,
     });
     await loadMeetings();
     setSelectedId(data.id);
@@ -855,7 +878,10 @@ const MeetingManager = ({
     const title = `Meeting notice: ${metaDraft.title || selected?.title || 'Meeting'}`;
     const when = fmtDateTimeFull(combineDateAndTimeToIso(metaDraft.meetingDate, metaDraft.meetingTime));
     const body = `${metaDraft.purpose || selected?.description || ''}\n\nWhen: ${when}\nVenue: ${metaDraft.location || '—'}\nOpen Meetings for agenda and documents.`;
-    await notifyResidentsOfMeeting(selectedId, title, body.slice(0, 900));
+    await notifyResidentsOfMeeting(selectedId, title, body.slice(0, 900), {
+      whatsapp: detailNotifyWhatsapp,
+      email: detailNotifyEmail,
+    });
     toast.success('Notice published and sent to residents');
     void loadMeetings();
   };
@@ -1325,6 +1351,15 @@ const MeetingManager = ({
     } catch (e) {
       console.warn('Push failed', e);
     }
+    if (detailNotifyWhatsapp || detailNotifyEmail) {
+      await dispatchDirectoryChannels({
+        societyId,
+        title,
+        message: body,
+        channels: { whatsapp: detailNotifyWhatsapp, email: detailNotifyEmail },
+        target: { type: 'all' },
+      });
+    }
     toast.success('Published and sent to all residents (in-app + push where configured).');
     void loadMeetings();
   };
@@ -1711,6 +1746,26 @@ const MeetingManager = ({
                 </span>
               </span>
             </label>
+            {newForm.notifyOnCreate && (
+              <div className="flex flex-col gap-2 text-xs pl-1">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={newForm.notifyWhatsapp}
+                    onChange={(e) => setNewForm((p) => ({ ...p, notifyWhatsapp: e.target.checked }))}
+                  />
+                  Also WhatsApp directory contacts
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={newForm.notifyEmail}
+                    onChange={(e) => setNewForm((p) => ({ ...p, notifyEmail: e.target.checked }))}
+                  />
+                  Also email directory contacts
+                </label>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="secondary" type="button" onClick={() => setShowNew(false)}>
@@ -2074,6 +2129,24 @@ const MeetingManager = ({
                     ? 'Published — residents can open this notice. You may edit and re-notify if details change.'
                     : 'Not yet published. Residents will not see this meeting until you publish.'}
                 </p>
+                <div className="flex flex-col gap-1.5 text-xs">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={detailNotifyWhatsapp}
+                      onChange={(e) => setDetailNotifyWhatsapp(e.target.checked)}
+                    />
+                    Also WhatsApp directory contacts
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={detailNotifyEmail}
+                      onChange={(e) => setDetailNotifyEmail(e.target.checked)}
+                    />
+                    Also email directory contacts
+                  </label>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" onClick={() => void publishNoticeToResidents()}>
                     <Send className="w-4 h-4 mr-2" />

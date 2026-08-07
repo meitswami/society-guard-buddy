@@ -90,7 +90,7 @@ serve(async (req) => {
     const now = new Date();
     let settingsQuery = supabase
       .from('finance_reminder_settings')
-      .select('society_id, enabled, schedule, timezone, due_day')
+      .select('society_id, enabled, schedule, timezone, due_day, reminder_whatsapp, reminder_email')
       .eq('enabled', true);
     if (payload?.society_id) {
       settingsQuery = settingsQuery.eq('society_id', payload.society_id);
@@ -209,6 +209,26 @@ serve(async (req) => {
           sound_custom_url: '',
         }),
       });
+
+      const wantWa = setting.reminder_whatsapp === true;
+      const wantEmail = setting.reminder_email === true;
+      if (wantWa || wantEmail) {
+        await fetch(`${SUPABASE_URL}/functions/v1/dispatch-directory-message`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({
+            society_id: societyId,
+            title,
+            message,
+            channels: { whatsapp: wantWa, email: wantEmail },
+            target_type: 'flat',
+            target_flat_numbers: toNotify,
+          }),
+        });
+      }
 
       const logRows = toNotify.map((flatNumber) => ({
         society_id: societyId,

@@ -10,7 +10,7 @@ import { floorLabelFromFlatNumber } from '@/lib/flatFloor';
 import { allowsPrimaryMember, allowsResidentLogin, isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
 import type { Flat, Member } from '@/types';
 import { Switch } from '@/components/ui/switch';
-import { exportResidentsDirectoryPdf, buildResidentsDirectoryPdfBlob, type PdfFlat, type PdfMember } from '@/lib/exportResidentsPdf';
+import { buildResidentsDirectoryPdfBlob, type PdfFlat, type PdfMember } from '@/lib/exportResidentsPdf';
 import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import SensitiveAdminVerifyModal from '@/components/SensitiveAdminVerifyModal';
 import Flat360ProfilePanel from '@/components/Flat360ProfilePanel';
@@ -29,6 +29,10 @@ type MemberDocDraft = {
 type MemberFormState = {
   name: string;
   phone: string;
+  whatsappPhone: string;
+  email: string;
+  notifyWhatsapp: boolean;
+  notifyEmail: boolean;
   relation: string;
   age: string;
   gender: string;
@@ -49,6 +53,10 @@ type MemberFormState = {
 const initialMemberForm = (): MemberFormState => ({
   name: '',
   phone: '',
+  whatsappPhone: '',
+  email: '',
+  notifyWhatsapp: true,
+  notifyEmail: true,
   relation: 'family',
   age: '',
   gender: '',
@@ -193,7 +201,7 @@ const AdminResidentManager = ({
     return flats.filter(f => {
       const flatMembers = members.filter(m => m.flatId === f.id);
       const memberHay = flatMembers
-        .map((m) => [m.name, m.phone, m.relation].filter(Boolean).join(' '))
+        .map((m) => [m.name, m.phone, m.whatsappPhone, m.email, m.relation].filter(Boolean).join(' '))
         .join(' ')
         .toLowerCase();
       return (
@@ -382,7 +390,16 @@ const AdminResidentManager = ({
     setExportingPdf(true);
     try {
       const { societyName, pdfFlats, pdfMembers } = await buildResidentsPdfData();
-      exportResidentsDirectoryPdf(societyName, pdfFlats, pdfMembers);
+      const { resolveLetterheadReportContext } = await import('@/lib/letterheadReportEngine');
+      const ctx = await resolveLetterheadReportContext(societyId);
+      if (ctx?.warning) toast.warning(ctx.warning);
+      const blob = buildResidentsDirectoryPdfBlob(societyName, pdfFlats, pdfMembers, {
+        letterhead: ctx?.letterhead ?? null,
+        pdfMode: ctx?.mode ?? 'letterhead',
+      });
+      const { triggerDownload } = await import('@/lib/reportExportUtils');
+      const { residentsDirectoryPdfFilename } = await import('@/lib/exportResidentsPdf');
+      triggerDownload(blob, residentsDirectoryPdfFilename(societyName));
     } finally {
       setExportingPdf(false);
     }
@@ -521,6 +538,10 @@ const AdminResidentManager = ({
       flat_id: flatId,
       name: memberForm.name,
       phone: memberForm.phone || null,
+      whatsapp_phone: memberForm.whatsappPhone || null,
+      email: memberForm.email.trim() || null,
+      notify_whatsapp: memberForm.notifyWhatsapp,
+      notify_email: memberForm.notifyEmail,
       relation: memberForm.relation,
       household_group: String(memberForm.relation || '').trim().toLowerCase() === 'tenant' ? 'tenant' : 'owner',
       age: memberForm.age ? parseInt(memberForm.age, 10) : null,
@@ -560,7 +581,11 @@ const AdminResidentManager = ({
       if (allowsResidentLogin(memberForm.relation) && memberForm.phone) {
         await supabase
           .from('resident_users')
-          .update({ name: memberForm.name })
+          .update({
+            name: memberForm.name,
+            whatsapp_phone: memberForm.whatsappPhone || null,
+            email: memberForm.email.trim() || null,
+          })
           .eq('phone', memberForm.phone)
           .eq('flat_id', flatId);
       }
@@ -629,6 +654,10 @@ const AdminResidentManager = ({
       ...initialMemberForm(),
       name: m.name,
       phone: m.phone || '',
+      whatsappPhone: m.whatsappPhone || '',
+      email: m.email || '',
+      notifyWhatsapp: m.notifyWhatsapp !== false,
+      notifyEmail: m.notifyEmail !== false,
       relation: m.relation,
       age: m.age ? String(m.age) : '',
       gender: mapGenderForAdminForm(m.gender),
@@ -772,7 +801,12 @@ const AdminResidentManager = ({
               message="Resident directory"
               getBlob={async () => {
                 const { societyName, pdfFlats, pdfMembers } = await buildResidentsPdfData();
-                return buildResidentsDirectoryPdfBlob(societyName, pdfFlats, pdfMembers);
+                const { resolveLetterheadReportContext } = await import('@/lib/letterheadReportEngine');
+                const ctx = await resolveLetterheadReportContext(societyId);
+                return buildResidentsDirectoryPdfBlob(societyName, pdfFlats, pdfMembers, {
+                  letterhead: ctx?.letterhead ?? null,
+                  pdfMode: ctx?.mode ?? 'letterhead',
+                });
               }}
             />
             <button onClick={openAddFlatTab}
@@ -1104,6 +1138,8 @@ const AdminResidentManager = ({
                                 <p className="text-[10px] text-muted-foreground capitalize">
                                   {m.relation}{m.age ? ` · ${m.age}y` : ''}{m.gender ? ` · ${m.gender}` : ''}
                                   {m.phone ? ` · 📱${m.phone}` : ''}
+                                  {m.whatsappPhone ? ` · WA ${m.whatsappPhone}` : ''}
+                                  {m.email ? ` · ${m.email}` : ''}
                                 </p>
                                 {(m.idPhotoFront || m.idPhotoBack) && (
                                   <div className="flex gap-1 mt-1 flex-wrap">
@@ -1175,6 +1211,38 @@ const AdminResidentManager = ({
                               onChange={e => setMemberForm({...memberForm, phone: e.target.value.replace(/\D/g, '')})}
                               maxLength={10}
                             />
+                            <input
+                              className="input-field text-xs"
+                              placeholder="WhatsApp (shared)"
+                              value={memberForm.whatsappPhone}
+                              onChange={e => setMemberForm({ ...memberForm, whatsappPhone: e.target.value.replace(/\D/g, '') })}
+                              maxLength={15}
+                            />
+                            <input
+                              className="input-field text-xs"
+                              placeholder="Email ID"
+                              type="email"
+                              value={memberForm.email}
+                              onChange={e => setMemberForm({ ...memberForm, email: e.target.value })}
+                            />
+                            <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={memberForm.notifyWhatsapp}
+                                onChange={e => setMemberForm({ ...memberForm, notifyWhatsapp: e.target.checked })}
+                                className="rounded"
+                              />
+                              Notify via WhatsApp
+                            </label>
+                            <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={memberForm.notifyEmail}
+                                onChange={e => setMemberForm({ ...memberForm, notifyEmail: e.target.checked })}
+                                className="rounded"
+                              />
+                              Notify via email
+                            </label>
                             <select className="input-field text-xs col-span-2" value={memberForm.relation} onChange={e => setMemberForm({...memberForm, relation: e.target.value, isPrimary: false})}>
                               <option value="" disabled>---Select---</option>
                               <optgroup label="Household">

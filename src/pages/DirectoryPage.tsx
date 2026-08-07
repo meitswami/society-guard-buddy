@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
-import { BookUser, Search, ChevronDown, ChevronUp, Home, Users, Car, Phone, Edit2 } from 'lucide-react';
+import { BookUser, Search, ChevronDown, ChevronUp, Home, Users, Car, Phone, Edit2, Mail, MessageCircle } from 'lucide-react';
 import { PersonAvatar } from '@/components/PersonAvatar';
 import { fmtDate } from '@/lib/dateFormat';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -61,7 +61,7 @@ const DirectoryPage = ({
       const flatMembers = membersByFlatId.get(f.id) ?? [];
       const flatVehicles = vehiclesByFlatNumber.get(f.flatNumber) ?? [];
       const memberText = flatMembers
-        .map((m) => [m.name, m.phone, m.relation, String(m.age ?? ''), m.gender].filter(Boolean).join(' '))
+        .map((m) => [m.name, m.phone, m.whatsappPhone, m.email, m.relation, String(m.age ?? ''), m.gender].filter(Boolean).join(' '))
         .join(' ');
       const vehicleText = flatVehicles
         .map((v) => [v.vehicleNumber, v.vehicleType, v.residentName].filter(Boolean).join(' '))
@@ -90,7 +90,7 @@ const DirectoryPage = ({
     const q = search.trim().toLowerCase();
     if (!q) return [];
     return getMembersForFlat(flatId).filter((m) => {
-      const hay = [m.name, m.phone, m.relation].filter(Boolean).join(' ').toLowerCase();
+      const hay = [m.name, m.phone, m.whatsappPhone, m.email, m.relation].filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
     });
   };
@@ -245,13 +245,33 @@ const DirectoryPage = ({
                                   </p>
                                   <p className="text-[10px] text-muted-foreground capitalize">
                                     {m.relation}{m.age ? ` · ${m.age}y` : ''}{m.gender ? ` · ${m.gender}` : ''}
+                                    {m.whatsappPhone ? ` · WA ${m.whatsappPhone}` : ''}
+                                    {m.email ? ` · ${m.email}` : ''}
                                   </p>
                                 </div>
-                                {m.phone && (
-                                  <a href={`tel:${m.phone}`} className="text-primary">
-                                    <Phone className="w-3 h-3" />
-                                  </a>
-                                )}
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  {m.phone && (
+                                    <a href={`tel:${m.phone}`} className="text-primary" title="Call">
+                                      <Phone className="w-3 h-3" />
+                                    </a>
+                                  )}
+                                  {(m.whatsappPhone || m.phone) && (
+                                    <a
+                                      href={`https://wa.me/${(m.whatsappPhone || m.phone || '').replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-emerald-600"
+                                      title="WhatsApp"
+                                    >
+                                      <MessageCircle className="w-3 h-3" />
+                                    </a>
+                                  )}
+                                  {m.email && (
+                                    <a href={`mailto:${m.email}`} className="text-primary" title="Email">
+                                      <Mail className="w-3 h-3" />
+                                    </a>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>

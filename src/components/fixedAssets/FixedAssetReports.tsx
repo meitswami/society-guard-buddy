@@ -8,11 +8,12 @@ import { moneyInr } from '@/lib/reportExportUtils';
 import type { FixedAsset } from '@/lib/fixedAssetTypes';
 
 type Props = {
+  societyId?: string | null;
   societyName: string;
   assets: FixedAsset[];
 };
 
-export default function FixedAssetReports({ societyName, assets }: Props) {
+export default function FixedAssetReports({ societyId, societyName, assets }: Props) {
   const summary = useMemo(() => computeFixedAssetReport(assets), [assets]);
 
   return (
@@ -23,7 +24,19 @@ export default function FixedAssetReports({ societyName, assets }: Props) {
           Fixed assets report
         </h2>
         <ExportFormatMenu
-          onExport={(format) => exportFixedAssetReport({ societyName, assets, format })}
+          onExport={(format) => {
+            void (async () => {
+              const { resolveLetterheadReportContext } = await import('@/lib/letterheadReportEngine');
+              const ctx = await resolveLetterheadReportContext(societyId);
+              exportFixedAssetReport({
+                societyName,
+                assets,
+                format,
+                letterhead: ctx?.letterhead ?? null,
+                pdfMode: ctx?.mode ?? 'letterhead',
+              });
+            })();
+          }}
           disabled={assets.length === 0}
         />
       </div>

@@ -55,11 +55,16 @@ export default function FinancePeriodReportSendPanel({
 
     setSending(true);
     try {
+      const ctx = await import('@/lib/letterheadReportEngine').then((m) =>
+        m.resolveLetterheadReportContext(societyId),
+      );
       const pdfBlob = buildFinancePeriodReportPdf(
         toFinancePeriodReportExportInput(periodReport, {
           societyName,
           periodFrom,
           periodTo,
+          letterhead: ctx?.letterhead ?? null,
+          pdfMode: ctx?.mode ?? 'letterhead',
         }),
       );
       await financeMutations.sendPeriodReportToMembers({

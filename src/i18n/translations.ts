@@ -934,8 +934,8 @@ const translations: Record<string, Record<Lang, string>> = {
   'settings.letterheadSaved': { en: 'Letterhead saved', hi: 'लेटरहेड सहेजा गया' },
   'settings.letterheadRemoved': { en: 'Letterhead removed', hi: 'लेटरहेड हटाया गया' },
   'settings.letterheadInvalidType': {
-    en: 'Upload a PNG, JPG, or PDF letterhead',
-    hi: 'PNG, JPG या PDF लेटरहेड अपलोड करें',
+    en: 'Upload a full-page PNG or JPG letterhead (used as the PDF page background)',
+    hi: 'पूर्ण-पृष्ठ PNG या JPG लेटरहेड अपलोड करें (PDF पृष्ठ पृष्ठभूमि के रूप में)',
   },
   'settings.letterheadUploadHint': {
     en: 'Upload a full-page letterhead image (PNG/JPG preferred). It is drawn as the PDF page background on every page. Store path uses the society-documents bucket.',

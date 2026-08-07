@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { uploadToNotificationMedia, sanitizeStorageFileName } from '@/lib/notificationMediaStorage';
+import { dispatchDirectoryChannels } from '@/lib/dispatchDirectoryChannels';
 
 interface ResidentRef {
   id: string;
@@ -101,6 +102,8 @@ const NotificationCenter = ({
   const [notifications, setNotifications] = useState<Tables<'notifications'>[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [nf, setNf] = useState({ title: '', message: '', type: 'general' });
+  const [channelWhatsapp, setChannelWhatsapp] = useState(false);
+  const [channelEmail, setChannelEmail] = useState(false);
   const [targetMode, setTargetMode] = useState<TargetMode>('all');
   const [selectedFlats, setSelectedFlats] = useState<string[]>([]);
   const [selectedResidents, setSelectedResidents] = useState<{ id: string; name: string; flatNumber: string }[]>([]);
@@ -450,7 +453,26 @@ const NotificationCenter = ({
       console.warn('Push notification failed (may not be configured):', e);
     }
 
+    if (societyId && (channelWhatsapp || channelEmail)) {
+      const imageUrl = mediaItems.find((m) => m.kind === 'image')?.url ?? null;
+      await dispatchDirectoryChannels({
+        societyId,
+        title: nf.title,
+        message: nf.message,
+        channels: { whatsapp: channelWhatsapp, email: channelEmail },
+        target:
+          targetMode === 'flat'
+            ? { type: 'flat', flatNumbers: targetFlatNumbers }
+            : targetMode === 'user'
+              ? { type: 'user', residentUserIds: targetUserIds }
+              : { type: 'all' },
+        imageUrl,
+      });
+    }
+
     setNf({ title: '', message: '', type: 'general' });
+    setChannelWhatsapp(false);
+    setChannelEmail(false);
     setAlertSoundKey('digital');
     setShowForm(false);
     setSelectedFlats([]);
@@ -458,7 +480,11 @@ const NotificationCenter = ({
     setTargetMode('all');
     setPendingFiles([]);
     setSending(false);
-    toast.success('Notification sent with push alert!');
+    toast.success(
+      channelWhatsapp || channelEmail
+        ? 'Notification sent (push + directory channels where configured)'
+        : 'Notification sent with push alert!',
+    );
     loadNotifications();
   };
 
@@ -877,6 +903,26 @@ const NotificationCenter = ({
                   </div>
                 </div>
               )}
+
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Also despatch via directory contacts</p>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={channelWhatsapp}
+                    onChange={(e) => setChannelWhatsapp(e.target.checked)}
+                  />
+                  WhatsApp (member WhatsApp / phone)
+                </label>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={channelEmail}
+                    onChange={(e) => setChannelEmail(e.target.checked)}
+                  />
+                  Email (directory email ID)
+                </label>
+              </div>
 
               <button
                 type="button"

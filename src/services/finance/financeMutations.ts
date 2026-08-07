@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { SocietyPaymentMajorHead } from '@/lib/financeExpenseHead';
 import { uploadFinancePeriodReportPdf } from '@/lib/notificationMediaStorage';
 import type { FinanceReminderSchedule } from '@/services/finance/financeService';
+import { dispatchDirectoryChannels } from '@/lib/dispatchDirectoryChannels';
 
 export type MutationResult<T = void> = { data: T; error: null } | { data: null; error: string };
 
@@ -275,6 +276,13 @@ export async function notifyPaymentDecision(input: PaymentDecisionNotifyInput): 
       sound_custom_url: '',
     },
   });
+  await dispatchDirectoryChannels({
+    societyId: input.societyId,
+    title: input.title,
+    message: input.message,
+    channels: { whatsapp: true, email: true },
+    target: { type: 'flat', flatNumbers: [input.flatNumber] },
+  });
 }
 
 export type MaintenancePaymentStatus = 'pending' | 'verified' | 'rejected';
@@ -437,6 +445,27 @@ export async function sendMaintenanceReminders(
     console.warn('Push invoke failed', e);
   }
 
+  try {
+    const { data: settings } = await (supabase as any)
+      .from('finance_reminder_settings')
+      .select('reminder_whatsapp, reminder_email')
+      .eq('society_id', societyId)
+      .maybeSingle();
+    const wantWa = settings?.reminder_whatsapp === true;
+    const wantEmail = settings?.reminder_email === true;
+    if (wantWa || wantEmail) {
+      await dispatchDirectoryChannels({
+        societyId,
+        title,
+        message: 'Your maintenance payment is due. Please pay at the earliest.',
+        channels: { whatsapp: wantWa, email: wantEmail },
+        target: { type: 'flat', flatNumbers: flats },
+      });
+    }
+  } catch (e) {
+    console.warn('Directory channel reminder failed', e);
+  }
+
   return { data: undefined, error: null };
 }
 
@@ -448,6 +477,9 @@ export async function upsertFinanceReminderSettings(
   opts?: {
     autoIssueEnabled?: boolean;
     autoIssueWhatsapp?: boolean;
+    autoIssueEmail?: boolean;
+    reminderWhatsapp?: boolean;
+    reminderEmail?: boolean;
     billSoundKey?: string;
   },
 ): Promise<MutationResult> {
@@ -461,6 +493,9 @@ export async function upsertFinanceReminderSettings(
       timezone: 'Asia/Kolkata',
       auto_issue_enabled: opts?.autoIssueEnabled ?? true,
       auto_issue_whatsapp: opts?.autoIssueWhatsapp ?? true,
+      auto_issue_email: opts?.autoIssueEmail ?? false,
+      reminder_whatsapp: opts?.reminderWhatsapp ?? false,
+      reminder_email: opts?.reminderEmail ?? false,
       bill_sound_key: opts?.billSoundKey || 'melody',
       updated_at: new Date().toISOString(),
     },

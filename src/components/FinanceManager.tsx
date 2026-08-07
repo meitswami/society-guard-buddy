@@ -157,6 +157,12 @@ const FinanceManager = ({
     setAutoIssueEnabled,
     autoIssueWhatsapp,
     setAutoIssueWhatsapp,
+    autoIssueEmail,
+    setAutoIssueEmail,
+    reminderWhatsapp,
+    setReminderWhatsapp,
+    reminderEmail,
+    setReminderEmail,
     billSoundKey,
     setBillSoundKey,
     isLoading: financeDataLoading,
@@ -2220,6 +2226,9 @@ const FinanceManager = ({
         dueDay: reminderDueDay,
         autoIssueEnabled,
         autoIssueWhatsapp,
+        autoIssueEmail,
+        reminderWhatsapp,
+        reminderEmail,
         billSoundKey,
       });
       toast.success('Auto reminder / bill settings saved');
@@ -2398,9 +2407,15 @@ const FinanceManager = ({
           }
           autoIssueEnabled={autoIssueEnabled}
           autoIssueWhatsapp={autoIssueWhatsapp}
+          autoIssueEmail={autoIssueEmail}
+          reminderWhatsapp={reminderWhatsapp}
+          reminderEmail={reminderEmail}
           billSoundKey={billSoundKey}
           onAutoIssueEnabledChange={setAutoIssueEnabled}
           onAutoIssueWhatsappChange={setAutoIssueWhatsapp}
+          onAutoIssueEmailChange={setAutoIssueEmail}
+          onReminderWhatsappChange={setReminderWhatsapp}
+          onReminderEmailChange={setReminderEmail}
           onBillSoundKeyChange={setBillSoundKey}
           onIssueMonthlyBillNow={() => void issueMonthlyBillNow()}
           issuingMonthlyBill={issuingMonthlyBill}

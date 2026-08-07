@@ -75,6 +75,10 @@ export interface Member {
   flatId: string;
   name: string;
   phone?: string;
+  whatsappPhone?: string;
+  email?: string;
+  notifyWhatsapp?: boolean;
+  notifyEmail?: boolean;
   relation: string;
   age?: number;
   gender?: string;

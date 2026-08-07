@@ -370,6 +370,10 @@ export const useStore = create<AppState>()((set, get) => ({
       set({
         members: data.map(m => ({
           id: m.id, flatId: m.flat_id, name: m.name, phone: m.phone || undefined,
+          whatsappPhone: (m as { whatsapp_phone?: string | null }).whatsapp_phone || undefined,
+          email: (m as { email?: string | null }).email || undefined,
+          notifyWhatsapp: (m as { notify_whatsapp?: boolean | null }).notify_whatsapp !== false,
+          notifyEmail: (m as { notify_email?: boolean | null }).notify_email !== false,
           relation: m.relation || 'owner', age: m.age || undefined, gender: m.gender || undefined,
           photo: m.photo || undefined, isPrimary: m.is_primary ?? false,
           idPhotoFront: m.id_photo_front || undefined,

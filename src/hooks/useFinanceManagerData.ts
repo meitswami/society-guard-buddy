@@ -34,6 +34,9 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
   const [reminderDueDay, setReminderDueDay] = useState(1);
   const [autoIssueEnabled, setAutoIssueEnabled] = useState(true);
   const [autoIssueWhatsapp, setAutoIssueWhatsapp] = useState(true);
+  const [autoIssueEmail, setAutoIssueEmail] = useState(false);
+  const [reminderWhatsapp, setReminderWhatsapp] = useState(false);
+  const [reminderEmail, setReminderEmail] = useState(false);
   const [billSoundKey, setBillSoundKey] = useState('melody');
 
   useEffect(() => {
@@ -43,6 +46,9 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
       setReminderDueDay(query.data.reminderDueDay);
       setAutoIssueEnabled(query.data.autoIssueEnabled);
       setAutoIssueWhatsapp(query.data.autoIssueWhatsapp);
+      setAutoIssueEmail(query.data.autoIssueEmail);
+      setReminderWhatsapp(query.data.reminderWhatsapp);
+      setReminderEmail(query.data.reminderEmail);
       setBillSoundKey(query.data.billSoundKey);
     }
   }, [
@@ -51,6 +57,9 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
     query.data?.reminderDueDay,
     query.data?.autoIssueEnabled,
     query.data?.autoIssueWhatsapp,
+    query.data?.autoIssueEmail,
+    query.data?.reminderWhatsapp,
+    query.data?.reminderEmail,
     query.data?.billSoundKey,
     query.data,
   ]);
@@ -84,6 +93,12 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
     setAutoIssueEnabled,
     autoIssueWhatsapp,
     setAutoIssueWhatsapp,
+    autoIssueEmail,
+    setAutoIssueEmail,
+    reminderWhatsapp,
+    setReminderWhatsapp,
+    reminderEmail,
+    setReminderEmail,
     billSoundKey,
     setBillSoundKey,
     isLoading: query.isLoading,

@@ -152,7 +152,9 @@ export default function FixedAssetsModule({ adminName = 'Admin', onNavigateTab }
         </>
       )}
 
-      {subTab === 'reports' && <FixedAssetReports societyName={societyName} assets={assets} />}
+      {subTab === 'reports' && (
+        <FixedAssetReports societyId={societyId} societyName={societyName} assets={assets} />
+      )}
     </div>
   );
 }

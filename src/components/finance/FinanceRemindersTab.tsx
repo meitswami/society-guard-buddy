@@ -22,9 +22,15 @@ interface Props {
   vacantScopeLabel: string;
   autoIssueEnabled: boolean;
   autoIssueWhatsapp: boolean;
+  autoIssueEmail: boolean;
+  reminderWhatsapp: boolean;
+  reminderEmail: boolean;
   billSoundKey: string;
   onAutoIssueEnabledChange: (enabled: boolean) => void;
   onAutoIssueWhatsappChange: (enabled: boolean) => void;
+  onAutoIssueEmailChange: (enabled: boolean) => void;
+  onReminderWhatsappChange: (enabled: boolean) => void;
+  onReminderEmailChange: (enabled: boolean) => void;
   onBillSoundKeyChange: (key: string) => void;
   onIssueMonthlyBillNow: () => void;
   issuingMonthlyBill: boolean;
@@ -51,9 +57,15 @@ export function FinanceRemindersTab({
   vacantScopeLabel,
   autoIssueEnabled,
   autoIssueWhatsapp,
+  autoIssueEmail,
+  reminderWhatsapp,
+  reminderEmail,
   billSoundKey,
   onAutoIssueEnabledChange,
   onAutoIssueWhatsappChange,
+  onAutoIssueEmailChange,
+  onReminderWhatsappChange,
+  onReminderEmailChange,
   onBillSoundKeyChange,
   onIssueMonthlyBillNow,
   issuingMonthlyBill,
@@ -86,6 +98,15 @@ export function FinanceRemindersTab({
             disabled={!autoIssueEnabled}
           />
           Send WhatsApp to each member&apos;s profile number
+        </label>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={autoIssueEmail}
+            onChange={(e) => onAutoIssueEmailChange(e.target.checked)}
+            disabled={!autoIssueEnabled}
+          />
+          Send email to each member&apos;s directory email ID
         </label>
         <label className="text-xs flex flex-col gap-1 max-w-xs">
           <span className="text-muted-foreground">App notification tune</span>
@@ -170,6 +191,24 @@ export function FinanceRemindersTab({
               onChange={(e) => onAutoReminderEnabledChange(e.target.checked)}
             />
             Enable daily due reminders after monthly due date
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={reminderWhatsapp}
+              onChange={(e) => onReminderWhatsappChange(e.target.checked)}
+              disabled={!autoReminderEnabled}
+            />
+            Also WhatsApp directory contacts for due reminders
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={reminderEmail}
+              onChange={(e) => onReminderEmailChange(e.target.checked)}
+              disabled={!autoReminderEnabled}
+            />
+            Also email directory contacts for due reminders
           </label>
           <select
             className="input-field"

@@ -99,7 +99,7 @@ export default function SocietyReportSettingsPanel() {
 
   const onUpload = async (file: File | null) => {
     if (!societyId || !file) return;
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+    if (!file.type.startsWith('image/')) {
       toast.error(t('settings.letterheadInvalidType'));
       return;
     }
@@ -109,14 +109,16 @@ export default function SocietyReportSettingsPanel() {
       setSaving(false);
       return;
     }
+    // Preview immediately from the just-uploaded signed URL; DB stores only the storage path.
+    setPreviewUrl(uploaded.signedUrl);
     // Remove previous private object when replacing (best-effort).
     if (lh?.letterheadStoragePath && lh.letterheadStoragePath !== uploaded.path) {
       await supabase.storage.from('society-documents').remove([lh.letterheadStoragePath]);
     }
     const ok = await persist({
       letterhead_storage_path: uploaded.path,
-      letterhead_url: uploaded.signedUrl,
-      letterhead_mode: file.type.startsWith('image/') ? 'image' : 'image',
+      letterhead_url: null,
+      letterhead_mode: 'image',
       default_report_format: defaultFormat,
     });
     setSaving(false);
@@ -200,7 +202,7 @@ export default function SocietyReportSettingsPanel() {
                 {hasLetterhead ? t('settings.replaceLetterhead') : t('settings.uploadLetterhead')}
                 <input
                   type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
                   className="hidden"
                   disabled={saving}
                   onChange={(e) => {

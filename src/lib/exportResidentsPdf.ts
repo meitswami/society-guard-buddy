@@ -55,21 +55,31 @@ function newPageIfNeeded(
   y: number,
   need: number,
   layout: { contentTop: number; contentBottom: number },
-  lh: string,
+  lh: import('@/lib/pdfLetterhead').SocietyLetterhead | string,
+  mode: import('@/lib/pdfLetterhead').ReportPdfMode = 'letterhead',
 ): { y: number; layout: ReturnType<typeof applyLetterheadPage> } {
   if (y + need > layout.contentBottom) {
     doc.addPage();
-    const next = applyLetterheadPage(doc, lh);
+    const next = applyLetterheadPage(doc, lh, { mode });
     return { y: next.contentTop, layout: next };
   }
   return { y, layout: layout as ReturnType<typeof applyLetterheadPage> };
 }
 
 /** Multi-page PDF: one section per flat, member details + ID thumbnails. */
-export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFlat[], members: PdfMember[]): Blob {
+export function buildResidentsDirectoryPdfBlob(
+  societyName: string,
+  flats: PdfFlat[],
+  members: PdfMember[],
+  opts?: {
+    letterhead?: import('@/lib/pdfLetterhead').SocietyLetterhead | null;
+    pdfMode?: import('@/lib/pdfLetterhead').ReportPdfMode;
+  },
+): Blob {
   const doc = createSocietyPdf();
-  const lh = societyName || 'Society';
-  let layout = applyLetterheadPage(doc, lh);
+  const mode = opts?.pdfMode ?? 'letterhead';
+  const lh = opts?.letterhead ?? (societyName || 'Society');
+  let layout = applyLetterheadPage(doc, lh, { mode });
   const { margin, pageW } = layout;
   let y = layout.contentTop;
 
@@ -86,7 +96,7 @@ export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFl
     const ms = flatMembers(flat.id);
     if (y + 24 > layout.contentBottom) {
       doc.addPage();
-      layout = applyLetterheadPage(doc, lh);
+      layout = applyLetterheadPage(doc, lh, { mode });
       y = layout.contentTop;
     }
 
@@ -114,7 +124,7 @@ export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFl
     }
 
     for (const m of ms) {
-      ({ y, layout } = newPageIfNeeded(doc, y, 55, layout, lh));
+      ({ y, layout } = newPageIfNeeded(doc, y, 55, layout, lh, mode));
       doc.setFontSize(10);
       doc.text(`${m.name}${m.is_primary ? ' ★ primary' : ''}`, margin, y);
       y += 5;
@@ -137,11 +147,11 @@ export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFl
       const imgW = 58;
       const imgH = 34;
       if (m.id_photo_front?.startsWith('data:image')) {
-        ({ y, layout } = newPageIfNeeded(doc, y, imgH + 8, layout, lh));
+        ({ y, layout } = newPageIfNeeded(doc, y, imgH + 8, layout, lh, mode));
         y = addImageBlock(doc, 'Photo ID — front', m.id_photo_front, margin + 2, y, imgW, imgH);
       }
       if (m.id_photo_back?.startsWith('data:image')) {
-        ({ y, layout } = newPageIfNeeded(doc, y, imgH + 8, layout, lh));
+        ({ y, layout } = newPageIfNeeded(doc, y, imgH + 8, layout, lh, mode));
         y = addImageBlock(doc, 'Photo ID — back', m.id_photo_back, margin + 2, y, imgW, imgH);
       }
       y += 4;
@@ -149,7 +159,7 @@ export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFl
     y += 4;
   }
 
-  finalizeLetterheadFooters(doc, lh);
+  finalizeLetterheadFooters(doc, lh, { mode });
   return doc.output('blob');
 }
 

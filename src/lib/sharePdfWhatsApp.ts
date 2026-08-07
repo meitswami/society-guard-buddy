@@ -46,6 +46,7 @@ export async function sharePdfOnWhatsApp(opts: {
 export function buildReportDetailPdfBlob(opts: {
   societyName?: string;
   letterhead?: SocietyLetterhead | null;
+  pdfMode?: import('@/lib/pdfLetterhead').ReportPdfMode;
   title: string;
   subtitle?: string;
   totalAmount?: number;
@@ -53,12 +54,13 @@ export function buildReportDetailPdfBlob(opts: {
 }): Blob {
   const doc = createSocietyPdf();
   const lh = opts.letterhead ?? opts.societyName ?? 'Society';
-  let layout = applyLetterheadPage(doc, lh);
+  const mode = opts.pdfMode ?? 'letterhead';
+  let layout = applyLetterheadPage(doc, lh, { mode });
   const { margin, pageW } = layout;
   let y = layout.contentTop;
 
   const ensureSpace = (need: number) => {
-    const next = letterheadEnsureSpace(doc, layout, y, need, lh);
+    const next = letterheadEnsureSpace(doc, layout, y, need, lh, { mode });
     layout = next.layout;
     y = next.y;
   };
@@ -126,7 +128,7 @@ export function buildReportDetailPdfBlob(opts: {
     doc.text(`Transaction total: ${moneyInr(transactionTotal)}`, margin, y);
   }
 
-  finalizeLetterheadFooters(doc, lh);
+  finalizeLetterheadFooters(doc, lh, { mode });
   return doc.output('blob');
 }
 

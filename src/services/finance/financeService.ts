@@ -30,6 +30,9 @@ export type SocietyFinanceCoreData = {
   reminderDueDay: number;
   autoIssueEnabled: boolean;
   autoIssueWhatsapp: boolean;
+  autoIssueEmail: boolean;
+  reminderWhatsapp: boolean;
+  reminderEmail: boolean;
   billSoundKey: string;
   charges: unknown[];
   paymentExpenseGroups: { id: string; name: string; major_head: string | null; description?: string | null }[];
@@ -66,6 +69,9 @@ const emptyCoreData = (): SocietyFinanceCoreData => ({
   reminderDueDay: 1,
   autoIssueEnabled: true,
   autoIssueWhatsapp: true,
+  autoIssueEmail: false,
+  reminderWhatsapp: false,
+  reminderEmail: false,
   billSoundKey: 'melody',
   charges: [],
   paymentExpenseGroups: [],
@@ -142,7 +148,7 @@ export async function fetchSocietyFinanceCore(
     supabase.from('societies').select('name').eq('id', societyId).maybeSingle(),
     (supabase as any)
       .from('finance_reminder_settings')
-      .select('enabled, schedule, due_day, auto_issue_enabled, auto_issue_whatsapp, bill_sound_key')
+      .select('enabled, schedule, due_day, auto_issue_enabled, auto_issue_whatsapp, auto_issue_email, reminder_whatsapp, reminder_email, bill_sound_key')
       .eq('society_id', societyId)
       .maybeSingle(),
     supabase
@@ -182,6 +188,9 @@ export async function fetchSocietyFinanceCore(
   let reminderDueDay = 1;
   let autoIssueEnabled = true;
   let autoIssueWhatsapp = true;
+  let autoIssueEmail = false;
+  let reminderWhatsapp = false;
+  let reminderEmail = false;
   let billSoundKey = 'melody';
   const reminderSetting = reminderRes.data;
   if (reminderSetting) {
@@ -193,6 +202,15 @@ export async function fetchSocietyFinanceCore(
     }
     if (typeof reminderSetting.auto_issue_whatsapp === 'boolean') {
       autoIssueWhatsapp = reminderSetting.auto_issue_whatsapp;
+    }
+    if (typeof reminderSetting.auto_issue_email === 'boolean') {
+      autoIssueEmail = reminderSetting.auto_issue_email;
+    }
+    if (typeof reminderSetting.reminder_whatsapp === 'boolean') {
+      reminderWhatsapp = reminderSetting.reminder_whatsapp;
+    }
+    if (typeof reminderSetting.reminder_email === 'boolean') {
+      reminderEmail = reminderSetting.reminder_email;
     }
     if (reminderSetting.bill_sound_key) {
       billSoundKey = String(reminderSetting.bill_sound_key);
@@ -266,6 +284,9 @@ export async function fetchSocietyFinanceCore(
     reminderDueDay,
     autoIssueEnabled,
     autoIssueWhatsapp,
+    autoIssueEmail,
+    reminderWhatsapp,
+    reminderEmail,
     billSoundKey,
     charges,
     paymentExpenseGroups,

@@ -1684,6 +1684,9 @@ export type Database = {
           updated_at: string
           auto_issue_enabled: boolean
           auto_issue_whatsapp: boolean
+          auto_issue_email: boolean
+          reminder_whatsapp: boolean
+          reminder_email: boolean
           bill_sound_key: string
         }
         Insert: {
@@ -1697,6 +1700,9 @@ export type Database = {
           updated_at?: string
           auto_issue_enabled?: boolean
           auto_issue_whatsapp?: boolean
+          auto_issue_email?: boolean
+          reminder_whatsapp?: boolean
+          reminder_email?: boolean
           bill_sound_key?: string
         }
         Update: {
@@ -1710,6 +1716,9 @@ export type Database = {
           updated_at?: string
           auto_issue_enabled?: boolean
           auto_issue_whatsapp?: boolean
+          auto_issue_email?: boolean
+          reminder_whatsapp?: boolean
+          reminder_email?: boolean
           bill_sound_key?: string
         }
         Relationships: [
@@ -2809,6 +2818,7 @@ export type Database = {
           date_joining: string | null
           date_leave: string | null
           election_disqualified_until: string | null
+          email: string | null
           flat_id: string
           gender: string | null
           household_group: string
@@ -2817,6 +2827,8 @@ export type Database = {
           id_photo_front: string | null
           is_primary: boolean | null
           name: string
+          notify_email: boolean
+          notify_whatsapp: boolean
           phone: string | null
           photo: string | null
           police_verification: string | null
@@ -2830,6 +2842,7 @@ export type Database = {
           date_joining?: string | null
           date_leave?: string | null
           election_disqualified_until?: string | null
+          email?: string | null
           flat_id: string
           gender?: string | null
           household_group?: string
@@ -2838,6 +2851,8 @@ export type Database = {
           id_photo_front?: string | null
           is_primary?: boolean | null
           name: string
+          notify_email?: boolean
+          notify_whatsapp?: boolean
           phone?: string | null
           photo?: string | null
           police_verification?: string | null
@@ -2851,6 +2866,7 @@ export type Database = {
           date_joining?: string | null
           date_leave?: string | null
           election_disqualified_until?: string | null
+          email?: string | null
           flat_id?: string
           gender?: string | null
           household_group?: string
@@ -2859,6 +2875,8 @@ export type Database = {
           id_photo_front?: string | null
           is_primary?: boolean | null
           name?: string
+          notify_email?: boolean
+          notify_whatsapp?: boolean
           phone?: string | null
           photo?: string | null
           police_verification?: string | null

@@ -207,6 +207,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [directoryEmail, setDirectoryEmail] = useState('');
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
@@ -361,10 +362,11 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     void (async () => {
       const { data } = await supabase
         .from('resident_users')
-        .select('whatsapp_phone')
+        .select('whatsapp_phone, email')
         .eq('id', resident.id)
         .maybeSingle();
       setWhatsappPhone(data?.whatsapp_phone ?? resident.phone ?? '');
+      setDirectoryEmail((data as { email?: string | null } | null)?.email ?? '');
     })();
   }, [resident.id, resident.phone]);
 
@@ -2279,9 +2281,10 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             </div>
 
             <div className="card-section p-4">
-              <p className="text-sm font-semibold mb-1">WhatsApp for emergency alerts</p>
+              <p className="text-sm font-semibold mb-1">WhatsApp &amp; email for notices</p>
               <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">
-                Society-wide emergency alerts are also sent to this number. Leave blank to use your login phone ({resident.phone}).
+                Used for emergency alerts, meeting notices, bills, and receipts when admin enables those channels.
+                Leave WhatsApp blank to use your login phone ({resident.phone}).
               </p>
               <input
                 className="input-field mb-2"
@@ -2290,6 +2293,13 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, ''))}
                 inputMode="numeric"
               />
+              <input
+                className="input-field mb-2"
+                placeholder="Email ID"
+                type="email"
+                value={directoryEmail}
+                onChange={(e) => setDirectoryEmail(e.target.value)}
+              />
               <button
                 type="button"
                 disabled={savingWhatsapp}
@@ -2297,16 +2307,23 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 onClick={async () => {
                   setSavingWhatsapp(true);
                   const val = whatsappPhone.trim() || null;
+                  const emailVal = directoryEmail.trim() || null;
                   const { error } = await supabase
                     .from('resident_users')
-                    .update({ whatsapp_phone: val })
+                    .update({ whatsapp_phone: val, email: emailVal })
                     .eq('id', resident.id);
+                  if (!error && myMemberRecord?.id) {
+                    await supabase
+                      .from('members')
+                      .update({ whatsapp_phone: val, email: emailVal })
+                      .eq('id', myMemberRecord.id);
+                  }
                   setSavingWhatsapp(false);
                   if (error) toast.error(error.message);
-                  else toast.success('WhatsApp number saved for emergency alerts');
+                  else toast.success('WhatsApp and email saved for directory despatch');
                 }}
               >
-                {savingWhatsapp ? 'Saving…' : 'Save WhatsApp number'}
+                {savingWhatsapp ? 'Saving…' : 'Save contact channels'}
               </button>
             </div>
 

@@ -132,8 +132,21 @@ export function FinanceTotalsTab({
       toast.error(periodInvalid ? 'End date must be on or after start date' : 'No report data for this period');
       return;
     }
-    downloadFinancePeriodReport(format, periodExportInput, exportFilenameBase);
-    toast.success(`${format.toUpperCase()} downloaded`);
+    void (async () => {
+      const { resolveLetterheadReportContext } = await import('@/lib/letterheadReportEngine');
+      const ctx = await resolveLetterheadReportContext(societyId);
+      if (ctx?.warning && format === 'pdf') toast.warning(ctx.warning);
+      downloadFinancePeriodReport(
+        format,
+        {
+          ...periodExportInput,
+          letterhead: ctx?.letterhead ?? null,
+          pdfMode: ctx?.mode ?? 'letterhead',
+        },
+        exportFilenameBase,
+      );
+      toast.success(`${format.toUpperCase()} downloaded`);
+    })();
   };
 
   const flatNumbers = useMemo(() => flats.map((f) => f.flat_number), [flats]);
@@ -186,7 +199,16 @@ export function FinanceTotalsTab({
                 disabled={periodInvalid}
                 filename={`${exportFilenameBase}.pdf`}
                 message={`${societyName || 'Society'} — ${periodLabel} finance totals report`}
-                getBlob={() => buildFinancePeriodReportPdf(periodExportInput)}
+                getBlob={async () => {
+                  if (!periodExportInput) throw new Error('No report data');
+                  const { resolveLetterheadReportContext } = await import('@/lib/letterheadReportEngine');
+                  const ctx = await resolveLetterheadReportContext(societyId);
+                  return buildFinancePeriodReportPdf({
+                    ...periodExportInput,
+                    letterhead: ctx?.letterhead ?? null,
+                    pdfMode: ctx?.mode ?? 'letterhead',
+                  });
+                }}
               />
             )}
           </div>
