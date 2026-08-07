@@ -3747,6 +3747,10 @@ export type Database = {
           id: string
           is_active: boolean
           logo_url: string | null
+          letterhead_url: string | null
+          letterhead_mode: string
+          letterhead_top_mm: number
+          letterhead_bottom_mm: number
           name: string
           photo_urls: string[]
           pincode: string | null
@@ -3774,6 +3778,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          letterhead_url?: string | null
+          letterhead_mode?: string
+          letterhead_top_mm?: number
+          letterhead_bottom_mm?: number
           name: string
           photo_urls?: string[]
           pincode?: string | null
@@ -3801,6 +3809,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          letterhead_url?: string | null
+          letterhead_mode?: string
+          letterhead_top_mm?: number
+          letterhead_bottom_mm?: number
           name?: string
           photo_urls?: string[]
           pincode?: string | null

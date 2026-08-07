@@ -27,6 +27,10 @@ interface Society {
   state: string | null; pincode: string | null; is_active: boolean;
   logo_url: string | null; contact_person: string | null;
   contact_email: string | null; contact_phone: string | null;
+  letterhead_url?: string | null;
+  letterhead_mode?: 'auto' | 'image' | 'stationery' | null;
+  letterhead_top_mm?: number | null;
+  letterhead_bottom_mm?: number | null;
   photo_urls?: string[] | null;
   total_flats?: number | null;
   total_floors?: number | null;
@@ -49,6 +53,10 @@ interface SocietyFormState {
   contact_email: string;
   contact_phone: string;
   logo_url: string;
+  letterhead_url: string;
+  letterhead_mode: 'auto' | 'image' | 'stationery';
+  letterhead_top_mm: string;
+  letterhead_bottom_mm: string;
   total_flats: string;
   total_floors: string;
   blocks_csv: string;
@@ -75,6 +83,10 @@ function emptySocietyForm(): SocietyFormState {
     contact_email: '',
     contact_phone: '',
     logo_url: '',
+    letterhead_url: '',
+    letterhead_mode: 'auto',
+    letterhead_top_mm: '40',
+    letterhead_bottom_mm: '18',
     total_flats: '',
     total_floors: '',
     blocks_csv: '',
@@ -104,6 +116,10 @@ function societyToForm(s: Society): SocietyFormState {
     contact_email: s.contact_email ?? '',
     contact_phone: s.contact_phone ?? '',
     logo_url: s.logo_url ?? '',
+    letterhead_url: s.letterhead_url ?? '',
+    letterhead_mode: s.letterhead_mode === 'image' || s.letterhead_mode === 'stationery' ? s.letterhead_mode : 'auto',
+    letterhead_top_mm: s.letterhead_top_mm != null ? String(s.letterhead_top_mm) : '40',
+    letterhead_bottom_mm: s.letterhead_bottom_mm != null ? String(s.letterhead_bottom_mm) : '18',
     total_flats: s.total_flats != null ? String(s.total_flats) : '',
     total_floors: s.total_floors != null ? String(s.total_floors) : '',
     blocks_csv: (s.block_names ?? []).join(', '),
@@ -136,6 +152,29 @@ async function uploadSocietyLogo(societyId: string, file: File): Promise<string 
   });
   if (error) {
     toast.error(`Logo upload failed: ${file.name}`);
+    return null;
+  }
+  const { data } = supabase.storage.from('society-photos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function uploadSocietyLetterhead(societyId: string, file: File): Promise<string | null> {
+  if (!file.type.startsWith('image/')) {
+    toast.error(`Not an image: ${file.name}`);
+    return null;
+  }
+  if (file.size > MAX_LOGO_BYTES * 2) {
+    toast.error(`Letterhead too large (max 4 MB): ${file.name}`);
+    return null;
+  }
+  const safe = file.name.replace(/[^\w.-]/g, '_');
+  const path = `${societyId}/letterhead_${crypto.randomUUID()}_${safe}`;
+  const { error } = await supabase.storage.from('society-photos').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) {
+    toast.error(`Letterhead upload failed: ${file.name}`);
     return null;
   }
   const { data } = supabase.storage.from('society-photos').getPublicUrl(path);
@@ -220,6 +259,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
   const [sf, setSf] = useState<SocietyFormState>(() => emptySocietyForm());
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+  const [pendingLetterheadFile, setPendingLetterheadFile] = useState<File | null>(null);
   const [societySaving, setSocietySaving] = useState(false);
   const [flatsResetting, setFlatsResetting] = useState(false);
 
@@ -328,6 +368,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     setSf(emptySocietyForm());
     setPendingPhotoFiles([]);
     setPendingLogoFile(null);
+    setPendingLetterheadFile(null);
   };
 
   const openNewSocietyForm = () => {
@@ -335,6 +376,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     setSf(emptySocietyForm());
     setPendingPhotoFiles([]);
     setPendingLogoFile(null);
+    setPendingLetterheadFile(null);
     setShowSocietyForm(true);
   };
 
@@ -343,6 +385,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
     setSf(societyToForm(s));
     setPendingPhotoFiles([]);
     setPendingLogoFile(null);
+    setPendingLetterheadFile(null);
     setShowSocietyForm(true);
   };
 
@@ -362,6 +405,9 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
 
     const hasBasement = sf.basement === 'yes';
     let logo_url = sf.logo_url.trim() || null;
+    let letterhead_url = sf.letterhead_url.trim() || null;
+    const letterheadTop = Number(sf.letterhead_top_mm);
+    const letterheadBottom = Number(sf.letterhead_bottom_mm);
 
     const baseRow = {
       name: sf.name.trim(),
@@ -373,6 +419,10 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
       contact_email: sf.contact_email.trim() || null,
       contact_phone: sf.contact_phone.trim() || null,
       logo_url,
+      letterhead_url,
+      letterhead_mode: sf.letterhead_mode,
+      letterhead_top_mm: Number.isFinite(letterheadTop) && letterheadTop > 0 ? letterheadTop : 40,
+      letterhead_bottom_mm: Number.isFinite(letterheadBottom) && letterheadBottom > 0 ? letterheadBottom : 18,
       total_flats: parseIntOrNull(sf.total_flats),
       total_floors: parseIntOrNull(sf.total_floors),
       block_names,
@@ -400,6 +450,10 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
           const uploadedLogo = await uploadSocietyLogo(editingSocietyId, pendingLogoFile);
           if (uploadedLogo) logo_url = uploadedLogo;
         }
+        if (pendingLetterheadFile) {
+          const uploadedLh = await uploadSocietyLetterhead(editingSocietyId, pendingLetterheadFile);
+          if (uploadedLh) letterhead_url = uploadedLh;
+        }
         let photo_urls = [...sf.existingPhotoUrls];
         if (pendingPhotoFiles.length) {
           const uploaded = await uploadSocietyPhotos(editingSocietyId, pendingPhotoFiles);
@@ -407,7 +461,7 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
         }
         const { error } = await supabase
           .from('societies')
-          .update({ ...baseRow, logo_url, photo_urls })
+          .update({ ...baseRow, logo_url, letterhead_url, photo_urls })
           .eq('id', editingSocietyId);
         if (error) throw error;
         toast.success(t('superadmin.societyUpdated'));
@@ -423,14 +477,23 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
           const uploadedLogo = await uploadSocietyLogo(societyIdForTrim, pendingLogoFile);
           if (uploadedLogo) logo_url = uploadedLogo;
         }
+        if (pendingLetterheadFile) {
+          const uploadedLh = await uploadSocietyLetterhead(societyIdForTrim, pendingLetterheadFile);
+          if (uploadedLh) letterhead_url = uploadedLh;
+        }
         let photo_urls = [...sf.existingPhotoUrls];
         if (pendingPhotoFiles.length) {
           const uploaded = await uploadSocietyPhotos(societyIdForTrim, pendingPhotoFiles);
           photo_urls = [...photo_urls, ...uploaded];
         }
-        const patch: { photo_urls?: string[]; logo_url?: string | null } = {};
+        const patch: {
+          photo_urls?: string[];
+          logo_url?: string | null;
+          letterhead_url?: string | null;
+        } = {};
         if (photo_urls.length) patch.photo_urls = photo_urls;
         if (logo_url) patch.logo_url = logo_url;
+        if (letterhead_url) patch.letterhead_url = letterhead_url;
         if (Object.keys(patch).length) {
           const { error: uerr } = await supabase.from('societies').update(patch).eq('id', societyIdForTrim);
           if (uerr) throw uerr;
@@ -973,6 +1036,88 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                       {pendingLogoFile && (
                         <p className="text-[10px] text-muted-foreground">{pendingLogoFile.name} — {t('superadmin.logoUploadOnSave')}</p>
                       )}
+                    </div>
+                    <div className="border-t border-border/60 pt-2 mt-1 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">{t('superadmin.letterhead')}</p>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{t('superadmin.letterheadHint')}</p>
+                      <select
+                        className="input-field text-sm"
+                        value={sf.letterhead_mode}
+                        onChange={(e) =>
+                          setSf({
+                            ...sf,
+                            letterhead_mode: e.target.value as 'auto' | 'image' | 'stationery',
+                          })
+                        }
+                        aria-label={t('superadmin.letterheadMode')}
+                      >
+                        <option value="auto">{t('superadmin.letterheadModeAuto')}</option>
+                        <option value="image">{t('superadmin.letterheadModeImage')}</option>
+                        <option value="stationery">{t('superadmin.letterheadModeStationery')}</option>
+                      </select>
+                      <div className="flex items-center gap-2">
+                        {(sf.letterhead_url || pendingLetterheadFile) && (
+                          <img
+                            src={
+                              pendingLetterheadFile
+                                ? URL.createObjectURL(pendingLetterheadFile)
+                                : sf.letterhead_url
+                            }
+                            alt=""
+                            className="w-16 h-10 rounded-lg object-cover shrink-0 border border-border"
+                          />
+                        )}
+                        <input
+                          className="input-field flex-1"
+                          placeholder={t('superadmin.letterheadUrl')}
+                          value={sf.letterhead_url}
+                          onChange={(e) => setSf({ ...sf, letterhead_url: e.target.value })}
+                        />
+                      </div>
+                      <label className="btn-secondary inline-flex items-center justify-center gap-2 cursor-pointer text-sm py-2 px-3 w-fit">
+                        <Image className="w-4 h-4" />
+                        {t('superadmin.uploadLetterhead')}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            setPendingLetterheadFile(file);
+                            if (file) setSf((prev) => ({ ...prev, letterhead_mode: 'image' }));
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                      {pendingLetterheadFile && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {pendingLetterheadFile.name} — {t('superadmin.logoUploadOnSave')}
+                        </p>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-[10px] text-muted-foreground space-y-1">
+                          <span>{t('superadmin.letterheadTopMm')}</span>
+                          <input
+                            className="input-field"
+                            type="number"
+                            min={15}
+                            max={80}
+                            value={sf.letterhead_top_mm}
+                            onChange={(e) => setSf({ ...sf, letterhead_top_mm: e.target.value })}
+                          />
+                        </label>
+                        <label className="text-[10px] text-muted-foreground space-y-1">
+                          <span>{t('superadmin.letterheadBottomMm')}</span>
+                          <input
+                            className="input-field"
+                            type="number"
+                            min={10}
+                            max={40}
+                            value={sf.letterhead_bottom_mm}
+                            onChange={(e) => setSf({ ...sf, letterhead_bottom_mm: e.target.value })}
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>

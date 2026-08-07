@@ -3,6 +3,7 @@ import { createSocietyPdf } from '@/lib/pdfPage';
 import {
   applyLetterheadPage,
   letterheadEnsureSpace,
+  type LetterheadLayout,
   type SocietyLetterhead,
 } from '@/lib/pdfLetterhead';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
@@ -43,17 +44,17 @@ function drawHeadWiseTable(
   rows: [string, ChannelByHeadRow][],
   footerLabel: string,
   footerTotals: { cash: number; bank: number; other: number; total: number },
-): number {
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
+  lh: SocietyLetterhead | string,
+  layoutIn: LetterheadLayout,
+): { y: number; layout: LetterheadLayout } {
   const rowH = 5.5;
   let y = startY;
+  let layout = layoutIn;
 
   const ensureSpace = (needed: number) => {
-    if (y + needed > pageH - margin) {
-      doc.addPage();
-      y = margin;
-    }
+    const next = letterheadEnsureSpace(doc, layout, y, needed, lh);
+    layout = next.layout;
+    y = next.y;
   };
 
   ensureSpace(12);
@@ -106,7 +107,7 @@ function drawHeadWiseTable(
     true,
   );
 
-  return y + 4;
+  return { y: y + 4, layout };
 }
 
 /** Build a printable finance period report PDF (returns Blob). */
@@ -144,7 +145,7 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
     6,
   );
 
-  y = drawHeadWiseTable(
+  let table = drawHeadWiseTable(
     doc,
     margin,
     y,
@@ -157,9 +158,13 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
       other: input.receiptByMethod.other,
       total: input.totalReceipts,
     },
+    lh,
+    layout,
   );
+  y = table.y;
+  layout = table.layout;
 
-  y = drawHeadWiseTable(
+  table = drawHeadWiseTable(
     doc,
     margin,
     y,
@@ -172,7 +177,11 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
       other: input.expenseByMethod.other,
       total: input.totalExpenses,
     },
+    lh,
+    layout,
   );
+  y = table.y;
+  layout = table.layout;
 
   line('Summary', 11, 6);
   line(`  Cash in hand (net): ${money(input.cashInHand)}`, 10, 5);

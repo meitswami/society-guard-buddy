@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
-import { createSocietyPdf, PDF_MARGIN_MM } from '@/lib/pdfPage';
+import { createSocietyPdf } from '@/lib/pdfPage';
+import { applyLetterheadPage, letterheadEnsureSpace, type LetterheadLayout } from '@/lib/pdfLetterhead';
 import {
   buildHtmlTable,
   htmlToWordBlob,
@@ -38,8 +39,17 @@ function pdfRows(assets: FixedAsset[]): string[][] {
   ]);
 }
 
-function drawPdfTable(doc: jsPDF, startY: number, headers: string[], rows: string[][], colWidths: number[]): number {
-  const margin = PDF_MARGIN_MM;
+function drawPdfTable(
+  doc: jsPDF,
+  startY: number,
+  headers: string[],
+  rows: string[][],
+  colWidths: number[],
+  lh: string,
+  layoutIn: LetterheadLayout,
+): number {
+  let layout = layoutIn;
+  const margin = layout.margin;
   let y = startY;
   const lineH = 5;
   doc.setFontSize(7);
@@ -52,10 +62,9 @@ function drawPdfTable(doc: jsPDF, startY: number, headers: string[], rows: strin
   y += lineH;
   doc.setFont('helvetica', 'normal');
   for (const row of rows) {
-    if (y > doc.internal.pageSize.getHeight() - margin) {
-      doc.addPage();
-      y = margin;
-    }
+    const next = letterheadEnsureSpace(doc, layout, y, lineH + 1, lh);
+    layout = next.layout;
+    y = next.y;
     x = margin;
     row.forEach((cell, i) => {
       doc.text(String(cell ?? '').slice(0, 32), x, y);
@@ -116,15 +125,19 @@ export function exportFixedAssetReport({ societyName, assets, format }: ExportOp
     return;
   }
 
+  const lh = societyName || 'Society';
   const doc = createSocietyPdf({ orientation: 'landscape' });
-  doc.setFontSize(14);
-  doc.text(`Fixed Assets Register — ${societyName}`, PDF_MARGIN_MM, PDF_MARGIN_MM);
+  const layout = applyLetterheadPage(doc, lh);
+  let y = layout.contentTop;
+  doc.setFontSize(12);
+  doc.text('Fixed Assets Register', layout.margin, y);
+  y += 5;
   doc.setFontSize(9);
   doc.text(
     `Generated ${stamp} · Total: ${summary.totalAssets} assets · Value: ${moneyInr(summary.totalBillValue)}`,
-    PDF_MARGIN_MM,
-    PDF_MARGIN_MM + 6,
+    layout.margin,
+    y,
   );
-  drawPdfTable(doc, PDF_MARGIN_MM + 12, PDF_HEADERS, pdfRows(assets), PDF_COL_WIDTHS);
+  drawPdfTable(doc, y + 8, PDF_HEADERS, pdfRows(assets), PDF_COL_WIDTHS, lh, layout);
   doc.save(`${baseName}.pdf`);
 }
