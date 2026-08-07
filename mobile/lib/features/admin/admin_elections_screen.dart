@@ -367,7 +367,10 @@ class AdminElectionsScreenState extends State<AdminElectionsScreen> {
       return ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          VotingCharterCard(societyName: widget.session.societyName),
+          VotingCharterCard(
+            societyId: widget.session.societyId,
+            societyName: widget.session.societyName,
+          ),
           const SizedBox(height: 48),
           const Center(
             child: Text('No elections yet', style: TextStyle(color: KutumbikaColors.textMuted)),
@@ -381,7 +384,10 @@ class AdminElectionsScreenState extends State<AdminElectionsScreen> {
       itemCount: bundle.elections.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          return VotingCharterCard(societyName: widget.session.societyName);
+          return VotingCharterCard(
+            societyId: widget.session.societyId,
+            societyName: widget.session.societyName,
+          );
         }
         final poll = bundle.elections[index - 1];
         return FutureBuilder<Map<String, dynamic>?>(

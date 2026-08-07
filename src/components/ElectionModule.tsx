@@ -1190,7 +1190,7 @@ const ElectionModule = ({
 
   return (
     <div className={embedded ? 'space-y-3' : ''}>
-      <VotingCharterPanel isAdmin={!isResident} />
+      <VotingCharterPanel isAdmin={!isResident} societyId={societyId} />
 
       {!embedded && (
         <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">

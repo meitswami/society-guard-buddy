@@ -12,7 +12,12 @@ import {
   votingCharterShareMessage,
 } from '@/lib/votingCharterPdf';
 import { savePdfToDevice } from '@/lib/reportExportUtils';
-import { fetchSocietyLetterhead, type SocietyLetterhead } from '@/lib/pdfLetterhead';
+import {
+  fetchSocietyLetterhead,
+  letterheadAddressLine,
+  letterheadContactLine,
+  type SocietyLetterhead,
+} from '@/lib/pdfLetterhead';
 import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
@@ -20,27 +25,20 @@ import type { Lang } from '@/i18n/translations';
 
 type Props = {
   societyName?: string;
+  /** Prefer explicit prop; falls back to zustand store. */
+  societyId?: string | null;
   /** PDF download / WhatsApp share — admin only; members get on-screen display. */
   isAdmin?: boolean;
 };
 
-function letterheadAddressLine(lh: SocietyLetterhead): string {
-  return [lh.address, [lh.city, lh.state].filter(Boolean).join(', '), lh.pincode]
-    .map((p) => (p || '').trim())
-    .filter(Boolean)
-    .join(' · ');
-}
-
-function letterheadContactLine(lh: SocietyLetterhead): string {
-  return [lh.contactPhone, lh.contactEmail]
-    .map((p) => (p || '').trim())
-    .filter(Boolean)
-    .join(' · ');
-}
-
-const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: Props) => {
+const VotingCharterPanel = ({
+  societyName: societyNameProp,
+  societyId: societyIdProp,
+  isAdmin = false,
+}: Props) => {
   const { t, lang } = useLanguage();
-  const societyId = useStore((s) => s.societyId);
+  const storeSocietyId = useStore((s) => s.societyId);
+  const societyId = societyIdProp ?? storeSocietyId;
   const [open, setOpen] = useState(true);
   const [programOpen, setProgramOpen] = useState(true);
   const [societyName, setSocietyName] = useState(societyNameProp || '');
@@ -53,15 +51,34 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
 
   useEffect(() => {
     if (!societyId) {
-      setLetterhead(null);
+      // Still show a name-only band when parent passed societyName without id.
+      if (societyNameProp?.trim()) {
+        setLetterhead({ name: societyNameProp.trim(), letterheadMode: 'auto' });
+      } else {
+        setLetterhead(null);
+      }
       return;
     }
     let cancelled = false;
-    void fetchSocietyLetterhead(societyId).then((lh) => {
-      if (cancelled || !lh) return;
-      setLetterhead(lh);
-      if (!societyNameProp && lh.name) setSocietyName(lh.name);
-    });
+    void fetchSocietyLetterhead(societyId)
+      .then((lh) => {
+        if (cancelled) return;
+        if (lh) {
+          setLetterhead(lh);
+          if (!societyNameProp && lh.name) setSocietyName(lh.name);
+          return;
+        }
+        console.warn('[VotingCharterPanel] letterhead fetch returned null for', societyId);
+        const fallbackName = societyNameProp?.trim() || 'Society';
+        setLetterhead({ name: fallbackName, letterheadMode: 'auto' });
+        if (!societyNameProp) setSocietyName(fallbackName);
+      })
+      .catch((err) => {
+        console.warn('[VotingCharterPanel] letterhead fetch error', err);
+        if (cancelled) return;
+        const fallbackName = societyNameProp?.trim() || 'Society';
+        setLetterhead({ name: fallbackName, letterheadMode: 'auto' });
+      });
     return () => {
       cancelled = true;
     };
@@ -70,7 +87,7 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
   const getBlob = (pdfLang: Lang) =>
     buildVotingCharterPdfBlob({
       societyId,
-      societyName,
+      societyName: letterhead?.name || societyName,
       letterhead,
       lang: pdfLang,
     });
@@ -111,7 +128,7 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
   const btnClass =
     'text-xs px-2.5 py-1.5 rounded-lg border border-indigo-500/40 bg-background/80 inline-flex items-center gap-1.5 hover:bg-indigo-500/10 disabled:opacity-60';
 
-  const displayName = letterhead?.name || societyName;
+  const displayName = (letterhead?.name || societyName || '').trim() || 'Society';
   const addressLine = letterhead ? letterheadAddressLine(letterhead) : '';
   const contactLine = letterhead ? letterheadContactLine(letterhead) : '';
   const logoSrc = letterhead?.logoDataUrl || letterhead?.logoUrl || null;
@@ -135,38 +152,47 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
       </button>
       {open && (
         <div className="px-3 pb-3 space-y-3 border-t border-indigo-500/20">
-          {(displayName || letterheadImg) && (
-            <div className="pt-2 border-b border-indigo-500/15 pb-2.5">
-              {letterheadImg ? (
-                <img
-                  src={letterheadImg}
-                  alt={displayName || 'Society letterhead'}
-                  className="w-full max-h-20 object-contain object-left"
-                />
-              ) : (
-                <div className="flex items-start gap-2.5">
-                  {logoSrc && (
-                    <img
-                      src={logoSrc}
-                      alt=""
-                      className="w-10 h-10 object-contain rounded shrink-0 bg-background/80"
-                    />
-                  )}
-                  <div className="min-w-0 space-y-0.5">
-                    {displayName && (
-                      <p className="text-sm font-semibold text-foreground leading-snug">{displayName}</p>
-                    )}
-                    {addressLine && (
-                      <p className="text-[11px] text-muted-foreground leading-snug">{addressLine}</p>
-                    )}
-                    {contactLine && (
-                      <p className="text-[11px] text-muted-foreground leading-snug">{contactLine}</p>
-                    )}
+          {/* Always show a letterhead band (name at minimum) — not gated on image URL. */}
+          <div className="pt-2.5 border-b border-indigo-500/20 pb-3 bg-background/50 -mx-3 px-3 rounded-none">
+            {letterheadImg ? (
+              <img
+                src={letterheadImg}
+                alt={displayName}
+                className="w-full max-h-24 object-contain object-left"
+              />
+            ) : (
+              <div className="flex items-start gap-3">
+                {logoSrc ? (
+                  <img
+                    src={logoSrc}
+                    alt=""
+                    className="w-12 h-12 object-contain rounded border border-indigo-500/20 shrink-0 bg-background"
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded border border-indigo-500/25 bg-indigo-500/10 shrink-0 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-sm font-bold"
+                    aria-hidden
+                  >
+                    {(displayName[0] || 'S').toUpperCase()}
                   </div>
+                )}
+                <div className="min-w-0 space-y-0.5">
+                  <p className="text-base font-bold text-foreground leading-snug tracking-tight">{displayName}</p>
+                  {addressLine ? (
+                    <p className="text-[11px] text-muted-foreground leading-snug">{addressLine}</p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground/80 leading-snug">
+                      {t('votingCharter.summary.title')}
+                    </p>
+                  )}
+                  {contactLine && (
+                    <p className="text-[11px] text-muted-foreground leading-snug">{contactLine}</p>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+            <div className="mt-2.5 h-px w-full bg-indigo-400/50" />
+          </div>
 
           {isAdmin && (
             <>
@@ -199,7 +225,7 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
                 </button>
                 <SharePdfWhatsAppButton
                   getBlob={() => getBlob(lang === 'hi' ? 'hi' : 'en')}
-                  filename={votingCharterPdfFilename(societyName, lang === 'hi' ? 'hi' : 'en')}
+                  filename={votingCharterPdfFilename(societyName || displayName, lang === 'hi' ? 'hi' : 'en')}
                   message={votingCharterShareMessage(lang === 'hi' ? 'hi' : 'en')}
                   label={t('votingCharter.shareWhatsApp')}
                   disabled={!!busyLang}

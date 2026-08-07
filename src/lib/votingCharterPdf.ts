@@ -10,6 +10,7 @@ import { PDF_LETTER_CONTENT_WIDTH_PX, PDF_MARGIN_MM, PDF_PAGE_FORMAT } from '@/l
 import {
   applyLetterheadPage,
   fetchSocietyLetterhead,
+  measureLetterheadLayout,
   type SocietyLetterhead,
 } from '@/lib/pdfLetterhead';
 
@@ -217,8 +218,10 @@ async function ensureFontsLoaded(doc: Document, isHi: boolean): Promise<void> {
 
 /**
  * Slice a tall canvas into US Letter PDF pages.
- * Each page gets society letterhead in the top band; body content sits below
- * `contentTop` with moderate side margins baked into the HTML canvas.
+ *
+ * Order matters: opaque JPEG body slices must never cover the letterhead.
+ * For every page we (1) white-fill, (2) place body below contentTop,
+ * (3) wipe the reserved top band, (4) draw letterhead LAST on top.
  */
 function canvasToPdfBlob(
   canvas: HTMLCanvasElement,
@@ -234,10 +237,7 @@ function canvasToPdfBlob(
     throw new Error('Could not create canvas for PDF pages');
   }
 
-  // Measure letterhead band once so every page uses the same content height.
-  pdf.setFillColor(255, 255, 255);
-  pdf.rect(0, 0, pageW, pageH, 'F');
-  let layout = applyLetterheadPage(pdf, letterhead);
+  const layout = measureLetterheadLayout(pdf, letterhead);
   const contentHmm = Math.max(1, layout.contentBottom - layout.contentTop);
   const pxPerMm = canvas.width / imgW;
   const contentHeightPx = Math.max(1, Math.floor(contentHmm * pxPerMm));
@@ -254,14 +254,20 @@ function canvasToPdfBlob(
     const sliceData = pageCanvas.toDataURL('image/jpeg', 0.92);
     const sliceHmm = sliceH / pxPerMm;
 
-    if (pageIndex > 0) {
-      pdf.addPage();
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, pageW, pageH, 'F');
-      layout = applyLetterheadPage(pdf, letterhead);
-    }
-    // Page 0 already has letterhead from the measure pass above.
+    if (pageIndex > 0) pdf.addPage();
+
+    // 1) Clean page
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, pageW, pageH, 'F');
+
+    // 2) Body strictly below the letterhead band (never at y=0)
     pdf.addImage(sliceData, 'JPEG', 0, layout.contentTop, imgW, sliceHmm);
+
+    // 3) Erase any body overflow into the top band, then 4) letterhead on top
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, pageW, layout.contentTop, 'F');
+    applyLetterheadPage(pdf, letterhead);
+
     yPx += sliceH;
     pageIndex += 1;
   }
@@ -281,12 +287,22 @@ export async function buildVotingCharterPdfBlob(opts: {
   lang?: Lang;
 }): Promise<Blob> {
   const lang: Lang = opts.lang === 'hi' ? 'hi' : 'en';
-  const letterhead =
-    opts.letterhead ??
-    (await fetchSocietyLetterhead(opts.societyId)) ??
-    (opts.societyName?.trim() ? opts.societyName.trim() : null);
-  // Letterhead carries society branding; omit duplicate name line from body HTML.
-  const html = buildCharterHtml({ societyName: opts.societyName, lang, omitSocietyLine: true });
+  const fetched = opts.letterhead ?? (await fetchSocietyLetterhead(opts.societyId));
+  // Digital charter must always show branding — never leave a blank stationery band.
+  const letterhead: SocietyLetterhead | string = fetched
+    ? {
+        ...fetched,
+        letterheadMode: fetched.letterheadMode === 'image' ? 'image' : 'auto',
+      }
+    : opts.societyName?.trim()
+      ? opts.societyName.trim()
+      : 'Society';
+  const resolvedName =
+    (typeof letterhead === 'string' ? letterhead : letterhead.name)?.trim() ||
+    opts.societyName?.trim() ||
+    'Society';
+  // Society name lives in the PDF letterhead band (drawn last on every page).
+  const html = buildCharterHtml({ societyName: resolvedName, lang, omitSocietyLine: true });
 
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
