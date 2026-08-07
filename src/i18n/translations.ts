@@ -1136,7 +1136,10 @@ const translations: Record<string, Record<Lang, string>> = {
   'superadmin.letterhead': { en: 'Report letterhead', hi: 'रिपोर्ट लेटरहेड' },
   'superadmin.letterheadMode': { en: 'Letterhead mode', hi: 'लेटरहेड मोड' },
   'superadmin.letterheadModeAuto': { en: 'Auto (logo + name + address)', hi: 'स्वतः (प्रतीक + नाम + पता)' },
-  'superadmin.letterheadModeImage': { en: 'Uploaded letterhead image', hi: 'अपलोड किया लेटरहेड चित्र' },
+  'superadmin.letterheadModeImage': {
+    en: 'Uploaded letterhead (full-page background)',
+    hi: 'अपलोड किया लेटरहेड (पूर्ण-पृष्ठ पृष्ठभूमि)',
+  },
   'superadmin.letterheadModeStationery': {
     en: 'Blank top (print on physical pre-printed letterhead)',
     hi: 'ऊपर खाली (पूर्व-मुद्रित लेटरहेड पर छापें)',
@@ -1146,8 +1149,8 @@ const translations: Record<string, Record<Lang, string>> = {
   'superadmin.letterheadTopMm': { en: 'Top band (mm)', hi: 'ऊपरी पट्टी (मिमी)' },
   'superadmin.letterheadBottomMm': { en: 'Bottom band (mm)', hi: 'निचली पट्टी (मिमी)' },
   'superadmin.letterheadHint': {
-    en: 'All report PDFs use Letter size with the Society letter Head layout (name, address, contact, header/footer rules, page n/N). Upload a letterhead image or leave Auto for digital branding on every page.',
-    hi: 'सभी रिपोर्ट पीडीएफ लेटर आकार पर सोसायटी लेटरहेड लेआउट में हैं (नाम, पता, संपर्क, हेडर/फुटर रेखा, पृष्ठ n/N)। लेटरहेड चित्र अपलोड करें, या स्वतः मोड में डिजिटल ब्रांडिंग प्रत्येक पृष्ठ पर बनेगी।',
+    en: 'Official reports draw the uploaded letterhead as a full-page background on every PDF page. Set safe margins so content never covers the header, date area, watermark, or footer. Prefer a PNG/JPG scan of the society letterhead.',
+    hi: 'आधिकारिक रिपोर्ट्स अपलोड किए गए लेटरहेड को प्रत्येक PDF पृष्ठ की पूर्ण-पृष्ठ पृष्ठभूमि बनाती हैं। सुरक्षित हाशिये सेट करें ताकि सामग्री शीर्षक, दिनांक, वॉटरमार्क या पाद को न ढके। PNG/JPG स्कैन बेहतर है।',
   },
   'superadmin.logoUploadOnSave': { en: 'uploads when you save', hi: 'सहेजने पर भेजें होगा' },
   'superadmin.mobileBranding': { en: 'Mobile app branding', hi: 'मोबाइल ऐप ब्रांडिंग' },
