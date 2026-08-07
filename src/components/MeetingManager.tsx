@@ -1477,7 +1477,7 @@ const MeetingManager = ({
         h2{font-size:14px;margin:18px 0 8px;page-break-after:avoid}
         pre{white-space:pre-wrap;font-family:inherit;font-size:11px;margin:0}
         .muted{color:#555;font-size:11px}
-        @page{margin:12mm}
+        @page{size:letter;margin:0.75in}
       </style></head><body>${innerHtml}</body></html>`,
     );
     w.document.close();

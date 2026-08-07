@@ -1,4 +1,5 @@
-import { jsPDF } from 'jspdf';
+import { createSocietyPdf } from '@/lib/pdfPage';
+import { applyLetterheadPage, letterheadEnsureSpace, type SocietyLetterhead } from '@/lib/pdfLetterhead';
 import {
   buildHtmlTable,
   htmlToWordBlob,
@@ -58,14 +59,18 @@ function buildPdfBlob(
   subtitle: string,
   headers: string[],
   rows: unknown[][],
+  letterhead?: SocietyLetterhead | string | null,
 ): Blob {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: headers.length > 6 ? 'landscape' : 'portrait' });
-  const margin = 10;
-  const pageW = doc.internal.pageSize.getWidth();
+  const doc = createSocietyPdf({
+    orientation: headers.length > 6 ? 'landscape' : 'portrait',
+  });
+  const lh = letterhead ?? title;
+  let layout = applyLetterheadPage(doc, lh);
+  const { margin, pageW } = layout;
   const usable = pageW - margin * 2;
-  let y = 14;
+  let y = layout.contentTop;
 
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.text(title, margin, y);
   y += 6;
   doc.setFontSize(9);
@@ -79,10 +84,9 @@ function buildPdfBlob(
   const rowH = 6;
 
   const drawRow = (cells: string[], header: boolean) => {
-    if (y + rowH > doc.internal.pageSize.getHeight() - 10) {
-      doc.addPage();
-      y = 14;
-    }
+    const next = letterheadEnsureSpace(doc, layout, y, rowH + 1, lh);
+    layout = next.layout;
+    y = next.y;
     doc.setFontSize(header ? 8 : 7);
     doc.setFont('helvetica', header ? 'bold' : 'normal');
     cells.forEach((cell, i) => {
@@ -112,7 +116,7 @@ export class ExportService {
   export(
     result: ReportResult,
     format: ExportFormat,
-    opts?: { societyName?: string; filenameBase?: string },
+    opts?: { societyName?: string; filenameBase?: string; letterhead?: SocietyLetterhead | null },
   ): void {
     const { headers, rows, numericCols } = toMatrix(result);
     const base = opts?.filenameBase ?? `${result.reportId}-report`;
@@ -143,7 +147,13 @@ export class ExportService {
         break;
       }
       case 'pdf':
-        blob = buildPdfBlob(result.title, subtitle, headers, rows);
+        blob = buildPdfBlob(
+          result.title,
+          subtitle,
+          headers,
+          rows,
+          opts?.letterhead ?? opts?.societyName,
+        );
         ext = 'pdf';
         break;
       default:

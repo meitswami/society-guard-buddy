@@ -1,4 +1,6 @@
 import { jsPDF } from 'jspdf';
+import { createSocietyPdf } from '@/lib/pdfPage';
+import { applyLetterheadPage } from '@/lib/pdfLetterhead';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { triggerDownload } from '@/lib/reportExportUtils';
 
@@ -48,25 +50,29 @@ function addImageBlock(doc: jsPDF, label: string, dataUrl: string, x: number, y:
   return next;
 }
 
-function newPageIfNeeded(doc: jsPDF, y: number, need: number, margin: number): number {
-  const maxY = doc.internal.pageSize.getHeight() - margin;
-  if (y + need > maxY) {
+function newPageIfNeeded(
+  doc: jsPDF,
+  y: number,
+  need: number,
+  layout: { contentTop: number; contentBottom: number },
+  lh: string,
+): { y: number; layout: ReturnType<typeof applyLetterheadPage> } {
+  if (y + need > layout.contentBottom) {
     doc.addPage();
-    return margin;
+    const next = applyLetterheadPage(doc, lh);
+    return { y: next.contentTop, layout: next };
   }
-  return y;
+  return { y, layout: layout as ReturnType<typeof applyLetterheadPage> };
 }
 
 /** Multi-page PDF: one section per flat, member details + ID thumbnails. */
 export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFlat[], members: PdfMember[]): Blob {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 14;
-  let y = margin;
+  const doc = createSocietyPdf();
+  const lh = societyName || 'Society';
+  let layout = applyLetterheadPage(doc, lh);
+  const { margin, pageW } = layout;
+  let y = layout.contentTop;
 
-  doc.setFontSize(16);
-  doc.text(societyName || 'Society', margin, y);
-  y += 8;
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
   doc.text(`Resident directory & ID record — ${fmtDateTimeFull(new Date())}`, margin, y);
@@ -78,7 +84,11 @@ export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFl
 
   for (const flat of sortedFlats) {
     const ms = flatMembers(flat.id);
-    y = newPageIfNeeded(doc, y, 24, margin);
+    if (y + 24 > layout.contentBottom) {
+      doc.addPage();
+      layout = applyLetterheadPage(doc, lh);
+      y = layout.contentTop;
+    }
 
     doc.setFillColor(245, 245, 245);
     doc.rect(margin - 2, y - 5, pageW - 2 * margin + 4, 7, 'F');
@@ -104,7 +114,7 @@ export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFl
     }
 
     for (const m of ms) {
-      y = newPageIfNeeded(doc, y, 55, margin);
+      ({ y, layout } = newPageIfNeeded(doc, y, 55, layout, lh));
       doc.setFontSize(10);
       doc.text(`${m.name}${m.is_primary ? ' ★ primary' : ''}`, margin, y);
       y += 5;
@@ -127,11 +137,11 @@ export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFl
       const imgW = 58;
       const imgH = 34;
       if (m.id_photo_front?.startsWith('data:image')) {
-        y = newPageIfNeeded(doc, y, imgH + 8, margin);
+        ({ y, layout } = newPageIfNeeded(doc, y, imgH + 8, layout, lh));
         y = addImageBlock(doc, 'Photo ID — front', m.id_photo_front, margin + 2, y, imgW, imgH);
       }
       if (m.id_photo_back?.startsWith('data:image')) {
-        y = newPageIfNeeded(doc, y, imgH + 8, margin);
+        ({ y, layout } = newPageIfNeeded(doc, y, imgH + 8, layout, lh));
         y = addImageBlock(doc, 'Photo ID — back', m.id_photo_back, margin + 2, y, imgW, imgH);
       }
       y += 4;

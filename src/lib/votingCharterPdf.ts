@@ -6,6 +6,7 @@ import {
   ELECTION_PROGRAM_STEPS,
   VOTING_CHARTER_TITLE_KEY,
 } from '@/lib/votingCharter';
+import { PDF_LETTER_CONTENT_WIDTH_PX, PDF_PAGE_FORMAT } from '@/lib/pdfPage';
 
 /** Resolve charter copy for an explicit language. */
 export function charterText(lang: Lang, key: string): string {
@@ -102,8 +103,8 @@ function buildCharterHtml(opts: {
     color: #1a1a1a;
     font-size: 13px;
     line-height: 1.55;
-    width: 816px;
-    padding: 48px 56px;
+    width: ${PDF_LETTER_CONTENT_WIDTH_PX}px;
+    padding: 0.75in;
     background: #fff;
     -webkit-font-smoothing: antialiased;
   }
@@ -205,7 +206,7 @@ async function ensureFontsLoaded(doc: Document, isHi: boolean): Promise<void> {
 
 /** Slice a tall canvas into US Letter PDF pages. */
 function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
-  const pdf = new jsPDF({ unit: 'mm', format: 'letter', compress: true });
+  const pdf = new jsPDF({ unit: 'mm', format: PDF_PAGE_FORMAT, compress: true });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
   const imgW = pageW;
@@ -252,7 +253,7 @@ export async function buildVotingCharterPdfBlob(opts: {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
   iframe.style.cssText =
-    'position:fixed;left:-10000px;top:0;width:816px;height:1200px;border:0;opacity:0;pointer-events:none;';
+    `position:fixed;left:-10000px;top:0;width:${PDF_LETTER_CONTENT_WIDTH_PX}px;height:1200px;border:0;opacity:0;pointer-events:none;`;
   document.body.appendChild(iframe);
 
   try {
@@ -272,10 +273,10 @@ export async function buildVotingCharterPdfBlob(opts: {
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
-      windowWidth: 816,
-      width: 816,
+      windowWidth: PDF_LETTER_CONTENT_WIDTH_PX,
+      width: PDF_LETTER_CONTENT_WIDTH_PX,
       onclone: (_clonedDoc, el) => {
-        el.style.width = '816px';
+        el.style.width = `${PDF_LETTER_CONTENT_WIDTH_PX}px`;
         el.style.background = '#ffffff';
       },
     });

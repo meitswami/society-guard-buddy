@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { createSocietyPdf, PDF_MARGIN_MM } from '@/lib/pdfPage';
 import {
   buildHtmlTable,
   htmlToWordBlob,
@@ -38,7 +39,7 @@ function pdfRows(assets: FixedAsset[]): string[][] {
 }
 
 function drawPdfTable(doc: jsPDF, startY: number, headers: string[], rows: string[][], colWidths: number[]): number {
-  const margin = 10;
+  const margin = PDF_MARGIN_MM;
   let y = startY;
   const lineH = 5;
   doc.setFontSize(7);
@@ -51,7 +52,7 @@ function drawPdfTable(doc: jsPDF, startY: number, headers: string[], rows: strin
   y += lineH;
   doc.setFont('helvetica', 'normal');
   for (const row of rows) {
-    if (y > doc.internal.pageSize.getHeight() - 12) {
+    if (y > doc.internal.pageSize.getHeight() - margin) {
       doc.addPage();
       y = margin;
     }
@@ -115,11 +116,15 @@ export function exportFixedAssetReport({ societyName, assets, format }: ExportOp
     return;
   }
 
-  const doc = new jsPDF({ orientation: 'landscape' });
+  const doc = createSocietyPdf({ orientation: 'landscape' });
   doc.setFontSize(14);
-  doc.text(`Fixed Assets Register — ${societyName}`, 14, 16);
+  doc.text(`Fixed Assets Register — ${societyName}`, PDF_MARGIN_MM, PDF_MARGIN_MM);
   doc.setFontSize(9);
-  doc.text(`Generated ${stamp} · Total: ${summary.totalAssets} assets · Value: ${moneyInr(summary.totalBillValue)}`, 14, 22);
-  drawPdfTable(doc, 28, PDF_HEADERS, pdfRows(assets), PDF_COL_WIDTHS);
+  doc.text(
+    `Generated ${stamp} · Total: ${summary.totalAssets} assets · Value: ${moneyInr(summary.totalBillValue)}`,
+    PDF_MARGIN_MM,
+    PDF_MARGIN_MM + 6,
+  );
+  drawPdfTable(doc, PDF_MARGIN_MM + 12, PDF_HEADERS, pdfRows(assets), PDF_COL_WIDTHS);
   doc.save(`${baseName}.pdf`);
 }

@@ -1,4 +1,5 @@
-import { jsPDF } from 'jspdf';
+import { createSocietyPdf } from '@/lib/pdfPage';
+import { applyLetterheadPage, letterheadEnsureSpace } from '@/lib/pdfLetterhead';
 import { fmtDate, fmtDateTime, fmtDateTimeFull } from '@/lib/dateFormat';
 import {
   buildHtmlTable,
@@ -252,24 +253,21 @@ function sheetsForTab(ctx: ReportExportContext) {
 }
 
 export function buildMonthlyReportPdfBlob(ctx: ReportExportContext): Blob {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const margin = 14;
-  let y = margin;
+  const doc = createSocietyPdf();
+  const lh = ctx.societyName || 'Society';
+  let layout = applyLetterheadPage(doc, lh);
+  const { margin } = layout;
+  let y = layout.contentTop;
 
   const line = (text: string, size = 10, gap = 5) => {
-    const maxY = doc.internal.pageSize.getHeight() - margin;
-    if (y + gap > maxY) {
-      doc.addPage();
-      y = margin;
-    }
+    const next = letterheadEnsureSpace(doc, layout, y, gap + 2, lh);
+    layout = next.layout;
+    y = next.y;
     doc.setFontSize(size);
     doc.text(text, margin, y);
     y += gap;
   };
 
-  doc.setFontSize(15);
-  doc.text(ctx.societyName || 'Society', margin, y);
-  y += 8;
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
   doc.text(`${tabTitle(ctx.tab)} · ${ctx.reportMonth}`, margin, y);

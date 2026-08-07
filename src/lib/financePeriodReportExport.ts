@@ -1,4 +1,5 @@
-import { jsPDF } from 'jspdf';
+import { createSocietyPdf } from '@/lib/pdfPage';
+import { applyLetterheadPage, letterheadEnsureSpace } from '@/lib/pdfLetterhead';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { buildFinancePeriodReportPdfBlob, type FinancePeriodReportPdfInput } from '@/lib/financePeriodReportPdf';
 import type { FinancePeriodReportResult } from '@/lib/financePeriodReport';
@@ -160,15 +161,12 @@ export function buildTransactionStatementPdfBlob(opts: {
   monthlyTotals?: { label: string; count: number; total: number }[];
   transactionTotal?: number;
 }): Blob {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-  const margin = 10;
-  let y = margin;
-  const pageH = doc.internal.pageSize.getHeight();
-  const pageW = doc.internal.pageSize.getWidth();
+  const doc = createSocietyPdf({ orientation: 'landscape' });
+  const lh = opts.societyName || 'Society';
+  let layout = applyLetterheadPage(doc, lh);
+  const { margin, pageW } = layout;
+  let y = layout.contentTop;
 
-  doc.setFontSize(14);
-  doc.text(opts.societyName || 'Society', margin, y);
-  y += 6;
   doc.setFontSize(11);
   doc.text(opts.title, margin, y);
   y += 5;
@@ -201,11 +199,11 @@ export function buildTransactionStatementPdfBlob(opts: {
   drawHeader();
   doc.setFontSize(6.5);
   for (const row of opts.rows) {
-    if (y + rowH > pageH - margin) {
-      doc.addPage();
-      y = margin;
-      drawHeader();
-    }
+    const before = y;
+    const next = letterheadEnsureSpace(doc, layout, y, rowH + 1, lh);
+    layout = next.layout;
+    y = next.y;
+    if (y === layout.contentTop && before !== y) drawHeader();
     row.forEach((cell, i) => {
       const text = doc.splitTextToSize(String(cell ?? ''), colW - 2);
       doc.text(text[0] ?? '', margin + i * colW + 1, y + 3.5);
@@ -214,10 +212,9 @@ export function buildTransactionStatementPdfBlob(opts: {
   }
 
   if (opts.monthlyTotals && opts.monthlyTotals.length > 0) {
-    if (y + rowH * (opts.monthlyTotals.length + 4) > pageH - margin) {
-      doc.addPage();
-      y = margin;
-    }
+    const next = letterheadEnsureSpace(doc, layout, y, rowH * (opts.monthlyTotals.length + 4), lh);
+    layout = next.layout;
+    y = next.y;
     y += 6;
     doc.setFontSize(10);
     doc.text('Monthly totals', margin, y);
@@ -230,10 +227,9 @@ export function buildTransactionStatementPdfBlob(opts: {
     doc.text('Total', pageW - margin - 1, y, { align: 'right' });
     y += rowH;
     for (const m of opts.monthlyTotals) {
-      if (y + rowH > pageH - margin) {
-        doc.addPage();
-        y = margin;
-      }
+      const n2 = letterheadEnsureSpace(doc, layout, y, rowH + 1, lh);
+      layout = n2.layout;
+      y = n2.y;
       doc.text(m.label, margin + 1, y);
       doc.text(String(m.count), margin + 50, y);
       doc.text(moneyInr(m.total), pageW - margin - 1, y, { align: 'right' });

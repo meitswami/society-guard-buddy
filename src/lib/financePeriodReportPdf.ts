@@ -1,9 +1,16 @@
 import { jsPDF } from 'jspdf';
+import { createSocietyPdf } from '@/lib/pdfPage';
+import {
+  applyLetterheadPage,
+  letterheadEnsureSpace,
+  type SocietyLetterhead,
+} from '@/lib/pdfLetterhead';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import type { ChannelByHeadRow } from '@/lib/financePeriodReport';
 
 export type FinancePeriodReportPdfInput = {
   societyName: string;
+  letterhead?: SocietyLetterhead | null;
   periodFrom: string;
   periodTo: string;
   generatedAt: string;
@@ -104,25 +111,21 @@ function drawHeadWiseTable(
 
 /** Build a printable finance period report PDF (returns Blob). */
 export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInput): Blob {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 14;
-  let y = margin;
+  const doc = createSocietyPdf();
+  const lh = input.letterhead ?? input.societyName;
+  let layout = applyLetterheadPage(doc, lh);
+  const { margin, pageW } = layout;
+  let y = layout.contentTop;
 
   const line = (text: string, size = 10, gap = 5) => {
-    const maxY = doc.internal.pageSize.getHeight() - margin;
-    if (y + gap > maxY) {
-      doc.addPage();
-      y = margin;
-    }
+    const next = letterheadEnsureSpace(doc, layout, y, gap + 2, lh);
+    layout = next.layout;
+    y = next.y;
     doc.setFontSize(size);
     doc.text(text, margin, y);
     y += gap;
   };
 
-  doc.setFontSize(15);
-  doc.text(input.societyName || 'Society', margin, y);
-  y += 8;
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
   doc.text(

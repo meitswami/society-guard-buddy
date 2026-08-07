@@ -1,4 +1,9 @@
-import { jsPDF } from 'jspdf';
+import { createSocietyPdf } from '@/lib/pdfPage';
+import {
+  applyLetterheadPage,
+  letterheadEnsureSpace,
+  type SocietyLetterhead,
+} from '@/lib/pdfLetterhead';
 import type { ReportDetailRow } from '@/components/ReportDetailModal';
 import { fmtDateTimeFull } from '@/lib/dateFormat';
 import { moneyInr, triggerDownload } from '@/lib/reportExportUtils';
@@ -39,27 +44,24 @@ export async function sharePdfOnWhatsApp(opts: {
 
 export function buildReportDetailPdfBlob(opts: {
   societyName?: string;
+  letterhead?: SocietyLetterhead | null;
   title: string;
   subtitle?: string;
   totalAmount?: number;
   rows: ReportDetailRow[];
 }): Blob {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const margin = 14;
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  let y = margin;
+  const doc = createSocietyPdf();
+  const lh = opts.letterhead ?? opts.societyName ?? 'Society';
+  let layout = applyLetterheadPage(doc, lh);
+  const { margin, pageW } = layout;
+  let y = layout.contentTop;
 
   const ensureSpace = (need: number) => {
-    if (y + need > pageH - margin) {
-      doc.addPage();
-      y = margin;
-    }
+    const next = letterheadEnsureSpace(doc, layout, y, need, lh);
+    layout = next.layout;
+    y = next.y;
   };
 
-  doc.setFontSize(14);
-  doc.text(opts.societyName || 'Society', margin, y);
-  y += 7;
   doc.setFontSize(11);
   doc.text(opts.title, margin, y);
   y += 5;

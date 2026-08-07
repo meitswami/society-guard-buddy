@@ -94,6 +94,7 @@ export function htmlToWordBlob(title: string, bodyHtml: string): Blob {
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
 <head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
 <style>
+  @page { size: letter; margin: 0.75in; }
   body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
   h1 { font-size: 16pt; margin-bottom: 4pt; }
   h2 { font-size: 12pt; margin-top: 14pt; margin-bottom: 6pt; }

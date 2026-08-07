@@ -49,7 +49,7 @@ Future<Uint8List> buildVotingCharterPdfBytes({
   doc.addPage(
     pw.MultiPage(
       pageFormat: PdfPageFormat.letter,
-      margin: const pw.EdgeInsets.all(48),
+      margin: const pw.EdgeInsets.all(54), // 0.75" moderate
       build: (ctx) => [
         pw.Text(
           societyLabel,
