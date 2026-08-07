@@ -1,0 +1,238 @@
+/**
+ * Central Letterhead Report Engine for official society PDFs.
+ *
+ * Resolution order (never cross-society):
+ *   Current Society → Society Letterhead → Society Report Settings → Generate PDF
+ *
+ * Official letterhead mode draws the uploaded stationery as a full-page background
+ * on every page and overlays report content only inside the safe content area.
+ */
+import type { jsPDF } from 'jspdf';
+import { createSocietyPdf, PDF_MARGIN_MM } from '@/lib/pdfPage';
+import {
+  applyLetterheadPage,
+  fetchSocietyLetterhead,
+  finalizeLetterheadFooters,
+  letterheadEnsureSpace,
+  measureLetterheadLayout,
+  type LetterheadLayout,
+  type ReportPdfMode,
+  type SocietyLetterhead,
+  type SocietyReportSettings,
+} from '@/lib/pdfLetterhead';
+import { openBlobInNewTab, savePdfToDevice } from '@/lib/reportExportUtils';
+
+export const LETTERHEAD_NOT_CONFIGURED_WARNING =
+  'Official society letterhead has not been configured.';
+
+export type ReportMeta = {
+  title: string;
+  reportNo?: string | null;
+  date?: string | null;
+  society?: string | null;
+  period?: string | null;
+  generatedBy?: string | null;
+};
+
+export type SignatureBlockOpts = {
+  preparedBy?: boolean;
+  verifiedBy?: boolean;
+  authorizedSignatory?: boolean;
+};
+
+export type LetterheadReportContext = {
+  societyId: string;
+  letterhead: SocietyLetterhead | null;
+  settings: SocietyReportSettings;
+  /** Effective mode after fallback when letterhead is missing. */
+  mode: ReportPdfMode;
+  warning?: string;
+};
+
+/** Load society-scoped letterhead + report settings. Never falls back to another society. */
+export async function resolveLetterheadReportContext(
+  societyId: string | null | undefined,
+  preferredMode?: ReportPdfMode | null,
+): Promise<LetterheadReportContext | null> {
+  if (!societyId) return null;
+  const letterhead = await fetchSocietyLetterhead(societyId);
+  if (!letterhead) {
+    return {
+      societyId,
+      letterhead: null,
+      settings: { defaultReportFormat: 'letterhead' },
+      mode: 'plain',
+      warning: LETTERHEAD_NOT_CONFIGURED_WARNING,
+    };
+  }
+
+  const settings: SocietyReportSettings = {
+    defaultReportFormat: letterhead.defaultReportFormat === 'plain' ? 'plain' : 'letterhead',
+  };
+
+  const requested = preferredMode ?? settings.defaultReportFormat;
+  const hasOfficialAsset = !!(letterhead.letterheadDataUrl || letterhead.letterheadUrl || letterhead.letterheadStoragePath);
+
+  if (requested === 'letterhead' && !hasOfficialAsset && letterhead.letterheadMode !== 'stationery') {
+    return {
+      societyId,
+      letterhead,
+      settings,
+      mode: 'plain',
+      warning: LETTERHEAD_NOT_CONFIGURED_WARNING,
+    };
+  }
+
+  return {
+    societyId,
+    letterhead,
+    settings,
+    mode: requested,
+  };
+}
+
+export type SocietyReportRenderer = {
+  doc: jsPDF;
+  layout: LetterheadLayout;
+  letterhead: SocietyLetterhead | string | null;
+  mode: ReportPdfMode;
+  y: number;
+};
+
+/** Create a PDF document with the first page letterhead (or plain) applied. */
+export function beginSocietyReport(
+  letterhead: SocietyLetterhead | string | null | undefined,
+  opts?: { mode?: ReportPdfMode; orientation?: 'portrait' | 'landscape' },
+): SocietyReportRenderer {
+  const mode = opts?.mode ?? 'letterhead';
+  const doc = createSocietyPdf({ orientation: opts?.orientation });
+  const layout = applyLetterheadPage(doc, letterhead, { mode });
+  return {
+    doc,
+    layout,
+    letterhead: letterhead ?? null,
+    mode,
+    y: layout.contentTop,
+  };
+}
+
+/** Ensure vertical space; adds a letterheaded continuation page when needed. */
+export function ensureReportSpace(
+  renderer: SocietyReportRenderer,
+  needMm: number,
+): SocietyReportRenderer {
+  const next = letterheadEnsureSpace(
+    renderer.doc,
+    renderer.layout,
+    renderer.y,
+    needMm,
+    renderer.letterhead,
+    { mode: renderer.mode },
+  );
+  return { ...renderer, layout: next.layout, y: next.y };
+}
+
+/** Draw standard report metadata header (only non-empty fields). */
+export function drawReportHeader(renderer: SocietyReportRenderer, meta: ReportMeta): SocietyReportRenderer {
+  let r = ensureReportSpace(renderer, 28);
+  const { doc, layout } = r;
+  const x = layout.leftMargin;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(17, 24, 39);
+  const titleLines = doc.splitTextToSize(meta.title, layout.contentWidth) as string[];
+  doc.text(titleLines, x, r.y);
+  r = { ...r, y: r.y + titleLines.length * 5.5 + 2 };
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(75, 85, 99);
+
+  const rows: [string, string][] = [];
+  if (meta.reportNo?.trim()) rows.push(['Report No.', meta.reportNo.trim()]);
+  if (meta.date?.trim()) rows.push(['Date', meta.date.trim()]);
+  if (meta.society?.trim()) rows.push(['Society', meta.society.trim()]);
+  if (meta.period?.trim()) rows.push(['Period', meta.period.trim()]);
+  if (meta.generatedBy?.trim()) rows.push(['Generated By', meta.generatedBy.trim()]);
+
+  for (const [label, value] of rows) {
+    r = ensureReportSpace(r, 5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${label}:`, x, r.y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(value, x + 28, r.y);
+    r = { ...r, y: r.y + 4.5 };
+  }
+
+  doc.setTextColor(0, 0, 0);
+  return { ...r, y: r.y + 4 };
+}
+
+/** Signature / authorization block inside the safe content area. */
+export function drawSignatureSection(
+  renderer: SocietyReportRenderer,
+  opts: SignatureBlockOpts = { preparedBy: true, verifiedBy: true, authorizedSignatory: true },
+): SocietyReportRenderer {
+  let r = ensureReportSpace(renderer, 42);
+  const { doc, layout } = r;
+  const left = layout.leftMargin;
+  const mid = layout.leftMargin + layout.contentWidth / 2;
+  const right = layout.pageW - layout.rightMargin;
+  const lineW = Math.min(48, layout.contentWidth * 0.35);
+
+  r = { ...r, y: r.y + 6 };
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(17, 24, 39);
+
+  if (opts.preparedBy !== false) {
+    doc.text('Prepared By', left, r.y);
+    doc.setDrawColor(120, 125, 135);
+    doc.line(left, r.y + 10, left + lineW, r.y + 10);
+  }
+  if (opts.verifiedBy !== false) {
+    doc.text('Verified By', mid, r.y);
+    doc.setDrawColor(120, 125, 135);
+    doc.line(mid, r.y + 10, mid + lineW, r.y + 10);
+  }
+
+  r = { ...r, y: r.y + 22 };
+
+  if (opts.authorizedSignatory !== false) {
+    r = ensureReportSpace(r, 18);
+    const authX = right - lineW;
+    doc.text('Authorized Signatory', authX, r.y);
+    doc.setDrawColor(120, 125, 135);
+    doc.line(authX, r.y + 10, right, r.y + 10);
+    r = { ...r, y: r.y + 14 };
+  }
+
+  doc.setTextColor(0, 0, 0);
+  return r;
+}
+
+/** Finalize page numbers / footers and return a Blob. */
+export function finalizeSocietyReport(renderer: SocietyReportRenderer): Blob {
+  finalizeLetterheadFooters(renderer.doc, renderer.letterhead, { mode: renderer.mode });
+  return renderer.doc.output('blob');
+}
+
+export async function previewSocietyReportPdf(blob: Blob, filename = 'report-preview.pdf'): Promise<void> {
+  openBlobInNewTab(blob, filename);
+}
+
+export async function downloadSocietyReportPdf(blob: Blob, filename: string): Promise<void> {
+  await savePdfToDevice(blob, filename);
+}
+
+/** Measure layout without drawing (for tests / preflight). */
+export function measureReportLayout(
+  letterhead?: SocietyLetterhead | string | null,
+  mode: ReportPdfMode = 'letterhead',
+): LetterheadLayout {
+  const doc = createSocietyPdf();
+  return measureLetterheadLayout(doc, letterhead, { mode });
+}
+
+export { PDF_MARGIN_MM, measureLetterheadLayout, applyLetterheadPage, letterheadEnsureSpace };

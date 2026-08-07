@@ -24,11 +24,22 @@ export type FinancePeriodReportExportInput = FinancePeriodReportPdfInput & {
 
 export function toFinancePeriodReportExportInput(
   report: FinancePeriodReportResult,
-  meta: { societyName: string; periodFrom: string; periodTo: string; generatedAt?: string },
+  meta: {
+    societyName: string;
+    periodFrom: string;
+    periodTo: string;
+    generatedAt?: string;
+    letterhead?: FinancePeriodReportPdfInput['letterhead'];
+    pdfMode?: FinancePeriodReportPdfInput['pdfMode'];
+    generatedBy?: string | null;
+  },
 ): FinancePeriodReportExportInput {
   const { maintenanceReceipts: _maintenanceReceipts, corpusReceipts: _corpusReceipts, ...exportFields } = report;
   return {
     societyName: meta.societyName,
+    letterhead: meta.letterhead,
+    pdfMode: meta.pdfMode,
+    generatedBy: meta.generatedBy,
     periodFrom: meta.periodFrom,
     periodTo: meta.periodTo,
     generatedAt: meta.generatedAt ?? new Date().toISOString(),

@@ -1,10 +1,9 @@
-import { createSocietyPdf } from '@/lib/pdfPage';
 import {
-  applyLetterheadPage,
-  finalizeLetterheadFooters,
   letterheadEnsureSpace,
+  type ReportPdfMode,
   type SocietyLetterhead,
 } from '@/lib/pdfLetterhead';
+import { drawReportHeader, beginSocietyReport, finalizeSocietyReport } from '@/lib/letterheadReportEngine';
 import {
   buildHtmlTable,
   htmlToWordBlob,
@@ -65,64 +64,67 @@ function buildPdfBlob(
   headers: string[],
   rows: unknown[][],
   letterhead?: SocietyLetterhead | string | null,
+  pdfMode: ReportPdfMode = 'letterhead',
 ): Blob {
-  const doc = createSocietyPdf({
+  let renderer = beginSocietyReport(letterhead ?? title, {
+    mode: pdfMode,
     orientation: headers.length > 6 ? 'landscape' : 'portrait',
   });
-  const lh = letterhead ?? title;
-  let layout = applyLetterheadPage(doc, lh);
-  const { margin, pageW } = layout;
-  const usable = pageW - margin * 2;
-  let y = layout.contentTop;
+  renderer = drawReportHeader(renderer, {
+    title,
+    society: typeof letterhead === 'object' && letterhead ? letterhead.name : undefined,
+    period: subtitle,
+  });
 
-  doc.setFontSize(12);
-  doc.text(title, margin, y);
-  y += 6;
-  doc.setFontSize(9);
-  doc.setTextColor(90);
-  doc.text(subtitle, margin, y);
-  doc.setTextColor(0);
-  y += 8;
-
+  const { doc } = renderer;
+  const drawOpts = { mode: pdfMode };
+  const usable = renderer.layout.contentWidth;
   const colCount = Math.max(headers.length, 1);
   const colW = usable / colCount;
   const rowH = 6;
+  const x0 = renderer.layout.leftMargin;
 
   const drawRow = (cells: string[], header: boolean) => {
-    const next = letterheadEnsureSpace(doc, layout, y, rowH + 1, lh);
-    layout = next.layout;
-    y = next.y;
+    const next = letterheadEnsureSpace(doc, renderer.layout, renderer.y, rowH + 1, letterhead ?? title, drawOpts);
+    renderer = { ...renderer, layout: next.layout, y: next.y };
     doc.setFontSize(header ? 8 : 7);
     doc.setFont('helvetica', header ? 'bold' : 'normal');
     cells.forEach((cell, i) => {
       const text = doc.splitTextToSize(cell, colW - 1.5);
-      doc.text(text[0] ?? '', margin + i * colW, y);
+      doc.text(text[0] ?? '', x0 + i * colW, renderer.y);
     });
-    y += rowH;
+    renderer = { ...renderer, y: renderer.y + rowH };
     if (header) {
       doc.setDrawColor(180);
-      doc.line(margin, y - 2, pageW - margin, y - 2);
+      doc.line(x0, renderer.y - 2, renderer.layout.pageW - renderer.layout.rightMargin, renderer.y - 2);
     }
   };
 
   drawRow(headers, true);
+  if (rows.length === 0) {
+    drawRow(['(No data)', ...Array(Math.max(0, colCount - 1)).fill('')], false);
+  }
   for (const row of rows) {
     drawRow(row.map((c) => (c == null ? '' : String(c))), false);
   }
 
-  finalizeLetterheadFooters(doc, lh);
-  return doc.output('blob');
+  return finalizeSocietyReport(renderer);
 }
 
 /**
  * Single export pipeline for all metadata-driven reports.
- * Reuses shared CSV/XLSX/Word helpers; PDF via jsPDF tables.
+ * Reuses shared CSV/XLSX/Word helpers; PDF via Letterhead Report Engine.
  */
 export class ExportService {
   export(
     result: ReportResult,
     format: ExportFormat,
-    opts?: { societyName?: string; filenameBase?: string; letterhead?: SocietyLetterhead | null },
+    opts?: {
+      societyName?: string;
+      filenameBase?: string;
+      letterhead?: SocietyLetterhead | null;
+      pdfMode?: ReportPdfMode;
+    },
   ): void {
     const { headers, rows, numericCols } = toMatrix(result);
     const base = opts?.filenameBase ?? `${result.reportId}-report`;
@@ -159,6 +161,7 @@ export class ExportService {
           headers,
           rows,
           opts?.letterhead ?? opts?.societyName,
+          opts?.pdfMode ?? 'letterhead',
         );
         ext = 'pdf';
         break;

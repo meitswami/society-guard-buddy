@@ -207,9 +207,16 @@ export class ReportService {
       page: 1,
       pageSize: request.pageSize ?? 100_000,
     });
+    const { resolveLetterheadReportContext } = await import('@/lib/letterheadReportEngine');
+    const ctx = await resolveLetterheadReportContext(request.societyId, request.pdfMode);
+    if (ctx?.warning && request.format === 'pdf') {
+      console.warn('[report-export]', ctx.warning);
+    }
     this.exporter.export(result, request.format, {
-      societyName: request.societyName,
+      societyName: request.societyName ?? ctx?.letterhead?.name,
       filenameBase: request.filenameBase ?? `${result.reportId}-report`,
+      letterhead: ctx?.letterhead ?? null,
+      pdfMode: ctx?.mode ?? request.pdfMode ?? 'letterhead',
     });
     return result;
   }

@@ -1,5 +1,14 @@
-import { createSocietyPdf } from '@/lib/pdfPage';
-import { applyLetterheadPage, finalizeLetterheadFooters, letterheadEnsureSpace } from '@/lib/pdfLetterhead';
+import {
+  drawReportHeader,
+  drawSignatureSection,
+  beginSocietyReport,
+  finalizeSocietyReport,
+} from '@/lib/letterheadReportEngine';
+import {
+  letterheadEnsureSpace,
+  type ReportPdfMode,
+  type SocietyLetterhead,
+} from '@/lib/pdfLetterhead';
 import { fmtDate, fmtDateTime, fmtDateTimeFull } from '@/lib/dateFormat';
 import {
   buildHtmlTable,
@@ -61,6 +70,10 @@ export type ReportExportContext = {
   societyName: string;
   reportMonth: string;
   tab: 'financial' | 'visitor' | 'vehicle' | 'all_modules';
+  letterhead?: SocietyLetterhead | null;
+  pdfMode?: ReportPdfMode;
+  generatedBy?: string | null;
+  includeSignatures?: boolean;
   financeEntries?: FinanceEntryRow[];
   financeGroups?: { record_mode: string; destination: string; count: number; total: number; flatUnits: number }[];
   financeMonthTotal?: number;
@@ -253,39 +266,58 @@ function sheetsForTab(ctx: ReportExportContext) {
 }
 
 export function buildMonthlyReportPdfBlob(ctx: ReportExportContext): Blob {
-  const doc = createSocietyPdf();
-  const lh = ctx.societyName || 'Society';
-  let layout = applyLetterheadPage(doc, lh);
-  const { margin } = layout;
-  let y = layout.contentTop;
+  const mode = ctx.pdfMode ?? 'letterhead';
+  const lh = ctx.letterhead ?? (ctx.societyName || 'Society');
+  let renderer = beginSocietyReport(lh, { mode });
+  const drawOpts = { mode };
 
+  renderer = drawReportHeader(renderer, {
+    title: tabTitle(ctx.tab),
+    society: ctx.societyName,
+    period: ctx.reportMonth,
+    date: fmtDateTimeFull(new Date().toISOString()),
+    generatedBy: ctx.generatedBy,
+  });
+
+  const { doc } = renderer;
   const line = (text: string, size = 10, gap = 5) => {
-    const next = letterheadEnsureSpace(doc, layout, y, gap + 2, lh);
-    layout = next.layout;
-    y = next.y;
+    const next = letterheadEnsureSpace(doc, renderer.layout, renderer.y, gap + 2, lh, drawOpts);
+    renderer = { ...renderer, layout: next.layout, y: next.y };
     doc.setFontSize(size);
-    doc.text(text, margin, y);
-    y += gap;
+    doc.setTextColor(0, 0, 0);
+    const wrapped = doc.splitTextToSize(text, renderer.layout.contentWidth) as string[];
+    doc.text(wrapped, renderer.layout.leftMargin, renderer.y);
+    renderer = { ...renderer, y: renderer.y + Math.max(gap, wrapped.length * 3.6) };
   };
-
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  doc.text(`${tabTitle(ctx.tab)} · ${ctx.reportMonth}`, margin, y);
-  y += 5;
-  doc.text(`Generated: ${fmtDateTimeFull(new Date().toISOString())}`, margin, y);
-  doc.setTextColor(0, 0, 0);
-  y += 10;
 
   for (const sheet of sheetsForTab(ctx)) {
     line(sheet.name, 12, 7);
-    for (const row of sheet.rows) {
-      line(row.map((c) => (typeof c === 'number' ? (sheet.headers.length === 2 && typeof c === 'number' && row.indexOf(c) === 1 ? moneyInr(c) : String(c)) : String(c ?? ''))).join(' · '), 8, 4);
+    if (sheet.rows.length === 0) {
+      line('(No data)', 8, 4);
     }
-    y += 4;
+    for (const row of sheet.rows) {
+      line(
+        row
+          .map((c) =>
+            typeof c === 'number'
+              ? sheet.headers.length === 2 && row.indexOf(c) === 1
+                ? moneyInr(c)
+                : String(c)
+              : String(c ?? ''),
+          )
+          .join(' · '),
+        8,
+        4,
+      );
+    }
+    renderer = { ...renderer, y: renderer.y + 4 };
   }
 
-  finalizeLetterheadFooters(doc, lh);
-  return doc.output('blob');
+  if (ctx.includeSignatures !== false && ctx.tab === 'financial') {
+    renderer = drawSignatureSection(renderer);
+  }
+
+  return finalizeSocietyReport(renderer);
 }
 
 function buildReportWord(ctx: ReportExportContext): Blob {

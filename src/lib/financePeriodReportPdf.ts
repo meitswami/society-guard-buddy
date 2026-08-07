@@ -1,21 +1,23 @@
-import { jsPDF } from 'jspdf';
-import { createSocietyPdf } from '@/lib/pdfPage';
 import {
-  applyLetterheadPage,
-  finalizeLetterheadFooters,
   letterheadEnsureSpace,
   type LetterheadLayout,
+  type ReportPdfMode,
   type SocietyLetterhead,
 } from '@/lib/pdfLetterhead';
+import { drawReportHeader, drawSignatureSection, beginSocietyReport, finalizeSocietyReport } from '@/lib/letterheadReportEngine';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import type { ChannelByHeadRow } from '@/lib/financePeriodReport';
+import type { jsPDF } from 'jspdf';
 
 export type FinancePeriodReportPdfInput = {
   societyName: string;
   letterhead?: SocietyLetterhead | null;
+  pdfMode?: ReportPdfMode;
+  includeSignatures?: boolean;
   periodFrom: string;
   periodTo: string;
   generatedAt: string;
+  generatedBy?: string | null;
   receiptByMethod: { cash: number; bank: number; other: number };
   receiptByHead: [string, ChannelByHeadRow][];
   totalReceipts: number;
@@ -47,13 +49,15 @@ function drawHeadWiseTable(
   footerTotals: { cash: number; bank: number; other: number; total: number },
   lh: SocietyLetterhead | string,
   layoutIn: LetterheadLayout,
+  pdfMode: ReportPdfMode = 'letterhead',
 ): { y: number; layout: LetterheadLayout } {
   const rowH = 5.5;
   let y = startY;
   let layout = layoutIn;
+  const drawOpts = { mode: pdfMode };
 
   const ensureSpace = (needed: number) => {
-    const next = letterheadEnsureSpace(doc, layout, y, needed, lh);
+    const next = letterheadEnsureSpace(doc, layout, y, needed, lh, drawOpts);
     layout = next.layout;
     y = next.y;
   };
@@ -113,32 +117,30 @@ function drawHeadWiseTable(
 
 /** Build a printable finance period report PDF (returns Blob). */
 export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInput): Blob {
-  const doc = createSocietyPdf();
+  const mode = input.pdfMode ?? 'letterhead';
   const lh = input.letterhead ?? input.societyName;
-  let layout = applyLetterheadPage(doc, lh);
-  const { margin, pageW } = layout;
-  let y = layout.contentTop;
+  let renderer = beginSocietyReport(lh, { mode });
+  renderer = drawReportHeader(renderer, {
+    title: 'Finance period report',
+    society: input.societyName,
+    period: `${fmtIsoDateToDisplay(input.periodFrom)} to ${fmtIsoDateToDisplay(input.periodTo)}`,
+    date: fmtDateTimeFull(input.generatedAt),
+    generatedBy: input.generatedBy,
+  });
+
+  const { doc } = renderer;
+  const drawOpts = { mode };
+  const margin = renderer.layout.leftMargin;
+  const pageW = renderer.layout.pageW;
 
   const line = (text: string, size = 10, gap = 5) => {
-    const next = letterheadEnsureSpace(doc, layout, y, gap + 2, lh);
-    layout = next.layout;
-    y = next.y;
+    const next = letterheadEnsureSpace(doc, renderer.layout, renderer.y, gap + 2, lh, drawOpts);
+    renderer = { ...renderer, layout: next.layout, y: next.y };
     doc.setFontSize(size);
-    doc.text(text, margin, y);
-    y += gap;
+    doc.setTextColor(0, 0, 0);
+    doc.text(text, margin, renderer.y);
+    renderer = { ...renderer, y: renderer.y + gap };
   };
-
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  doc.text(
-    `Finance period report · ${fmtIsoDateToDisplay(input.periodFrom)} to ${fmtIsoDateToDisplay(input.periodTo)}`,
-    margin,
-    y,
-  );
-  y += 5;
-  doc.text(`Generated: ${fmtDateTimeFull(input.generatedAt)}`, margin, y);
-  doc.setTextColor(0, 0, 0);
-  y += 8;
 
   line(
     `${input.verifiedPaymentCount} verified payment row(s) · Ledger-only inflows: ${money(input.extraLedgerReceipt)}`,
@@ -149,7 +151,7 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
   let table = drawHeadWiseTable(
     doc,
     margin,
-    y,
+    renderer.y,
     'Collection receipts (head-wise)',
     input.receiptByHead,
     'All receipts',
@@ -160,15 +162,15 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
       total: input.totalReceipts,
     },
     lh,
-    layout,
+    renderer.layout,
+    mode,
   );
-  y = table.y;
-  layout = table.layout;
+  renderer = { ...renderer, y: table.y, layout: table.layout };
 
   table = drawHeadWiseTable(
     doc,
     margin,
-    y,
+    renderer.y,
     'Expenses (head-wise)',
     input.expenseByHead,
     'All expenses',
@@ -179,27 +181,30 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
       total: input.totalExpenses,
     },
     lh,
-    layout,
+    renderer.layout,
+    mode,
   );
-  y = table.y;
-  layout = table.layout;
+  renderer = { ...renderer, y: table.y, layout: table.layout };
 
   line('Summary', 11, 6);
   line(`  Cash in hand (net): ${money(input.cashInHand)}`, 10, 5);
   line(`  Cash in bank (net): ${money(input.cashInBank)}`, 10, 5);
   line(`  Other channels (net): ${money(input.otherNet)}`, 10, 5);
-  doc.setFontSize(11);
   line(`  Total balance: ${money(input.totalBalance)}`, 11, 7);
 
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
   const foot =
     'Receipts use verified maintenance payment dates (verified_at / payment_date / created_at). Expenses use ledger separate-entry rows by transaction_date.';
-  const split = doc.splitTextToSize(foot, pageW - 2 * margin);
+  const split = doc.splitTextToSize(foot, pageW - margin - renderer.layout.rightMargin) as string[];
   for (const row of split) {
     line(row, 8, 4);
   }
 
-  finalizeLetterheadFooters(doc, lh);
-  return doc.output('blob');
+  if (input.includeSignatures !== false) {
+    renderer = drawSignatureSection(renderer);
+  }
+
+  return finalizeSocietyReport(renderer);
 }
+

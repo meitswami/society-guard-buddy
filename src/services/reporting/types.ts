@@ -155,4 +155,5 @@ export type ReportExportRequest = ReportRequest & {
   format: ExportFormat;
   societyName?: string;
   filenameBase?: string;
+  pdfMode?: import('@/lib/pdfLetterhead').ReportPdfMode;
 };

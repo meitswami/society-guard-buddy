@@ -34,6 +34,7 @@ import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { REPORT_PAGE_METRICS } from '@/lib/descriptiveMetricCopy';
 import FinancePeriodReportSendPanel from '@/components/FinancePeriodReportSendPanel';
 import ExportFormatMenu from '@/components/ExportFormatMenu';
+import ReportPdfActions from '@/components/ReportPdfActions';
 import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import { buildMonthlyReportPdfBlob, downloadMonthlyReport, type ReportExportContext } from '@/lib/monthlyReportExport';
 import type { ExportFormat } from '@/lib/reportExportUtils';
@@ -489,16 +490,38 @@ const ReportPage = ({
       })();
       return;
     }
-    // Financial PDFs open in a new tab for viewing; other formats download.
-    if (format === 'pdf' && activeTab === 'financial') {
-      const filename = `financial-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`;
-      openBlobInNewTab(buildMonthlyReportPdfBlob(reportExportContext), filename);
-      toast.success('PDF opened to view');
+    if (format === 'pdf') {
+      void (async () => {
+        try {
+          const ctx = await resolveLetterheadReportContext(societyId);
+          if (ctx?.warning) toast.warning(ctx.warning);
+          const blob = buildMonthlyReportPdfBlob({
+            ...reportExportContext,
+            letterhead: ctx?.letterhead ?? null,
+            pdfMode: ctx?.mode ?? 'letterhead',
+          });
+          const filename = `${activeTab}-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`;
+          openBlobInNewTab(blob, filename);
+          toast.success('PDF opened to view');
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'PDF failed');
+        }
+      })();
       return;
     }
     downloadMonthlyReport(format, reportExportContext);
     toast.success(`${format.toUpperCase()} downloaded`);
   };
+
+  const buildScopedMonthlyPdf = async (opts: {
+    mode: ReportPdfMode;
+    letterhead: SocietyLetterhead | null;
+  }) =>
+    buildMonthlyReportPdfBlob({
+      ...reportExportContext,
+      letterhead: opts.letterhead,
+      pdfMode: opts.mode,
+    });
 
   // ─── RENDER ───────────────────────────────────────────────────────────────────
   return (
@@ -518,17 +541,30 @@ const ReportPage = ({
           {activeTab !== 'financial' && (
             <>
               <div className="flex flex-wrap gap-2 justify-end">
+                <ReportPdfActions
+                  societyId={societyId}
+                  filename={`${activeTab}-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
+                  buildPdf={buildScopedMonthlyPdf}
+                  label="Generate Report"
+                />
                 <ExportFormatMenu
                   label="Export"
                   onExport={exportReport}
-                  formats={activeTab === 'engine' ? ['excel', 'csv', 'pdf'] : undefined}
+                  formats={activeTab === 'engine' ? ['excel', 'csv', 'pdf'] : ['excel', 'word', 'csv']}
                 />
                 {activeTab !== 'engine' && (
                   <SharePdfWhatsAppButton
                     label="Share on WhatsApp"
                     filename={`${activeTab}-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
                     message={`${societyName} — ${statementPeriodLabel} report`}
-                    getBlob={() => buildMonthlyReportPdfBlob(reportExportContext)}
+                    getBlob={async () => {
+                      const ctx = await resolveLetterheadReportContext(societyId);
+                      return buildMonthlyReportPdfBlob({
+                        ...reportExportContext,
+                        letterhead: ctx?.letterhead ?? null,
+                        pdfMode: ctx?.mode ?? 'letterhead',
+                      });
+                    }}
                   />
                 )}
               </div>
@@ -663,12 +699,29 @@ const ReportPage = ({
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ExportFormatMenu label="Download / View" onExport={exportReport} />
+                <ReportPdfActions
+                  societyId={societyId}
+                  filename={`financial-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
+                  buildPdf={buildScopedMonthlyPdf}
+                  label="Generate Report"
+                />
+                <ExportFormatMenu
+                  label="Download / View"
+                  onExport={exportReport}
+                  formats={['excel', 'word', 'csv']}
+                />
                 <SharePdfWhatsAppButton
                   label="Share on WhatsApp"
                   filename={`financial-report-${statementPeriodLabel.replace(/\s+/g, '-')}.pdf`}
                   message={`${societyName} — ${statementPeriodLabel} financial report (${selectedFinancialLabels.join(', ')})`}
-                  getBlob={() => buildMonthlyReportPdfBlob(reportExportContext)}
+                  getBlob={async () => {
+                    const ctx = await resolveLetterheadReportContext(societyId);
+                    return buildMonthlyReportPdfBlob({
+                      ...reportExportContext,
+                      letterhead: ctx?.letterhead ?? null,
+                      pdfMode: ctx?.mode ?? 'letterhead',
+                    });
+                  }}
                 />
               </div>
             </div>

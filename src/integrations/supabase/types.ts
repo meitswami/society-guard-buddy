@@ -3760,6 +3760,10 @@ export type Database = {
           letterhead_mode: string
           letterhead_top_mm: number
           letterhead_bottom_mm: number
+          letterhead_left_mm: number
+          letterhead_right_mm: number
+          letterhead_storage_path: string | null
+          default_report_format: string
           name: string
           photo_urls: string[]
           pincode: string | null
@@ -3791,6 +3795,10 @@ export type Database = {
           letterhead_mode?: string
           letterhead_top_mm?: number
           letterhead_bottom_mm?: number
+          letterhead_left_mm?: number
+          letterhead_right_mm?: number
+          letterhead_storage_path?: string | null
+          default_report_format?: string
           name: string
           photo_urls?: string[]
           pincode?: string | null
@@ -3822,6 +3830,10 @@ export type Database = {
           letterhead_mode?: string
           letterhead_top_mm?: number
           letterhead_bottom_mm?: number
+          letterhead_left_mm?: number
+          letterhead_right_mm?: number
+          letterhead_storage_path?: string | null
+          default_report_format?: string
           name?: string
           photo_urls?: string[]
           pincode?: string | null
