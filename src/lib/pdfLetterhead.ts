@@ -142,10 +142,16 @@ export function applyLetterheadPage(doc: jsPDF, info?: SocietyLetterhead | strin
 
   if (mode === 'image' && lh.letterheadDataUrl) {
     try {
-      // Letterhead image across the top band (pre-formatted header).
+      // Letterhead image in the top band (never flush past moderate side margins for content).
       const bandH = Math.min(top, pageH * 0.35);
       doc.addImage(lh.letterheadDataUrl, 'PNG', 0, 0, pageW, bandH);
-      return { margin, contentTop: bandH + 4, contentBottom, pageW, pageH };
+      return {
+        margin,
+        contentTop: Math.max(bandH + 4, margin),
+        contentBottom,
+        pageW,
+        pageH,
+      };
     } catch {
       /* fall through to auto */
     }
@@ -193,9 +199,10 @@ export function applyLetterheadPage(doc: jsPDF, info?: SocietyLetterhead | strin
   doc.line(margin, contentBottom, pageW - margin, contentBottom);
 
   doc.setTextColor(0, 0, 0);
+  // Never start body content above the moderate margin (page 2+ letterhead band).
   return {
     margin,
-    contentTop: Math.max(ruleY + 6, top * 0.55),
+    contentTop: Math.max(ruleY + 6, margin),
     contentBottom,
     pageW,
     pageH,

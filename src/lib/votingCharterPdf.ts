@@ -6,7 +6,7 @@ import {
   ELECTION_PROGRAM_STEPS,
   VOTING_CHARTER_TITLE_KEY,
 } from '@/lib/votingCharter';
-import { PDF_LETTER_CONTENT_WIDTH_PX, PDF_PAGE_FORMAT } from '@/lib/pdfPage';
+import { PDF_LETTER_CONTENT_WIDTH_PX, PDF_MARGIN_MM, PDF_PAGE_FORMAT } from '@/lib/pdfPage';
 
 /** Resolve charter copy for an explicit language. */
 export function charterText(lang: Lang, key: string): string {
@@ -104,7 +104,7 @@ function buildCharterHtml(opts: {
     font-size: 13px;
     line-height: 1.55;
     width: ${PDF_LETTER_CONTENT_WIDTH_PX}px;
-    padding: 0.75in;
+    padding: 0 ${PDF_MARGIN_MM}mm;
     background: #fff;
     -webkit-font-smoothing: antialiased;
   }
@@ -204,11 +204,17 @@ async function ensureFontsLoaded(doc: Document, isHi: boolean): Promise<void> {
   await new Promise((r) => setTimeout(r, 100));
 }
 
-/** Slice a tall canvas into US Letter PDF pages. */
+/**
+ * Slice a tall canvas into US Letter PDF pages.
+ * Every page (including page 2+) keeps moderate top/bottom margins so content
+ * is never flush to the page edge (letterhead / stationery band).
+ */
 function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
   const pdf = new jsPDF({ unit: 'mm', format: PDF_PAGE_FORMAT, compress: true });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
+  const margin = PDF_MARGIN_MM;
+  const contentHmm = pageH - 2 * margin;
   const imgW = pageW;
   const pageCanvas = document.createElement('canvas');
   const pageCtx = pageCanvas.getContext('2d');
@@ -217,12 +223,12 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
   }
 
   const pxPerMm = canvas.width / imgW;
-  const pageHeightPx = Math.floor(pageH * pxPerMm);
+  const contentHeightPx = Math.max(1, Math.floor(contentHmm * pxPerMm));
   let yPx = 0;
   let pageIndex = 0;
 
   while (yPx < canvas.height) {
-    const sliceH = Math.min(pageHeightPx, canvas.height - yPx);
+    const sliceH = Math.min(contentHeightPx, canvas.height - yPx);
     pageCanvas.width = canvas.width;
     pageCanvas.height = sliceH;
     pageCtx.fillStyle = '#ffffff';
@@ -231,7 +237,10 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
     const sliceData = pageCanvas.toDataURL('image/jpeg', 0.92);
     const sliceHmm = sliceH / pxPerMm;
     if (pageIndex > 0) pdf.addPage();
-    pdf.addImage(sliceData, 'JPEG', 0, 0, imgW, sliceHmm);
+    // White page + content inset by moderate margin on every page
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, pageW, pageH, 'F');
+    pdf.addImage(sliceData, 'JPEG', 0, margin, imgW, sliceHmm);
     yPx += sliceH;
     pageIndex += 1;
   }
