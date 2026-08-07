@@ -30,6 +30,12 @@ export type LetterheadLayout = {
   pageH: number;
 };
 
+/** Matches Society letter Head.pdf: indigo header rule, charcoal footer rule. */
+const HEADER_RULE: [number, number, number] = [55, 65, 120];
+const FOOTER_RULE: [number, number, number] = [120, 125, 135];
+const NAME_COLOR: [number, number, number] = [17, 24, 39];
+const META_COLOR: [number, number, number] = [75, 85, 99];
+
 const FULL_SELECT =
   'name, logo_url, letterhead_url, letterhead_mode, letterhead_top_mm, letterhead_bottom_mm, address, city, state, pincode, contact_phone, contact_email';
 const FALLBACK_SELECT = 'name, logo_url, address, city, state, pincode, contact_phone, contact_email';
@@ -47,7 +53,8 @@ function topReserve(info: SocietyLetterhead): number {
 
 function bottomReserve(info: SocietyLetterhead): number {
   const n = Number(info.letterheadBottomMm);
-  return Number.isFinite(n) && n > 0 ? n : 18;
+  // Need room for footer rule + society name + page n/N (Society letter Head layout).
+  return Number.isFinite(n) && n > 0 ? Math.max(n, 16) : 18;
 }
 
 export function letterheadAddressLine(info: Pick<SocietyLetterhead, 'address' | 'city' | 'state' | 'pincode'>): string {
@@ -154,8 +161,97 @@ function coerceLetterhead(info?: SocietyLetterhead | string | null): SocietyLett
 }
 
 /**
+ * Society letter Head.pdf layout — header band:
+ *   Society name (bold)
+ *   Address line
+ *   Phone · email
+ *   indigo rule
+ * Footer band (below content):
+ *   charcoal rule
+ *   Society name (left) · page n/N (right)
+ */
+function drawAutoHeader(doc: jsPDF, lh: SocietyLetterhead, layout: LetterheadLayout): number {
+  const { margin, pageW } = layout;
+  // Text-only letterhead (Society letter Head.pdf) — logo only when present.
+  let textX = margin;
+  const logoSize = 14;
+  if (lh.logoDataUrl) {
+    try {
+      doc.addImage(lh.logoDataUrl, dataUrlImageFormat(lh.logoDataUrl), margin, margin - 2, logoSize, logoSize);
+      textX = margin + logoSize + 3.5;
+    } catch (err) {
+      console.warn('[letterhead] logo embed failed', err);
+    }
+  }
+
+  const maxTextW = Math.max(40, pageW - textX - margin);
+
+  doc.setTextColor(...NAME_COLOR);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text(lh.name || 'Society', textX, margin + 4);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...META_COLOR);
+  let y = margin + 9.5;
+  const addr = letterheadAddressLine(lh);
+  if (addr) {
+    const lines = doc.splitTextToSize(addr, maxTextW) as string[];
+    doc.text(lines, textX, y);
+    y += Math.max(3.6, lines.length * 3.4);
+  }
+  const contact = letterheadContactLine(lh);
+  if (contact) {
+    const lines = doc.splitTextToSize(contact, maxTextW) as string[];
+    doc.text(lines, textX, y);
+    y += Math.max(3.6, lines.length * 3.4);
+  }
+
+  const ruleY = Math.min(Math.max(y + 2.5, margin + (lh.logoDataUrl ? logoSize : 6) + 2), layout.contentTop - 3);
+  doc.setDrawColor(...HEADER_RULE);
+  doc.setLineWidth(0.85);
+  doc.line(margin, ruleY, pageW - margin, ruleY);
+  return ruleY;
+}
+
+function drawFooterBand(
+  doc: jsPDF,
+  lh: SocietyLetterhead,
+  layout: LetterheadLayout,
+  pageNumber?: number,
+  pageCount?: number,
+): void {
+  const { margin, contentBottom, pageW, pageH } = layout;
+
+  // Clear footer band so body never shows through.
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, contentBottom - 0.5, pageW, pageH - contentBottom + 0.5, 'F');
+
+  doc.setDrawColor(...FOOTER_RULE);
+  doc.setLineWidth(0.7);
+  doc.line(margin, contentBottom, pageW - margin, contentBottom);
+
+  const footerTextY = Math.min(contentBottom + 5.2, pageH - 6);
+
+  doc.setTextColor(...NAME_COLOR);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text(lh.name || 'Society', margin, footerTextY);
+
+  if (pageNumber != null && pageCount != null && pageCount > 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...META_COLOR);
+    doc.text(`${pageNumber}/${pageCount}`, pageW - margin, footerTextY, { align: 'right' });
+  }
+
+  doc.setTextColor(0, 0, 0);
+}
+
+/**
  * Compute letterhead content band without drawing.
- * Use this before placing body content so the reserved top band stays clear.
+ * Use this before placing body content so the reserved top/bottom bands stay clear.
  */
 export function measureLetterheadLayout(
   doc: jsPDF,
@@ -185,23 +281,23 @@ export function measureLetterheadLayout(
     };
   }
 
-  // Auto: estimate rule position including wrapped address/contact.
-  const logoSize = 16;
+  // Auto: estimate rule position including wrapped address/contact (Society letter Head).
+  const logoSize = 14;
   const hasLogo = !!(lh.logoDataUrl || lh.logoUrl);
-  const textX = hasLogo ? margin + logoSize + 4 : margin;
+  const textX = hasLogo ? margin + logoSize + 3.5 : margin;
   const maxTextW = Math.max(40, pageW - textX - margin);
-  let y = margin + 10;
+  let y = margin + 9.5;
   const addr = letterheadAddressLine(lh);
   if (addr) {
     const lines = doc.splitTextToSize(addr, maxTextW);
-    y += Math.max(4, lines.length * 3.5);
+    y += Math.max(3.6, lines.length * 3.4);
   }
   const contact = letterheadContactLine(lh);
   if (contact) {
     const lines = doc.splitTextToSize(contact, maxTextW);
-    y += Math.max(4, lines.length * 3.5);
+    y += Math.max(3.6, lines.length * 3.4);
   }
-  const ruleY = Math.max(y + 2, margin + (hasLogo ? logoSize : 8) + 2, top - 8);
+  const ruleY = Math.max(y + 2.5, margin + (hasLogo ? logoSize : 6) + 2, top - 8);
   return {
     margin,
     // Always keep body below the configured top reserve so letterhead cannot be covered.
@@ -213,22 +309,20 @@ export function measureLetterheadLayout(
 }
 
 /**
- * Draw letterhead on the current PDF page and return content layout.
- * Prefer drawing this AFTER body content (in the reserved top band) so nothing covers it.
+ * Draw Society letter Head layout on the current PDF page and return content layout.
+ * Prefer drawing this AFTER body content (in the reserved bands) so nothing covers it.
+ * Page numbers are stamped later via {@link finalizeLetterheadFooters} once total pages are known.
  */
 export function applyLetterheadPage(doc: jsPDF, info?: SocietyLetterhead | string | null): LetterheadLayout {
   const lh = coerceLetterhead(info);
   const layout = measureLetterheadLayout(doc, lh);
-  const { margin, contentTop, contentBottom, pageW, pageH } = layout;
+  const { margin, contentTop, pageW, pageH } = layout;
   const mode = modeOf(lh);
   const top = Math.max(topReserve(lh), margin);
 
-  // Stationery: leave top band blank for physical pre-printed paper.
+  // Stationery: leave top band blank for physical pre-printed paper; still reserve footer.
   if (mode === 'stationery') {
-    doc.setDrawColor(229, 231, 235);
-    doc.setLineWidth(0.4);
-    doc.line(margin, contentBottom, pageW - margin, contentBottom);
-    doc.setTextColor(0, 0, 0);
+    drawFooterBand(doc, lh, layout);
     return layout;
   }
 
@@ -236,9 +330,7 @@ export function applyLetterheadPage(doc: jsPDF, info?: SocietyLetterhead | strin
     try {
       const bandH = Math.min(top, pageH * 0.35, contentTop - 2);
       doc.addImage(lh.letterheadDataUrl, dataUrlImageFormat(lh.letterheadDataUrl), 0, 0, pageW, Math.max(bandH, 12));
-      doc.setDrawColor(229, 231, 235);
-      doc.line(margin, contentBottom, pageW - margin, contentBottom);
-      doc.setTextColor(0, 0, 0);
+      drawFooterBand(doc, lh, layout);
       return layout;
     } catch (err) {
       console.warn('[letterhead] image mode failed, falling back to auto', err);
@@ -246,53 +338,24 @@ export function applyLetterheadPage(doc: jsPDF, info?: SocietyLetterhead | strin
     }
   }
 
-  // Auto digital letterhead: logo + society name + address
-  let textX = margin;
-  const logoSize = 16;
-  if (lh.logoDataUrl) {
-    try {
-      doc.addImage(lh.logoDataUrl, dataUrlImageFormat(lh.logoDataUrl), margin, margin - 2, logoSize, logoSize);
-      textX = margin + logoSize + 4;
-    } catch (err) {
-      console.warn('[letterhead] logo embed failed', err);
-    }
-  }
-
-  const maxTextW = Math.max(40, pageW - textX - margin);
-
-  doc.setTextColor(17, 24, 39);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text(lh.name || 'Society', textX, margin + 5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(75, 85, 99);
-  let y = margin + 11;
-  const addr = letterheadAddressLine(lh);
-  if (addr) {
-    const lines = doc.splitTextToSize(addr, maxTextW) as string[];
-    doc.text(lines, textX, y);
-    y += Math.max(4, lines.length * 3.5);
-  }
-  const contact = letterheadContactLine(lh);
-  if (contact) {
-    const lines = doc.splitTextToSize(contact, maxTextW) as string[];
-    doc.text(lines, textX, y);
-    y += Math.max(4, lines.length * 3.5);
-  }
-
-  const ruleY = Math.min(Math.max(y + 2, margin + logoSize + 2, top - 8), contentTop - 3);
-  doc.setDrawColor(99, 102, 241);
-  doc.setLineWidth(0.7);
-  doc.line(margin, ruleY, pageW - margin, ruleY);
-
-  doc.setDrawColor(229, 231, 235);
-  doc.setLineWidth(0.4);
-  doc.line(margin, contentBottom, pageW - margin, contentBottom);
-
-  doc.setTextColor(0, 0, 0);
+  drawAutoHeader(doc, lh, layout);
+  drawFooterBand(doc, lh, layout);
   return layout;
+}
+
+/**
+ * After all pages are built, stamp `n/N` page numbers into every footer
+ * (Society letter Head.pdf style — e.g. 1/3).
+ */
+export function finalizeLetterheadFooters(doc: jsPDF, info?: SocietyLetterhead | string | null): void {
+  const lh = coerceLetterhead(info);
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    const layout = measureLetterheadLayout(doc, lh);
+    drawFooterBand(doc, lh, layout, i, total);
+  }
+  if (total > 0) doc.setPage(total);
 }
 
 /** Ensure space; adds a letterheaded page when needed. */

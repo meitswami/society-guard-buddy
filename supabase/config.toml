@@ -14,3 +14,7 @@ verify_jwt = false
 # Finance reminder test is triggered from in-app admin session (not Supabase Auth JWT).
 [functions.maintenance-reminder]
 verify_jwt = false
+
+# Monthly bill auto-issue (1st of month cron + admin "Issue now").
+[functions.issue-monthly-maintenance]
+verify_jwt = false

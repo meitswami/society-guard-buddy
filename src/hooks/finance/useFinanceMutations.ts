@@ -10,6 +10,7 @@ import {
   insertMaintenanceCharge,
   insertNotificationRows,
   invokeMaintenanceReminderTest,
+  invokeIssueMonthlyMaintenance,
   notifyPaymentDecision,
   persistFinanceRecord,
   recallFinancePeriodReportNotifications,
@@ -138,9 +139,20 @@ export function useFinanceMutations(societyId: string | null) {
   );
 
   const saveReminderSettings = useMutation(
-    withInvalidate((input: { enabled: boolean; schedule: 'once_12pm' | 'twice_12pm_7pm'; dueDay: number }) => {
+    withInvalidate((input: {
+      enabled: boolean;
+      schedule: 'once_12pm' | 'twice_12pm_7pm';
+      dueDay: number;
+      autoIssueEnabled?: boolean;
+      autoIssueWhatsapp?: boolean;
+      billSoundKey?: string;
+    }) => {
       if (!societyId) return Promise.resolve({ data: null, error: 'No society selected' });
-      return upsertFinanceReminderSettings(societyId, input.enabled, input.schedule, input.dueDay);
+      return upsertFinanceReminderSettings(societyId, input.enabled, input.schedule, input.dueDay, {
+        autoIssueEnabled: input.autoIssueEnabled,
+        autoIssueWhatsapp: input.autoIssueWhatsapp,
+        billSoundKey: input.billSoundKey,
+      });
     }),
   );
 
@@ -149,6 +161,14 @@ export function useFinanceMutations(societyId: string | null) {
       if (!societyId) throw new Error('No society selected');
       return assertNoError(await invokeMaintenanceReminderTest(societyId));
     },
+  });
+
+  const issueMonthlyBill = useMutation({
+    mutationFn: async () => {
+      if (!societyId) throw new Error('No society selected');
+      return assertNoError(await invokeIssueMonthlyMaintenance(societyId, true));
+    },
+    onSuccess: () => void invalidateAll(),
   });
 
   const notifyPayment = useMutation({
@@ -193,6 +213,7 @@ export function useFinanceMutations(societyId: string | null) {
     sendReminders: sendReminders.mutateAsync,
     saveReminderSettings: saveReminderSettings.mutateAsync,
     testReminder: testReminder.mutateAsync,
+    issueMonthlyBill: issueMonthlyBill.mutateAsync,
     notifyPayment: notifyPayment.mutateAsync,
     insertNotifications: insertNotifications.mutateAsync,
     recallPeriodReport: recallPeriodReport.mutateAsync,
@@ -215,6 +236,7 @@ export function useFinanceMutations(societyId: string | null) {
       sendReminders.isPending ||
       saveReminderSettings.isPending ||
       testReminder.isPending ||
+      issueMonthlyBill.isPending ||
       recallPeriodReport.isPending ||
       sendPeriodReportToMembers.isPending,
   };

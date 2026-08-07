@@ -20,6 +20,15 @@ interface Props {
   includeVacantFlats: boolean;
   onIncludeVacantFlatsChange: (include: boolean) => void;
   vacantScopeLabel: string;
+  autoIssueEnabled: boolean;
+  autoIssueWhatsapp: boolean;
+  billSoundKey: string;
+  onAutoIssueEnabledChange: (enabled: boolean) => void;
+  onAutoIssueWhatsappChange: (enabled: boolean) => void;
+  onBillSoundKeyChange: (key: string) => void;
+  onIssueMonthlyBillNow: () => void;
+  issuingMonthlyBill: boolean;
+  lastMonthlyBillStatus: string;
 }
 
 export function FinanceRemindersTab({
@@ -40,9 +49,85 @@ export function FinanceRemindersTab({
   includeVacantFlats,
   onIncludeVacantFlatsChange,
   vacantScopeLabel,
+  autoIssueEnabled,
+  autoIssueWhatsapp,
+  billSoundKey,
+  onAutoIssueEnabledChange,
+  onAutoIssueWhatsappChange,
+  onBillSoundKeyChange,
+  onIssueMonthlyBillNow,
+  issuingMonthlyBill,
+  lastMonthlyBillStatus,
 }: Props) {
   return (
     <div className="mb-4 space-y-4">
+      <div className="card-section p-4 space-y-3 border-emerald-500/20 bg-emerald-500/5">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-emerald-600" />
+          <h3 className="font-semibold text-sm">Monthly maintenance bill (₹2,500)</h3>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          On the 1st of each month, create the month&apos;s maintenance charge and notify every member on their
+          profile WhatsApp number, with a musical tone in the app notification.
+        </p>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={autoIssueEnabled}
+            onChange={(e) => onAutoIssueEnabledChange(e.target.checked)}
+          />
+          Auto-issue on 1st of every month (09:00 Asia/Kolkata)
+        </label>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={autoIssueWhatsapp}
+            onChange={(e) => onAutoIssueWhatsappChange(e.target.checked)}
+            disabled={!autoIssueEnabled}
+          />
+          Send WhatsApp to each member&apos;s profile number
+        </label>
+        <label className="text-xs flex flex-col gap-1 max-w-xs">
+          <span className="text-muted-foreground">App notification tune</span>
+          <select
+            className="input-field"
+            value={billSoundKey}
+            onChange={(e) => onBillSoundKeyChange(e.target.value)}
+            disabled={!autoIssueEnabled}
+          >
+            <option value="melody">Musical melody</option>
+            <option value="chime">Soft chime</option>
+            <option value="bell">Bell tone</option>
+            <option value="digital">Digital beep</option>
+          </select>
+        </label>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            className="btn-secondary flex-1"
+            onClick={onSaveAutoReminderSettings}
+            disabled={savingAutoReminder}
+          >
+            {savingAutoReminder ? 'Saving…' : 'Save bill settings'}
+          </button>
+          <button
+            type="button"
+            className="btn-primary flex-1"
+            onClick={onIssueMonthlyBillNow}
+            disabled={issuingMonthlyBill}
+          >
+            {issuingMonthlyBill ? 'Issuing…' : 'Issue this month now'}
+          </button>
+        </div>
+        {lastMonthlyBillStatus ? (
+          <p className="text-[10px] text-muted-foreground">{lastMonthlyBillStatus}</p>
+        ) : null}
+        <p className="text-[10px] text-muted-foreground">
+          WhatsApp cannot change the phone&apos;s ringtone; the musical tune plays in the Society Guard Buddy app
+          notification. Optional WhatsApp audio clip needs MAINTENANCE_BILL_AUDIO_URL configured.
+        </p>
+      </div>
+
       <div className="card-section p-4 space-y-3 border-amber-500/20 bg-amber-500/5">
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-amber-500" />

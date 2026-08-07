@@ -191,7 +191,7 @@ const VotingCharterPanel = ({
                 </div>
               </div>
             )}
-            <div className="mt-2.5 h-px w-full bg-indigo-400/50" />
+            <div className="mt-2.5 h-[2px] w-full bg-[#374178]/80" />
           </div>
 
           {isAdmin && (

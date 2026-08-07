@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { createSocietyPdf } from '@/lib/pdfPage';
-import { applyLetterheadPage } from '@/lib/pdfLetterhead';
+import { applyLetterheadPage, finalizeLetterheadFooters } from '@/lib/pdfLetterhead';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { triggerDownload } from '@/lib/reportExportUtils';
 
@@ -149,6 +149,7 @@ export function buildResidentsDirectoryPdfBlob(societyName: string, flats: PdfFl
     y += 4;
   }
 
+  finalizeLetterheadFooters(doc, lh);
   return doc.output('blob');
 }
 

@@ -1,5 +1,10 @@
 import { createSocietyPdf } from '@/lib/pdfPage';
-import { applyLetterheadPage, letterheadEnsureSpace, type SocietyLetterhead } from '@/lib/pdfLetterhead';
+import {
+  applyLetterheadPage,
+  finalizeLetterheadFooters,
+  letterheadEnsureSpace,
+  type SocietyLetterhead,
+} from '@/lib/pdfLetterhead';
 import {
   buildHtmlTable,
   htmlToWordBlob,
@@ -105,6 +110,7 @@ function buildPdfBlob(
     drawRow(row.map((c) => (c == null ? '' : String(c))), false);
   }
 
+  finalizeLetterheadFooters(doc, lh);
   return doc.output('blob');
 }
 

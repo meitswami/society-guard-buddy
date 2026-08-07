@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import { createSocietyPdf } from '@/lib/pdfPage';
 import {
   applyLetterheadPage,
+  finalizeLetterheadFooters,
   letterheadEnsureSpace,
   type LetterheadLayout,
   type SocietyLetterhead,
@@ -199,5 +200,6 @@ export function buildFinancePeriodReportPdfBlob(input: FinancePeriodReportPdfInp
     line(row, 8, 4);
   }
 
+  finalizeLetterheadFooters(doc, lh);
   return doc.output('blob');
 }

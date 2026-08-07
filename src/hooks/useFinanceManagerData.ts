@@ -32,17 +32,26 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
   const [autoReminderEnabled, setAutoReminderEnabled] = useState(true);
   const [autoReminderSchedule, setAutoReminderSchedule] = useState<'once_12pm' | 'twice_12pm_7pm'>('once_12pm');
   const [reminderDueDay, setReminderDueDay] = useState(1);
+  const [autoIssueEnabled, setAutoIssueEnabled] = useState(true);
+  const [autoIssueWhatsapp, setAutoIssueWhatsapp] = useState(true);
+  const [billSoundKey, setBillSoundKey] = useState('melody');
 
   useEffect(() => {
     if (query.data) {
       setAutoReminderEnabled(query.data.autoReminderEnabled);
       setAutoReminderSchedule(query.data.autoReminderSchedule);
       setReminderDueDay(query.data.reminderDueDay);
+      setAutoIssueEnabled(query.data.autoIssueEnabled);
+      setAutoIssueWhatsapp(query.data.autoIssueWhatsapp);
+      setBillSoundKey(query.data.billSoundKey);
     }
   }, [
     query.data?.autoReminderEnabled,
     query.data?.autoReminderSchedule,
     query.data?.reminderDueDay,
+    query.data?.autoIssueEnabled,
+    query.data?.autoIssueWhatsapp,
+    query.data?.billSoundKey,
     query.data,
   ]);
 
@@ -71,6 +80,12 @@ export function useFinanceManagerData(societyId: string | null, adminName: strin
     setAutoReminderSchedule,
     reminderDueDay,
     setReminderDueDay,
+    autoIssueEnabled,
+    setAutoIssueEnabled,
+    autoIssueWhatsapp,
+    setAutoIssueWhatsapp,
+    billSoundKey,
+    setBillSoundKey,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,

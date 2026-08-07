@@ -1682,6 +1682,9 @@ export type Database = {
           society_id: string
           timezone: string
           updated_at: string
+          auto_issue_enabled: boolean
+          auto_issue_whatsapp: boolean
+          bill_sound_key: string
         }
         Insert: {
           created_at?: string
@@ -1692,6 +1695,9 @@ export type Database = {
           society_id: string
           timezone?: string
           updated_at?: string
+          auto_issue_enabled?: boolean
+          auto_issue_whatsapp?: boolean
+          bill_sound_key?: string
         }
         Update: {
           created_at?: string
@@ -1702,6 +1708,9 @@ export type Database = {
           society_id?: string
           timezone?: string
           updated_at?: string
+          auto_issue_enabled?: boolean
+          auto_issue_whatsapp?: boolean
+          bill_sound_key?: string
         }
         Relationships: [
           {

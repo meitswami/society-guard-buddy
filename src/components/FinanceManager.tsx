@@ -153,6 +153,12 @@ const FinanceManager = ({
     setAutoReminderSchedule,
     reminderDueDay,
     setReminderDueDay,
+    autoIssueEnabled,
+    setAutoIssueEnabled,
+    autoIssueWhatsapp,
+    setAutoIssueWhatsapp,
+    billSoundKey,
+    setBillSoundKey,
     isLoading: financeDataLoading,
     isFetching: financeDataFetching,
     error: financeDataError,
@@ -304,6 +310,8 @@ const FinanceManager = ({
   const [savingAutoReminder, setSavingAutoReminder] = useState(false);
   const [testingAutoReminder, setTestingAutoReminder] = useState(false);
   const [lastReminderTestStatus, setLastReminderTestStatus] = useState<string>('');
+  const [issuingMonthlyBill, setIssuingMonthlyBill] = useState(false);
+  const [lastMonthlyBillStatus, setLastMonthlyBillStatus] = useState<string>('');
 
   useEffect(() => {
     if (!showPaymentForm || payForm.charge_id || charges.length === 0) return;
@@ -2210,8 +2218,11 @@ const FinanceManager = ({
         enabled: autoReminderEnabled,
         schedule: autoReminderSchedule,
         dueDay: reminderDueDay,
+        autoIssueEnabled,
+        autoIssueWhatsapp,
+        billSoundKey,
       });
-      toast.success('Auto reminder settings saved');
+      toast.success('Auto reminder / bill settings saved');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not save settings');
     } finally {
@@ -2257,16 +2268,40 @@ const FinanceManager = ({
         }
       }
       const generic = detail.includes('non-2xx') || detail.includes('FunctionsHttpError') || detail === 'Unknown function error';
-      const hint =
-        detail.includes('finance_reminder_settings') || detail.includes('finance_reminder_dispatch_log')
-          ? 'DB migration missing. Run `npx supabase db push` and redeploy `maintenance-reminder`.'
-          : generic
-            ? 'Reminder test failed. Run DB push + deploy `maintenance-reminder` + deploy `send-push-notification`, then retry.'
-            : detail;
-      toast.error(hint);
-      setLastReminderTestStatus(`Last test failed at ${fmtTime(new Date())}: ${hint}`);
+      toast.error(generic ? 'Reminder test failed. Check edge function logs.' : detail);
+      setLastReminderTestStatus(`Last test failed: ${detail}`);
     } finally {
       setTestingAutoReminder(false);
+    }
+  };
+
+  const issueMonthlyBillNow = async () => {
+    if (!societyId) return;
+    setIssuingMonthlyBill(true);
+    try {
+      const data = await financeMutations.issueMonthlyBill();
+      const flats = Number(data.flats ?? 0);
+      const wa = Number(data.whatsapp_sent ?? 0);
+      const waFail = Number(data.whatsapp_failed ?? 0);
+      const title = data.charge_title || 'Monthly Maintenance';
+      const amount = Number(data.amount ?? 2500);
+      const msg =
+        data.issued > 0
+          ? `Issued ${title} (₹${amount.toLocaleString('en-IN')}) to ${flats} flat(s); WhatsApp sent ${wa}${waFail ? `, failed ${waFail}` : ''}`
+          : data.note
+            ? `Skipped: ${data.note}`
+            : 'No bills issued';
+      toast.success(msg);
+      setLastMonthlyBillStatus(`Last run at ${fmtTime(new Date())}: ${msg}`);
+      if (data.whatsapp_configured === false) {
+        toast.message('WhatsApp not configured — set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID secrets');
+      }
+    } catch (error) {
+      const detail = String((error as any)?.message || 'Unknown function error');
+      toast.error(detail);
+      setLastMonthlyBillStatus(`Last run failed: ${detail}`);
+    } finally {
+      setIssuingMonthlyBill(false);
     }
   };
 
@@ -2361,6 +2396,15 @@ const FinanceManager = ({
               ? `Using all flats (${flats.length})`
               : `Using occupied/sold flats (${targetFlats.length})`
           }
+          autoIssueEnabled={autoIssueEnabled}
+          autoIssueWhatsapp={autoIssueWhatsapp}
+          billSoundKey={billSoundKey}
+          onAutoIssueEnabledChange={setAutoIssueEnabled}
+          onAutoIssueWhatsappChange={setAutoIssueWhatsapp}
+          onBillSoundKeyChange={setBillSoundKey}
+          onIssueMonthlyBillNow={() => void issueMonthlyBillNow()}
+          issuingMonthlyBill={issuingMonthlyBill}
+          lastMonthlyBillStatus={lastMonthlyBillStatus}
         />
       )}
 

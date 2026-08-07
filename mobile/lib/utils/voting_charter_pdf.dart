@@ -46,7 +46,10 @@ Future<Uint8List> buildVotingCharterPdfBytes({
 
   final doc = pw.Document(theme: theme);
   final indigo = PdfColor.fromInt(0xFF4338CA);
+  final headerRule = PdfColor.fromInt(0xFF374178);
+  final footerRule = PdfColor.fromInt(0xFF787D87);
   final muted = PdfColor.fromInt(0xFF6B7280);
+  final nameColor = PdfColor.fromInt(0xFF111827);
   final body = PdfColor.fromInt(0xFF1F2937);
   final heading = PdfColor.fromInt(0xFF312E81);
   final societyLabel =
@@ -62,6 +65,7 @@ Future<Uint8List> buildVotingCharterPdfBytes({
     }
   }
 
+  /// Society letter Head.pdf header: name · address · contact · indigo rule.
   pw.Widget letterheadBlock() {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -79,7 +83,7 @@ Future<Uint8List> buildVotingCharterPdfBytes({
                 children: [
                   pw.Text(
                     societyLabel,
-                    style: pw.TextStyle(font: fontBold, fontSize: 12, color: indigo),
+                    style: pw.TextStyle(font: fontBold, fontSize: 14, color: nameColor),
                   ),
                   if (addr != null && addr.isNotEmpty) ...[
                     pw.SizedBox(height: 2),
@@ -95,8 +99,31 @@ Future<Uint8List> buildVotingCharterPdfBytes({
           ],
         ),
         pw.SizedBox(height: 6),
-        pw.Divider(color: PdfColor.fromInt(0xFFC7D2FE), thickness: 0.8),
+        pw.Container(height: 0.9, color: headerRule),
         pw.SizedBox(height: 8),
+      ],
+    );
+  }
+
+  /// Society letter Head.pdf footer: rule · society name left · page n/N right.
+  pw.Widget footerBlock(pw.Context ctx) {
+    return pw.Column(
+      children: [
+        pw.Container(height: 0.7, color: footerRule),
+        pw.SizedBox(height: 4),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+              societyLabel,
+              style: pw.TextStyle(font: fontBold, fontSize: 9, color: nameColor),
+            ),
+            pw.Text(
+              '${ctx.pageNumber}/${ctx.pagesCount}',
+              style: pw.TextStyle(font: font, fontSize: 9, color: muted),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -104,8 +131,10 @@ Future<Uint8List> buildVotingCharterPdfBytes({
   doc.addPage(
     pw.MultiPage(
       pageFormat: PdfPageFormat.letter,
-      margin: const pw.EdgeInsets.all(54), // 0.75" moderate
+      // Top/bottom leave room for Society letter Head bands.
+      margin: const pw.EdgeInsets.fromLTRB(54, 36, 54, 48),
       header: (ctx) => letterheadBlock(),
+      footer: (ctx) => footerBlock(ctx),
       build: (ctx) => [
         pw.Text(
           content.title,

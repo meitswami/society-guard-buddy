@@ -1,5 +1,5 @@
 import { createSocietyPdf } from '@/lib/pdfPage';
-import { applyLetterheadPage, letterheadEnsureSpace } from '@/lib/pdfLetterhead';
+import { applyLetterheadPage, finalizeLetterheadFooters, letterheadEnsureSpace } from '@/lib/pdfLetterhead';
 import { fmtDateTimeFull, fmtIsoDateToDisplay } from '@/lib/dateFormat';
 import { buildFinancePeriodReportPdfBlob, type FinancePeriodReportPdfInput } from '@/lib/financePeriodReportPdf';
 import type { FinancePeriodReportResult } from '@/lib/financePeriodReport';
@@ -242,5 +242,6 @@ export function buildTransactionStatementPdfBlob(opts: {
     }
   }
 
+  finalizeLetterheadFooters(doc, lh);
   return doc.output('blob');
 }

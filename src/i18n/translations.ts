@@ -1111,8 +1111,8 @@ const translations: Record<string, Record<Lang, string>> = {
   'superadmin.letterheadTopMm': { en: 'Top band (mm)', hi: 'ऊपरी पट्टी (मिमी)' },
   'superadmin.letterheadBottomMm': { en: 'Bottom band (mm)', hi: 'निचली पट्टी (मिमी)' },
   'superadmin.letterheadHint': {
-    en: 'All report PDFs use Letter size with moderate margins. Upload a letterhead image or leave Auto to draw society branding on every page.',
-    hi: 'सभी रिपोर्ट पीडीएफ लेटर आकार और मध्यम हाशिये पर हैं। लेटरहेड चित्र अपलोड करें, या स्वतः मोड में सोसायटी ब्रांडिंग प्रत्येक पृष्ठ पर बनेगी।',
+    en: 'All report PDFs use Letter size with the Society letter Head layout (name, address, contact, header/footer rules, page n/N). Upload a letterhead image or leave Auto for digital branding on every page.',
+    hi: 'सभी रिपोर्ट पीडीएफ लेटर आकार पर सोसायटी लेटरहेड लेआउट में हैं (नाम, पता, संपर्क, हेडर/फुटर रेखा, पृष्ठ n/N)। लेटरहेड चित्र अपलोड करें, या स्वतः मोड में डिजिटल ब्रांडिंग प्रत्येक पृष्ठ पर बनेगी।',
   },
   'superadmin.logoUploadOnSave': { en: 'uploads when you save', hi: 'सहेजने पर भेजें होगा' },
   'superadmin.mobileBranding': { en: 'Mobile app branding', hi: 'मोबाइल ऐप ब्रांडिंग' },

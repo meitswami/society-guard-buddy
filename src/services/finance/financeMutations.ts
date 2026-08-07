@@ -445,6 +445,11 @@ export async function upsertFinanceReminderSettings(
   enabled: boolean,
   schedule: FinanceReminderSchedule,
   dueDay: number,
+  opts?: {
+    autoIssueEnabled?: boolean;
+    autoIssueWhatsapp?: boolean;
+    billSoundKey?: string;
+  },
 ): Promise<MutationResult> {
   const normalizedDueDay = Math.min(28, Math.max(1, Number(dueDay) || 1));
   const { error } = await (supabase as any).from('finance_reminder_settings').upsert(
@@ -454,6 +459,10 @@ export async function upsertFinanceReminderSettings(
       schedule,
       due_day: normalizedDueDay,
       timezone: 'Asia/Kolkata',
+      auto_issue_enabled: opts?.autoIssueEnabled ?? true,
+      auto_issue_whatsapp: opts?.autoIssueWhatsapp ?? true,
+      bill_sound_key: opts?.billSoundKey || 'melody',
+      updated_at: new Date().toISOString(),
     },
     { onConflict: 'society_id' },
   );
@@ -470,6 +479,57 @@ export async function invokeMaintenanceReminderTest(societyId: string): Promise<
   });
   if (error) return err(String((error as { message?: string })?.message || 'Unknown function error'));
   return { data: { sent: Number((data as { sent?: number })?.sent ?? 0) }, error: null };
+}
+
+export type MonthlyBillIssueResult = {
+  issued: number;
+  flats?: number;
+  whatsapp_sent?: number;
+  whatsapp_failed?: number;
+  whatsapp_configured?: boolean;
+  charge_title?: string;
+  amount?: number;
+  note?: string;
+};
+
+export async function invokeIssueMonthlyMaintenance(
+  societyId: string,
+  force = true,
+): Promise<MutationResult<MonthlyBillIssueResult>> {
+  const { data, error } = await supabase.functions.invoke('issue-monthly-maintenance', {
+    body: {
+      society_id: societyId,
+      force,
+      amount: 2500,
+    },
+  });
+  if (error) return err(String((error as { message?: string })?.message || 'Unknown function error'));
+  const payload = data as {
+    issued?: number;
+    results?: Array<{
+      flats?: number;
+      whatsapp_sent?: number;
+      whatsapp_failed?: number;
+      whatsapp_configured?: boolean;
+      charge_title?: string;
+      amount?: number;
+      skipped?: string;
+    }>;
+  };
+  const first = payload?.results?.[0];
+  return {
+    data: {
+      issued: Number(payload?.issued ?? 0),
+      flats: first?.flats,
+      whatsapp_sent: first?.whatsapp_sent,
+      whatsapp_failed: first?.whatsapp_failed,
+      whatsapp_configured: first?.whatsapp_configured,
+      charge_title: first?.charge_title,
+      amount: first?.amount,
+      note: first?.skipped,
+    },
+    error: null,
+  };
 }
 
 export type PeriodReportNotificationRow = {

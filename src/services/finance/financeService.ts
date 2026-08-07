@@ -28,6 +28,9 @@ export type SocietyFinanceCoreData = {
   autoReminderEnabled: boolean;
   autoReminderSchedule: FinanceReminderSchedule;
   reminderDueDay: number;
+  autoIssueEnabled: boolean;
+  autoIssueWhatsapp: boolean;
+  billSoundKey: string;
   charges: unknown[];
   paymentExpenseGroups: { id: string; name: string; major_head: string | null; description?: string | null }[];
   payments: unknown[];
@@ -61,6 +64,9 @@ const emptyCoreData = (): SocietyFinanceCoreData => ({
   autoReminderEnabled: true,
   autoReminderSchedule: 'once_12pm',
   reminderDueDay: 1,
+  autoIssueEnabled: true,
+  autoIssueWhatsapp: true,
+  billSoundKey: 'melody',
   charges: [],
   paymentExpenseGroups: [],
   payments: [],
@@ -136,7 +142,7 @@ export async function fetchSocietyFinanceCore(
     supabase.from('societies').select('name').eq('id', societyId).maybeSingle(),
     (supabase as any)
       .from('finance_reminder_settings')
-      .select('enabled, schedule, due_day')
+      .select('enabled, schedule, due_day, auto_issue_enabled, auto_issue_whatsapp, bill_sound_key')
       .eq('society_id', societyId)
       .maybeSingle(),
     supabase
@@ -174,11 +180,23 @@ export async function fetchSocietyFinanceCore(
   let autoReminderEnabled = true;
   let autoReminderSchedule: FinanceReminderSchedule = 'once_12pm';
   let reminderDueDay = 1;
+  let autoIssueEnabled = true;
+  let autoIssueWhatsapp = true;
+  let billSoundKey = 'melody';
   const reminderSetting = reminderRes.data;
   if (reminderSetting) {
     autoReminderEnabled = !!reminderSetting.enabled;
     autoReminderSchedule = reminderSetting.schedule === 'twice_12pm_7pm' ? 'twice_12pm_7pm' : 'once_12pm';
     reminderDueDay = Math.min(28, Math.max(1, Number(reminderSetting.due_day) || 1));
+    if (typeof reminderSetting.auto_issue_enabled === 'boolean') {
+      autoIssueEnabled = reminderSetting.auto_issue_enabled;
+    }
+    if (typeof reminderSetting.auto_issue_whatsapp === 'boolean') {
+      autoIssueWhatsapp = reminderSetting.auto_issue_whatsapp;
+    }
+    if (reminderSetting.bill_sound_key) {
+      billSoundKey = String(reminderSetting.bill_sound_key);
+    }
   }
 
   const paymentExpenseGroups = (paymentGroupsRes.data ?? []) as SocietyFinanceCoreData['paymentExpenseGroups'];
@@ -246,6 +264,9 @@ export async function fetchSocietyFinanceCore(
     autoReminderEnabled,
     autoReminderSchedule,
     reminderDueDay,
+    autoIssueEnabled,
+    autoIssueWhatsapp,
+    billSoundKey,
     charges,
     paymentExpenseGroups,
     payments: paymentsRes.data ?? [],

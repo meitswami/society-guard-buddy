@@ -10,6 +10,7 @@ import { PDF_LETTER_CONTENT_WIDTH_PX, PDF_MARGIN_MM, PDF_PAGE_FORMAT } from '@/l
 import {
   applyLetterheadPage,
   fetchSocietyLetterhead,
+  finalizeLetterheadFooters,
   measureLetterheadLayout,
   type SocietyLetterhead,
 } from '@/lib/pdfLetterhead';
@@ -217,11 +218,12 @@ async function ensureFontsLoaded(doc: Document, isHi: boolean): Promise<void> {
 }
 
 /**
- * Slice a tall canvas into US Letter PDF pages.
+ * Slice a tall canvas into US Letter PDF pages on Society letter Head layout.
  *
- * Order matters: opaque JPEG body slices must never cover the letterhead.
- * For every page we (1) white-fill, (2) place body below contentTop,
- * (3) wipe the reserved top band, (4) draw letterhead LAST on top.
+ * Order matters: opaque JPEG body slices must never cover header/footer.
+ * For every page we (1) white-fill, (2) place body in the content band,
+ * (3) wipe reserved top+bottom bands, (4) draw letterhead LAST on top,
+ * then stamp page numbers n/N in every footer.
  */
 function canvasToPdfBlob(
   canvas: HTMLCanvasElement,
@@ -260,18 +262,20 @@ function canvasToPdfBlob(
     pdf.setFillColor(255, 255, 255);
     pdf.rect(0, 0, pageW, pageH, 'F');
 
-    // 2) Body strictly below the letterhead band (never at y=0)
+    // 2) Body strictly inside the content band between header & footer
     pdf.addImage(sliceData, 'JPEG', 0, layout.contentTop, imgW, sliceHmm);
 
-    // 3) Erase any body overflow into the top band, then 4) letterhead on top
+    // 3) Erase any body overflow into reserved bands, then 4) letterhead on top
     pdf.setFillColor(255, 255, 255);
     pdf.rect(0, 0, pageW, layout.contentTop, 'F');
+    pdf.rect(0, layout.contentBottom, pageW, pageH - layout.contentBottom, 'F');
     applyLetterheadPage(pdf, letterhead);
 
     yPx += sliceH;
     pageIndex += 1;
   }
 
+  finalizeLetterheadFooters(pdf, letterhead);
   return pdf.output('blob');
 }
 

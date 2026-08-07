@@ -1,6 +1,7 @@
 import { createSocietyPdf } from '@/lib/pdfPage';
 import {
   applyLetterheadPage,
+  finalizeLetterheadFooters,
   letterheadEnsureSpace,
   type SocietyLetterhead,
 } from '@/lib/pdfLetterhead';
@@ -125,6 +126,7 @@ export function buildReportDetailPdfBlob(opts: {
     doc.text(`Transaction total: ${moneyInr(transactionTotal)}`, margin, y);
   }
 
+  finalizeLetterheadFooters(doc, lh);
   return doc.output('blob');
 }
 

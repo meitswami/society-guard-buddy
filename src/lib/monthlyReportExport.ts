@@ -1,5 +1,5 @@
 import { createSocietyPdf } from '@/lib/pdfPage';
-import { applyLetterheadPage, letterheadEnsureSpace } from '@/lib/pdfLetterhead';
+import { applyLetterheadPage, finalizeLetterheadFooters, letterheadEnsureSpace } from '@/lib/pdfLetterhead';
 import { fmtDate, fmtDateTime, fmtDateTimeFull } from '@/lib/dateFormat';
 import {
   buildHtmlTable,
@@ -284,6 +284,7 @@ export function buildMonthlyReportPdfBlob(ctx: ReportExportContext): Blob {
     y += 4;
   }
 
+  finalizeLetterheadFooters(doc, lh);
   return doc.output('blob');
 }
 

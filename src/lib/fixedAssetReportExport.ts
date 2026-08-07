@@ -1,6 +1,11 @@
 import { jsPDF } from 'jspdf';
 import { createSocietyPdf } from '@/lib/pdfPage';
-import { applyLetterheadPage, letterheadEnsureSpace, type LetterheadLayout } from '@/lib/pdfLetterhead';
+import {
+  applyLetterheadPage,
+  finalizeLetterheadFooters,
+  letterheadEnsureSpace,
+  type LetterheadLayout,
+} from '@/lib/pdfLetterhead';
 import {
   buildHtmlTable,
   htmlToWordBlob,
@@ -139,5 +144,6 @@ export function exportFixedAssetReport({ societyName, assets, format }: ExportOp
     y,
   );
   drawPdfTable(doc, y + 8, PDF_HEADERS, pdfRows(assets), PDF_COL_WIDTHS, lh, layout);
+  finalizeLetterheadFooters(doc, lh);
   doc.save(`${baseName}.pdf`);
 }
