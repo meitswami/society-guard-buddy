@@ -46,7 +46,7 @@ const RouteFallback = () => (
 type UserMode = 'choosing' | 'guard' | 'resident' | 'admin' | 'superadmin';
 
 const AppContent = () => {
-  const { currentGuard, theme, societyId, setSocietyId, loadGuards, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, hydrateGuardSession } = useStore();
+  const { currentGuard, theme, societyId, setSocietyId, loadVisitors, loadResidentVehicles, loadBlacklist, loadFlats, loadMembers, hydrateGuardSession } = useStore();
   const { t } = useLanguage();
   useGuardGeofenceMonitor(currentGuard);
   const useUnifiedLogin = useUnifiedLoginFlow();
