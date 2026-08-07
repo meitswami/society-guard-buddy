@@ -16,8 +16,14 @@ String _formatGeneratedAt(DateTime when) =>
     DateFormat('yyyy-MM-dd HH:mm').format(when.toLocal());
 
 /// Build Voting Charter PDF bytes (English or Hindi with embedded fonts).
+///
+/// Optional [addressLine] / [contactLine] / [logoBytes] form a compact letterhead
+/// above the charter title (repeated via MultiPage header on later pages).
 Future<Uint8List> buildVotingCharterPdfBytes({
   String? societyName,
+  String? addressLine,
+  String? contactLine,
+  Uint8List? logoBytes,
   required CharterLang lang,
 }) async {
   final content = votingCharterContent(lang);
@@ -45,17 +51,62 @@ Future<Uint8List> buildVotingCharterPdfBytes({
   final heading = PdfColor.fromInt(0xFF312E81);
   final societyLabel =
       (societyName != null && societyName.trim().isNotEmpty) ? societyName.trim() : (isHi ? 'सोसायटी' : 'Society');
+  final addr = addressLine?.trim();
+  final contact = contactLine?.trim();
+  pw.MemoryImage? logoImage;
+  if (logoBytes != null && logoBytes.isNotEmpty) {
+    try {
+      logoImage = pw.MemoryImage(logoBytes);
+    } catch (_) {
+      logoImage = null;
+    }
+  }
+
+  pw.Widget letterheadBlock() {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            if (logoImage != null) ...[
+              pw.Image(logoImage, width: 36, height: 36, fit: pw.BoxFit.contain),
+              pw.SizedBox(width: 8),
+            ],
+            pw.Expanded(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    societyLabel,
+                    style: pw.TextStyle(font: fontBold, fontSize: 12, color: indigo),
+                  ),
+                  if (addr != null && addr.isNotEmpty) ...[
+                    pw.SizedBox(height: 2),
+                    pw.Text(addr, style: pw.TextStyle(font: font, fontSize: 8, color: muted)),
+                  ],
+                  if (contact != null && contact.isNotEmpty) ...[
+                    pw.SizedBox(height: 1),
+                    pw.Text(contact, style: pw.TextStyle(font: font, fontSize: 8, color: muted)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        pw.SizedBox(height: 6),
+        pw.Divider(color: PdfColor.fromInt(0xFFC7D2FE), thickness: 0.8),
+        pw.SizedBox(height: 8),
+      ],
+    );
+  }
 
   doc.addPage(
     pw.MultiPage(
       pageFormat: PdfPageFormat.letter,
       margin: const pw.EdgeInsets.all(54), // 0.75" moderate
+      header: (ctx) => letterheadBlock(),
       build: (ctx) => [
-        pw.Text(
-          societyLabel,
-          style: pw.TextStyle(font: fontBold, fontSize: 11, color: indigo),
-        ),
-        pw.SizedBox(height: 6),
         pw.Text(
           content.title,
           style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColor.fromInt(0xFF111827)),
@@ -158,9 +209,18 @@ String votingCharterPdfFilename({String? societyName, required CharterLang lang}
 /// Write PDF to a temp file and open the system share sheet (Save / WhatsApp / Files).
 Future<CharterPdfShareResult> downloadOrShareVotingCharterPdf({
   String? societyName,
+  String? addressLine,
+  String? contactLine,
+  Uint8List? logoBytes,
   required CharterLang lang,
 }) async {
-  final bytes = await buildVotingCharterPdfBytes(societyName: societyName, lang: lang);
+  final bytes = await buildVotingCharterPdfBytes(
+    societyName: societyName,
+    addressLine: addressLine,
+    contactLine: contactLine,
+    logoBytes: logoBytes,
+    lang: lang,
+  );
   if (bytes.length < 100) {
     throw StateError(lang == CharterLang.hi ? 'पीडीएफ खाली था' : 'PDF was empty');
   }
