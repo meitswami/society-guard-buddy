@@ -7,6 +7,11 @@ import {
   VOTING_CHARTER_TITLE_KEY,
 } from '@/lib/votingCharter';
 import { PDF_LETTER_CONTENT_WIDTH_PX, PDF_MARGIN_MM, PDF_PAGE_FORMAT } from '@/lib/pdfPage';
+import {
+  applyLetterheadPage,
+  fetchSocietyLetterhead,
+  type SocietyLetterhead,
+} from '@/lib/pdfLetterhead';
 
 /** Resolve charter copy for an explicit language. */
 export function charterText(lang: Lang, key: string): string {
@@ -33,6 +38,8 @@ function escapeHtml(s: string): string {
 function buildCharterHtml(opts: {
   societyName?: string;
   lang: Lang;
+  /** When letterhead is drawn on each PDF page, skip the duplicate society name line. */
+  omitSocietyLine?: boolean;
 }): string {
   const lang = opts.lang;
   const t = (key: string) => escapeHtml(charterText(lang, key));
@@ -67,6 +74,10 @@ function buildCharterHtml(opts: {
   const fontStack = isHi
     ? "'Noto Sans Devanagari', 'Noto Sans', sans-serif"
     : "'Noto Sans', 'Noto Sans Devanagari', sans-serif";
+
+  const societyLine = opts.omitSocietyLine
+    ? ''
+    : `<p class="society">${society}</p>`;
 
   return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -143,7 +154,7 @@ function buildCharterHtml(opts: {
 </style>
 </head>
 <body>
-  <p class="society">${society}</p>
+  ${societyLine}
   <h1>${t(VOTING_CHARTER_TITLE_KEY)}</h1>
   <p class="meta">${isHi ? 'तैयार' : 'Generated'}: ${generated}  ·  ${isHi ? 'भाषा' : 'Language'}: ${isHi ? 'हिन्दी' : 'English'}</p>
   <hr/>
@@ -206,15 +217,16 @@ async function ensureFontsLoaded(doc: Document, isHi: boolean): Promise<void> {
 
 /**
  * Slice a tall canvas into US Letter PDF pages.
- * Every page (including page 2+) keeps moderate top/bottom margins so content
- * is never flush to the page edge (letterhead / stationery band).
+ * Each page gets society letterhead in the top band; body content sits below
+ * `contentTop` with moderate side margins baked into the HTML canvas.
  */
-function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
+function canvasToPdfBlob(
+  canvas: HTMLCanvasElement,
+  letterhead?: SocietyLetterhead | string | null,
+): Blob {
   const pdf = new jsPDF({ unit: 'mm', format: PDF_PAGE_FORMAT, compress: true });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
-  const margin = PDF_MARGIN_MM;
-  const contentHmm = pageH - 2 * margin;
   const imgW = pageW;
   const pageCanvas = document.createElement('canvas');
   const pageCtx = pageCanvas.getContext('2d');
@@ -222,6 +234,11 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
     throw new Error('Could not create canvas for PDF pages');
   }
 
+  // Measure letterhead band once so every page uses the same content height.
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(0, 0, pageW, pageH, 'F');
+  let layout = applyLetterheadPage(pdf, letterhead);
+  const contentHmm = Math.max(1, layout.contentBottom - layout.contentTop);
   const pxPerMm = canvas.width / imgW;
   const contentHeightPx = Math.max(1, Math.floor(contentHmm * pxPerMm));
   let yPx = 0;
@@ -236,11 +253,15 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
     pageCtx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
     const sliceData = pageCanvas.toDataURL('image/jpeg', 0.92);
     const sliceHmm = sliceH / pxPerMm;
-    if (pageIndex > 0) pdf.addPage();
-    // White page + content inset by moderate margin on every page
-    pdf.setFillColor(255, 255, 255);
-    pdf.rect(0, 0, pageW, pageH, 'F');
-    pdf.addImage(sliceData, 'JPEG', 0, margin, imgW, sliceHmm);
+
+    if (pageIndex > 0) {
+      pdf.addPage();
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageW, pageH, 'F');
+      layout = applyLetterheadPage(pdf, letterhead);
+    }
+    // Page 0 already has letterhead from the measure pass above.
+    pdf.addImage(sliceData, 'JPEG', 0, layout.contentTop, imgW, sliceHmm);
     yPx += sliceH;
     pageIndex += 1;
   }
@@ -251,13 +272,21 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
 /**
  * Build Voting Charter PDF.
  * English → Noto Sans (Latin). Hindi → browser-shaped Noto Sans Devanagari.
+ * Society letterhead is drawn on every Letter page above the charter body.
  */
 export async function buildVotingCharterPdfBlob(opts: {
+  societyId?: string | null;
   societyName?: string;
+  letterhead?: SocietyLetterhead | null;
   lang?: Lang;
 }): Promise<Blob> {
   const lang: Lang = opts.lang === 'hi' ? 'hi' : 'en';
-  const html = buildCharterHtml({ societyName: opts.societyName, lang });
+  const letterhead =
+    opts.letterhead ??
+    (await fetchSocietyLetterhead(opts.societyId)) ??
+    (opts.societyName?.trim() ? opts.societyName.trim() : null);
+  // Letterhead carries society branding; omit duplicate name line from body HTML.
+  const html = buildCharterHtml({ societyName: opts.societyName, lang, omitSocietyLine: true });
 
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
@@ -294,7 +323,7 @@ export async function buildVotingCharterPdfBlob(opts: {
       throw new Error('PDF canvas was empty');
     }
 
-    return canvasToPdfBlob(canvas);
+    return canvasToPdfBlob(canvas, letterhead);
   } finally {
     iframe.remove();
   }

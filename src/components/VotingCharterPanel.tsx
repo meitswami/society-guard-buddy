@@ -12,10 +12,10 @@ import {
   votingCharterShareMessage,
 } from '@/lib/votingCharterPdf';
 import { savePdfToDevice } from '@/lib/reportExportUtils';
+import { fetchSocietyLetterhead, type SocietyLetterhead } from '@/lib/pdfLetterhead';
 import SharePdfWhatsAppButton from '@/components/SharePdfWhatsAppButton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useStore } from '@/store/useStore';
-import { supabase } from '@/integrations/supabase/client';
 import type { Lang } from '@/i18n/translations';
 
 type Props = {
@@ -24,33 +24,54 @@ type Props = {
   isAdmin?: boolean;
 };
 
+function letterheadAddressLine(lh: SocietyLetterhead): string {
+  return [lh.address, [lh.city, lh.state].filter(Boolean).join(', '), lh.pincode]
+    .map((p) => (p || '').trim())
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function letterheadContactLine(lh: SocietyLetterhead): string {
+  return [lh.contactPhone, lh.contactEmail]
+    .map((p) => (p || '').trim())
+    .filter(Boolean)
+    .join(' · ');
+}
+
 const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: Props) => {
   const { t, lang } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [open, setOpen] = useState(true);
   const [programOpen, setProgramOpen] = useState(true);
   const [societyName, setSocietyName] = useState(societyNameProp || '');
+  const [letterhead, setLetterhead] = useState<SocietyLetterhead | null>(null);
   const [busyLang, setBusyLang] = useState<Lang | null>(null);
 
   useEffect(() => {
-    if (societyNameProp) {
-      setSocietyName(societyNameProp);
+    if (societyNameProp) setSocietyName(societyNameProp);
+  }, [societyNameProp]);
+
+  useEffect(() => {
+    if (!societyId) {
+      setLetterhead(null);
       return;
     }
-    if (!societyId) return;
-    void supabase
-      .from('societies')
-      .select('name')
-      .eq('id', societyId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.name) setSocietyName(data.name);
-      });
+    let cancelled = false;
+    void fetchSocietyLetterhead(societyId).then((lh) => {
+      if (cancelled || !lh) return;
+      setLetterhead(lh);
+      if (!societyNameProp && lh.name) setSocietyName(lh.name);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [societyId, societyNameProp]);
 
   const getBlob = (pdfLang: Lang) =>
     buildVotingCharterPdfBlob({
+      societyId,
       societyName,
+      letterhead,
       lang: pdfLang,
     });
 
@@ -90,6 +111,15 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
   const btnClass =
     'text-xs px-2.5 py-1.5 rounded-lg border border-indigo-500/40 bg-background/80 inline-flex items-center gap-1.5 hover:bg-indigo-500/10 disabled:opacity-60';
 
+  const displayName = letterhead?.name || societyName;
+  const addressLine = letterhead ? letterheadAddressLine(letterhead) : '';
+  const contactLine = letterhead ? letterheadContactLine(letterhead) : '';
+  const logoSrc = letterhead?.logoDataUrl || letterhead?.logoUrl || null;
+  const letterheadImg =
+    letterhead?.letterheadMode === 'image'
+      ? letterhead.letterheadDataUrl || letterhead.letterheadUrl || null
+      : null;
+
   return (
     <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 overflow-hidden">
       <button
@@ -105,9 +135,42 @@ const VotingCharterPanel = ({ societyName: societyNameProp, isAdmin = false }: P
       </button>
       {open && (
         <div className="px-3 pb-3 space-y-3 border-t border-indigo-500/20">
+          {(displayName || letterheadImg) && (
+            <div className="pt-2 border-b border-indigo-500/15 pb-2.5">
+              {letterheadImg ? (
+                <img
+                  src={letterheadImg}
+                  alt={displayName || 'Society letterhead'}
+                  className="w-full max-h-20 object-contain object-left"
+                />
+              ) : (
+                <div className="flex items-start gap-2.5">
+                  {logoSrc && (
+                    <img
+                      src={logoSrc}
+                      alt=""
+                      className="w-10 h-10 object-contain rounded shrink-0 bg-background/80"
+                    />
+                  )}
+                  <div className="min-w-0 space-y-0.5">
+                    {displayName && (
+                      <p className="text-sm font-semibold text-foreground leading-snug">{displayName}</p>
+                    )}
+                    {addressLine && (
+                      <p className="text-[11px] text-muted-foreground leading-snug">{addressLine}</p>
+                    )}
+                    {contactLine && (
+                      <p className="text-[11px] text-muted-foreground leading-snug">{contactLine}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {isAdmin && (
             <>
-              <div className="flex flex-wrap gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-0.5">
                 <button
                   type="button"
                   disabled={!!busyLang}
