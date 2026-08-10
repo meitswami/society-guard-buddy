@@ -26,6 +26,10 @@ import { notificationVisibleToResident } from '@/lib/notificationAudience';
 import { uploadMaintenanceReceipt } from '@/lib/notificationMediaStorage';
 import { useBiometric } from '@/hooks/useBiometric';
 import { playNotificationAlert } from '@/lib/notificationSounds';
+import { playSocietySignatureTuneOnOpen } from '@/lib/societyNotificationSound';
+import { downloadMaintenanceReceiptPdf } from '@/lib/maintenanceReceiptPdf';
+import { playSocietySignatureTuneOnOpen } from '@/lib/societyNotificationSound';
+import { downloadMaintenanceReceiptPdf } from '@/lib/maintenanceReceiptPdf';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
 import ResidentFeedbackForm from '@/components/ResidentFeedbackForm';
@@ -2114,6 +2118,17 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
 
         {tab === 'payments' && (
           <div className="flex flex-col gap-3">
+            {societyBankAccount ? (
+              <SocietyPayToAccountCard
+                account={societyBankAccount}
+                amount={Number(residentPayForm.amount) || undefined}
+                note={`Maintenance for Flat ${resident.flatNumber}`}
+              />
+            ) : (
+              <p className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2">
+                Society bank account is not published yet. Ask the treasurer / admin to add it under Settings.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => setShowPayMaintenanceForm((v) => !v)}
@@ -2125,17 +2140,6 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             {showPayMaintenanceForm && (
               <div className="card-section p-3 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Submit payment for verification</p>
-                {societyBankAccount ? (
-                  <SocietyPayToAccountCard
-                    account={societyBankAccount}
-                    amount={Number(residentPayForm.amount) || undefined}
-                    note={`Maintenance for Flat ${resident.flatNumber}`}
-                  />
-                ) : (
-                  <p className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2">
-                    Society bank account is not published yet. Ask the treasurer / admin to add it under Settings.
-                  </p>
-                )}
                 <select
                   className="input-field"
                   value={residentPayForm.charge_id}

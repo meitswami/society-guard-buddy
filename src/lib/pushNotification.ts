@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { fetchSocietyNotificationSound } from '@/lib/societyNotificationSound';
 
 export type PushTargetType = 'all' | 'flat' | 'user';
 
@@ -17,14 +18,18 @@ export type PushNotificationBody = {
 /** Best-effort FCM / OneSignal push (same contract as NotificationCenter). */
 export async function invokePushNotification(body: PushNotificationBody): Promise<void> {
   try {
+    const sound =
+      body.sound_key != null
+        ? { sound_key: body.sound_key, sound_custom_url: body.sound_custom_url ?? '' }
+        : await fetchSocietyNotificationSound(body.society_id);
     await supabase.functions.invoke('send-push-notification', {
       body: {
         target_flat_numbers: [],
         target_ids: [],
         media_items: [],
-        sound_key: 'digital',
-        sound_custom_url: '',
         ...body,
+        sound_key: sound.sound_key,
+        sound_custom_url: sound.sound_custom_url ?? '',
       },
     });
   } catch (e) {

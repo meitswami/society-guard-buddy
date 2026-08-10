@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { dispatchDirectoryChannels } from '@/lib/dispatchDirectoryChannels';
+import { fetchSocietyNotificationSound } from '@/lib/societyNotificationSound';
 
 export type AdminRecordNotifyAudience = 'none' | 'selected_flats' | 'all';
 
@@ -43,14 +44,15 @@ export async function notifyResidentsOfRecord(opts: {
   } = opts;
 
   const mediaItems = mediaItemsFromReceiptUrl(billUrl);
+  const sound = await fetchSocietyNotificationSound(societyId);
   const rowBase = {
     title,
     message,
     type: notificationType,
     created_by: adminName,
     society_id: societyId,
-    sound_key: 'digital',
-    sound_custom_url: null as string | null,
+    sound_key: sound.sound_key,
+    sound_custom_url: sound.sound_custom_url,
     media_items: mediaItems ?? [],
   };
 
@@ -73,8 +75,8 @@ export async function notifyResidentsOfRecord(opts: {
           target_ids: [],
           media_items: mediaItems ?? [],
           society_id: societyId,
-          sound_key: 'digital',
-          sound_custom_url: '',
+          sound_key: sound.sound_key,
+          sound_custom_url: sound.sound_custom_url ?? '',
         },
       });
     } else {
@@ -99,8 +101,8 @@ export async function notifyResidentsOfRecord(opts: {
           target_ids: [],
           media_items: mediaItems ?? [],
           society_id: societyId,
-          sound_key: 'digital',
-          sound_custom_url: '',
+          sound_key: sound.sound_key,
+          sound_custom_url: sound.sound_custom_url ?? '',
         },
       });
     }

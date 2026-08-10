@@ -3,6 +3,7 @@ import type { SocietyPaymentMajorHead } from '@/lib/financeExpenseHead';
 import { uploadFinancePeriodReportPdf } from '@/lib/notificationMediaStorage';
 import type { FinanceReminderSchedule } from '@/services/finance/financeService';
 import { dispatchDirectoryChannels } from '@/lib/dispatchDirectoryChannels';
+import { fetchSocietyNotificationSound } from '@/lib/societyNotificationSound';
 
 export type MutationResult<T = void> = { data: T; error: null } | { data: null; error: string };
 
@@ -252,6 +253,7 @@ export type PaymentDecisionNotifyInput = {
 };
 
 export async function notifyPaymentDecision(input: PaymentDecisionNotifyInput): Promise<void> {
+  const sound = await fetchSocietyNotificationSound(input.societyId);
   await (supabase as any).from('notifications').insert([
     {
       society_id: input.societyId,
@@ -261,6 +263,8 @@ export async function notifyPaymentDecision(input: PaymentDecisionNotifyInput): 
       target_type: 'flat',
       target_id: input.flatNumber,
       created_by: input.adminName,
+      sound_key: sound.sound_key,
+      sound_custom_url: sound.sound_custom_url,
     },
   ]);
   await supabase.functions.invoke('send-push-notification', {
@@ -272,8 +276,8 @@ export async function notifyPaymentDecision(input: PaymentDecisionNotifyInput): 
       target_ids: [],
       media_items: [],
       society_id: input.societyId,
-      sound_key: 'digital',
-      sound_custom_url: '',
+      sound_key: sound.sound_key,
+      sound_custom_url: sound.sound_custom_url ?? '',
     },
   });
   await dispatchDirectoryChannels({
@@ -412,6 +416,7 @@ export async function sendMaintenanceReminders(
   if (flats.length === 0) return { data: undefined, error: null };
 
   const title = 'Maintenance Due Reminder';
+  const sound = await fetchSocietyNotificationSound(societyId);
   for (const flatNumber of flats) {
     const { error } = await supabase.from('notifications').insert([
       {
@@ -422,6 +427,8 @@ export async function sendMaintenanceReminders(
         target_type: 'flat',
         target_id: flatNumber,
         created_by: adminName,
+        sound_key: sound.sound_key,
+        sound_custom_url: sound.sound_custom_url,
       },
     ]);
     if (error) return err(error.message);
@@ -437,8 +444,8 @@ export async function sendMaintenanceReminders(
         target_ids: [],
         media_items: [],
         society_id: societyId,
-        sound_key: 'digital',
-        sound_custom_url: '',
+        sound_key: sound.sound_key,
+        sound_custom_url: sound.sound_custom_url ?? '',
       },
     });
   } catch (e) {
@@ -613,6 +620,7 @@ export async function sendFinancePeriodReportToMembers(input: {
 
   const title = `Finance report · ${input.periodLabel}`;
   const message = `${input.summaryMessage} Open Alerts for details. PDF: ${pdfUrl}`;
+  const sound = await fetchSocietyNotificationSound(input.societyId);
 
   const rows: PeriodReportNotificationRow[] = flats.map((flat) => ({
     title,
@@ -622,8 +630,8 @@ export async function sendFinancePeriodReportToMembers(input: {
     target_id: flat,
     society_id: input.societyId,
     created_by: input.adminName,
-    sound_key: 'digital',
-    sound_custom_url: null,
+    sound_key: sound.sound_key,
+    sound_custom_url: sound.sound_custom_url,
     delivery_batch_id: batchId,
     is_read: false,
   }));
@@ -640,8 +648,8 @@ export async function sendFinancePeriodReportToMembers(input: {
       target_ids: [],
       media_items: [],
       society_id: input.societyId,
-      sound_key: 'digital',
-      sound_custom_url: '',
+      sound_key: sound.sound_key,
+      sound_custom_url: sound.sound_custom_url ?? '',
     });
   }
 

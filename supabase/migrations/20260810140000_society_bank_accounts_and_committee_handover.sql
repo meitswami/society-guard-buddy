@@ -43,6 +43,8 @@ DROP POLICY IF EXISTS "society_bank_accounts all" ON public.society_bank_account
 CREATE POLICY "society_bank_accounts all" ON public.society_bank_accounts
   FOR ALL USING (true) WITH CHECK (true);
 
+GRANT ALL ON TABLE public.society_bank_accounts TO anon, authenticated, service_role;
+
 -- ---------------------------------------------------------------------------
 -- Seed: Evergreen Heights HDFC current account (from bank letter)
 -- ---------------------------------------------------------------------------

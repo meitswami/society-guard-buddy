@@ -54,11 +54,13 @@ export async function upsertSocietyBankAccount(
   };
 
   if (payload.is_primary) {
-    await supabase
+    let demote = supabase
       .from('society_bank_accounts')
       .update({ is_primary: false })
       .eq('society_id', societyId)
       .eq('is_primary', true);
+    if (existingId) demote = demote.neq('id', existingId);
+    await demote;
   }
 
   if (existingId) {

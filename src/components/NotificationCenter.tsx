@@ -203,7 +203,11 @@ const NotificationCenter = ({
       .select('admin_push_sound_url')
       .eq('id', societyId)
       .maybeSingle()
-      .then(({ data }) => setSocietyCustomSoundUrl(data?.admin_push_sound_url ?? null));
+      .then(({ data }) => {
+        const url = data?.admin_push_sound_url ?? null;
+        setSocietyCustomSoundUrl(url);
+        if (url?.trim()) setAlertSoundKey('custom');
+      });
   }, [isResident, societyId]);
 
   useEffect(() => {
@@ -403,7 +407,9 @@ const NotificationCenter = ({
       targetId = selectedResidents.map(r => r.name).join(',');
     }
 
-    const soundCustomUrl = alertSoundKey === 'custom' ? societyCustomSoundUrl?.trim() ?? null : null;
+    const soundCustomUrl = societyCustomSoundUrl?.trim() || null;
+    const effectiveSoundKey: NotificationSoundPresetId =
+      soundCustomUrl ? 'custom' : alertSoundKey;
     const rowBase = {
       title: nf.title,
       message: nf.message,
@@ -411,8 +417,8 @@ const NotificationCenter = ({
       created_by: adminName,
       media_items: mediaItems,
       society_id: societyId,
-      sound_key: alertSoundKey,
-      sound_custom_url: soundCustomUrl,
+      sound_key: effectiveSoundKey,
+      sound_custom_url: effectiveSoundKey === 'custom' ? soundCustomUrl : null,
     };
 
     if (targetMode === 'flat') {
@@ -445,8 +451,8 @@ const NotificationCenter = ({
           target_ids: targetUserIds,
           media_items: mediaItems,
           society_id: societyId,
-          sound_key: alertSoundKey,
-          sound_custom_url: soundCustomUrl ?? '',
+          sound_key: effectiveSoundKey,
+          sound_custom_url: (effectiveSoundKey === 'custom' ? soundCustomUrl : null) ?? '',
         },
       });
     } catch (e) {
