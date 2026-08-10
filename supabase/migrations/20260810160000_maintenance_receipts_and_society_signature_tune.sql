@@ -1,9 +1,6 @@
 -- Maintenance receipt serial numbers (society-scoped, backfilled from all verified
 -- payments) + enforce society signature tune on member-facing notifications.
 
--- ---------------------------------------------------------------------------
--- 1) Receipt serial columns + counter
--- ---------------------------------------------------------------------------
 ALTER TABLE public.maintenance_payments
   ADD COLUMN IF NOT EXISTS receipt_seq integer,
   ADD COLUMN IF NOT EXISTS receipt_number text;
@@ -44,54 +41,6 @@ AS $$
   SELECT 'MR-' || lpad(seq::text, 6, '0');
 $$;
 
-CREATE OR REPLACE FUNCTION public.assign_maintenance_receipt_number()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  sid uuid;
-  next_seq integer;
-BEGIN
-  -- Keep an already-assigned serial forever (immutable receipt identity).
-  IF NEW.receipt_seq IS NOT NULL AND NEW.receipt_number IS NOT NULL THEN
-    RETURN NEW;
-  END IF;
-
-  IF NEW.payment_status IS DISTINCT FROM 'verified' THEN
-    RETURN NEW;
-  END IF;
-
-  sid := public.maintenance_payment_society_id(NEW);
-  IF sid IS NULL THEN
-    RETURN NEW;
-  END IF;
-
-  INSERT INTO public.society_maintenance_receipt_counters (society_id, last_seq)
-  VALUES (sid, 0)
-  ON CONFLICT (society_id) DO NOTHING;
-
-  UPDATE public.society_maintenance_receipt_counters
-  SET last_seq = last_seq + 1,
-      updated_at = now()
-  WHERE society_id = sid
-  RETURNING last_seq INTO next_seq;
-
-  NEW.receipt_seq := next_seq;
-  NEW.receipt_number := public.format_maintenance_receipt_number(next_seq);
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_assign_maintenance_receipt_number ON public.maintenance_payments;
-CREATE TRIGGER trg_assign_maintenance_receipt_number
-  BEFORE INSERT OR UPDATE OF payment_status, charge_id, flat_id
-  ON public.maintenance_payments
-  FOR EACH ROW
-  EXECUTE FUNCTION public.assign_maintenance_receipt_number();
-
--- Society-scoped unique serial (expression via charge/flat may be null for orphans;
--- enforce with a partial unique index on (society via helper is not indexable easily).
--- Store society_id denormalized for uniqueness + reporting.
 ALTER TABLE public.maintenance_payments
   ADD COLUMN IF NOT EXISTS society_id uuid REFERENCES public.societies(id);
 
@@ -116,7 +65,6 @@ CREATE TRIGGER trg_sync_maintenance_payment_society_id
   FOR EACH ROW
   EXECUTE FUNCTION public.sync_maintenance_payment_society_id();
 
--- Re-create receipt assign to also set society_id if missing
 CREATE OR REPLACE FUNCTION public.assign_maintenance_receipt_number()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -159,6 +107,13 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_assign_maintenance_receipt_number ON public.maintenance_payments;
+CREATE TRIGGER trg_assign_maintenance_receipt_number
+  BEFORE INSERT OR UPDATE OF payment_status, charge_id, flat_id
+  ON public.maintenance_payments
+  FOR EACH ROW
+  EXECUTE FUNCTION public.assign_maintenance_receipt_number();
+
 CREATE UNIQUE INDEX IF NOT EXISTS maintenance_payments_society_receipt_seq_uidx
   ON public.maintenance_payments (society_id, receipt_seq)
   WHERE receipt_seq IS NOT NULL AND society_id IS NOT NULL;
@@ -167,9 +122,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS maintenance_payments_receipt_number_uidx
   ON public.maintenance_payments (society_id, receipt_number)
   WHERE receipt_number IS NOT NULL AND society_id IS NOT NULL;
 
--- ---------------------------------------------------------------------------
--- 2) Backfill serials for ALL verified maintenance received so far
--- ---------------------------------------------------------------------------
+-- Backfill serials for ALL verified maintenance received so far
 DO $$
 DECLARE
   r RECORD;
@@ -208,9 +161,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- ---------------------------------------------------------------------------
--- 3) Society signature tune on every member-facing notification
--- ---------------------------------------------------------------------------
+-- Society signature tune on every member-facing notification
 CREATE OR REPLACE FUNCTION public.apply_society_signature_notification_sound()
 RETURNS trigger
 LANGUAGE plpgsql
