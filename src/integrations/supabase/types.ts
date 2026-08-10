@@ -3864,6 +3864,83 @@ export type Database = {
         }
         Relationships: []
       }
+      society_bank_accounts: {
+        Row: {
+          account_holder_name: string
+          account_number: string
+          account_type: string | null
+          bank_name: string
+          branch_address: string | null
+          branch_name: string | null
+          created_at: string
+          currency: string
+          customer_id: string | null
+          effective_from: string | null
+          effective_to: string | null
+          id: string
+          ifsc: string
+          is_active: boolean
+          is_primary: boolean
+          micr: string | null
+          notes: string | null
+          society_id: string
+          updated_at: string
+          upi_vpa: string | null
+        }
+        Insert: {
+          account_holder_name: string
+          account_number: string
+          account_type?: string | null
+          bank_name: string
+          branch_address?: string | null
+          branch_name?: string | null
+          created_at?: string
+          currency?: string
+          customer_id?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          ifsc: string
+          is_active?: boolean
+          is_primary?: boolean
+          micr?: string | null
+          notes?: string | null
+          society_id: string
+          updated_at?: string
+          upi_vpa?: string | null
+        }
+        Update: {
+          account_holder_name?: string
+          account_number?: string
+          account_type?: string | null
+          bank_name?: string
+          branch_address?: string | null
+          branch_name?: string | null
+          created_at?: string
+          currency?: string
+          customer_id?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          ifsc?: string
+          is_active?: boolean
+          is_primary?: boolean
+          micr?: string | null
+          notes?: string | null
+          society_id?: string
+          updated_at?: string
+          upi_vpa?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "society_bank_accounts_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       society_content_translations: {
         Row: {
           content_key: string

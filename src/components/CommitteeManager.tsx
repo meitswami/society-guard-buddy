@@ -13,6 +13,7 @@ import {
   committeeDisplayLabels,
   committeeIsRepresentative,
   committeeTenureLabel,
+  filterEffectiveCommitteeMembers,
   selectionTypeLabel,
 } from '@/lib/committeeMember';
 import CommitteeDutiesChart from '@/components/CommitteeDutiesChart';
@@ -22,6 +23,7 @@ const POSITION_PRESETS = [
   'Vice-President',
   'Secretary',
   'Treasurer',
+  'Cultural Secretary',
   'Committee Member',
 ] as const;
 
@@ -167,7 +169,7 @@ const CommitteeManager = ({ isResident = false }: Props) => {
       .order('name', { ascending: true });
     if (error) toast.error(error.message);
 
-    const roster = (data as CommitteeMemberRow[]) ?? [];
+    const roster = filterEffectiveCommitteeMembers((data as CommitteeMemberRow[]) ?? []);
     const flatIds = [...new Set(roster.map((r) => r.flat_id).filter(Boolean))] as string[];
     if (flatIds.length > 0) {
       const { data: mems } = await supabase

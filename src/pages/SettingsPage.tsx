@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { ADMIN_HOME_METRICS } from '@/lib/descriptiveMetricCopy';
 import SocietyReportSettingsPanel from '@/components/SocietyReportSettingsPanel';
+import SocietyBankAccountPanel from '@/components/SocietyBankAccountPanel';
 
 const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean } = {}) => {
   const { visitors, flats, members, residentVehicles, blacklist, societyId, entryCapsMode, setEntryCapsMode } = useStore();
@@ -165,6 +166,8 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
       {allowContentEdit && canManageSociety && <SocietyContentEditor />}
 
       {canManageSociety && <SocietyReportSettingsPanel />}
+
+      {canManageSociety && <SocietyBankAccountPanel />}
 
       {/* Data summary */}
       <div className="card-section mb-4">

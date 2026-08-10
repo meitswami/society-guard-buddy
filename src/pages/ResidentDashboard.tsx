@@ -14,6 +14,10 @@ import NotificationCenter from '@/components/NotificationCenter';
 import EmergencyAlertPanel from '@/components/EmergencyAlertPanel';
 import { isMemberOnCommitteeRoster } from '@/lib/committeeProtection';
 import type { CommitteeMemberRow } from '@/lib/committeeMember';
+import { filterEffectiveCommitteeMembers } from '@/lib/committeeMember';
+import { buildUpiPayUrl, type SocietyBankAccount } from '@/lib/societyBankAccount';
+import { fetchPrimarySocietyBankAccount } from '@/services/societyBankAccountService';
+import SocietyPayToAccountCard from '@/components/SocietyPayToAccountCard';
 import { auditLogout } from '@/lib/auditLogger';
 import { useStore } from '@/store/useStore';
 import { allowsPrimaryMember, allowsResidentLogin, isRestrictedMemberCategory, STAFF_VEHICLE_TYPES } from '@/lib/memberCategories';
@@ -220,7 +224,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   const [residentPayForm, setResidentPayForm] = useState({
     charge_id: '',
     amount: '',
-    payment_method: 'upi',
+    payment_method: 'bank_transfer',
     transaction_id: '',
     notes: '',
     paid_on: format(new Date(), 'yyyy-MM-dd'),
@@ -230,6 +234,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   });
   const [residentPayUploading, setResidentPayUploading] = useState(false);
   const [residentPaySaving, setResidentPaySaving] = useState(false);
+  const [societyBankAccount, setSocietyBankAccount] = useState<SocietyBankAccount | null>(null);
   const [showNewPass, setShowNewPass] = useState(false);
   const [passForm, setPassForm] = useState({
     guestName: '', guestPhone: '', validDate: format(new Date(), 'yyyy-MM-dd'),
@@ -441,8 +446,28 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       .eq('society_id', societyId)
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
-    setCommitteeRoster((data ?? []) as CommitteeMemberRow[]);
+    setCommitteeRoster(filterEffectiveCommitteeMembers((data ?? []) as CommitteeMemberRow[]));
   };
+
+  const loadSocietyBankAccount = useCallback(async () => {
+    if (!societyId) {
+      setSocietyBankAccount(null);
+      return;
+    }
+    try {
+      const account = await fetchPrimarySocietyBankAccount(societyId);
+      setSocietyBankAccount(account);
+      if (account?.upi_vpa) {
+        setResidentPayForm((prev) => ({ ...prev, upi_id: prev.upi_id || account.upi_vpa || '' }));
+      }
+    } catch {
+      setSocietyBankAccount(null);
+    }
+  }, [societyId]);
+
+  useEffect(() => {
+    void loadSocietyBankAccount();
+  }, [loadSocietyBankAccount]);
 
   useEffect(() => {
     loadRequests();
@@ -585,10 +610,14 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   };
 
   const openUpiApp = () => {
-    const payee = residentPayForm.upi_id.trim();
+    const payee = (residentPayForm.upi_id.trim() || societyBankAccount?.upi_vpa || '').trim();
     const amount = Number(residentPayForm.amount);
     if (!payee) {
-      toast.error('Enter UPI ID first');
+      if (societyBankAccount) {
+        toast.error('No UPI ID on file. Use bank transfer with the society account number & IFSC shown above.');
+      } else {
+        toast.error('Society payment account is not configured yet');
+      }
       return;
     }
     if (!amount || amount <= 0) {
@@ -596,8 +625,12 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       return;
     }
     const note = `Maintenance for Flat ${resident.flatNumber}`;
-    const url = `upi://pay?pa=${encodeURIComponent(payee)}&pn=${encodeURIComponent('Society Maintenance')}&am=${encodeURIComponent(String(amount))}&cu=INR&tn=${encodeURIComponent(note)}`;
-    window.location.href = url;
+    window.location.href = buildUpiPayUrl({
+      upiVpa: payee,
+      payeeName: societyBankAccount?.account_holder_name || 'Society Maintenance',
+      amount,
+      note,
+    });
   };
 
   const handleSubmitResidentPayment = async () => {
@@ -665,13 +698,13 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
     setResidentPayForm({
       charge_id: '',
       amount: '',
-      payment_method: 'upi',
+      payment_method: 'bank_transfer',
       transaction_id: '',
       notes: '',
       paid_on: format(new Date(), 'yyyy-MM-dd'),
       due_date: format(new Date(), 'yyyy-MM-dd'),
       screenshot_url: '',
-      upi_id: '',
+      upi_id: societyBankAccount?.upi_vpa || '',
     });
     if (fileInput) fileInput.value = '';
     setShowPayMaintenanceForm(false);
@@ -2092,6 +2125,17 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
             {showPayMaintenanceForm && (
               <div className="card-section p-3 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Submit payment for verification</p>
+                {societyBankAccount ? (
+                  <SocietyPayToAccountCard
+                    account={societyBankAccount}
+                    amount={Number(residentPayForm.amount) || undefined}
+                    note={`Maintenance for Flat ${resident.flatNumber}`}
+                  />
+                ) : (
+                  <p className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2">
+                    Society bank account is not published yet. Ask the treasurer / admin to add it under Settings.
+                  </p>
+                )}
                 <select
                   className="input-field"
                   value={residentPayForm.charge_id}
@@ -2123,30 +2167,37 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                   value={residentPayForm.payment_method}
                   onChange={(e) => setResidentPayForm((prev) => ({ ...prev, payment_method: e.target.value }))}
                 >
+                  <option value="bank_transfer">Bank transfer (NEFT / IMPS)</option>
                   <option value="upi">UPI</option>
-                  <option value="bank_transfer">Bank transfer</option>
                   <option value="cash">Cash</option>
                   <option value="razorpay">Online gateway</option>
                 </select>
                 {residentPayForm.payment_method === 'upi' && (
                   <>
-                    <input
-                      className="input-field"
-                      placeholder="Society UPI ID (e.g. society@upi)"
-                      value={residentPayForm.upi_id}
-                      onChange={(e) => setResidentPayForm((prev) => ({ ...prev, upi_id: e.target.value }))}
-                    />
+                    {!societyBankAccount?.upi_vpa && (
+                      <input
+                        className="input-field"
+                        placeholder="Society UPI ID (if shared separately)"
+                        value={residentPayForm.upi_id}
+                        onChange={(e) => setResidentPayForm((prev) => ({ ...prev, upi_id: e.target.value }))}
+                      />
+                    )}
                     <button type="button" className="btn-secondary" onClick={openUpiApp}>
                       Open UPI app with amount
                     </button>
                     <p className="text-[10px] text-muted-foreground">
-                      Phone will show installed UPI apps via system chooser. After payment, upload screenshot below.
+                      After paying to the society account, enter the UTR / UPI reference and upload screenshot below.
                     </p>
                   </>
                 )}
+                {residentPayForm.payment_method === 'bank_transfer' && societyBankAccount && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Send NEFT/IMPS to the account above. Paste the bank UTR in the transaction field below.
+                  </p>
+                )}
                 <input
                   className="input-field"
-                  placeholder="Transaction / UPI reference ID"
+                  placeholder="Transaction / UPI / UTR reference ID"
                   value={residentPayForm.transaction_id}
                   onChange={(e) => setResidentPayForm((prev) => ({ ...prev, transaction_id: e.target.value }))}
                 />

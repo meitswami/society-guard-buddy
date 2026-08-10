@@ -133,6 +133,40 @@ export async function applyElectionToCommittee(input: ApplyInput): Promise<{ ok:
     return { ok: false, error: 'No winners to publish.' };
   }
 
+  // Retire prior active roster the day before the new term starts.
+  const [y, m, d] = term_from.split('-').map(Number);
+  const prior = new Date(y, m - 1, d);
+  prior.setDate(prior.getDate() - 1);
+  const priorTermTo = `${prior.getFullYear()}-${String(prior.getMonth() + 1).padStart(2, '0')}-${String(prior.getDate()).padStart(2, '0')}`;
+
+  const { data: priorRows, error: priorFetchErr } = await supabase
+    .from('committee_members')
+    .select('id, term_from, term_to')
+    .eq('society_id', societyId)
+    .eq('is_active', true);
+
+  if (priorFetchErr) {
+    console.warn('Could not load previous committee for retirement:', priorFetchErr.message);
+  } else {
+    const retireIds = (priorRows ?? [])
+      .filter((r) => {
+        const from = r.term_from?.slice(0, 10) ?? null;
+        const to = r.term_to?.slice(0, 10) ?? null;
+        if (from && from >= term_from) return false;
+        if (to && to < term_from) return false;
+        return true;
+      })
+      .map((r) => r.id);
+
+    if (retireIds.length > 0) {
+      const { error: retireErr } = await supabase
+        .from('committee_members')
+        .update({ term_to: priorTermTo })
+        .in('id', retireIds);
+      if (retireErr) console.warn('Could not close previous committee term:', retireErr.message);
+    }
+  }
+
   const { error: insErr } = await supabase.from('committee_members').insert(inserts);
   if (insErr) return { ok: false, error: insErr.message };
 

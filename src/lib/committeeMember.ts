@@ -68,6 +68,34 @@ export function committeeTenureLabel(row: Pick<CommitteeMemberRow, 'term_from' |
   return to ? `${from} → ${to}` : `${from} → Until retirement`;
 }
 
+/** Local calendar YYYY-MM-DD (society tenure is date-based, not UTC midnight). */
+export function localIsoDate(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** True when the member is on the living roster for the given calendar day. */
+export function isCommitteeMemberEffectiveOn(
+  row: Pick<CommitteeMemberRow, 'is_active' | 'term_from' | 'term_to'>,
+  onDate: string = localIsoDate(),
+): boolean {
+  if (!row.is_active) return false;
+  const from = row.term_from?.slice(0, 10);
+  const to = row.term_to?.slice(0, 10);
+  if (from && from > onDate) return false;
+  if (to && to < onDate) return false;
+  return true;
+}
+
+export function filterEffectiveCommitteeMembers<T extends Pick<CommitteeMemberRow, 'is_active' | 'term_from' | 'term_to'>>(
+  rows: T[],
+  onDate: string = localIsoDate(),
+): T[] {
+  return rows.filter((r) => isCommitteeMemberEffectiveOn(r, onDate));
+}
+
 export function selectionTypeLabel(type: CommitteeSelectionType | null | undefined): string {
   switch (type) {
     case 'elected':

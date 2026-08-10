@@ -15,8 +15,20 @@ class CommitteeService {
         .order('name');
 
     final raw = (rows as List).cast<Map<String, dynamic>>();
+    final today = DateTime.now();
+    final todayStr =
+        '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    final effective = raw.where((r) {
+      final from = (r['term_from'] as String?)?.substring(0, 10);
+      final to = (r['term_to'] as String?)?.substring(0, 10);
+      if (from != null && from.compareTo(todayStr) > 0) return false;
+      if (to != null && to.compareTo(todayStr) < 0) return false;
+      return true;
+    }).toList();
+
     final flatIdSet = <String>{
-      for (final r in raw)
+      for (final r in effective)
         if (r['flat_id'] is String) r['flat_id'] as String,
     };
 
@@ -35,7 +47,7 @@ class CommitteeService {
       }
     }
 
-    return raw.map((r) {
+    return effective.map((r) {
       final member = CommitteeMember.fromRow(r);
       final flatId = r['flat_id'] as String?;
       final livePhoto = flatId != null ? live['$flatId|${member.name}'] : null;
