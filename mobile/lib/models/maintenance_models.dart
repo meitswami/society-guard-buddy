@@ -32,6 +32,7 @@ class MaintenancePayment {
     required this.paymentDate,
     required this.dueDate,
     required this.transactionId,
+    this.receiptNumber,
   });
 
   final String id;
@@ -41,6 +42,7 @@ class MaintenancePayment {
   final String? paymentDate;
   final String dueDate;
   final String? transactionId;
+  final String? receiptNumber;
 
   factory MaintenancePayment.fromRow(Map<String, dynamic> row) =>
       MaintenancePayment(
@@ -51,5 +53,6 @@ class MaintenancePayment {
         paymentDate: row['payment_date'] as String?,
         dueDate: row['due_date'] as String? ?? '',
         transactionId: row['transaction_id'] as String?,
+        receiptNumber: row['receipt_number'] as String?,
       );
 }

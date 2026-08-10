@@ -180,6 +180,17 @@ serve(async (req) => {
       const title = 'Maintenance Due Reminder';
       const message = `Your ${currentMonthCharge.title} payment is due. Due day: ${dueDay}. Please pay at the earliest to avoid pending dues.`;
 
+      const { data: societySound } = await supabase
+        .from('societies')
+        .select('admin_push_sound_url')
+        .eq('id', societyId)
+        .maybeSingle();
+      const customUrl =
+        typeof societySound?.admin_push_sound_url === 'string'
+          ? societySound.admin_push_sound_url.trim()
+          : '';
+      const soundKey = customUrl ? 'custom' : 'digital';
+
       const rows = toNotify.map((flatNumber) => ({
         society_id: societyId,
         title,
@@ -188,6 +199,8 @@ serve(async (req) => {
         target_type: 'flat',
         target_id: flatNumber,
         created_by: 'System',
+        sound_key: soundKey,
+        sound_custom_url: customUrl || null,
       }));
       await supabase.from('notifications').insert(rows);
 
@@ -205,8 +218,8 @@ serve(async (req) => {
           target_ids: [],
           media_items: [],
           society_id: societyId,
-          sound_key: 'digital',
-          sound_custom_url: '',
+          sound_key: soundKey,
+          sound_custom_url: customUrl,
         }),
       });
 

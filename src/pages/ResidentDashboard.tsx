@@ -28,8 +28,6 @@ import { useBiometric } from '@/hooks/useBiometric';
 import { playNotificationAlert } from '@/lib/notificationSounds';
 import { playSocietySignatureTuneOnOpen } from '@/lib/societyNotificationSound';
 import { downloadMaintenanceReceiptPdf } from '@/lib/maintenanceReceiptPdf';
-import { playSocietySignatureTuneOnOpen } from '@/lib/societyNotificationSound';
-import { downloadMaintenanceReceiptPdf } from '@/lib/maintenanceReceiptPdf';
 import TourGuideFirstLogin from '@/components/TourGuideFirstLogin';
 import TourGuideHub from '@/components/TourGuideHub';
 import ResidentFeedbackForm from '@/components/ResidentFeedbackForm';

@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/select';
 import { uploadMeetingFile } from '@/lib/notificationMediaStorage';
 import { dispatchDirectoryChannels } from '@/lib/dispatchDirectoryChannels';
+import { fetchSocietyNotificationSound } from '@/lib/societyNotificationSound';
 
 type MeetingRow = {
   id: string;
@@ -660,6 +661,7 @@ const MeetingManager = ({
     channels?: { whatsapp?: boolean; email?: boolean },
   ) => {
     if (!societyId) return;
+    const sound = await fetchSocietyNotificationSound(societyId);
     await supabase.from('notifications').insert([
       {
         title,
@@ -669,8 +671,8 @@ const MeetingManager = ({
         target_id: 'all',
         created_by: adminName,
         society_id: societyId,
-        sound_key: 'digital',
-        sound_custom_url: null,
+        sound_key: sound.sound_key,
+        sound_custom_url: sound.sound_custom_url,
       },
     ]);
     try {
@@ -680,8 +682,8 @@ const MeetingManager = ({
           message: body,
           target_type: 'all',
           society_id: societyId,
-          sound_key: 'digital',
-          sound_custom_url: '',
+          sound_key: sound.sound_key,
+          sound_custom_url: sound.sound_custom_url ?? '',
         },
       });
     } catch (e) {
@@ -1324,6 +1326,7 @@ const MeetingManager = ({
       (notesDraft.minutes || 'Published minutes are available.').slice(0, 900) +
       (notesDraft.minutes.length > 900 ? '…' : '') +
       ' Open the Meetings tab in the app.';
+    const sound = await fetchSocietyNotificationSound(societyId);
     await supabase.from('notifications').insert([
       {
         title,
@@ -1333,8 +1336,8 @@ const MeetingManager = ({
         target_id: 'all',
         created_by: adminName,
         society_id: societyId,
-        sound_key: 'digital',
-        sound_custom_url: null,
+        sound_key: sound.sound_key,
+        sound_custom_url: sound.sound_custom_url,
       },
     ]);
     try {
@@ -1344,8 +1347,8 @@ const MeetingManager = ({
           message: body,
           target_type: 'all',
           society_id: societyId,
-          sound_key: 'digital',
-          sound_custom_url: '',
+          sound_key: sound.sound_key,
+          sound_custom_url: sound.sound_custom_url ?? '',
         },
       });
     } catch (e) {

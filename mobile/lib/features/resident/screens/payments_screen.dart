@@ -282,7 +282,14 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       (p) => Card(
                         child: ListTile(
                           title: Text('₹ ${p.amount.toStringAsFixed(0)}'),
-                          subtitle: Text('${p.paymentMethod} · Due ${p.dueDate.substring(0, 10)}'),
+                          subtitle: Text(
+                            [
+                              if (p.receiptNumber != null && p.receiptNumber!.isNotEmpty)
+                                'Receipt ${p.receiptNumber}',
+                              '${p.paymentMethod} · Due ${p.dueDate.substring(0, 10)}',
+                            ].join('\n'),
+                          ),
+                          isThreeLine: p.receiptNumber != null && p.receiptNumber!.isNotEmpty,
                           trailing: Text(p.paymentStatus),
                         ),
                       ),

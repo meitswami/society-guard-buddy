@@ -4,6 +4,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { Headphones, ExternalLink } from 'lucide-react';
 import { fmtDateTimeFull } from '@/lib/dateFormat';
+import { fetchSocietyNotificationSound } from '@/lib/societyNotificationSound';
 
 interface Props {
   superadmin: { id: string; name: string };
@@ -84,6 +85,7 @@ const SuperadminSupportTickets = ({ superadmin }: Props) => {
       }
 
       const title = `Support · Ticket #${t.ticket_number}`;
+      const sound = await fetchSocietyNotificationSound(t.society_id);
       const { error: nErr } = await supabase.from('notifications').insert({
         society_id: t.society_id,
         title,
@@ -93,8 +95,8 @@ const SuperadminSupportTickets = ({ superadmin }: Props) => {
         target_id: t.submitter_resident_id,
         created_by: `Superadmin (${superadmin.name})`,
         media_items: [],
-        sound_key: 'digital',
-        sound_custom_url: null,
+        sound_key: sound.sound_key,
+        sound_custom_url: sound.sound_custom_url,
       });
       if (nErr) {
         toast.error(nErr.message);
@@ -109,8 +111,8 @@ const SuperadminSupportTickets = ({ superadmin }: Props) => {
             target_type: 'user',
             target_ids: [t.submitter_resident_id],
             society_id: t.society_id,
-            sound_key: 'digital',
-            sound_custom_url: '',
+            sound_key: sound.sound_key,
+            sound_custom_url: sound.sound_custom_url ?? '',
           },
         });
       } catch (e) {

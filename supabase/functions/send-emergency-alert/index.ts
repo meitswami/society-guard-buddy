@@ -97,6 +97,17 @@ serve(async (req) => {
 
     const createdBy = `${sender_name} (${role}${sender_flat_number ? ` · Flat ${sender_flat_number}` : ""})`;
 
+    const { data: societySound } = await supabase
+      .from("societies")
+      .select("admin_push_sound_url")
+      .eq("id", society_id)
+      .maybeSingle();
+    const customUrl =
+      typeof societySound?.admin_push_sound_url === "string"
+        ? societySound.admin_push_sound_url.trim()
+        : "";
+    const soundKey = customUrl ? "custom" : "digital";
+
     const { data: notifRow, error: notifErr } = await supabase
       .from("notifications")
       .insert([
@@ -109,8 +120,8 @@ serve(async (req) => {
           target_id: null,
           created_by: createdBy,
           media_items: media,
-          sound_key: "siren",
-          sound_custom_url: null,
+          sound_key: soundKey,
+          sound_custom_url: customUrl || null,
         },
       ])
       .select("id")
@@ -140,8 +151,8 @@ serve(async (req) => {
           target_ids: [],
           media_items: media,
           society_id,
-          sound_key: "siren",
-          sound_custom_url: "",
+          sound_key: soundKey,
+          sound_custom_url: customUrl,
         }),
       });
       const pushJson = await pushRes.json();
