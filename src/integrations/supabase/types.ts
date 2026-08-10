@@ -2459,11 +2459,14 @@ export type Database = {
           payment_date: string | null
           payment_method: string
           payment_status: string
+          receipt_number: string | null
+          receipt_seq: number | null
           recording_date: string
           rejection_reason: string | null
           resident_name: string | null
           reviewed_at: string | null
           screenshot_url: string | null
+          society_id: string | null
           submitted_by: string
           submitted_by_user_id: string | null
           transaction_id: string | null
@@ -2483,11 +2486,14 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string
           payment_status?: string
+          receipt_number?: string | null
+          receipt_seq?: number | null
           recording_date?: string
           rejection_reason?: string | null
           resident_name?: string | null
           reviewed_at?: string | null
           screenshot_url?: string | null
+          society_id?: string | null
           submitted_by?: string
           submitted_by_user_id?: string | null
           transaction_id?: string | null
@@ -2507,11 +2513,14 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string
           payment_status?: string
+          receipt_number?: string | null
+          receipt_seq?: number | null
           recording_date?: string
           rejection_reason?: string | null
           resident_name?: string | null
           reviewed_at?: string | null
           screenshot_url?: string | null
+          society_id?: string | null
           submitted_by?: string
           submitted_by_user_id?: string | null
           transaction_id?: string | null
@@ -2538,6 +2547,13 @@ export type Database = {
             columns: ["flat_id"]
             isOneToOne: false
             referencedRelation: "flats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_payments_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
             referencedColumns: ["id"]
           },
         ]

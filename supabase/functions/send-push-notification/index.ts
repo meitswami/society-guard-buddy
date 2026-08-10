@@ -159,8 +159,20 @@ serve(async (req) => {
       }
 
       const accessToken = await getFcmAccessToken(sa);
-      const sk = typeof sound_key === "string" && sound_key ? String(sound_key) : "digital";
-      const scu = typeof sound_custom_url === "string" ? String(sound_custom_url) : "";
+      let sk = typeof sound_key === "string" && sound_key ? String(sound_key) : "digital";
+      let scu = typeof sound_custom_url === "string" ? String(sound_custom_url) : "";
+      if (society_id) {
+        const { data: soc } = await supabase
+          .from("societies")
+          .select("admin_push_sound_url")
+          .eq("id", society_id)
+          .maybeSingle();
+        const societyUrl = typeof soc?.admin_push_sound_url === "string" ? soc.admin_push_sound_url.trim() : "";
+        if (societyUrl) {
+          sk = "custom";
+          scu = societyUrl;
+        }
+      }
       const fcmData: Record<string, string> = {
         sound_key: sk,
         sound_custom_url: scu,

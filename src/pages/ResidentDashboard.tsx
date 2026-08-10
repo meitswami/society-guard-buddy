@@ -474,6 +474,11 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
   }, [loadSocietyBankAccount]);
 
   useEffect(() => {
+    if (!societyId) return;
+    void playSocietySignatureTuneOnOpen(societyId);
+  }, [societyId]);
+
+  useEffect(() => {
     loadRequests();
     loadPasses();
     loadMyPayments();
@@ -2247,6 +2252,9 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-sm font-medium">₹{p.amount}</p>
+                    {p.receipt_number && (
+                      <p className="text-[10px] font-mono text-muted-foreground">Receipt {p.receipt_number}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">{p.payment_method} · {fmtDate(p.created_at)}</p>
                     <p className="text-[10px] text-muted-foreground">
                       Paid on: {p.payment_date ? fmtDate(p.payment_date) : '-'}
@@ -2258,6 +2266,34 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
                     {p.notes && <p className="text-[10px] text-muted-foreground">{p.notes}</p>}
                     {p.rejection_reason && <p className="text-[10px] text-destructive">Reason: {p.rejection_reason}</p>}
                     {p.screenshot_url ? <a href={p.screenshot_url} target="_blank" className="text-[10px] text-primary underline">View receipt</a> : null}
+                    {p.payment_status === 'verified' && p.receipt_number && societyId && (
+                      <button
+                        type="button"
+                        className="text-[10px] text-primary underline block mt-1"
+                        onClick={() => {
+                          void downloadMaintenanceReceiptPdf({
+                            societyId,
+                            receiptNumber: String(p.receipt_number),
+                            flatNumber: String(p.flat_number || resident.flatNumber),
+                            residentName: p.resident_name || resident.name,
+                            amount: Number(p.amount || 0),
+                            paymentMethod: String(p.payment_method || ''),
+                            paymentDate: p.payment_date,
+                            dueDate: p.due_date,
+                            chargeTitle: residentCharges.find((c) => c.id === p.charge_id)?.title ?? null,
+                            transactionId: p.transaction_id,
+                            verifiedBy: p.verified_by,
+                            verifiedAt: p.verified_at,
+                            notes: p.notes,
+                            generatedBy: resident.name,
+                          }).then(({ warning }) => {
+                            if (warning) toast.message(warning);
+                          });
+                        }}
+                      >
+                        Download official receipt (letterhead)
+                      </button>
+                    )}
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                     p.payment_status === 'verified' ? 'bg-green-500/20 text-green-600' :

@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -20,6 +21,7 @@ class PushNotificationService {
   static bool _foregroundListenerAttached = false;
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  static final AudioPlayer _alertPlayer = AudioPlayer();
 
   static Future<void> ensureBackgroundHandler() async {
     if (!Env.isFirebaseConfigured) return;
@@ -49,6 +51,17 @@ class PushNotificationService {
     }
   }
 
+  Future<void> _playSocietyAlert(RemoteMessage message) async {
+    final url = message.data['sound_custom_url']?.toString().trim();
+    if (url == null || url.isEmpty) return;
+    try {
+      await _alertPlayer.stop();
+      await _alertPlayer.play(UrlSource(url));
+    } catch (e) {
+      debugPrint('[FCM] alert sound failed: $e');
+    }
+  }
+
   Future<void> initForegroundListener() async {
     if (_foregroundListenerAttached || !Env.isFirebaseConfigured) return;
     _foregroundListenerAttached = true;
@@ -61,6 +74,8 @@ class PushNotificationService {
       final title = message.notification?.title ?? 'Kutumbika';
       final body = message.notification?.body ?? '';
       debugPrint('[FCM] $title: $body');
+
+      await _playSocietyAlert(message);
 
       if (kIsWeb || body.isEmpty) return;
 

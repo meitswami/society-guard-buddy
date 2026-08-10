@@ -314,7 +314,16 @@ serve(async (req) => {
           .in("flat_id", flatIds),
       ]);
 
-      const soundKey = setting.bill_sound_key || "melody";
+      const { data: societySound } = await supabase
+        .from("societies")
+        .select("admin_push_sound_url")
+        .eq("id", societyId)
+        .maybeSingle();
+      const customUrl =
+        typeof societySound?.admin_push_sound_url === "string"
+          ? societySound.admin_push_sound_url.trim()
+          : "";
+      const soundKey = customUrl ? "custom" : (setting.bill_sound_key || "melody");
       const notifTitle = `${chargeTitle} — ₹${amount.toLocaleString("en-IN")}`;
       const notifMessage =
         `Your monthly maintenance bill of ₹${amount.toLocaleString("en-IN")} for ${monthNameUtc(zoned.year, zoned.month)} is due on day ${dueDay}. Please pay at the earliest.`;
@@ -328,7 +337,7 @@ serve(async (req) => {
         target_id: String(f.flat_number),
         created_by: "System",
         sound_key: soundKey,
-        sound_custom_url: null,
+        sound_custom_url: customUrl || null,
       }));
       await supabase.from("notifications").insert(notifRows);
 
@@ -347,7 +356,7 @@ serve(async (req) => {
           media_items: [],
           society_id: societyId,
           sound_key: soundKey,
-          sound_custom_url: "",
+          sound_custom_url: customUrl,
         }),
       });
 

@@ -43,6 +43,7 @@ import {
   SUM_INSIGHT_METRICS,
 } from '@/lib/descriptiveMetricCopy';
 import { uploadMaintenanceReceipt } from '@/lib/notificationMediaStorage';
+import { downloadMaintenanceReceiptPdf } from '@/lib/maintenanceReceiptPdf';
 import CashBankBreakdown, { ChannelBadge } from '@/components/CashBankBreakdown';
 import { sumByChannel } from '@/lib/cashBankChannel';
 import { FinanceRemindersTab } from '@/components/finance/FinanceRemindersTab';
@@ -3261,6 +3262,11 @@ const FinanceManager = ({
                             {item.p.transaction_id && (
                               <p className="text-[10px] text-muted-foreground font-mono">TXN: {item.p.transaction_id}</p>
                             )}
+                            {item.p.receipt_number && (
+                              <p className="text-[10px] text-muted-foreground font-mono">
+                                Receipt: {item.p.receipt_number}
+                              </p>
+                            )}
                             {item.p.rejection_reason ? (
                               <p className="text-[10px] text-destructive">Reason: {item.p.rejection_reason}</p>
                             ) : null}
@@ -3472,6 +3478,7 @@ const FinanceManager = ({
                         {selectedPayment.created_at ? fmtDateTimeFull(selectedPayment.created_at) : '-'}
                       </p>
                       <p><span className="text-muted-foreground">Transaction ID:</span> {selectedPayment.transaction_id || '-'}</p>
+                      <p><span className="text-muted-foreground">Receipt No.:</span> {selectedPayment.receipt_number || '-'}</p>
                       <p><span className="text-muted-foreground">Verified by:</span> {selectedPayment.verified_by || '-'}</p>
                       <p>
                         <span className="text-muted-foreground">Verified at:</span>{' '}
@@ -3484,6 +3491,38 @@ const FinanceManager = ({
                       <p><span className="text-muted-foreground">Rejected reason:</span> {selectedPayment.rejection_reason || '-'}</p>
                       <p><span className="text-muted-foreground">Notes:</span> {selectedPayment.notes || '-'}</p>
                     </div>
+
+                    {selectedPayment.payment_status === 'verified' &&
+                      selectedPayment.receipt_number &&
+                      societyId && (
+                        <button
+                          type="button"
+                          className="btn-primary text-xs mt-3 w-full"
+                          onClick={() => {
+                            void downloadMaintenanceReceiptPdf({
+                              societyId,
+                              receiptNumber: String(selectedPayment.receipt_number),
+                              flatNumber: String(selectedPayment.flat_number),
+                              residentName: selectedPayment.resident_name,
+                              amount: Number(selectedPayment.amount || 0),
+                              paymentMethod: String(selectedPayment.payment_method || ''),
+                              paymentDate: selectedPayment.payment_date,
+                              dueDate: selectedPayment.due_date,
+                              chargeTitle: chargeById.get(selectedPayment.charge_id)?.title ?? null,
+                              transactionId: selectedPayment.transaction_id,
+                              verifiedBy: selectedPayment.verified_by,
+                              verifiedAt: selectedPayment.verified_at,
+                              notes: selectedPayment.notes,
+                              generatedBy: adminName,
+                            }).then(({ warning }) => {
+                              if (warning) toast.message(warning);
+                              else toast.success('Receipt downloaded');
+                            });
+                          }}
+                        >
+                          Download letterhead receipt
+                        </button>
+                      )}
 
                     {selectedPayment.screenshot_url && (
                       <div className="mt-3">
