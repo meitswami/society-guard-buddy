@@ -122,6 +122,7 @@ const SocietyContentEditor = () => {
   };
 
   const groups = useMemo(() => CONTENT_TRANSLATION_GROUPS, []);
+  const activeGroupId = groups.some((g) => g.id === openGroup) ? openGroup : (groups[0]?.id ?? '');
 
   if (!societyId) {
     return (
@@ -145,7 +146,7 @@ const SocietyContentEditor = () => {
         </div>
       </div>
 
-      {groups.length > 1 && (
+      {groups.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {groups.map((g) => (
             <button
@@ -153,7 +154,7 @@ const SocietyContentEditor = () => {
               type="button"
               onClick={() => setOpenGroup(g.id)}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
-                openGroup === g.id
+                g.id === activeGroupId
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary text-secondary-foreground hover:bg-accent'
               }`}
@@ -168,7 +169,7 @@ const SocietyContentEditor = () => {
         <p className="text-xs text-muted-foreground py-4">{t('app.loading')}</p>
       ) : (
         groups
-          .filter((g) => g.id === openGroup)
+          .filter((g) => g.id === activeGroupId)
           .map((g) => (
             <div key={g.id} className="space-y-3">
               <p className="text-[10px] text-muted-foreground leading-relaxed">{g.description}</p>

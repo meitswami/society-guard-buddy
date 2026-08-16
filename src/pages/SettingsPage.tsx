@@ -1,5 +1,5 @@
 import { useStore } from '@/store/useStore';
-import { Settings, Shield, ImagePlus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Settings, Shield, ImagePlus, Trash2, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -12,8 +12,19 @@ import { ADMIN_HOME_METRICS } from '@/lib/descriptiveMetricCopy';
 import SocietyReportSettingsPanel from '@/components/SocietyReportSettingsPanel';
 import SocietyBankAccountPanel from '@/components/SocietyBankAccountPanel';
 import SocietyAddressPanel from '@/components/SocietyAddressPanel';
+import SocietyAppFeaturesPanel from '@/components/SocietyAppFeaturesPanel';
+import AdminPasswordChange from '@/components/AdminPasswordChange';
+import BiometricSetup from '@/components/BiometricSetup';
 
-const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean } = {}) => {
+const SettingsPage = ({
+  allowContentEdit = false,
+  adminId,
+  adminName,
+}: {
+  allowContentEdit?: boolean;
+  adminId?: string;
+  adminName?: string;
+} = {}) => {
   const { visitors, flats, members, residentVehicles, blacklist, societyId, entryCapsMode, setEntryCapsMode } = useStore();
   const { t } = useLanguage();
   const [banners, setBanners] = useState<any[]>([]);
@@ -21,6 +32,7 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
   const [newTitle, setNewTitle] = useState('');
 
   const canManageSociety = !!societyId;
+  const isAdminConfig = allowContentEdit && canManageSociety;
 
   const loadBanners = async () => {
     if (!societyId) {
@@ -164,13 +176,29 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
         </div>
       </div>
 
-      {allowContentEdit && canManageSociety && <SocietyContentEditor />}
+      {isAdminConfig && adminId && (
+        <div className="card-section mb-4">
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+            <Lock className="w-4 h-4 text-primary" /> {t('settings.account')}
+          </h2>
+          <AdminPasswordChange adminId={adminId} embedded />
+          {adminName && (
+            <div className="mt-3">
+              <BiometricSetup userType="admin" userId={adminId} userName={adminName} />
+            </div>
+          )}
+        </div>
+      )}
 
-      {allowContentEdit && canManageSociety && <SocietyAddressPanel />}
+      {isAdminConfig && <SocietyAppFeaturesPanel />}
 
-      {canManageSociety && <SocietyReportSettingsPanel />}
+      {isAdminConfig && <SocietyContentEditor />}
 
-      {canManageSociety && <SocietyBankAccountPanel />}
+      {isAdminConfig && <SocietyAddressPanel />}
+
+      {isAdminConfig && <SocietyReportSettingsPanel />}
+
+      {isAdminConfig && <SocietyBankAccountPanel />}
 
       {/* Data summary */}
       <div className="card-section mb-4">
@@ -212,7 +240,7 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
       </div>
 
       {/* Admin society banner settings */}
-      {canManageSociety && (
+      {isAdminConfig && (
         <div className="card-section mb-4">
           <h2 className="text-sm font-semibold mb-2">{t('settings.banners')}</h2>
           <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">

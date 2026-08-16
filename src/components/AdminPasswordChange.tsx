@@ -7,9 +7,11 @@ import { auditPasswordChange } from '@/lib/auditLogger';
 
 interface Props {
   adminId: string;
+  /** When true, skip the outer page chrome so this can sit inside Settings. */
+  embedded?: boolean;
 }
 
-const AdminPasswordChange = ({ adminId }: Props) => {
+const AdminPasswordChange = ({ adminId, embedded = false }: Props) => {
   const { t } = useLanguage();
   const [current, setCurrent] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -35,13 +37,8 @@ const AdminPasswordChange = ({ adminId }: Props) => {
     setLoading(false);
   };
 
-  return (
-    <div className="page-container">
-      <div className="flex items-center gap-2 mb-4">
-        <Lock className="w-5 h-5 text-primary" />
-        <h2 className="font-semibold">{t('admin.changePassword')}</h2>
-      </div>
-      <div className="card-section p-4 flex flex-col gap-3">
+  const form = (
+      <div className={embedded ? 'flex flex-col gap-3' : 'card-section p-4 flex flex-col gap-3'}>
         <div className="relative">
           <input className="input-field pr-10" type={showPass ? 'text' : 'password'}
             placeholder={t('admin.currentPassword')} value={current} onChange={e => setCurrent(e.target.value)} />
@@ -58,6 +55,17 @@ const AdminPasswordChange = ({ adminId }: Props) => {
           {loading ? t('login.loggingIn') : t('admin.changePassword')}
         </button>
       </div>
+  );
+
+  if (embedded) return form;
+
+  return (
+    <div className="page-container">
+      <div className="flex items-center gap-2 mb-4">
+        <Lock className="w-5 h-5 text-primary" />
+        <h2 className="font-semibold">{t('admin.changePassword')}</h2>
+      </div>
+      {form}
     </div>
   );
 };
