@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/store/useStore';
-import { Camera, Edit2, Plus, Trash2, UserCircle, Phone, Users, Search } from 'lucide-react';
+import { Camera, Edit2, History, Plus, Trash2, UserCircle, Phone, Users, Search } from 'lucide-react';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 import { confirmAction } from '@/lib/swal';
 import { DateInput } from '@/components/DateInput';
@@ -13,7 +14,7 @@ import {
   committeeDisplayLabels,
   committeeIsRepresentative,
   committeeTenureLabel,
-  filterEffectiveCommitteeMembers,
+  splitCommitteeTerms,
   selectionTypeLabel,
 } from '@/lib/committeeMember';
 import CommitteeDutiesChart from '@/components/CommitteeDutiesChart';
@@ -106,6 +107,7 @@ const Avatar = ({ photo, name, size = 'md' }: { photo?: string | null; name: str
 };
 
 const CommitteeManager = ({ isResident = false }: Props) => {
+  const { t } = useLanguage();
   const societyId = useStore((s) => s.societyId);
   const [rows, setRows] = useState<CommitteeMemberRow[]>([]);
   const [flatOptions, setFlatOptions] = useState<FlatOption[]>([]);
@@ -114,6 +116,7 @@ const CommitteeManager = ({ isResident = false }: Props) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [flatSearch, setFlatSearch] = useState('');
+  const [showPrevious, setShowPrevious] = useState(false);
 
   const loadFlats = useCallback(async () => {
     if (!societyId) {
@@ -169,7 +172,7 @@ const CommitteeManager = ({ isResident = false }: Props) => {
       .order('name', { ascending: true });
     if (error) toast.error(error.message);
 
-    const roster = filterEffectiveCommitteeMembers((data as CommitteeMemberRow[]) ?? []);
+    const roster = (data as CommitteeMemberRow[]) ?? [];
     const flatIds = [...new Set(roster.map((r) => r.flat_id).filter(Boolean))] as string[];
     if (flatIds.length > 0) {
       const { data: mems } = await supabase
@@ -209,6 +212,13 @@ const CommitteeManager = ({ isResident = false }: Props) => {
     );
   }, [flatOptions, flatSearch]);
 
+  const { current: currentRows, previous: previousRows } = useMemo(
+    () => splitCommitteeTerms(rows),
+    [rows],
+  );
+  const displayedRows = showPrevious ? previousRows : currentRows;
+  const hasPrevious = previousRows.length > 0;
+
   const applyFlatSelection = (flatId: string) => {
     const flat = flatOptions.find((f) => f.id === flatId);
     if (!flat) {
@@ -229,7 +239,7 @@ const CommitteeManager = ({ isResident = false }: Props) => {
   const openAdd = () => {
     setEditingId(null);
     setFlatSearch('');
-    setForm({ ...emptyForm(), sortOrder: rows.length });
+    setForm({ ...emptyForm(), sortOrder: displayedRows.length });
     setShowForm(true);
   };
 
@@ -421,37 +431,55 @@ const CommitteeManager = ({ isResident = false }: Props) => {
 
   return (
     <div className={isResident ? 'flex flex-col gap-3' : 'page-container'}>
-      <div className="flex items-center justify-between mb-4">
-        <div>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="min-w-0">
           <h2 className={isResident ? 'text-sm font-semibold' : 'page-title'}>
-            {isResident ? 'Managing Committee' : 'Committee Members'}
+            {showPrevious ? t('committee.previousYearTitle') : isResident ? t('committee.managingTitle') : t('committee.membersTitle')}
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {isResident
-              ? 'Office-bearers and committee members of your society. Roster changes are admin-only; you may edit your personal profile details elsewhere.'
-              : 'Flat-linked roster with tenure and elected / nominated status'}
+            {showPrevious
+              ? t('committee.previousYearHint')
+              : isResident
+                ? t('committee.residentHint')
+                : t('committee.adminHint')}
           </p>
         </div>
-        {!isResident && (
-          <button type="button" onClick={openAdd} className="btn-primary flex items-center gap-1.5 text-sm">
-            <Plus className="w-4 h-4" /> Add
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {hasPrevious && (
+            <button
+              type="button"
+              onClick={() => setShowPrevious((v) => !v)}
+              className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm"
+            >
+              <History className="w-3.5 h-3.5" />
+              {showPrevious ? t('committee.currentButton') : t('committee.previousYearButton')}
+            </button>
+          )}
+          {!isResident && !showPrevious && (
+            <button type="button" onClick={openAdd} className="btn-primary flex items-center gap-1.5 text-sm">
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          )}
+        </div>
       </div>
 
-      <CommitteeDutiesChart isResident={isResident} />
+      {!showPrevious && <CommitteeDutiesChart isResident={isResident} />}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : rows.length === 0 ? (
+      ) : displayedRows.length === 0 ? (
         <div className="card-section text-center py-8">
           <UserCircle className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-50" />
           <p className="text-sm text-muted-foreground">
-            {isResident ? 'No committee members listed yet.' : 'Add committee members to show them in the residents portal.'}
+            {showPrevious
+              ? t('committee.previousEmpty')
+              : isResident
+                ? t('committee.residentEmpty')
+                : t('committee.adminEmpty')}
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">{rows.map(renderMemberCard)}</div>
+        <div className="flex flex-col gap-3">{displayedRows.map(renderMemberCard)}</div>
       )}
 
       {!isResident && showForm && (

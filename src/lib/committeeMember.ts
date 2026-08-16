@@ -76,6 +76,111 @@ export function localIsoDate(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
+export function termStartIso(row: Pick<CommitteeMemberRow, 'term_from'> | { term_from?: string | null }): string | null {
+  const from = row.term_from?.slice(0, 10);
+  return from || null;
+}
+
+export function latestCommitteeTermFrom<T extends { term_from?: string | null }>(rows: T[]): string | null {
+  let latest: string | null = null;
+  for (const r of rows) {
+    const from = r.term_from?.slice(0, 10) || null;
+    if (from && (!latest || from > latest)) latest = from;
+  }
+  return latest;
+}
+
+/** Latest elected/appointed term is "current", even if term_from is a few days in the future. */
+export function isCurrentCommitteeTerm(
+  row: Pick<CommitteeMemberRow, 'term_from' | 'term_to'>,
+  currentTermFrom: string | null,
+): boolean {
+  if (!currentTermFrom) return true;
+  const from = row.term_from?.slice(0, 10) || null;
+  if (from) return from >= currentTermFrom;
+  const to = row.term_to?.slice(0, 10) || null;
+  if (to && to < currentTermFrom) return false;
+  return true;
+}
+
+const UNIQUE_POSTS = new Set([
+  'president',
+  'vice-president',
+  'secretary',
+  'treasurer',
+  'cultural secretary',
+]);
+
+function normalizePersonKey(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Collapse accidental duplicate office-bearers in the same term.
+ * Unique posts keep one row (prefer a closed 2-year tenure, then longer name).
+ */
+export function dedupeCommitteeByPosition<
+  T extends { position: string; name: string; term_to?: string | null; sort_order?: number },
+>(rows: T[]): T[] {
+  const groups = new Map<string, T[]>();
+  for (const r of rows) {
+    const pos = r.position.trim().toLowerCase();
+    const key = UNIQUE_POSTS.has(pos) ? pos : `${pos}|${normalizePersonKey(r.name)}`;
+    const list = groups.get(key) ?? [];
+    list.push(r);
+    groups.set(key, list);
+  }
+  const out: T[] = [];
+  for (const list of groups.values()) {
+    if (list.length === 1) {
+      out.push(list[0]);
+      continue;
+    }
+    list.sort((a, b) => {
+      const aTo = a.term_to ? 1 : 0;
+      const bTo = b.term_to ? 1 : 0;
+      if (aTo !== bTo) return bTo - aTo;
+      if (b.name.trim().length !== a.name.trim().length) return b.name.trim().length - a.name.trim().length;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
+    out.push(list[0]);
+  }
+  return out.sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name),
+  );
+}
+
+export type CommitteeTermSplit<T> = {
+  current: T[];
+  previous: T[];
+  currentTermFrom: string | null;
+};
+
+/** Split active roster into current term vs earlier terms (Previous year). */
+export function splitCommitteeTerms<
+  T extends Pick<CommitteeMemberRow, 'term_from' | 'term_to' | 'is_active' | 'position' | 'name' | 'sort_order'>,
+>(rows: T[]): CommitteeTermSplit<T> {
+  const active = rows.filter((r) => r.is_active !== false);
+  const currentTermFrom = latestCommitteeTermFrom(active);
+  const current: T[] = [];
+  const previous: T[] = [];
+  for (const r of active) {
+    if (isCurrentCommitteeTerm(r, currentTermFrom)) current.push(r);
+    else previous.push(r);
+  }
+  return {
+    current: dedupeCommitteeByPosition(current),
+    previous,
+    currentTermFrom,
+  };
+}
+
+export function currentCommitteeMembers<
+  T extends Pick<CommitteeMemberRow, 'term_from' | 'term_to' | 'is_active' | 'position' | 'name' | 'sort_order'>,
+>(rows: T[]): T[] {
+  return splitCommitteeTerms(rows).current;
+}
+
 /** True when the member is on the living roster for the given calendar day. */
 export function isCommitteeMemberEffectiveOn(
   row: Pick<CommitteeMemberRow, 'is_active' | 'term_from' | 'term_to'>,

@@ -22,3 +22,7 @@ verify_jwt = false
 # Directory WhatsApp / email despatch from in-app admin session (not Supabase Auth JWT).
 [functions.dispatch-directory-message]
 verify_jwt = false
+
+# Emergency alerts are sent from in-app sessions (not Supabase Auth JWT).
+[functions.send-emergency-alert]
+verify_jwt = false

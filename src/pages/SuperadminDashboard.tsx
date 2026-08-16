@@ -829,7 +829,14 @@ const SuperadminDashboard = ({ superadmin, onLogout }: Props) => {
                   {editingSocietyId ? t('superadmin.editSociety') : t('superadmin.newSociety')}
                 </p>
                 <input className="input-field" placeholder={t('superadmin.societyName')} value={sf.name} onChange={e => setSf({ ...sf, name: e.target.value })} />
-                <input className="input-field" placeholder={t('superadmin.address')} value={sf.address} onChange={e => setSf({ ...sf, address: e.target.value })} />
+                <textarea
+                  className="input-field min-h-[4.5rem] resize-y"
+                  rows={3}
+                  placeholder={t('superadmin.address')}
+                  value={sf.address}
+                  onChange={e => setSf({ ...sf, address: e.target.value })}
+                  autoComplete="street-address"
+                />
                 <div className="grid grid-cols-2 gap-2">
                   <input className="input-field" placeholder={t('superadmin.city')} value={sf.city} onChange={e => setSf({ ...sf, city: e.target.value })} />
                   <input className="input-field" placeholder={t('superadmin.state')} value={sf.state} onChange={e => setSf({ ...sf, state: e.target.value })} />

@@ -922,6 +922,21 @@ const translations: Record<string, Record<Lang, string>> = {
   },
   'settings.dataSummary': { en: 'Data Summary', hi: 'डेटा सारांश' },
   'settings.banners': { en: 'Dashboard login banners', hi: 'मुख्य पटल प्रवेश सूचनापट' },
+  'settings.societyAddress': { en: 'Society address', hi: 'सोसाइटी का पता' },
+  'settings.societyAddressHint': {
+    en: 'This address is printed on official letterheads, receipts, and reports for the current society.',
+    hi: 'यह पता वर्तमान सोसाइटी के आधिकारिक लेटरहेड, रसीदों और रिपोर्टों पर छपता है।',
+  },
+  'settings.addressPlaceholder': {
+    en: 'House / plot, street, locality',
+    hi: 'मकान / प्लॉट, सड़क, मोहल्ला',
+  },
+  'settings.societyAddressEmpty': {
+    en: 'No address saved yet. Add it so reports show the society location.',
+    hi: 'अभी पता सहेजा नहीं गया। रिपोर्ट में सोसाइटी स्थान दिखाने के लिए जोड़ें।',
+  },
+  'settings.saveSocietyAddress': { en: 'Save society address', hi: 'सोसाइटी पता सहेजें' },
+  'settings.societyAddressSaved': { en: 'Society address saved', hi: 'सोसाइटी पता सहेजा गया' },
   'settings.reportSettings': { en: 'Report Settings', hi: 'रिपोर्ट सेटिंग्स' },
   'settings.reportSettingsHint': {
     en: 'Configure the official society letterhead used for PDF reports. Letterhead is scoped to the currently selected society only.',
@@ -1020,6 +1035,29 @@ const translations: Record<string, Record<Lang, string>> = {
   'resident.polls': { en: 'Polls', hi: 'मतदान' },
   'resident.meetings': { en: 'Meetings', hi: 'बैठकें' },
   'resident.committee': { en: 'Committee', hi: 'समिति' },
+  'committee.managingTitle': { en: 'Managing Committee', hi: 'प्रबंध समिति' },
+  'committee.membersTitle': { en: 'Committee Members', hi: 'समिति सदस्य' },
+  'committee.previousYearTitle': { en: 'Previous year committee', hi: 'पिछले वर्ष की समिति' },
+  'committee.previousYearButton': { en: 'Previous year', hi: 'पिछला वर्ष' },
+  'committee.currentButton': { en: 'Current committee', hi: 'वर्तमान समिति' },
+  'committee.previousYearHint': {
+    en: 'Outgoing committee kept for record. Switch back to see the current office-bearers.',
+    hi: 'पूर्व समिति केवल अभिलेख के लिए। वर्तमान पदाधिकारियों के लिए वापस जाएँ।',
+  },
+  'committee.residentHint': {
+    en: 'Current office-bearers of your society. Roster changes are admin-only.',
+    hi: 'आपकी सोसाइटी के वर्तमान पदाधिकारी। सूची केवल प्रशासक बदल सकते हैं।',
+  },
+  'committee.adminHint': {
+    en: 'Current flat-linked roster with tenure and elected / nominated status',
+    hi: 'वर्तमान समिति — कार्यकाल तथा निर्वाचित / मनोनीत स्थिति सहित',
+  },
+  'committee.previousEmpty': { en: 'No previous committee on record.', hi: 'पिछली समिति का अभिलेख नहीं है।' },
+  'committee.residentEmpty': { en: 'No committee members listed yet.', hi: 'अभी कोई समिति सदस्य सूचीबद्ध नहीं है।' },
+  'committee.adminEmpty': {
+    en: 'Add committee members to show them in the residents portal.',
+    hi: 'निवासी पोर्टल में दिखाने के लिए समिति सदस्य जोड़ें।',
+  },
   'resident.payments': { en: 'Payments', hi: 'भुगतान' },
   'resident.profile': { en: 'Profile', hi: 'व्यक्तिगत विवरण' },
   'resident.feedback': { en: 'Feedback', hi: 'प्रतिक्रिया' },

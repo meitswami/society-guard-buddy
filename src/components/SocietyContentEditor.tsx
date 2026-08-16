@@ -145,22 +145,24 @@ const SocietyContentEditor = () => {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        {groups.map((g) => (
-          <button
-            key={g.id}
-            type="button"
-            onClick={() => setOpenGroup(g.id)}
-            className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
-              openGroup === g.id
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent'
-            }`}
-          >
-            {g.title}
-          </button>
-        ))}
-      </div>
+      {groups.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {groups.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => setOpenGroup(g.id)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
+                openGroup === g.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-accent'
+              }`}
+            >
+              {g.title}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <p className="text-xs text-muted-foreground py-4">{t('app.loading')}</p>

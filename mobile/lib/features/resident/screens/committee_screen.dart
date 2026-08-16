@@ -22,9 +22,13 @@ class CommitteeScreen extends StatefulWidget {
 class _CommitteeScreenState extends State<CommitteeScreen> {
   final _service = CommitteeService();
   final _dutyService = CommitteeDutyService();
-  List<CommitteeMember> _members = const [];
+  List<CommitteeMember> _current = const [];
+  List<CommitteeMember> _previous = const [];
   CommitteeDutiesChart? _dutiesChart;
   bool _loading = true;
+  bool _showPrevious = false;
+
+  List<CommitteeMember> get _members => _showPrevious ? _previous : _current;
 
   @override
   void initState() {
@@ -35,12 +39,14 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final results = await Future.wait([
-      _service.fetchActive(widget.session.societyId),
+      _service.fetchRoster(widget.session.societyId),
       _dutyService.fetchActiveChart(widget.session.societyId),
     ]);
     if (!mounted) return;
+    final roster = results[0] as CommitteeRoster;
     setState(() {
-      _members = results[0] as List<CommitteeMember>;
+      _current = roster.current;
+      _previous = roster.previous;
       _dutiesChart = results[1] as CommitteeDutiesChart?;
       _loading = false;
     });
@@ -109,11 +115,20 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
   @override
   Widget build(BuildContext context) {
     final brand = KutumbikaBrandTheme.of(context);
-    final hasDuties = _dutiesChart != null;
+    final hasDuties = !_showPrevious && _dutiesChart != null;
     final isEmpty = _members.isEmpty && !hasDuties;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Managing committee')),
+      appBar: AppBar(
+        title: Text(_showPrevious ? 'Previous year committee' : 'Managing committee'),
+        actions: [
+          if (_previous.isNotEmpty)
+            TextButton(
+              onPressed: () => setState(() => _showPrevious = !_showPrevious),
+              child: Text(_showPrevious ? 'Current' : 'Previous year'),
+            ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

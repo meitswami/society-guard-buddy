@@ -11,6 +11,7 @@ import { DescriptiveStatCard } from '@/components/DescriptiveStatCard';
 import { ADMIN_HOME_METRICS } from '@/lib/descriptiveMetricCopy';
 import SocietyReportSettingsPanel from '@/components/SocietyReportSettingsPanel';
 import SocietyBankAccountPanel from '@/components/SocietyBankAccountPanel';
+import SocietyAddressPanel from '@/components/SocietyAddressPanel';
 
 const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean } = {}) => {
   const { visitors, flats, members, residentVehicles, blacklist, societyId, entryCapsMode, setEntryCapsMode } = useStore();
@@ -164,6 +165,8 @@ const SettingsPage = ({ allowContentEdit = false }: { allowContentEdit?: boolean
       </div>
 
       {allowContentEdit && canManageSociety && <SocietyContentEditor />}
+
+      {allowContentEdit && canManageSociety && <SocietyAddressPanel />}
 
       {canManageSociety && <SocietyReportSettingsPanel />}
 

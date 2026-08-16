@@ -14,7 +14,7 @@ import NotificationCenter from '@/components/NotificationCenter';
 import EmergencyAlertPanel from '@/components/EmergencyAlertPanel';
 import { isMemberOnCommitteeRoster } from '@/lib/committeeProtection';
 import type { CommitteeMemberRow } from '@/lib/committeeMember';
-import { filterEffectiveCommitteeMembers } from '@/lib/committeeMember';
+import { currentCommitteeMembers } from '@/lib/committeeMember';
 import { buildUpiPayUrl, type SocietyBankAccount } from '@/lib/societyBankAccount';
 import { fetchPrimarySocietyBankAccount } from '@/services/societyBankAccountService';
 import SocietyPayToAccountCard from '@/components/SocietyPayToAccountCard';
@@ -448,7 +448,7 @@ const ResidentDashboard = ({ resident, onLogout }: Props) => {
       .eq('society_id', societyId)
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
-    setCommitteeRoster(filterEffectiveCommitteeMembers((data ?? []) as CommitteeMemberRow[]));
+    setCommitteeRoster(currentCommitteeMembers((data ?? []) as CommitteeMemberRow[]));
   };
 
   const loadSocietyBankAccount = useCallback(async () => {
