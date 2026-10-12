@@ -11,6 +11,7 @@ import 'data/report_models.dart';
 import 'data/reports_repository.dart';
 import 'engine/metadata_report_engine.dart';
 import 'export/monthly_report_export.dart';
+import 'logic/finance_dates.dart';
 import 'logic/finance_period_report.dart';
 import 'logic/flat_report.dart';
 import 'logic/js_compat.dart';
@@ -231,15 +232,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     final r = _monthRange;
     return _finance.societyLedgerEntries.where((e) {
       final d = e.ledgerDate;
-      return d.isNotEmpty && _inRange(d, r.from, r.to);
+      return d.isNotEmpty && dateInInclusiveRange(d, r.from, r.to);
     }).toList();
-  }
-
-  static bool _inRange(String d, String from, String to) => jsDateMs(d) != null && d.isNotEmpty && _dateIn(d, from, to);
-
-  static bool _dateIn(String iso, String from, String to) {
-    final t = jsDateMs(iso), a = localDayStartMs(from), b = localDayEndMs(to);
-    return t != null && a != null && b != null && t >= a && t <= b;
   }
 
   List<FinancePeriodLedgerEntry> get _searchedMonthEntries => filterLedgerEntries(_monthEntries, _q);
