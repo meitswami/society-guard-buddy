@@ -73,6 +73,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('MAJOR HEAD'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Head fund reconciliation (Finance)'), 300, scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(find.text('Head fund reconciliation (Finance)'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Head fund reconciliation (Finance)'));
     expect(_navigations.single, (AdminTab.finance, null, 'record_payment'));
   });
