@@ -48,7 +48,8 @@ class DirectoryMemberContact {
   final bool? notifyEmail;
   final bool? isPrimary;
 
-  factory DirectoryMemberContact.fromRow(Map<String, dynamic> m) => DirectoryMemberContact(
+  factory DirectoryMemberContact.fromRow(Map<String, dynamic> m) =>
+      DirectoryMemberContact(
         id: m['id']?.toString(),
         flatId: m['flat_id']?.toString(),
         flatNumber: m['flat_number']?.toString(),
@@ -82,7 +83,8 @@ ResolvedChannelTargets resolveMemberChannelTargets(
   // Stable sort: primary members first, original order otherwise (like Array.prototype.sort).
   final indexed = members.asMap().entries.toList()
     ..sort((a, b) {
-      final p = (b.value.isPrimary == true ? 1 : 0) - (a.value.isPrimary == true ? 1 : 0);
+      final p = (b.value.isPrimary == true ? 1 : 0) -
+          (a.value.isPrimary == true ? 1 : 0);
       return p != 0 ? p : a.key.compareTo(b.key);
     });
   for (final e in indexed) {

@@ -8,7 +8,8 @@ import '../../../../core/supabase/db.dart';
 import '../../../../utils/member_photo.dart';
 
 /// Web `LETTERHEAD_NOT_CONFIGURED_WARNING`.
-const kLetterheadNotConfiguredWarning = 'Official society letterhead has not been configured.';
+const kLetterheadNotConfiguredWarning =
+    'Official society letterhead has not been configured.';
 
 /// `PDF_MARGIN_MM` of the web (`src/lib/pdfPage.ts`).
 const double kPdfMarginMm = 19.05;
@@ -54,23 +55,33 @@ class SocietyLetterhead {
 
   /// Web `letterheadAddressLine`.
   String get addressLine {
-    final cityState = [city, state].where((p) => (p ?? '').trim().isNotEmpty).join(', ');
-    return [address, cityState, pincode].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
+    final cityState =
+        [city, state].where((p) => (p ?? '').trim().isNotEmpty).join(', ');
+    return [address, cityState, pincode]
+        .map((p) => (p ?? '').trim())
+        .where((p) => p.isNotEmpty)
+        .join(' · ');
   }
 
   /// Web `letterheadContactLine`.
-  String get contactLine => [contactPhone, contactEmail].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
+  String get contactLine => [contactPhone, contactEmail]
+      .map((p) => (p ?? '').trim())
+      .where((p) => p.isNotEmpty)
+      .join(' · ');
 
   /// Web `modeOf`.
   String get brandMode {
-    if (letterheadMode == 'image' || letterheadMode == 'stationery' || letterheadMode == 'auto') return letterheadMode;
+    if (letterheadMode == 'image' ||
+        letterheadMode == 'stationery' ||
+        letterheadMode == 'auto') return letterheadMode;
     return hasOfficialAsset ? 'image' : 'auto';
   }
 }
 
 /// Resolved letterhead + mode (web `resolveLetterheadReportContext`).
 class LetterheadContext {
-  const LetterheadContext({required this.letterhead, required this.plain, this.warning});
+  const LetterheadContext(
+      {required this.letterhead, required this.plain, this.warning});
 
   final SocietyLetterhead letterhead;
 
@@ -83,9 +94,11 @@ Future<Uint8List?> _fetchImage(String? url) async {
   final u = url?.trim() ?? '';
   if (u.isEmpty) return null;
   if (u.startsWith('data:')) return dataUrlBytes(u);
-  if (u.toLowerCase().contains('.pdf')) return null; // PDF stationery cannot be embedded as an image
+  if (u.toLowerCase().contains('.pdf'))
+    return null; // PDF stationery cannot be embedded as an image
   try {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 10);
     try {
       final req = await client.getUrl(Uri.parse(u));
       final res = await req.close().timeout(const Duration(seconds: 15));
@@ -112,7 +125,8 @@ double _num(Object? v, double fallback, {double min = 0}) {
 }
 
 /// Fetch the society letterhead and decide letterhead vs plain mode.
-Future<LetterheadContext> resolveLetterheadContext(String societyId, {String fallbackName = 'Society'}) async {
+Future<LetterheadContext> resolveLetterheadContext(String societyId,
+    {String fallbackName = 'Society'}) async {
   Map<String, dynamic>? row;
   if (dbReady) {
     const full =
@@ -120,10 +134,18 @@ Future<LetterheadContext> resolveLetterheadContext(String societyId, {String fal
     const fallback =
         'id, name, logo_url, letterhead_url, letterhead_mode, letterhead_top_mm, letterhead_bottom_mm, address, city, state, pincode, contact_phone, contact_email';
     try {
-      row = await db.from('societies').select(full).eq('id', societyId).maybeSingle();
+      row = await db
+          .from('societies')
+          .select(full)
+          .eq('id', societyId)
+          .maybeSingle();
     } catch (_) {
       try {
-        row = await db.from('societies').select(fallback).eq('id', societyId).maybeSingle();
+        row = await db
+            .from('societies')
+            .select(fallback)
+            .eq('id', societyId)
+            .maybeSingle();
       } catch (_) {
         row = null;
       }
@@ -145,13 +167,16 @@ Future<LetterheadContext> resolveLetterheadContext(String societyId, {String fal
   final storagePath = s('letterhead_storage_path');
   if (letterheadUrl == null && storagePath != null) {
     try {
-      letterheadUrl = await db.storage.from('society-documents').createSignedUrl(storagePath, 3600);
+      letterheadUrl = await db.storage
+          .from('society-documents')
+          .createSignedUrl(storagePath, 3600);
     } catch (_) {}
   }
   final lh = SocietyLetterhead(
     name: s('name') ?? fallbackName,
     letterheadMode: s('letterhead_mode') ?? 'auto',
-    defaultReportFormat: s('default_report_format') == 'plain' ? 'plain' : 'letterhead',
+    defaultReportFormat:
+        s('default_report_format') == 'plain' ? 'plain' : 'letterhead',
     topMm: _num(row['letterhead_top_mm'], 40),
     bottomMm: _num(row['letterhead_bottom_mm'], 18, min: 16),
     leftMm: _num(row['letterhead_left_mm'], kPdfMarginMm),
@@ -164,13 +189,17 @@ Future<LetterheadContext> resolveLetterheadContext(String societyId, {String fal
     contactEmail: s('contact_email'),
     hasOfficialAsset: s('letterhead_url') != null || storagePath != null,
   );
-  final assets = await Future.wait([_fetchImage(s('logo_url')), _fetchImage(letterheadUrl)]);
+  final assets = await Future.wait(
+      [_fetchImage(s('logo_url')), _fetchImage(letterheadUrl)]);
   lh.logo = assets[0];
   lh.letterheadImage = assets[1];
 
   final requested = lh.defaultReportFormat;
-  if (requested == 'letterhead' && !lh.hasOfficialAsset && lh.letterheadMode != 'stationery') {
-    return LetterheadContext(letterhead: lh, plain: true, warning: kLetterheadNotConfiguredWarning);
+  if (requested == 'letterhead' &&
+      !lh.hasOfficialAsset &&
+      lh.letterheadMode != 'stationery') {
+    return LetterheadContext(
+        letterhead: lh, plain: true, warning: kLetterheadNotConfiguredWarning);
   }
   return LetterheadContext(letterhead: lh, plain: requested == 'plain');
 }
@@ -188,7 +217,8 @@ pw.PageTheme letterheadPageTheme(LetterheadContext ctx, {pw.ThemeData? theme}) {
     return pw.PageTheme(
       pageFormat: PdfPageFormat.a4,
       theme: theme,
-      margin: const pw.EdgeInsets.fromLTRB(kPdfMarginMm * mm, kPdfMarginMm * mm, kPdfMarginMm * mm, 8 * mm),
+      margin: const pw.EdgeInsets.fromLTRB(
+          kPdfMarginMm * mm, kPdfMarginMm * mm, kPdfMarginMm * mm, 8 * mm),
     );
   }
   final fullPage = lh.brandMode == 'image' && lh.letterheadImage != null;
@@ -203,7 +233,8 @@ pw.PageTheme letterheadPageTheme(LetterheadContext ctx, {pw.ThemeData? theme}) {
     buildBackground: fullPage
         ? (_) => pw.FullPage(
               ignoreMargins: true,
-              child: pw.Image(pw.MemoryImage(lh.letterheadImage!), fit: pw.BoxFit.fill),
+              child: pw.Image(pw.MemoryImage(lh.letterheadImage!),
+                  fit: pw.BoxFit.fill),
             )
         : null,
   );
@@ -219,21 +250,35 @@ pw.Widget? letterheadHeader(LetterheadContext ctx) {
   return pw.Container(
     margin: const pw.EdgeInsets.only(bottom: 6 * mm),
     padding: const pw.EdgeInsets.only(bottom: 2.5 * mm),
-    decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: _headerRule, width: 2.4))),
+    decoration: const pw.BoxDecoration(
+        border:
+            pw.Border(bottom: pw.BorderSide(color: _headerRule, width: 2.4))),
     child: pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         if (lh.logo != null) ...[
-          pw.SizedBox(width: 14 * mm, height: 14 * mm, child: pw.Image(pw.MemoryImage(lh.logo!), fit: pw.BoxFit.contain)),
+          pw.SizedBox(
+              width: 14 * mm,
+              height: 14 * mm,
+              child:
+                  pw.Image(pw.MemoryImage(lh.logo!), fit: pw.BoxFit.contain)),
           pw.SizedBox(width: 3.5 * mm),
         ],
         pw.Expanded(
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text(lh.name, style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: _nameColor)),
-              if (lh.addressLine.isNotEmpty) pw.Text(lh.addressLine, style: const pw.TextStyle(fontSize: 8, color: _metaColor)),
-              if (lh.contactLine.isNotEmpty) pw.Text(lh.contactLine, style: const pw.TextStyle(fontSize: 8, color: _metaColor)),
+              pw.Text(lh.name,
+                  style: pw.TextStyle(
+                      fontSize: 15,
+                      fontWeight: pw.FontWeight.bold,
+                      color: _nameColor)),
+              if (lh.addressLine.isNotEmpty)
+                pw.Text(lh.addressLine,
+                    style: const pw.TextStyle(fontSize: 8, color: _metaColor)),
+              if (lh.contactLine.isNotEmpty)
+                pw.Text(lh.contactLine,
+                    style: const pw.TextStyle(fontSize: 8, color: _metaColor)),
             ],
           ),
         ),
@@ -246,19 +291,26 @@ pw.Widget? letterheadHeader(LetterheadContext ctx) {
 /// auto → charcoal rule + society name + `n/N`.
 pw.Widget letterheadFooter(LetterheadContext ctx, pw.Context page) {
   final lh = ctx.letterhead;
-  final numbers = pw.Text('${page.pageNumber}/${page.pagesCount}', style: const pw.TextStyle(fontSize: 8, color: _metaColor));
+  final numbers = pw.Text('${page.pageNumber}/${page.pagesCount}',
+      style: const pw.TextStyle(fontSize: 8, color: _metaColor));
   final fullPage = lh.brandMode == 'image' && lh.letterheadImage != null;
   if (ctx.plain || lh.brandMode == 'stationery' || fullPage) {
     return pw.Align(alignment: pw.Alignment.centerRight, child: numbers);
   }
   return pw.Container(
     padding: const pw.EdgeInsets.only(top: 4),
-    decoration: const pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: _footerRule, width: 2))),
+    decoration: const pw.BoxDecoration(
+        border: pw.Border(top: pw.BorderSide(color: _footerRule, width: 2))),
     child: pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        pw.Text(lh.name, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _nameColor)),
-        pw.Text('${page.pageNumber}/${page.pagesCount}', style: const pw.TextStyle(fontSize: 9, color: _metaColor)),
+        pw.Text(lh.name,
+            style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+                color: _nameColor)),
+        pw.Text('${page.pageNumber}/${page.pagesCount}',
+            style: const pw.TextStyle(fontSize: 9, color: _metaColor)),
       ],
     ),
   );

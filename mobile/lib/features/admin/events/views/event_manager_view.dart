@@ -284,7 +284,10 @@ class _EventManagerViewState extends State<EventManagerView> {
       for (final c in _data.contributions)
         if (c.eventId == ev.id && c.receiptBasis != 'non_flat' && c.hasFlat) c.flatNumber!,
     ];
-    final unpaid = [for (final f in _targetFlats) if (!paid.contains(f.flatNumber)) f.flatNumber];
+    final unpaid = [
+      for (final f in _targetFlats)
+        if (!paid.contains(f.flatNumber)) f.flatNumber
+    ];
     if (unpaid.isEmpty) {
       AppFeedback.toast(context, context.ev('evm.allPaid'), tone: BadgeTone.success);
       return;
@@ -598,7 +601,10 @@ class _EventManagerViewState extends State<EventManagerView> {
             selected: _selectedFlats,
             onChanged: (nums) => setState(() {
               _selectedFlats = nums;
-              _perFlat = {for (final n in nums) if (_perFlat.containsKey(n)) n: _perFlat[n]!};
+              _perFlat = {
+                for (final n in nums)
+                  if (_perFlat.containsKey(n)) n: _perFlat[n]!
+              };
             }),
             label: _mode == FlatCollectMode.samePerFlat ? context.ev('evm.selectRequired') : context.ev('evm.selectOptional'),
             emptyHint: context.ev('evm.selectEmptyHint'),
@@ -617,7 +623,8 @@ class _EventManagerViewState extends State<EventManagerView> {
             Container(
               constraints: const BoxConstraints(maxHeight: 208),
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(border: Border.all(color: context.tokens.border), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+              decoration:
+                  BoxDecoration(border: Border.all(color: context.tokens.border), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
               child: SingleChildScrollView(
                 child: EvColumn(
                   spacing: 6,
@@ -731,7 +738,8 @@ class _EventManagerViewState extends State<EventManagerView> {
       Container(
         constraints: const BoxConstraints(maxHeight: 160),
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(border: Border.all(color: context.tokens.border), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+        decoration:
+            BoxDecoration(border: Border.all(color: context.tokens.border), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
         child: SingleChildScrollView(
           child: EvColumn(
             spacing: 4,

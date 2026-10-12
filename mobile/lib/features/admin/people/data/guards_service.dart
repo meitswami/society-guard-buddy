@@ -8,7 +8,8 @@ import 'people_models.dart';
 
 /// Guards with their Photo ID documents and attachments (web `loadGuards`).
 class GuardsSnapshot {
-  const GuardsSnapshot({required this.guards, required this.docs, required this.attachments});
+  const GuardsSnapshot(
+      {required this.guards, required this.docs, required this.attachments});
 
   final List<GuardRow> guards;
   final Map<String, List<GuardDoc>> docs;
@@ -18,10 +19,13 @@ class GuardsSnapshot {
 }
 
 /// `isPdfUrl` of the web guard manager.
-bool isPdfUrl(String url) => RegExp(r'\.pdf($|\?)', caseSensitive: false).hasMatch(url) || url.toLowerCase().contains('application/pdf');
+bool isPdfUrl(String url) =>
+    RegExp(r'\.pdf($|\?)', caseSensitive: false).hasMatch(url) ||
+    url.toLowerCase().contains('application/pdf');
 
 /// Storage-safe file name (web `file.name.replace(/[^a-zA-Z0-9._-]/g, '_')`).
-String safeGuardFileName(String name) => name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+String safeGuardFileName(String name) =>
+    name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
 
 /// Content type from a file name (Storage needs it for public viewing).
 String contentTypeForFileName(String name) {
@@ -41,12 +45,19 @@ class GuardsService {
 
   Future<GuardsSnapshot> load(String societyId) async {
     if (!dbReady) return GuardsSnapshot.empty;
-    final rows = rowsOf(await db.from('guards').select('*').eq('society_id', societyId).order('guard_id'));
+    final rows = rowsOf(await db
+        .from('guards')
+        .select('*')
+        .eq('society_id', societyId)
+        .order('guard_id'));
     final guards = rows.map(GuardRow.fromJson).toList();
     final ids = guards.map((g) => g.id).toList();
-    if (ids.isEmpty) return GuardsSnapshot(guards: guards, docs: const {}, attachments: const {});
+    if (ids.isEmpty)
+      return GuardsSnapshot(
+          guards: guards, docs: const {}, attachments: const {});
     final results = await Future.wait([
-      selectInChunks(table: 'guard_documents', columns: '*', column: 'guard_id', ids: ids),
+      selectInChunks(
+          table: 'guard_documents', columns: '*', column: 'guard_id', ids: ids),
       selectInChunks(
         table: 'guard_attachments',
         columns: '*',
@@ -112,9 +123,11 @@ class GuardsService {
     }).eq('id', id);
   }
 
-  Future<void> deleteGuard(String id) => db.from('guards').delete().eq('id', id);
+  Future<void> deleteGuard(String id) =>
+      db.from('guards').delete().eq('id', id);
 
-  Future<void> resetPassword(String id, String password) => db.from('guards').update({'password': password}).eq('id', id);
+  Future<void> resetPassword(String id, String password) =>
+      db.from('guards').update({'password': password}).eq('id', id);
 
   /// Web `uploadGuardFile`: `guard-documents/<guardUuid>/<prefix>_<ms>_<safeName>` → public URL.
   Future<String> uploadGuardFile({
@@ -123,22 +136,32 @@ class GuardsService {
     required String fileName,
     required String prefix,
   }) async {
-    final path = '$guardUuid/${prefix}_${DateTime.now().millisecondsSinceEpoch}_${safeGuardFileName(fileName)}';
+    final path =
+        '$guardUuid/${prefix}_${DateTime.now().millisecondsSinceEpoch}_${safeGuardFileName(fileName)}';
     await db.storage.from(bucket).uploadBinary(
           path,
           bytes,
-          fileOptions: FileOptions(contentType: contentTypeForFileName(fileName)),
+          fileOptions:
+              FileOptions(contentType: contentTypeForFileName(fileName)),
         );
     return db.storage.from(bucket).getPublicUrl(path);
   }
 
   /// Web `uploadProfilePhoto`.
-  Future<void> setProfilePhoto({required String guardUuid, required Uint8List bytes, required String fileName}) async {
-    final url = await uploadGuardFile(guardUuid: guardUuid, bytes: bytes, fileName: fileName, prefix: 'profile');
+  Future<void> setProfilePhoto(
+      {required String guardUuid,
+      required Uint8List bytes,
+      required String fileName}) async {
+    final url = await uploadGuardFile(
+        guardUuid: guardUuid,
+        bytes: bytes,
+        fileName: fileName,
+        prefix: 'profile');
     await db.from('guards').update({'photo_url': url}).eq('id', guardUuid);
   }
 
-  Future<void> removeProfilePhoto(String guardUuid) => db.from('guards').update({'photo_url': null}).eq('id', guardUuid);
+  Future<void> removeProfilePhoto(String guardUuid) =>
+      db.from('guards').update({'photo_url': null}).eq('id', guardUuid);
 
   /// Web `uploadDoc`: front/back of an ID card; creates a new `guard_documents` row unless [existingDocId].
   Future<void> uploadDoc({
@@ -150,11 +173,19 @@ class GuardsService {
     String? existingDocId,
   }) async {
     final urlKey = '${side}_url';
-    final url = await uploadGuardFile(guardUuid: guardUuid, bytes: bytes, fileName: fileName, prefix: 'id_$side');
+    final url = await uploadGuardFile(
+        guardUuid: guardUuid,
+        bytes: bytes,
+        fileName: fileName,
+        prefix: 'id_$side');
     if (existingDocId != null) {
-      await db.from('guard_documents').update({urlKey: url}).eq('id', existingDocId);
+      await db
+          .from('guard_documents')
+          .update({urlKey: url}).eq('id', existingDocId);
     } else {
-      await db.from('guard_documents').insert({'guard_id': guardUuid, 'doc_label': docLabel, urlKey: url});
+      await db
+          .from('guard_documents')
+          .insert({'guard_id': guardUuid, 'doc_label': docLabel, urlKey: url});
     }
   }
 
@@ -168,7 +199,11 @@ class GuardsService {
     var sortBase = existingCount;
     var saved = 0;
     for (final f in files) {
-      final url = await uploadGuardFile(guardUuid: guardUuid, bytes: f.bytes, fileName: f.name, prefix: 'doc');
+      final url = await uploadGuardFile(
+          guardUuid: guardUuid,
+          bytes: f.bytes,
+          fileName: f.name,
+          prefix: 'doc');
       await db.from('guard_attachments').insert({
         'guard_id': guardUuid,
         'file_url': url,
@@ -181,7 +216,9 @@ class GuardsService {
     return saved;
   }
 
-  Future<void> deleteDoc(String docId) => db.from('guard_documents').delete().eq('id', docId);
+  Future<void> deleteDoc(String docId) =>
+      db.from('guard_documents').delete().eq('id', docId);
 
-  Future<void> deleteAttachment(String attId) => db.from('guard_attachments').delete().eq('id', attId);
+  Future<void> deleteAttachment(String attId) =>
+      db.from('guard_attachments').delete().eq('id', attId);
 }

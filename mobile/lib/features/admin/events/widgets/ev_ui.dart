@@ -10,7 +10,8 @@ import 'ev_i18n.dart';
 
 /// `rounded-lg border border-border bg-muted/20 p-2` panel.
 class EvPanel extends StatelessWidget {
-  const EvPanel({super.key, required this.children, this.padding = const EdgeInsets.all(8), this.color, this.borderColor, this.spacing = 8});
+  const EvPanel(
+      {super.key, required this.children, this.padding = const EdgeInsets.all(8), this.color, this.borderColor, this.spacing = 8});
 
   final List<Widget> children;
   final EdgeInsets padding;

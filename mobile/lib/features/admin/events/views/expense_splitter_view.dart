@@ -553,7 +553,9 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
       if (mounted) _toast(supabaseErrorMessage(e));
       return;
     }
-    final rows = [for (final r in splitRows) {...r, 'expense_id': expenseId}];
+    final rows = [
+      for (final r in splitRows) {...r, 'expense_id': expenseId}
+    ];
     try {
       await _repo.insertSplits(rows);
     } catch (e) {
@@ -742,7 +744,10 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
     final saved = await ExpenseEditSheet.show(
       context,
       expense: exp,
-      splits: [for (final s in _data.splits) if (s.expenseId == exp.id) s],
+      splits: [
+        for (final s in _data.splits)
+          if (s.expenseId == exp.id) s
+      ],
       societyId: widget.societyId,
       adminName: widget.adminName,
       groupName: _group(exp.groupId ?? '')?.name ?? 'Expense group',
@@ -764,8 +769,8 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
     if (q.isEmpty) return true;
     if (g.name.toLowerCase().contains(q) || (g.description ?? '').toLowerCase().contains(q)) return true;
     if ((_eventTitleForGroup(g.id) ?? '').toLowerCase().contains(q)) return true;
-    return _expenses.any((e) =>
-        e.groupId == g.id && (e.title.toLowerCase().contains(q) || (e.vendorOrService ?? '').toLowerCase().contains(q)));
+    return _expenses
+        .any((e) => e.groupId == g.id && (e.title.toLowerCase().contains(q) || (e.vendorOrService ?? '').toLowerCase().contains(q)));
   }
 
   @override
@@ -830,8 +835,7 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
             subtitle: context.ev(_food ? 'spl.sub.food' : (_payment ? 'spl.sub.payment' : 'spl.sub.general')),
             bottomSpacing: 0,
           ),
-        if (_food && widget.onOpenFinance != null)
-          EvRichHint(context.ev('spl.nonFoodHint'), size: 10, onLinkTap: widget.onOpenFinance),
+        if (_food && widget.onOpenFinance != null) EvRichHint(context.ev('spl.nonFoodHint'), size: 10, onLinkTap: widget.onOpenFinance),
         if (showStats) ...[
           Row(
             children: [
@@ -869,7 +873,8 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
                     Expanded(
                       child: Text(
                         nonZero.isEmpty ? context.ev('spl.allSettled') : context.ev('spl.flatsWithBalance', {'n': nonZero.length}),
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: nonZero.isEmpty ? t.mutedForeground : t.foreground),
+                        style:
+                            TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: nonZero.isEmpty ? t.mutedForeground : t.foreground),
                       ),
                     ),
                     Icon(Icons.info_outline, size: 14, color: t.mutedForeground),
@@ -916,8 +921,7 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: EvHint(context.ev('spl.noHeadMatch', {'q': _headQuery.trim()}), size: 14, align: TextAlign.center),
           ),
-        if (!_payment && _groups.isNotEmpty && listItems.isEmpty)
-          EmptyView(message: context.ev('evc.noMatch', {'q': widget.query.trim()})),
+        if (!_payment && _groups.isNotEmpty && listItems.isEmpty) EmptyView(message: context.ev('evc.noMatch', {'q': widget.query.trim()})),
         for (final item in listItems)
           if (item is String)
             Container(
@@ -957,7 +961,8 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
                 PopupMenuItem(value: 'active', child: Text(context.ev('spl.setActive'))),
                 PopupMenuItem(value: 'archived', child: Text(context.ev('spl.setArchived'))),
               ],
-              child: IgnorePointer(child: EvOutlineButton(fontSize: 10, icon: Icons.arrow_drop_down, label: context.ev('spl.bulkStatus'), onTap: () {})),
+              child: IgnorePointer(
+                  child: EvOutlineButton(fontSize: 10, icon: Icons.arrow_drop_down, label: context.ev('spl.bulkStatus'), onTap: () {})),
             ),
           ],
         ],
@@ -965,7 +970,8 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
     );
   }
 
-  Widget _gfField(String id, String hint, String value, ValueChanged<String> onChanged, {int maxLines = 1, bool number = false, String? label}) {
+  Widget _gfField(String id, String hint, String value, ValueChanged<String> onChanged,
+      {int maxLines = 1, bool number = false, String? label}) {
     return AppTextField(
       key: ValueKey('gf-$id-$_gfV'),
       label: label,
@@ -1101,7 +1107,10 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
               else
                 Tooltip(
                   message: context.ev('spl.inUseTip'),
-                  child: SizedBox(width: 44, child: Text(context.ev('spl.inUse'), textAlign: TextAlign.right, style: TextStyle(fontSize: 9, color: t.mutedForeground))),
+                  child: SizedBox(
+                      width: 44,
+                      child: Text(context.ev('spl.inUse'),
+                          textAlign: TextAlign.right, style: TextStyle(fontSize: 9, color: t.mutedForeground))),
                 ),
             ],
           ),
@@ -1227,7 +1236,10 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
             selected: _splitFlats,
             onChanged: (nums) => setState(() {
               _splitFlats = nums;
-              _customSplits = {for (final n in nums) if (_customSplits.containsKey(n)) n: _customSplits[n]!};
+              _customSplits = {
+                for (final n in nums)
+                  if (_customSplits.containsKey(n)) n: _customSplits[n]!
+              };
             }),
             label: context.ev('spl.splitAmong'),
             emptyHint: context.ev('spl.splitAmongHint'),
@@ -1340,10 +1352,15 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
             Text(context.ev('spl.notifyTitle'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
             EvHint(context.ev('spl.notifyHint')),
             const SizedBox(height: 4),
-            EvRadioRow(label: context.ev('spl.notifyNone'), selected: _notify == NotifyAudience.none, onTap: () => setState(() => _notify = NotifyAudience.none)),
+            EvRadioRow(
+                label: context.ev('spl.notifyNone'),
+                selected: _notify == NotifyAudience.none,
+                onTap: () => setState(() => _notify = NotifyAudience.none)),
             if (_funding == _Funding.residents)
               EvRadioRow(
-                label: context.ev('spl.notifyFlats', {'n': {...targets, ..._paidByFlats}.length}),
+                label: context.ev('spl.notifyFlats', {
+                  'n': {...targets, ..._paidByFlats}.length
+                }),
                 selected: _notify == NotifyAudience.selectedFlats,
                 onTap: () => setState(() => _notify = NotifyAudience.selectedFlats),
               ),
@@ -1373,7 +1390,10 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
 
   Widget _expenseTile(BuildContext context, ExpenseRow exp) {
     final t = context.tokens;
-    final expSplits = [for (final s in _data.splits) if (s.expenseId == exp.id) s];
+    final expSplits = [
+      for (final s in _data.splits)
+        if (s.expenseId == exp.id) s
+    ];
     final creditors = paidByFlatsOf(exp);
     final status = exp.recordStatus ?? 'active';
     final archived = status == 'archived';
@@ -1413,9 +1433,11 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(exp.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      Text(exp.title,
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                       if ((exp.vendorOrService ?? '').isNotEmpty)
-                        Text(exp.vendorOrService!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: t.mutedForeground)),
+                        Text(exp.vendorOrService!,
+                            maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: t.mutedForeground)),
                       EvHint(billLine),
                       if (archived) ...[const SizedBox(height: 4), EvPill(context.ev('spl.rs.archived'), fontSize: 9)],
                     ],
@@ -1478,7 +1500,8 @@ class _ExpenseSplitterViewState extends State<ExpenseSplitterView> {
                 runSpacing: 6,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  EvOutlineButton(fontSize: 10, icon: Icons.edit_outlined, label: context.ev('evc.edit'), onTap: () => _openExpenseEdit(exp)),
+                  EvOutlineButton(
+                      fontSize: 10, icon: Icons.edit_outlined, label: context.ev('evc.edit'), onTap: () => _openExpenseEdit(exp)),
                   PopupMenuButton<String>(
                     initialValue: status,
                     onSelected: (v) {

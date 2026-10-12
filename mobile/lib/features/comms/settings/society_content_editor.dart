@@ -67,8 +67,9 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
           defaultsFor: _defaults,
           savedRows: rows));
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -88,12 +89,14 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
         defaultsFor: _defaults,
       ));
       ref.invalidate(contentOverridesProvider);
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.t('contentEditor.saved'),
             tone: BadgeTone.success);
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -113,12 +116,14 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
           widget.societyId, kAllEditableContentKeys);
       _apply({for (final k in kAllEditableContentKeys) k: _defaults(k)});
       ref.invalidate(contentOverridesProvider);
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.t('contentEditor.saved'),
             tone: BadgeTone.success);
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 

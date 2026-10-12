@@ -11,6 +11,7 @@ import '../../core/ui/ui.dart';
 import '../admin/core/admin_module.dart';
 import 'core/comms_i18n.dart';
 import 'data/flat_options.dart';
+import 'data/notification_audience.dart';
 import 'data/notification_compose.dart';
 import 'data/notification_media_storage.dart';
 import 'data/notification_models.dart';
@@ -151,8 +152,9 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
           tone: BadgeTone.success);
       await _load(silent: true);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -199,8 +201,9 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
       AppFeedback.toast(context, context.t('settings.signatureTuneSaved'),
           tone: BadgeTone.success);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _uploadingSound = false);
     }
@@ -285,10 +288,11 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
             contentType: guessContentType(name, mimeType: p.file.mimeType));
         items.add(NotificationMediaItem(url: url, kind: p.kind));
       } catch (_) {
-        if (mounted)
+        if (mounted) {
           AppFeedback.toast(
               context, context.ct('comms.notif.uploadFailed', {'name': name}),
               tone: BadgeTone.alert);
+        }
       }
     }
     return items;
@@ -321,10 +325,11 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
         try {
           media = await _uploadMedia();
         } catch (_) {
-          if (mounted)
+          if (mounted) {
             AppFeedback.toast(
                 context, context.ct('comms.notif.mediaUploadFailed'),
                 tone: BadgeTone.alert);
+          }
           return;
         }
       }
@@ -344,12 +349,13 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
       try {
         await _repo.insertNotifications(plan.rows);
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           AppFeedback.toast(
               context,
               context.ct(
                   'comms.notif.sendFailed', {'error': commsErrorMessage(e)}),
               tone: BadgeTone.alert);
+        }
         return;
       }
       try {

@@ -273,13 +273,16 @@ class EventsRepository {
           return FoodExpenseRow(
             id: '${ex['id']}',
             title: '${ex['title'] ?? ''}',
-            totalAmount: ex['total_amount'] is num
-                ? (ex['total_amount'] as num).toDouble()
-                : double.tryParse('${ex['total_amount']}') ?? 0,
+            totalAmount: ex['total_amount'] is num ? (ex['total_amount'] as num).toDouble() : double.tryParse('${ex['total_amount']}') ?? 0,
             expenseDate: '${ex['expense_date'] ?? ''}',
             paymentMethod: '${ex['payment_method'] ?? ''}',
             billScreenshotUrl: (bill == null || bill.isEmpty) ? null : bill,
-            attachmentUrls: rawAttachments is List ? [for (final u in rawAttachments) if (u is String) u] : null,
+            attachmentUrls: rawAttachments is List
+                ? [
+                    for (final u in rawAttachments)
+                      if (u is String) u
+                  ]
+                : null,
             groupId: '${ex['group_id'] ?? ''}',
             groupName: (g?['name'] ?? 'Food group').toString(),
             eventId: g?['event_id']?.toString(),
@@ -296,12 +299,7 @@ class EventsRepository {
   }
 
   Future<String?> flatIdByNumber(String societyId, String flatNumber) async {
-    final data = await db
-        .from('flats')
-        .select('id')
-        .eq('society_id', societyId)
-        .eq('flat_number', flatNumber)
-        .maybeSingle();
+    final data = await db.from('flats').select('id').eq('society_id', societyId).eq('flat_number', flatNumber).maybeSingle();
     return data?['id']?.toString();
   }
 
@@ -330,12 +328,7 @@ class EventsRepository {
     final second = await Future.wait<Object?>([
       eventIds.isEmpty
           ? Future.value(const [])
-          : db
-              .from('event_contributions')
-              .select()
-              .inFilter('event_id', eventIds)
-              .orderDesc('verified_at')
-              .limit(150),
+          : db.from('event_contributions').select().inFilter('event_id', eventIds).orderDesc('verified_at').limit(150),
       groupIds.isEmpty
           ? Future.value(const [])
           : db
@@ -349,8 +342,7 @@ class EventsRepository {
     ]);
 
     final contributions = [
-      for (final c in rowsOf(second[0]))
-        EventContributionRef(EventContribution.fromJson(c), eventTitleById['${c['event_id']}'] ?? 'Event'),
+      for (final c in rowsOf(second[0])) EventContributionRef(EventContribution.fromJson(c), eventTitleById['${c['event_id']}'] ?? 'Event'),
     ];
     final food = [
       for (final ex in rowsOf(second[1]))
@@ -361,9 +353,7 @@ class EventsRepository {
           return FinanceFoodRefRow(
             id: '${ex['id']}',
             title: '${ex['title'] ?? ''}',
-            totalAmount: ex['total_amount'] is num
-                ? (ex['total_amount'] as num).toDouble()
-                : double.tryParse('${ex['total_amount']}') ?? 0,
+            totalAmount: ex['total_amount'] is num ? (ex['total_amount'] as num).toDouble() : double.tryParse('${ex['total_amount']}') ?? 0,
             expenseDate: '${ex['expense_date'] ?? ''}',
             paymentMethod: '${ex['payment_method'] ?? ''}',
             billScreenshotUrl: (bill == null || bill.isEmpty) ? null : bill,

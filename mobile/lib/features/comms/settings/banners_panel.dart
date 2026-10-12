@@ -46,8 +46,9 @@ class _BannersPanelState extends State<BannersPanel> {
       final b = await _repo.loadBanners(widget.societyId);
       if (mounted) setState(() => _banners = b);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -80,8 +81,9 @@ class _BannersPanelState extends State<BannersPanel> {
       _newTitle.clear();
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _adding = false);
     }
@@ -99,8 +101,9 @@ class _BannersPanelState extends State<BannersPanel> {
           tone: BadgeTone.success);
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -113,8 +116,9 @@ class _BannersPanelState extends State<BannersPanel> {
           tone: BadgeTone.success);
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -123,8 +127,9 @@ class _BannersPanelState extends State<BannersPanel> {
       await _repo.updateBanner(widget.societyId, id, {'is_active': on});
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -135,8 +140,9 @@ class _BannersPanelState extends State<BannersPanel> {
       await _repo.swapBannerOrder(_banners[index], _banners[other]);
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 

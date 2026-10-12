@@ -69,8 +69,9 @@ String buildPushHealthReport({
 /// `channel == fcm && sent > 0` → delivered).
 HealthStep interpretPushResponse(Map<String, dynamic>? data) {
   final err = data?['error'];
-  if (err != null)
+  if (err != null) {
     return HealthStep('Edge secret/config', false, err.toString());
+  }
   final sent = data?['sent'];
   final sentN = sent is num ? sent.toInt() : int.tryParse('${sent ?? 0}') ?? 0;
   if (data?['channel'] == 'fcm' && sentN > 0) {

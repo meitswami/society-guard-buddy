@@ -43,8 +43,9 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
         _soundUrl = f.soundUrl;
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -58,8 +59,9 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
           context, context.t(on ? 'settings.selfIdOn' : 'settings.selfIdOff'),
           tone: BadgeTone.success);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _selfIdSaving = false);
     }
@@ -93,8 +95,9 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
       AppFeedback.toast(context, context.t('settings.signatureTuneSaved'),
           tone: BadgeTone.success);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -108,8 +111,9 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
       AppFeedback.toast(context, context.t('settings.signatureTuneRemoved'),
           tone: BadgeTone.success);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 

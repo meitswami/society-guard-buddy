@@ -116,8 +116,9 @@ NotificationAlertPlan planNotificationAlert(String? soundKey,
   final key = ((soundKey == null || soundKey.isEmpty) ? 'digital' : soundKey)
       .toLowerCase();
   final url = soundCustomUrl?.trim() ?? '';
-  if (key == 'custom' && url.isNotEmpty)
+  if (key == 'custom' && url.isNotEmpty) {
     return NotificationAlertPlan(customUrl: url, preset: 'digital');
+  }
   if (key == 'custom') return const NotificationAlertPlan(preset: 'digital');
   return NotificationAlertPlan(preset: key);
 }

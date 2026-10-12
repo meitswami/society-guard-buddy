@@ -174,10 +174,10 @@ class _EventFoodReconciliationViewState extends State<EventFoodReconciliationVie
     if (_error != null) return ErrorView(message: supabaseErrorMessage(_error!), onRetry: _loadAll);
 
     final events = [
-      for (final e in _data.events)
-        ReconEvent(id: e.id, title: e.title, eventDate: e.eventDate, contributionAmount: e.contributionAmount),
+      for (final e in _data.events) ReconEvent(id: e.id, title: e.title, eventDate: e.eventDate, contributionAmount: e.contributionAmount),
     ];
-    final totals = reconciliationTotals(contributions: _data.contributions, foodExpenses: _data.foodExpenses, adjustments: _data.adjustments);
+    final totals =
+        reconciliationTotals(contributions: _data.contributions, foodExpenses: _data.foodExpenses, adjustments: _data.adjustments);
     final allRows = reconciliationRows(
       events: events,
       contributions: _data.contributions,
@@ -230,8 +230,7 @@ class _EventFoodReconciliationViewState extends State<EventFoodReconciliationVie
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.success),
                     ),
                   ),
-                if (b.shortfallCovers > 0)
-                  EvHint(context.ev('efr.coveredSoFar', {'amt': rupeeLoc(b.shortfallCovers)}), color: t.accent),
+                if (b.shortfallCovers > 0) EvHint(context.ev('efr.coveredSoFar', {'amt': rupeeLoc(b.shortfallCovers)}), color: t.accent),
                 if (b.surplusTransfers > 0) EvHint(context.ev('efr.transferredSoFar', {'amt': rupeeLoc(b.surplusTransfers)})),
               ],
             ),
@@ -289,7 +288,8 @@ class _EventFoodReconciliationViewState extends State<EventFoodReconciliationVie
                 children: [
                   _amountLine(Icons.trending_up, context.ev('efr.in', {'amt': rupeeLoc(r.contribIn)}), t.success),
                   _amountLine(Icons.trending_down, context.ev('efr.out', {'amt': rupeeLoc(r.foodOut)}), t.warning),
-                  if (r.shortfallCovers > 0) _amountLine(Icons.add, context.ev('efr.covered', {'amt': rupeeLoc(r.shortfallCovers)}), t.accent),
+                  if (r.shortfallCovers > 0)
+                    _amountLine(Icons.add, context.ev('efr.covered', {'amt': rupeeLoc(r.shortfallCovers)}), t.accent),
                   if (r.surplusTransfers > 0)
                     _amountLine(Icons.swap_horiz, context.ev('efr.toPoolAmt', {'amt': rupeeLoc(r.surplusTransfers)}), t.mutedForeground),
                   Text(
@@ -523,7 +523,8 @@ class _EventFoodReconciliationViewState extends State<EventFoodReconciliationVie
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: AppButton.secondary(dense: true, label: context.t('common.cancel'), onPressed: () => setState(() => _adjustKey = null)),
+              child:
+                  AppButton.secondary(dense: true, label: context.t('common.cancel'), onPressed: () => setState(() => _adjustKey = null)),
             ),
           ],
         ),

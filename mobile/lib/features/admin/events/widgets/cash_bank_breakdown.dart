@@ -80,7 +80,8 @@ class CashBankBreakdown extends StatelessWidget {
                       decoration: BoxDecoration(color: AppTokens.tint(t.muted, 0.5), borderRadius: BorderRadius.circular(4)),
                       child: Column(
                         children: [
-                          Text(_channelName(context, ch), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: t.mutedForeground)),
+                          Text(_channelName(context, ch),
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: t.mutedForeground)),
                           Text('+${_fmt(receipts[ch])}', style: TextStyle(fontSize: 10, color: t.success)),
                           Text('−${_fmt(payments[ch])}', style: TextStyle(fontSize: 10, color: t.warning)),
                           Text(
@@ -139,7 +140,13 @@ class CashBankBreakdown extends StatelessWidget {
               constraints: const BoxConstraints(minWidth: 440),
               child: Table(
                 border: TableBorder.all(color: t.border, borderRadius: BorderRadius.circular(6)),
-                columnWidths: const {0: FlexColumnWidth(1.5), 1: FlexColumnWidth(), 2: FlexColumnWidth(), 3: FlexColumnWidth(), 4: FlexColumnWidth()},
+                columnWidths: const {
+                  0: FlexColumnWidth(1.5),
+                  1: FlexColumnWidth(),
+                  2: FlexColumnWidth(),
+                  3: FlexColumnWidth(),
+                  4: FlexColumnWidth()
+                },
                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                 children: [
                   TableRow(
@@ -158,7 +165,8 @@ class CashBankBreakdown extends StatelessWidget {
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(5),
-                          child: Text(label, style: TextStyle(fontSize: 10, fontWeight: bold ? FontWeight.w600 : FontWeight.w400, color: t.foreground)),
+                          child: Text(label,
+                              style: TextStyle(fontSize: 10, fontWeight: bold ? FontWeight.w600 : FontWeight.w400, color: t.foreground)),
                         ),
                         val(label, 'cash', r.cash, bold),
                         val(label, 'bank', r.bank, bold),
@@ -237,7 +245,8 @@ class _TotalsStrip extends StatelessWidget {
         children: [
           part('receipt', context.ev('cbb.receiptsTotal'), channelTotal(receipts), t.success, breakdown(receipts)),
           part('payment', context.ev('cbb.paymentsTotal'), channelTotal(payments), t.warning, breakdown(payments)),
-          part('net', context.ev('cbb.netTotal'), netTotal, netTotal >= 0 ? t.foreground : t.destructive, breakdown(net, otherNonZero: true)),
+          part('net', context.ev('cbb.netTotal'), netTotal, netTotal >= 0 ? t.foreground : t.destructive,
+              breakdown(net, otherNonZero: true)),
         ],
       ),
     );

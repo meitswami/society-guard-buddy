@@ -142,10 +142,12 @@ String? validateCompose({
   String? societyCustomSoundUrl,
 }) {
   if (title.isEmpty || message.isEmpty) return 'comms.notif.fillTitleMessage';
-  if (mode == NotificationTargetMode.flat && selectedFlats == 0)
+  if (mode == NotificationTargetMode.flat && selectedFlats == 0) {
     return 'comms.notif.selectOneFlat';
-  if (mode == NotificationTargetMode.user && selectedResidents == 0)
+  }
+  if (mode == NotificationTargetMode.user && selectedResidents == 0) {
     return 'comms.notif.selectOneResident';
+  }
   if (alertSoundKey == 'custom' &&
       (societyCustomSoundUrl ?? '').trim().isEmpty) {
     return 'comms.notif.customSoundMissing';
@@ -332,13 +334,14 @@ NotificationSendPlan? buildRecordNotificationPlan({
   for (final f in selectedFlatNumbers) {
     if (f.isNotEmpty && !flats.contains(f)) flats.add(f);
   }
-  if (flats.isEmpty)
+  if (flats.isEmpty) {
     return const NotificationSendPlan(
         rows: [],
         pushBody: {},
         targetFlatNumbers: [],
         targetUserIds: [],
         effectiveSoundKey: 'digital');
+  }
   return NotificationSendPlan(
     rows: [
       for (final flat in flats)

@@ -57,12 +57,7 @@ class ExpenseRepository {
     var events = const <EventRow>[];
     if (mode == SplitterMode.food) {
       final ev = rowsOf(
-        await db
-            .from('events')
-            .select('id, title, event_date')
-            .eq('society_id', societyId)
-            .orderDesc('event_date')
-            .limit(80),
+        await db.from('events').select('id, title, event_date').eq('society_id', societyId).orderDesc('event_date').limit(80),
       );
       events = ev.map(EventRow.fromJson).toList();
     }
@@ -85,7 +80,10 @@ class ExpenseRepository {
         if (id != null && id.isNotEmpty && !extraIds.contains(id)) extraIds.add(id);
       }
       final known = {for (final g in groups) g.id};
-      final missing = [for (final id in extraIds) if (!known.contains(id)) id];
+      final missing = [
+        for (final id in extraIds)
+          if (!known.contains(id)) id
+      ];
       if (missing.isNotEmpty) {
         final extra = rowsOf(await db.from('expense_groups').select().inFilter('id', missing).eq('society_id', societyId));
         if (extra.isNotEmpty) groups = [...groups, ...extra.map(ExpenseGroup.fromJson)];
@@ -107,9 +105,7 @@ class ExpenseRepository {
     if (expIds.isEmpty) {
       return SplitterData(flats: flats, events: events, groups: groups, expenses: expenses, splits: const []);
     }
-    final splits = rowsOf(await db.from('expense_splits').select().inFilter('expense_id', expIds))
-        .map(ExpenseSplit.fromJson)
-        .toList();
+    final splits = rowsOf(await db.from('expense_splits').select().inFilter('expense_id', expIds)).map(ExpenseSplit.fromJson).toList();
     return SplitterData(flats: flats, events: events, groups: groups, expenses: expenses, splits: splits);
   }
 
@@ -168,9 +164,7 @@ class ExpenseRepository {
   }
 
   Future<void> settleSplit(String splitId) async {
-    await db
-        .from('expense_splits')
-        .update({'is_settled': true, 'settled_at': DateTime.now().toUtc().toIso8601String()}).eq('id', splitId);
+    await db.from('expense_splits').update({'is_settled': true, 'settled_at': DateTime.now().toUtc().toIso8601String()}).eq('id', splitId);
   }
 
   Future<void> updateSplitAmount(String splitId, double amount) async {

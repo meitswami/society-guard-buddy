@@ -10,13 +10,14 @@ import 'package:flutter/foundation.dart';
 import '../../../core/supabase/db.dart';
 
 Map<String, dynamic> _deviceInfo() {
-  if (kIsWeb)
+  if (kIsWeb) {
     return {
       'browser': 'Kutumbika app',
       'os': 'web',
       'platform': 'web',
       'isMobile': false
     };
+  }
   return {
     'browser': 'Kutumbika app',
     'os': Platform.operatingSystem,

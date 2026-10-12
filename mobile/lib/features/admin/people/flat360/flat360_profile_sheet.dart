@@ -34,10 +34,15 @@ abstract final class Flat360ProfileSheet {
         : null;
     if (resident == null) {
       try {
-        final session = ProviderScope.containerOf(context, listen: false).read(sessionProvider).value;
+        final session = ProviderScope.containerOf(context, listen: false)
+            .read(sessionProvider)
+            .value;
         if (session is SessionResident) {
-          resident = Flat360ResidentContext(id: session.resident.id, name: session.resident.name);
-          flatNumber ??= session.resident.flatId == flatId ? session.resident.flatNumber : null;
+          resident = Flat360ResidentContext(
+              id: session.resident.id, name: session.resident.name);
+          flatNumber ??= session.resident.flatId == flatId
+              ? session.resident.flatNumber
+              : null;
         }
       } catch (_) {
         // No ProviderScope (tests) — admin view.
@@ -144,8 +149,12 @@ class _SheetBodyState extends State<_SheetBody> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       children: [
         Row(children: [
-          Expanded(child: Text(context.tr('360° Profile', '360° प्रोफ़ाइल'), style: AppText.pageTitle(context))),
-          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+          Expanded(
+              child: Text(context.tr('360° Profile', '360° प्रोफ़ाइल'),
+                  style: AppText.pageTitle(context))),
+          IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context)),
         ]),
         const SizedBox(height: 8),
         body,

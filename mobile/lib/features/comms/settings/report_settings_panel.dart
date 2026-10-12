@@ -68,8 +68,9 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
         _right.text = formatMm(lh?.rightMm ?? kPdfMarginMm);
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -80,8 +81,9 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
       await _repo.updateSociety(widget.societyId, patch);
       return true;
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
       return false;
     }
   }
@@ -109,8 +111,11 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
       if (!mounted) return;
       setState(() => _previewUrl = uploaded.signedUrl);
       final previous = _lh?.letterheadStoragePath;
-      if (previous != null && previous.isNotEmpty && previous != uploaded.path)
+      if (previous != null &&
+          previous.isNotEmpty &&
+          previous != uploaded.path) {
         await _repo.removeDocument(previous);
+      }
       final ok = await _persist({
         'letterhead_storage_path': uploaded.path,
         'letterhead_url': null,
@@ -123,8 +128,9 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
         await _reload();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

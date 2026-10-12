@@ -12,8 +12,10 @@ import 'society_letterhead.dart';
 
 /// Web `residentsDirectoryPdfFilename`.
 String residentsDirectoryPdfFilename(String societyName, {DateTime? now}) {
-  final base = (societyName.isEmpty ? 'society' : societyName).replaceAll(RegExp(r'\s+'), '_');
-  final date = (now ?? DateTime.now()).toUtc().toIso8601String().substring(0, 10);
+  final base = (societyName.isEmpty ? 'society' : societyName)
+      .replaceAll(RegExp(r'\s+'), '_');
+  final date =
+      (now ?? DateTime.now()).toUtc().toIso8601String().substring(0, 10);
   return '${base}_residents_$date.pdf';
 }
 
@@ -24,7 +26,8 @@ List<String> residentPdfMemberLines(PeopleMember m) => [
       if (m.age != null) 'Age: ${m.age}',
       if (m.gender != null) 'Gender: ${m.gender}',
       if (m.spouseName != null) 'Spouse: ${m.spouseName}',
-      if (m.policeVerification != null) 'Police verification: ${m.policeVerification}',
+      if (m.policeVerification != null)
+        'Police verification: ${m.policeVerification}',
       if (m.dateJoining != null) 'Joined: ${Fmt.isoToDisplay(m.dateJoining)}',
       if (m.dateLeave != null) 'Left: ${Fmt.isoToDisplay(m.dateLeave)}',
     ];
@@ -43,7 +46,8 @@ Future<Uint8List> buildResidentsDirectoryPdf({
   required LetterheadContext letterhead,
 }) async {
   final theme = await ExportKit.pdfTheme();
-  final doc = pw.Document(theme: theme, title: 'Resident directory', author: 'Kutumbika');
+  final doc = pw.Document(
+      theme: theme, title: 'Resident directory', author: 'Kutumbika');
   const mm = PdfPageFormat.mm;
   final sorted = sortByFlatNumber(flats, (f) => f.flatNumber);
   final byFlat = <String, List<PeopleMember>>{};
@@ -54,16 +58,22 @@ Future<Uint8List> buildResidentsDirectoryPdf({
   pw.Widget idImage(String label, String dataUrl) {
     final bytes = dataUrlBytes(dataUrl);
     return pw.Padding(
-      padding: const pw.EdgeInsets.only(left: 2 * mm, top: 1 * mm, bottom: 2 * mm),
+      padding:
+          const pw.EdgeInsets.only(left: 2 * mm, top: 1 * mm, bottom: 2 * mm),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text(label, style: const pw.TextStyle(fontSize: 7)),
           pw.SizedBox(height: 1 * mm),
           if (bytes == null)
-            pw.Text('(could not embed image)', style: const pw.TextStyle(fontSize: 8, color: PdfColor(0.7, 0, 0)))
+            pw.Text('(could not embed image)',
+                style:
+                    const pw.TextStyle(fontSize: 8, color: PdfColor(0.7, 0, 0)))
           else
-            pw.SizedBox(width: 58 * mm, height: 34 * mm, child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain)),
+            pw.SizedBox(
+                width: 58 * mm,
+                height: 34 * mm,
+                child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain)),
         ],
       ),
     );
@@ -83,27 +93,32 @@ Future<Uint8List> buildResidentsDirectoryPdf({
     content.add(pw.Container(
       width: double.infinity,
       margin: const pw.EdgeInsets.only(top: 2 * mm),
-      padding: const pw.EdgeInsets.symmetric(horizontal: 2 * mm, vertical: 1 * mm),
+      padding:
+          const pw.EdgeInsets.symmetric(horizontal: 2 * mm, vertical: 1 * mm),
       color: const PdfColor.fromInt(0xFFF5F5F5),
-      child: pw.Text('Flat ${flat.flatNumber}', style: const pw.TextStyle(fontSize: 12)),
+      child: pw.Text('Flat ${flat.flatNumber}',
+          style: const pw.TextStyle(fontSize: 12)),
     ));
     if (meta.isNotEmpty) {
       content.add(pw.Padding(
         padding: const pw.EdgeInsets.only(top: 1 * mm, bottom: 1 * mm),
-        child: pw.Text(meta, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+        child: pw.Text(meta,
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
       ));
     }
     if (ms.isEmpty) {
       content.add(pw.Padding(
         padding: const pw.EdgeInsets.only(top: 1 * mm, bottom: 3 * mm),
-        child: pw.Text('No members listed.', style: const pw.TextStyle(fontSize: 9)),
+        child: pw.Text('No members listed.',
+            style: const pw.TextStyle(fontSize: 9)),
       ));
       continue;
     }
     for (final m in ms) {
       content.add(pw.Padding(
         padding: const pw.EdgeInsets.only(top: 2 * mm),
-        child: pw.Text('${m.name}${m.isPrimary ? ' ★ primary' : ''}', style: const pw.TextStyle(fontSize: 10)),
+        child: pw.Text('${m.name}${m.isPrimary ? ' (primary)' : ''}',
+            style: const pw.TextStyle(fontSize: 10)),
       ));
       for (final line in residentPdfMemberLines(m)) {
         content.add(pw.Padding(
@@ -111,8 +126,10 @@ Future<Uint8List> buildResidentsDirectoryPdf({
           child: pw.Text(line, style: const pw.TextStyle(fontSize: 8)),
         ));
       }
-      if (isDataImageUrl(m.idPhotoFront)) content.add(idImage('Photo ID — front', m.idPhotoFront!));
-      if (isDataImageUrl(m.idPhotoBack)) content.add(idImage('Photo ID — back', m.idPhotoBack!));
+      if (isDataImageUrl(m.idPhotoFront))
+        content.add(idImage('Photo ID — front', m.idPhotoFront!));
+      if (isDataImageUrl(m.idPhotoBack))
+        content.add(idImage('Photo ID — back', m.idPhotoBack!));
     }
     content.add(pw.SizedBox(height: 2 * mm));
   }

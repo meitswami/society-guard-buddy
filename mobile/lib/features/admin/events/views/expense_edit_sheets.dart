@@ -265,13 +265,14 @@ class _ExpenseEditSheetState extends State<ExpenseEditSheet> {
     }
     final all = [..._attachments];
     if (_newFiles.isNotEmpty) {
-      setState(() => _uploading = true);
       for (final f in _newFiles) {
         if (f.size > EventsStorage.maxBytes) {
           evToast(context, context.ev('evc.fileTooLarge', {'name': f.name}), tone: BadgeTone.alert);
-          setState(() => _uploading = false);
           return;
         }
+      }
+      setState(() => _uploading = true);
+      for (final f in _newFiles) {
         try {
           all.add(await EventsStorage.uploadExpenseBill(old.groupId ?? '', f));
         } catch (e) {
@@ -320,9 +321,8 @@ class _ExpenseEditSheetState extends State<ExpenseEditSheet> {
     String? syncErr;
     if (editCategory != 'food') {
       try {
-        final allocation = old.splitType == 'society_fund'
-            ? [LedgerAllocation('SOCIETY', newTotal)]
-            : await _repo.splitAllocationsOf(old.id);
+        final allocation =
+            old.splitType == 'society_fund' ? [LedgerAllocation('SOCIETY', newTotal)] : await _repo.splitAllocationsOf(old.id);
         final paidBy = paidByFlatsOf(old);
         final relation = old.splitType == 'society_fund'
             ? 'Society fund (no per-flat split)'
@@ -383,7 +383,8 @@ class _ExpenseEditSheetState extends State<ExpenseEditSheet> {
                 labelOf: (k) => serviceKindLabel(context, k),
                 onChanged: (v) => setState(() => _serviceKind = v ?? 'one_time'),
               ),
-              right: EvDateField(label: context.ev('spl.billingDate'), value: _expenseDate, onChanged: (v) => setState(() => _expenseDate = v)),
+              right: EvDateField(
+                  label: context.ev('spl.billingDate'), value: _expenseDate, onChanged: (v) => setState(() => _expenseDate = v)),
             ),
             EvHint(context.ev('evc.recordedOn', {'date': _recordingDate.isNotEmpty ? fmtIsoDateToDisplay(_recordingDate) : '—'})),
             AppDropdown<String>(
@@ -399,7 +400,8 @@ class _ExpenseEditSheetState extends State<ExpenseEditSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Row(
                   children: [
-                    Expanded(child: EvLink(attachmentFileName(_attachments[i]), size: 11, onTap: () => openEvUrl(context, _attachments[i]))),
+                    Expanded(
+                        child: EvLink(attachmentFileName(_attachments[i]), size: 11, onTap: () => openEvUrl(context, _attachments[i]))),
                     InkWell(
                       onTap: () => setState(() => _attachments = [..._attachments]..removeAt(i)),
                       child: Icon(Icons.close, size: 16, color: t.destructive),

@@ -5,11 +5,13 @@ import 'dart:math';
 final _random = Random();
 
 const kPasswordAnimals = [
-  'Tiger', 'Eagle', 'Panda', 'Lion', 'Fox', 'Wolf', 'Bear', 'Hawk', 'Deer', 'Owl', //
+  'Tiger', 'Eagle', 'Panda', 'Lion', 'Fox', 'Wolf', 'Bear', 'Hawk', 'Deer',
+  'Owl', //
   'Dolphin', 'Falcon', 'Cobra', 'Rhino', 'Shark',
 ];
 const kPasswordFruits = [
-  'Mango', 'Apple', 'Grape', 'Peach', 'Lemon', 'Berry', 'Melon', 'Guava', 'Plum', 'Cherry', //
+  'Mango', 'Apple', 'Grape', 'Peach', 'Lemon', 'Berry', 'Melon', 'Guava',
+  'Plum', 'Cherry', //
   'Kiwi', 'Papaya', 'Fig', 'Olive', 'Coconut',
 ];
 const kPasswordSymbols = ['@', '#', r'$', '!', '&', '*', '%'];

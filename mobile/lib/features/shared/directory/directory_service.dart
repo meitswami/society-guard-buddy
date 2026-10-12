@@ -15,7 +15,8 @@ Future<List<Map<String, dynamic>>> selectInChunks({
   if (unique.isEmpty) return const [];
   final out = <Map<String, dynamic>>[];
   for (var i = 0; i < unique.length; i += chunk) {
-    final part = unique.sublist(i, i + chunk > unique.length ? unique.length : i + chunk);
+    final part = unique.sublist(
+        i, i + chunk > unique.length ? unique.length : i + chunk);
     final q = db.from(table).select(columns).inFilter(column, part);
     final res = build == null ? await q : await (build(q) as Future<Object?>);
     out.addAll(rowsOf(res));
@@ -47,12 +48,17 @@ class DirectoryService {
   /// `flats` of the society ordered by flat number (web `loadFlats`).
   Future<List<PeopleFlat>> loadFlats(String societyId) async {
     if (!dbReady) return const [];
-    final rows = await db.from('flats').select('*').eq('society_id', societyId).order('flat_number');
+    final rows = await db
+        .from('flats')
+        .select('*')
+        .eq('society_id', societyId)
+        .order('flat_number');
     return rowsOf(rows).map(PeopleFlat.fromJson).toList();
   }
 
   /// Members of the given flats, primary first (web `loadMembers`).
-  Future<List<PeopleMember>> loadMembers(List<String> flatIds, {String columns = '*'}) async {
+  Future<List<PeopleMember>> loadMembers(List<String> flatIds,
+      {String columns = '*'}) async {
     if (!dbReady || flatIds.isEmpty) return const [];
     final rows = await selectInChunks(
       table: 'members',
@@ -74,7 +80,10 @@ class DirectoryService {
   /// `resident_vehicles` of the society (web `loadResidentVehicles`).
   Future<List<PeopleVehicle>> loadVehicles(String societyId) async {
     if (!dbReady) return const [];
-    final rows = await db.from('resident_vehicles').select('*').eq('society_id', societyId);
+    final rows = await db
+        .from('resident_vehicles')
+        .select('*')
+        .eq('society_id', societyId);
     return rowsOf(rows).map(PeopleVehicle.fromJson).toList();
   }
 
@@ -117,13 +126,22 @@ class DirectoryService {
     final flatIds = flats.map((f) => f.id).toList();
     final flatNumbers = flats.map((f) => f.flatNumber).toSet();
     final results = await Future.wait<Object>([
-      loadMembers(flatIds, columns: 'id, flat_id, name, phone, relation, age, gender, photo, is_primary, created_at'),
-      selectInChunks(table: 'resident_vehicles', columns: '*', column: 'flat_id', ids: flatIds),
+      loadMembers(flatIds,
+          columns:
+              'id, flat_id, name, phone, relation, age, gender, photo, is_primary, created_at'),
+      selectInChunks(
+          table: 'resident_vehicles',
+          columns: '*',
+          column: 'flat_id',
+          ids: flatIds),
     ]);
     final vehicles = (results[1] as List<Map<String, dynamic>>)
         .map(PeopleVehicle.fromJson)
         .where((v) => flatNumbers.contains(v.flatNumber))
         .toList();
-    return DirectoryData(flats: flats, members: results[0] as List<PeopleMember>, vehicles: vehicles);
+    return DirectoryData(
+        flats: flats,
+        members: results[0] as List<PeopleMember>,
+        vehicles: vehicles);
   }
 }

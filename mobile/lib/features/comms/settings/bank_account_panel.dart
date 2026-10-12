@@ -139,10 +139,11 @@ class _BankAccountPanelState extends State<BankAccountPanel> {
           tone: BadgeTone.success);
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context,
             '${context.ct('comms.bank.saveFailed')}: ${commsErrorMessage(e)}',
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

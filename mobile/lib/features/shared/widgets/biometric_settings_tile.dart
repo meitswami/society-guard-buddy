@@ -97,18 +97,21 @@ class _BiometricSettingsTileState extends State<BiometricSettingsTile> {
       await _login.enrollFromSession(session);
       if (!mounted) return;
       await _load();
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.t('biometric.registered'),
             tone: BadgeTone.success);
+      }
     } on BiometricLoginFailure catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(
             context, '${context.t('biometric.registerFailed')}: ${e.message}',
             tone: BadgeTone.alert);
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.t('biometric.registerFailed'),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _enrolling = false);
     }
@@ -120,13 +123,15 @@ class _BiometricSettingsTileState extends State<BiometricSettingsTile> {
       await _login.removeEnrollment(e.id);
       if (!mounted) return;
       await _load();
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.ct('comms.bio.removed'),
             tone: BadgeTone.success);
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.ct('comms.bio.removeFailed'),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _removingId = null);
     }

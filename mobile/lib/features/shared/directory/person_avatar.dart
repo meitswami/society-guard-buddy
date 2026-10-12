@@ -19,7 +19,12 @@ enum PersonAvatarSize {
 /// Circular face photo with initial fallback — use wherever a person name is shown
 /// (port of `src/components/PersonAvatar.tsx`). Accepts http(s) and `data:image` photos.
 class PersonAvatar extends StatelessWidget {
-  const PersonAvatar({super.key, required this.name, this.photo, this.size = PersonAvatarSize.md, this.onTap});
+  const PersonAvatar(
+      {super.key,
+      required this.name,
+      this.photo,
+      this.size = PersonAvatarSize.md,
+      this.onTap});
 
   final String name;
   final String? photo;
@@ -30,13 +35,17 @@ class PersonAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final trimmed = name.trim();
-    final initial = trimmed.isEmpty ? '?' : trimmed.characters.first.toUpperCase();
+    final initial =
+        trimmed.isEmpty ? '?' : trimmed.characters.first.toUpperCase();
     final provider = memberPhotoProvider(photo);
     final d = size.dimension;
     Widget fallback() => Center(
           child: Text(
             initial,
-            style: TextStyle(fontSize: size.fontSize, fontWeight: FontWeight.w600, color: t.primary),
+            style: TextStyle(
+                fontSize: size.fontSize,
+                fontWeight: FontWeight.w600,
+                color: t.primary),
           ),
         );
     final avatar = Container(

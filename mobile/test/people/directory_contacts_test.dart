@@ -27,15 +27,29 @@ void main() {
 
   test('resolveMemberChannelTargets: primary first, opt-outs, dedupe', () {
     final r = resolveMemberChannelTargets(const [
-      DirectoryMemberContact(name: 'Kid', phone: '9000000001', email: 'kid@x.com'),
-      DirectoryMemberContact(name: 'Owner', phone: '9000000002', whatsappPhone: '9000000009', email: 'o@x.com', isPrimary: true),
-      DirectoryMemberContact(name: 'Muted', phone: '9000000003', email: 'm@x.com', notifyWhatsapp: false, notifyEmail: false),
-      DirectoryMemberContact(name: 'Dup', phone: '9000000001', email: 'KID@x.com'),
+      DirectoryMemberContact(
+          name: 'Kid', phone: '9000000001', email: 'kid@x.com'),
+      DirectoryMemberContact(
+          name: 'Owner',
+          phone: '9000000002',
+          whatsappPhone: '9000000009',
+          email: 'o@x.com',
+          isPrimary: true),
+      DirectoryMemberContact(
+          name: 'Muted',
+          phone: '9000000003',
+          email: 'm@x.com',
+          notifyWhatsapp: false,
+          notifyEmail: false),
+      DirectoryMemberContact(
+          name: 'Dup', phone: '9000000001', email: 'KID@x.com'),
     ]);
     expect(r.whatsapp, ['919000000009', '919000000001']);
     expect(r.emails, ['o@x.com', 'kid@x.com']);
 
-    final waOnly = resolveMemberChannelTargets(const [DirectoryMemberContact(phone: '9000000001', email: 'k@x.com')], email: false);
+    final waOnly = resolveMemberChannelTargets(
+        const [DirectoryMemberContact(phone: '9000000001', email: 'k@x.com')],
+        email: false);
     expect(waOnly.emails, isEmpty);
     expect(waOnly.whatsapp, ['919000000001']);
   });
@@ -70,12 +84,22 @@ void main() {
     expect(users['target_ids'], ['u1']);
     expect(users['target_flat_numbers'], isEmpty);
     expect(users['image_url'], 'https://x/y.jpg');
-    expect(directoryDispatchBody(societyId: 's', title: 't', message: 'm', channels: const DirectoryDispatchChannels())['target_type'], 'all');
+    expect(
+        directoryDispatchBody(
+            societyId: 's',
+            title: 't',
+            message: 'm',
+            channels: const DirectoryDispatchChannels())['target_type'],
+        'all');
   });
 
   test('no channel → no call', () async {
     expect(
-      await dispatchDirectoryChannels(societyId: 's', title: 't', message: 'm', channels: const DirectoryDispatchChannels()),
+      await dispatchDirectoryChannels(
+          societyId: 's',
+          title: 't',
+          message: 'm',
+          channels: const DirectoryDispatchChannels()),
       isNull,
     );
   });

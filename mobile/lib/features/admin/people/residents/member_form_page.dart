@@ -41,14 +41,24 @@ class _MemberFormPageState extends State<MemberFormPage> {
   bool _loadingExtras = false;
   bool _saving = false;
 
-  late final TextEditingController _name, _phone, _wa, _email, _age, _spouse, _vName, _vNumber, _vColor;
+  late final TextEditingController _name,
+      _phone,
+      _wa,
+      _email,
+      _age,
+      _spouse,
+      _vName,
+      _vNumber,
+      _vColor;
 
   bool get _isEdit => widget.editing != null;
 
   @override
   void initState() {
     super.initState();
-    _f = widget.editing == null ? MemberFormState() : memberFormFrom(widget.editing!);
+    _f = widget.editing == null
+        ? MemberFormState()
+        : memberFormFrom(widget.editing!);
     _name = TextEditingController(text: _f.name);
     _phone = TextEditingController(text: _f.phone);
     _wa = TextEditingController(text: _f.whatsappPhone);
@@ -63,7 +73,17 @@ class _MemberFormPageState extends State<MemberFormPage> {
 
   @override
   void dispose() {
-    for (final c in [_name, _phone, _wa, _email, _age, _spouse, _vName, _vNumber, _vColor]) {
+    for (final c in [
+      _name,
+      _phone,
+      _wa,
+      _email,
+      _age,
+      _spouse,
+      _vName,
+      _vNumber,
+      _vColor
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -79,7 +99,8 @@ class _MemberFormPageState extends State<MemberFormPage> {
         final v = data.vehicle;
         if (v != null) {
           _f.vehicleCategory = v['vehicle_type']?.toString() ?? '';
-          _vName.text = _f.vehicleName = v['vehicle_display_name']?.toString() ?? '';
+          _vName.text =
+              _f.vehicleName = v['vehicle_display_name']?.toString() ?? '';
           final num = v['vehicle_number']?.toString() ?? '';
           _vNumber.text = _f.vehicleNumber = num == 'N/A' ? '' : num;
           _vColor.text = _f.vehicleColor = v['vehicle_color']?.toString() ?? '';
@@ -105,13 +126,16 @@ class _MemberFormPageState extends State<MemberFormPage> {
       ..vehicleColor = _vColor.text;
   }
 
-  PeopleMember? get _primary => widget.flatMembers.where((m) => m.isPrimary).firstOrNull;
+  PeopleMember? get _primary =>
+      widget.flatMembers.where((m) => m.isPrimary).firstOrNull;
 
   Future<void> _save() async {
     _sync();
-    final issue = validateMemberForm(form: _f, docs: _docs, editing: widget.editing);
+    final issue =
+        validateMemberForm(form: _f, docs: _docs, editing: widget.editing);
     if (issue != null) {
-      AppFeedback.toast(context, context.tr(issue.en, issue.hi), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.tr(issue.en, issue.hi),
+          tone: BadgeTone.alert);
       return;
     }
     final ok = await SensitiveVerify.confirm(
@@ -119,7 +143,9 @@ class _MemberFormPageState extends State<MemberFormPage> {
       societyId: widget.societyId,
       adminId: widget.adminId,
       adminName: widget.adminName,
-      title: _isEdit ? context.tr('Update household member', 'परिवार सदस्य अद्यतन करें') : context.tr('Add household member', 'परिवार सदस्य जोड़ें'),
+      title: _isEdit
+          ? context.tr('Update household member', 'परिवार सदस्य अद्यतन करें')
+          : context.tr('Add household member', 'परिवार सदस्य जोड़ें'),
       actionLabel: _isEdit ? 'update_member' : 'add_member',
     );
     if (!ok || !mounted) return;
@@ -136,14 +162,19 @@ class _MemberFormPageState extends State<MemberFormPage> {
       if (!mounted) return;
       if (res.updated) {
         await AppFeedback.success(context,
-            title: context.tr('Updated!', 'अद्यतन!'), message: context.tr('Member updated successfully', 'सदस्य सफलतापूर्वक अद्यतन'));
+            title: context.tr('Updated!', 'अद्यतन!'),
+            message: context.tr(
+                'Member updated successfully', 'सदस्य सफलतापूर्वक अद्यतन'));
       } else {
-        AppFeedback.toast(context, context.tr('Member added', 'सदस्य जोड़ा गया'), tone: BadgeTone.success);
+        AppFeedback.toast(
+            context, context.tr('Member added', 'सदस्य जोड़ा गया'),
+            tone: BadgeTone.success);
       }
       if (res.loginsCreated > 0 && mounted) {
         AppFeedback.toast(
           context,
-          context.tr('${res.loginsCreated} resident login(s) created', '${res.loginsCreated} निवासी लॉगिन बनाए गए'),
+          context.tr('${res.loginsCreated} resident login(s) created',
+              '${res.loginsCreated} निवासी लॉगिन बनाए गए'),
           tone: BadgeTone.success,
         );
       }
@@ -151,13 +182,19 @@ class _MemberFormPageState extends State<MemberFormPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      AppFeedback.toast(context, e is MemberSaveException ? e.message : context.tr('Could not save member: $e', 'सदस्य सहेजा नहीं जा सका: $e'),
+      AppFeedback.toast(
+          context,
+          e is MemberSaveException
+              ? e.message
+              : context.tr(
+                  'Could not save member: $e', 'सदस्य सहेजा नहीं जा सका: $e'),
           tone: BadgeTone.alert);
     }
   }
 
   Future<void> _pickPhoto() async {
-    final p = await PeopleImagePicker.pick(context, title: context.tr('Profile photo', 'प्रोफ़ाइल फ़ोटो'));
+    final p = await PeopleImagePicker.pick(context,
+        title: context.tr('Profile photo', 'प्रोफ़ाइल फ़ोटो'));
     if (p != null && mounted) setState(() => _f.photo = p.dataUrl);
   }
 
@@ -176,7 +213,9 @@ class _MemberFormPageState extends State<MemberFormPage> {
       lastDate: DateTime(2100),
     );
     if (picked == null || !mounted) return;
-    setState(() => joining ? _f.dateJoining = Fmt.isoDate(picked) : _f.dateLeave = Fmt.isoDate(picked));
+    setState(() => joining
+        ? _f.dateJoining = Fmt.isoDate(picked)
+        : _f.dateLeave = Fmt.isoDate(picked));
   }
 
   // ---------------------------------------------------------------------------
@@ -195,7 +234,9 @@ class _MemberFormPageState extends State<MemberFormPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEdit ? context.tr('Edit Member', 'सदस्य संपादित करें') : context.tr('Add Member', 'सदस्य जोड़ें')),
+        title: Text(_isEdit
+            ? context.tr('Edit Member', 'सदस्य संपादित करें')
+            : context.tr('Add Member', 'सदस्य जोड़ें')),
       ),
       body: SafeArea(
         child: ListView(
@@ -207,11 +248,15 @@ class _MemberFormPageState extends State<MemberFormPage> {
             ),
             if (_loadingExtras) const LinearProgressIndicator(minHeight: 2),
             const SizedBox(height: 12),
-            AppTextField(label: context.tr('Name', 'नाम'), required: true, controller: _name),
+            AppTextField(
+                label: context.tr('Name', 'नाम'),
+                required: true,
+                controller: _name),
             const SizedBox(height: 12),
             AppTextField(
               label: restrictedForm
-                  ? context.tr('Phone (contact only, no login)', 'फ़ोन (केवल संपर्क, लॉगिन नहीं)')
+                  ? context.tr('Phone (contact only, no login)',
+                      'फ़ोन (केवल संपर्क, लॉगिन नहीं)')
                   : context.tr('Phone (for login)', 'फ़ोन (लॉगिन हेतु)'),
               controller: _phone,
               keyboardType: TextInputType.phone,
@@ -229,10 +274,15 @@ class _MemberFormPageState extends State<MemberFormPage> {
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             ),
             const SizedBox(height: 12),
-            AppTextField(label: context.tr('Email ID', 'ईमेल आईडी'), controller: _email, keyboardType: TextInputType.emailAddress, caps: false),
+            AppTextField(
+                label: context.tr('Email ID', 'ईमेल आईडी'),
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                caps: false),
             const SizedBox(height: 4),
             _Check(
-              label: context.tr('Notify via WhatsApp', 'व्हाट्सऐप से सूचित करें'),
+              label:
+                  context.tr('Notify via WhatsApp', 'व्हाट्सऐप से सूचित करें'),
               value: _f.notifyWhatsapp,
               onChanged: (v) => setState(() => _f.notifyWhatsapp = v),
             ),
@@ -242,7 +292,8 @@ class _MemberFormPageState extends State<MemberFormPage> {
               onChanged: (v) => setState(() => _f.notifyEmail = v),
             ),
             const SizedBox(height: 8),
-            FieldLabel(context.tr('Relation / role', 'संबंध / भूमिका'), required: true),
+            FieldLabel(context.tr('Relation / role', 'संबंध / भूमिका'),
+                required: true),
             _RelationDropdown(
               value: relation,
               onChanged: (v) => setState(() {
@@ -277,35 +328,46 @@ class _MemberFormPageState extends State<MemberFormPage> {
               ),
             ]),
             const SizedBox(height: 16),
-            TinyLabel(context.tr('Profile photo (optional — used in elections & committee)', 'प्रोफ़ाइल फ़ोटो (वैकल्पिक — चुनाव और समिति में उपयोग)')),
+            TinyLabel(context.tr(
+                'Profile photo (optional — used in elections & committee)',
+                'प्रोफ़ाइल फ़ोटो (वैकल्पिक — चुनाव और समिति में उपयोग)')),
             const SizedBox(height: 6),
-            Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              AppButton.secondary(
-                label: context.tr('Upload photo', 'फ़ोटो अपलोड करें'),
-                icon: Icons.photo_camera_outlined,
-                dense: true,
-                expand: false,
-                onPressed: _pickPhoto,
-              ),
-              if (_f.photo.isNotEmpty) ...[
-                Icon(Icons.check, size: 14, color: t.success),
-                ImageThumb(src: _f.photo, width: 40, height: 40, radius: 20),
-                TextButton(
-                  onPressed: () => setState(() => _f.photo = ''),
-                  child: Text(context.tr('Remove', 'हटाएँ'), style: TextStyle(fontSize: 12, color: t.destructive)),
-                ),
-              ],
-            ]),
+            Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  AppButton.secondary(
+                    label: context.tr('Upload photo', 'फ़ोटो अपलोड करें'),
+                    icon: Icons.photo_camera_outlined,
+                    dense: true,
+                    expand: false,
+                    onPressed: _pickPhoto,
+                  ),
+                  if (_f.photo.isNotEmpty) ...[
+                    Icon(Icons.check, size: 14, color: t.success),
+                    ImageThumb(
+                        src: _f.photo, width: 40, height: 40, radius: 20),
+                    TextButton(
+                      onPressed: () => setState(() => _f.photo = ''),
+                      child: Text(context.tr('Remove', 'हटाएँ'),
+                          style: TextStyle(fontSize: 12, color: t.destructive)),
+                    ),
+                  ],
+                ]),
             if (restrictedForm) ...[
               const SizedBox(height: 16),
               _DocSection(
                 title: context.tr('Photo ID uploads', 'फ़ोटो आईडी अपलोड'),
                 addLabel: context.tr('Add ID', 'आईडी जोड़ें'),
-                emptyText: context.tr('No Photo IDs added yet.', 'अभी कोई फ़ोटो आईडी नहीं जोड़ी गई।'),
+                emptyText: context.tr('No Photo IDs added yet.',
+                    'अभी कोई फ़ोटो आईडी नहीं जोड़ी गई।'),
                 kind: MemberDocKind.photoId,
                 docs: _docs,
                 twoSided: true,
-                onAdd: () => setState(() => _docs.add(MemberDocDraft(kind: MemberDocKind.photoId, type: defaultDocType(MemberDocKind.photoId)))),
+                onAdd: () => setState(() => _docs.add(MemberDocDraft(
+                    kind: MemberDocKind.photoId,
+                    type: defaultDocType(MemberDocKind.photoId)))),
                 onRemove: (d) => setState(() => _docs.remove(d)),
                 onType: (d, v) => setState(() => d.type = v),
                 onPick: _pickDoc,
@@ -313,32 +375,43 @@ class _MemberFormPageState extends State<MemberFormPage> {
               if (_f.idPhotoFront.isNotEmpty || _f.idPhotoBack.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Row(children: [
-                  Text(context.tr('Earlier ID on file: ', 'पहले से दर्ज आईडी: '), style: AppText.tiny(context)),
-                  if (_f.idPhotoFront.isNotEmpty) ImageThumb(src: _f.idPhotoFront, width: 48, height: 32),
+                  Text(
+                      context.tr('Earlier ID on file: ', 'पहले से दर्ज आईडी: '),
+                      style: AppText.tiny(context)),
+                  if (_f.idPhotoFront.isNotEmpty)
+                    ImageThumb(src: _f.idPhotoFront, width: 48, height: 32),
                   const SizedBox(width: 4),
-                  if (_f.idPhotoBack.isNotEmpty) ImageThumb(src: _f.idPhotoBack, width: 48, height: 32),
+                  if (_f.idPhotoBack.isNotEmpty)
+                    ImageThumb(src: _f.idPhotoBack, width: 48, height: 32),
                 ]),
               ],
               const SizedBox(height: 16),
               if (isTenant)
                 _DocSection(
-                  title: context.tr('Tenant documents (mandatory)', 'किरायेदार दस्तावेज़ (अनिवार्य)'),
+                  title: context.tr('Tenant documents (mandatory)',
+                      'किरायेदार दस्तावेज़ (अनिवार्य)'),
                   addLabel: context.tr('Add doc', 'दस्तावेज़ जोड़ें'),
-                  emptyText: context.tr('Add at least the rental agreement.', 'कम से कम किराया अनुबंध जोड़ें।'),
+                  emptyText: context.tr('Add at least the rental agreement.',
+                      'कम से कम किराया अनुबंध जोड़ें।'),
                   kind: MemberDocKind.tenantDoc,
                   docs: _docs,
-                  onAdd: () => setState(() => _docs.add(MemberDocDraft(kind: MemberDocKind.tenantDoc, type: defaultDocType(MemberDocKind.tenantDoc)))),
+                  onAdd: () => setState(() => _docs.add(MemberDocDraft(
+                      kind: MemberDocKind.tenantDoc,
+                      type: defaultDocType(MemberDocKind.tenantDoc)))),
                   onRemove: (d) => setState(() => _docs.remove(d)),
                   onType: (d, v) => setState(() => d.type = v),
                   onPick: _pickDoc,
                 )
               else
                 _DocSection(
-                  title: context.tr('Service documents (optional)', 'सेवा दस्तावेज़ (वैकल्पिक)'),
+                  title: context.tr('Service documents (optional)',
+                      'सेवा दस्तावेज़ (वैकल्पिक)'),
                   addLabel: context.tr('Add doc', 'दस्तावेज़ जोड़ें'),
                   kind: MemberDocKind.serviceDoc,
                   docs: _docs,
-                  onAdd: () => setState(() => _docs.add(MemberDocDraft(kind: MemberDocKind.serviceDoc, type: defaultDocType(MemberDocKind.serviceDoc)))),
+                  onAdd: () => setState(() => _docs.add(MemberDocDraft(
+                      kind: MemberDocKind.serviceDoc,
+                      type: defaultDocType(MemberDocKind.serviceDoc)))),
                   onRemove: (d) => setState(() => _docs.remove(d)),
                   onType: (d, v) => setState(() => d.type = v),
                   onPick: _pickDoc,
@@ -348,18 +421,25 @@ class _MemberFormPageState extends State<MemberFormPage> {
                 label: context.tr('Police verification', 'पुलिस सत्यापन'),
                 hint: '---${context.tr('Select', 'चुनें')}---',
                 items: const ['pending', 'submitted', 'verified'],
-                value: _f.policeVerification.isEmpty ? null : _f.policeVerification,
+                value: _f.policeVerification.isEmpty
+                    ? null
+                    : _f.policeVerification,
                 labelOf: (v) => switch (v) {
                   'pending' => context.tr('Pending', 'लंबित'),
                   'submitted' => context.tr('Submitted', 'जमा किया'),
                   _ => context.tr('Verified', 'सत्यापित'),
                 },
-                onChanged: (v) => setState(() => _f.policeVerification = v ?? ''),
+                onChanged: (v) =>
+                    setState(() => _f.policeVerification = v ?? ''),
               ),
               const SizedBox(height: 12),
-              AppTextField(label: context.tr('Spouse / husband name (optional)', 'पति/पत्नी का नाम (वैकल्पिक)'), controller: _spouse),
+              AppTextField(
+                  label: context.tr('Spouse / husband name (optional)',
+                      'पति/पत्नी का नाम (वैकल्पिक)'),
+                  controller: _spouse),
               const Divider(height: 32),
-              TinyLabel(context.tr('Service dates (optional)', 'सेवा तिथियाँ (वैकल्पिक)')),
+              TinyLabel(context.tr(
+                  'Service dates (optional)', 'सेवा तिथियाँ (वैकल्पिक)')),
               const SizedBox(height: 4),
               Text(
                 context.tr(
@@ -396,28 +476,43 @@ class _MemberFormPageState extends State<MemberFormPage> {
                   child: AppDropdown<String>(
                     hint: '---${context.tr('Select', 'चुनें')}---',
                     items: kStaffVehicleTypes,
-                    value: _f.vehicleCategory.isEmpty ? null : _f.vehicleCategory,
+                    value:
+                        _f.vehicleCategory.isEmpty ? null : _f.vehicleCategory,
                     labelOf: (v) => v,
-                    onChanged: (v) => setState(() => _f.vehicleCategory = v ?? ''),
+                    onChanged: (v) =>
+                        setState(() => _f.vehicleCategory = v ?? ''),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(child: AppTextField(hint: context.tr('Vehicle name / model', 'वाहन नाम / मॉडल'), controller: _vName)),
+                Expanded(
+                    child: AppTextField(
+                        hint: context.tr(
+                            'Vehicle name / model', 'वाहन नाम / मॉडल'),
+                        controller: _vName)),
               ]),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: AppTextField(hint: context.tr('Registration no.', 'पंजीकरण सं.'), controller: _vNumber, mono: true)),
+                Expanded(
+                    child: AppTextField(
+                        hint: context.tr('Registration no.', 'पंजीकरण सं.'),
+                        controller: _vNumber,
+                        mono: true)),
                 const SizedBox(width: 12),
-                Expanded(child: AppTextField(hint: context.tr('Color', 'रंग'), controller: _vColor)),
+                Expanded(
+                    child: AppTextField(
+                        hint: context.tr('Color', 'रंग'), controller: _vColor)),
               ]),
             ],
             if (showCheckbox)
               _Check(
-                label: context.tr('Set as primary member', 'प्राथमिक सदस्य बनाएँ'),
+                label:
+                    context.tr('Set as primary member', 'प्राथमिक सदस्य बनाएँ'),
                 value: _f.isPrimary,
                 onChanged: (v) => setState(() => _f.isPrimary = v),
               ),
-            if (primary != null && !showCheckbox && allowsPrimaryMember(relation))
+            if (primary != null &&
+                !showCheckbox &&
+                allowsPrimaryMember(relation))
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Text(
@@ -445,13 +540,18 @@ class _MemberFormPageState extends State<MemberFormPage> {
             Row(children: [
               Expanded(
                 child: AppButton(
-                  label: _isEdit ? context.tr('Update', 'अद्यतन करें') : context.t('common.add'),
+                  label: _isEdit
+                      ? context.tr('Update', 'अद्यतन करें')
+                      : context.t('common.add'),
                   loading: _saving,
                   onPressed: _save,
                 ),
               ),
               const SizedBox(width: 8),
-              Expanded(child: AppButton.secondary(label: context.t('common.cancel'), onPressed: () => Navigator.pop(context))),
+              Expanded(
+                  child: AppButton.secondary(
+                      label: context.t('common.cancel'),
+                      onPressed: () => Navigator.pop(context))),
             ]),
           ],
         ),
@@ -461,7 +561,8 @@ class _MemberFormPageState extends State<MemberFormPage> {
 }
 
 class _Check extends StatelessWidget {
-  const _Check({required this.label, required this.value, required this.onChanged});
+  const _Check(
+      {required this.label, required this.value, required this.onChanged});
 
   final String label;
   final bool value;
@@ -472,7 +573,10 @@ class _Check extends StatelessWidget {
     return InkWell(
       onTap: () => onChanged(!value),
       child: Row(children: [
-        Checkbox(value: value, onChanged: (v) => onChanged(v ?? false), visualDensity: VisualDensity.compact),
+        Checkbox(
+            value: value,
+            onChanged: (v) => onChanged(v ?? false),
+            visualDensity: VisualDensity.compact),
         Expanded(child: Text(label, style: AppText.caption(context))),
       ]),
     );
@@ -480,7 +584,11 @@ class _Check extends StatelessWidget {
 }
 
 class _DateBox extends StatelessWidget {
-  const _DateBox({required this.label, required this.iso, required this.onTap, required this.onClear});
+  const _DateBox(
+      {required this.label,
+      required this.iso,
+      required this.onTap,
+      required this.onClear});
 
   final String label;
   final String iso;
@@ -493,7 +601,11 @@ class _DateBox extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: t.mutedForeground)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: t.mutedForeground)),
         const SizedBox(height: 2),
         InkWell(
           onTap: onTap,
@@ -501,11 +613,16 @@ class _DateBox extends StatelessWidget {
             decoration: InputDecoration(
               isDense: true,
               suffixIcon: iso.isEmpty
-                  ? Icon(Icons.calendar_today_outlined, size: 16, color: t.mutedForeground)
-                  : IconButton(icon: const Icon(Icons.close, size: 16), onPressed: onClear),
+                  ? Icon(Icons.calendar_today_outlined,
+                      size: 16, color: t.mutedForeground)
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      onPressed: onClear),
             ),
             child: Text(iso.isEmpty ? 'dd/mm/yyyy' : Fmt.isoToDisplay(iso),
-                style: TextStyle(fontSize: 13, color: iso.isEmpty ? t.mutedForeground : t.foreground)),
+                style: TextStyle(
+                    fontSize: 13,
+                    color: iso.isEmpty ? t.mutedForeground : t.foreground)),
           ),
         ),
       ],
@@ -553,11 +670,17 @@ class _RelationDropdown extends StatelessWidget {
     DropdownMenuItem<String> header(String text) => DropdownMenuItem<String>(
           enabled: false,
           value: '__$text',
-          child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.mutedForeground)),
+          child: Text(text,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: t.mutedForeground)),
         );
     DropdownMenuItem<String> item(String r) => DropdownMenuItem<String>(
           value: r,
-          child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(label(context, r))),
+          child: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(label(context, r))),
         );
     return DropdownButtonFormField<String>(
       key: ValueKey(value),
@@ -570,7 +693,8 @@ class _RelationDropdown extends StatelessWidget {
         if (custom != null) item(custom),
         header(context.tr('Household', 'परिवार')),
         for (final r in kAdminHouseholdRelations) item(r),
-        header(context.tr('Staff / service (Quick Entry)', 'स्टाफ़ / सेवा (क्विक एंट्री)')),
+        header(context.tr(
+            'Staff / service (Quick Entry)', 'स्टाफ़ / सेवा (क्विक एंट्री)')),
         for (final r in kAdminStaffRelations) item(r),
       ],
       onChanged: (v) {
@@ -618,10 +742,15 @@ class _DocSection extends StatelessWidget {
           TextButton.icon(
             onPressed: onAdd,
             icon: Icon(Icons.add, size: 14, color: t.primary),
-            label: Text(addLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: t.primary)),
+            label: Text(addLabel,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: t.primary)),
           ),
         ]),
-        if (mine.isEmpty && emptyText != null) Text(emptyText!, style: AppText.tiny(context)),
+        if (mine.isEmpty && emptyText != null)
+          Text(emptyText!, style: AppText.tiny(context)),
         for (final d in mine)
           Container(
             margin: const EdgeInsets.only(top: 8),
@@ -643,7 +772,8 @@ class _DocSection extends StatelessWidget {
                       ],
                       value: d.type,
                       labelOf: (v) {
-                        final o = options.where((x) => x.value == v).firstOrNull;
+                        final o =
+                            options.where((x) => x.value == v).firstOrNull;
                         return o == null ? v : context.tr(o.en, o.hi);
                       },
                       onChanged: (v) {
@@ -658,28 +788,38 @@ class _DocSection extends StatelessWidget {
                   ),
                 ]),
                 const SizedBox(height: 8),
-                Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  AppButton.secondary(
-                    label: twoSided ? context.tr('Front', 'आगे') : context.tr('Upload', 'अपलोड'),
-                    icon: Icons.photo_camera_outlined,
-                    dense: true,
-                    expand: false,
-                    onPressed: () => onPick(d, true),
-                  ),
-                  if (d.front.isNotEmpty) Icon(Icons.check, size: 14, color: t.success),
-                  if (twoSided) ...[
-                    AppButton.secondary(
-                      label: context.tr('Back', 'पीछे'),
-                      icon: Icons.photo_camera_outlined,
-                      dense: true,
-                      expand: false,
-                      onPressed: () => onPick(d, false),
-                    ),
-                    if (d.back.isNotEmpty) Icon(Icons.check, size: 14, color: t.success),
-                  ],
-                  if (d.front.isNotEmpty) ImageThumb(src: d.front, width: 48, height: 32),
-                  if (twoSided && d.back.isNotEmpty) ImageThumb(src: d.back, width: 48, height: 32),
-                ]),
+                Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      AppButton.secondary(
+                        label: twoSided
+                            ? context.tr('Front', 'आगे')
+                            : context.tr('Upload', 'अपलोड'),
+                        icon: Icons.photo_camera_outlined,
+                        dense: true,
+                        expand: false,
+                        onPressed: () => onPick(d, true),
+                      ),
+                      if (d.front.isNotEmpty)
+                        Icon(Icons.check, size: 14, color: t.success),
+                      if (twoSided) ...[
+                        AppButton.secondary(
+                          label: context.tr('Back', 'पीछे'),
+                          icon: Icons.photo_camera_outlined,
+                          dense: true,
+                          expand: false,
+                          onPressed: () => onPick(d, false),
+                        ),
+                        if (d.back.isNotEmpty)
+                          Icon(Icons.check, size: 14, color: t.success),
+                      ],
+                      if (d.front.isNotEmpty)
+                        ImageThumb(src: d.front, width: 48, height: 32),
+                      if (twoSided && d.back.isNotEmpty)
+                        ImageThumb(src: d.back, width: 48, height: 32),
+                    ]),
               ],
             ),
           ),

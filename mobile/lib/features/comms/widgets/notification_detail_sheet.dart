@@ -118,9 +118,10 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
         }
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.ct('comms.detail.sendFailed'),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }

@@ -1,7 +1,8 @@
 import '../../../../core/supabase/db.dart';
 import '../../../../utils/member_categories.dart';
 import '../../../../utils/password_generator.dart';
-import '../../../../utils/society_flat_layout.dart' show floorLabelFromFlatNumber;
+import '../../../../utils/society_flat_layout.dart'
+    show floorLabelFromFlatNumber;
 import '../../../shared/directory/directory_service.dart';
 import '../logic/residents_logic.dart';
 import 'people_models.dart';
@@ -22,7 +23,12 @@ class ResidentsSnapshot {
   final List<ResidentLogin> logins;
   final bool selfIdUploadEnabled;
 
-  static const empty = ResidentsSnapshot(flats: [], members: [], vehicles: [], logins: [], selfIdUploadEnabled: false);
+  static const empty = ResidentsSnapshot(
+      flats: [],
+      members: [],
+      vehicles: [],
+      logins: [],
+      selfIdUploadEnabled: false);
 }
 
 /// Member being edited: documents + linked staff vehicle (web `editMember`).
@@ -35,7 +41,10 @@ class MemberEditData {
 
 /// Outcome of saving a member.
 class MemberSaveResult {
-  const MemberSaveResult({required this.memberId, required this.loginsCreated, required this.updated});
+  const MemberSaveResult(
+      {required this.memberId,
+      required this.loginsCreated,
+      required this.updated});
 
   final String memberId;
   final int loginsCreated;
@@ -77,14 +86,19 @@ class ResidentsService {
   /// `resident_users` of the society's flats (web `loadResidentUsers`).
   Future<List<ResidentLogin>> loadLogins(List<String> flatIds) async {
     if (!dbReady || flatIds.isEmpty) return const [];
-    final rows = await selectInChunks(table: 'resident_users', columns: '*', column: 'flat_id', ids: flatIds);
+    final rows = await selectInChunks(
+        table: 'resident_users', columns: '*', column: 'flat_id', ids: flatIds);
     return rows.map(ResidentLogin.fromJson).toList();
   }
 
   Future<bool> loadSelfIdUploadEnabled(String societyId) async {
     if (!dbReady) return false;
     try {
-      final row = await db.from('societies').select('resident_self_id_upload_enabled').eq('id', societyId).maybeSingle();
+      final row = await db
+          .from('societies')
+          .select('resident_self_id_upload_enabled')
+          .eq('id', societyId)
+          .maybeSingle();
       return row?['resident_self_id_upload_enabled'] == true;
     } catch (_) {
       return false;
@@ -92,13 +106,19 @@ class ResidentsService {
   }
 
   Future<void> setSelfIdUploadEnabled(String societyId, bool on) async {
-    await db.from('societies').update({'resident_self_id_upload_enabled': on}).eq('id', societyId);
+    await db
+        .from('societies')
+        .update({'resident_self_id_upload_enabled': on}).eq('id', societyId);
   }
 
   Future<String> societyName(String societyId) async {
     if (!dbReady) return 'Society';
     try {
-      final row = await db.from('societies').select('name').eq('id', societyId).maybeSingle();
+      final row = await db
+          .from('societies')
+          .select('name')
+          .eq('id', societyId)
+          .maybeSingle();
       final name = row?['name']?.toString() ?? '';
       return name.isEmpty ? 'Society' : name;
     } catch (_) {
@@ -117,7 +137,8 @@ class ResidentsService {
     required String intercom,
   }) async {
     final suggested = floorLabelFromFlatNumber(flatNumber);
-    final floorValue = (floor.trim().isNotEmpty ? floor.trim() : (suggested ?? '')).trim();
+    final floorValue =
+        (floor.trim().isNotEmpty ? floor.trim() : (suggested ?? '')).trim();
     await db.from('flats').insert({
       'flat_number': flatNumber,
       'floor': floorValue.isEmpty ? null : floorValue,
@@ -132,9 +153,17 @@ class ResidentsService {
   }
 
   /// Web `saveFlatMeta`.
-  Future<void> updateFlatMeta({required String flatId, required String floor, required String wing, required String intercom}) async {
+  Future<void> updateFlatMeta(
+      {required String flatId,
+      required String floor,
+      required String wing,
+      required String intercom}) async {
     String? v(String s) => s.trim().isEmpty ? null : s.trim();
-    await db.from('flats').update({'floor': v(floor), 'wing': v(wing), 'intercom': v(intercom)}).eq('id', flatId);
+    await db.from('flats').update({
+      'floor': v(floor),
+      'wing': v(wing),
+      'intercom': v(intercom)
+    }).eq('id', flatId);
   }
 
   /// Web `editMember` extra loads (documents ordered by creation, linked vehicle).
@@ -146,16 +175,25 @@ class ResidentsService {
         .order('created_at', ascending: true));
     Map<String, dynamic>? vehicle;
     try {
-      vehicle = await db.from('resident_vehicles').select('*').eq('member_id', memberId).maybeSingle();
+      vehicle = await db
+          .from('resident_vehicles')
+          .select('*')
+          .eq('member_id', memberId)
+          .maybeSingle();
     } catch (_) {
       vehicle = null;
     }
-    return MemberEditData(docs: docs.map(MemberDocDraft.fromJson).toList(), vehicle: vehicle);
+    return MemberEditData(
+        docs: docs.map(MemberDocDraft.fromJson).toList(), vehicle: vehicle);
   }
 
   Future<String?> _vehicleIdForMember(String memberId) async {
     try {
-      final row = await db.from('resident_vehicles').select('id').eq('member_id', memberId).maybeSingle();
+      final row = await db
+          .from('resident_vehicles')
+          .select('id')
+          .eq('member_id', memberId)
+          .maybeSingle();
       return row?['id']?.toString();
     } catch (_) {
       return null;
@@ -184,17 +222,29 @@ class ResidentsService {
     );
 
     if (isPrimary && primary != null && primary.id != editing?.id) {
-      await db.from('members').update({'is_primary': false}).eq('id', primary.id);
+      await db
+          .from('members')
+          .update({'is_primary': false}).eq('id', primary.id);
     }
 
-    final payload = buildMemberPayload(flatId: flatId, form: form, docs: docs, isPrimary: isPrimary);
+    final payload = buildMemberPayload(
+        flatId: flatId, form: form, docs: docs, isPrimary: isPrimary);
 
     final prevPhone = editing?.phone;
-    if (prevPhone != null && (restricted || form.phone.isEmpty || form.phone != prevPhone)) {
-      await db.from('resident_users').delete().eq('phone', prevPhone).eq('flat_id', flatId);
+    if (prevPhone != null &&
+        (restricted || form.phone.isEmpty || form.phone != prevPhone)) {
+      await db
+          .from('resident_users')
+          .delete()
+          .eq('phone', prevPhone)
+          .eq('flat_id', flatId);
     }
     if (restricted && form.phone.isNotEmpty) {
-      await db.from('resident_users').delete().eq('phone', form.phone).eq('flat_id', flatId);
+      await db
+          .from('resident_users')
+          .delete()
+          .eq('phone', form.phone)
+          .eq('flat_id', flatId);
     }
 
     late final String memberId;
@@ -206,16 +256,19 @@ class ResidentsService {
             .from('resident_users')
             .update({
               'name': form.name,
-              'whatsapp_phone': form.whatsappPhone.isEmpty ? null : form.whatsappPhone,
+              'whatsapp_phone':
+                  form.whatsappPhone.isEmpty ? null : form.whatsappPhone,
               'email': form.email.trim().isEmpty ? null : form.email.trim(),
             })
             .eq('phone', form.phone)
             .eq('flat_id', flatId);
       }
     } else {
-      final ins = await db.from('members').insert(payload).select('id').single();
+      final ins =
+          await db.from('members').insert(payload).select('id').single();
       final id = ins['id']?.toString();
-      if (id == null || id.isEmpty) throw MemberSaveException('Could not add member');
+      if (id == null || id.isEmpty)
+        throw MemberSaveException('Could not add member');
       memberId = id;
     }
 
@@ -223,24 +276,29 @@ class ResidentsService {
     await db.from('member_documents').delete().eq('member_id', memberId);
     final docRows = memberDocumentRows(memberId, docs);
     if (docRows.isNotEmpty) await db.from('member_documents').insert(docRows);
-    await propagateMemberPhoto(memberId, form.photo.isEmpty ? null : form.photo);
+    await propagateMemberPhoto(
+        memberId, form.photo.isEmpty ? null : form.photo);
 
     if (isPrimary) {
-      await db.from('flats').update({'owner_name': form.name, 'is_occupied': true}).eq('id', flatId);
+      await db.from('flats').update(
+          {'owner_name': form.name, 'is_occupied': true}).eq('id', flatId);
     }
 
     if (restricted) {
-      await _syncStaffVehicleRow(societyId: societyId, memberId: memberId, flat: flat, form: form);
+      await _syncStaffVehicleRow(
+          societyId: societyId, memberId: memberId, flat: flat, form: form);
     } else {
       final vid = await _vehicleIdForMember(memberId);
-      if (vid != null) await db.from('resident_vehicles').delete().eq('id', vid);
+      if (vid != null)
+        await db.from('resident_vehicles').delete().eq('id', vid);
     }
 
     var created = 0;
     if (allowsResidentLogin(form.relation) && form.phone.isNotEmpty) {
       created = await syncResidentUsersForFlat(flatId, flat.flatNumber);
     }
-    return MemberSaveResult(memberId: memberId, loginsCreated: created, updated: editing != null);
+    return MemberSaveResult(
+        memberId: memberId, loginsCreated: created, updated: editing != null);
   }
 
   Future<void> _syncStaffVehicleRow({
@@ -259,7 +317,8 @@ class ResidentsService {
       form: form,
     );
     if (row == null) {
-      if (existingId != null) await db.from('resident_vehicles').delete().eq('id', existingId);
+      if (existingId != null)
+        await db.from('resident_vehicles').delete().eq('id', existingId);
       return;
     }
     if (existingId != null) {
@@ -272,8 +331,10 @@ class ResidentsService {
   /// Web `syncResidentUsersForFlat`: create logins for household members with a phone.
   /// Returns how many logins were created.
   Future<int> syncResidentUsersForFlat(String flatId, String flatNumber) async {
-    final latest = rowsOf(await db.from('members').select('*').eq('flat_id', flatId));
-    final existing = rowsOf(await db.from('resident_users').select('*').eq('flat_id', flatId));
+    final latest =
+        rowsOf(await db.from('members').select('*').eq('flat_id', flatId));
+    final existing = rowsOf(
+        await db.from('resident_users').select('*').eq('flat_id', flatId));
     final rows = planNewResidentLogins(
       latestMembers: latest,
       existingUsers: existing,
@@ -290,7 +351,11 @@ class ResidentsService {
   Future<void> propagateMemberPhoto(String memberId, String? photo) async {
     final trimmed = photo?.trim() ?? '';
     final value = trimmed.isEmpty ? null : trimmed;
-    final member = await db.from('members').select('id, name, flat_id').eq('id', memberId).maybeSingle();
+    final member = await db
+        .from('members')
+        .select('id, name, flat_id')
+        .eq('id', memberId)
+        .maybeSingle();
     final flatId = member?['flat_id']?.toString();
     final name = member?['name']?.toString().trim() ?? '';
     if (flatId == null || flatId.isEmpty || name.isEmpty) return;
@@ -307,23 +372,34 @@ class ResidentsService {
     await db.from('resident_vehicles').delete().eq('member_id', member.id);
     await db.from('members').delete().eq('id', member.id);
     if (member.phone != null) {
-      await db.from('resident_users').delete().eq('phone', member.phone!).eq('flat_id', member.flatId);
+      await db
+          .from('resident_users')
+          .delete()
+          .eq('phone', member.phone!)
+          .eq('flat_id', member.flatId);
     }
   }
 
   /// Web `setPrimaryMember`.
-  Future<void> setPrimaryMember({required PeopleMember target, required List<PeopleMember> flatMembers}) async {
+  Future<void> setPrimaryMember(
+      {required PeopleMember target,
+      required List<PeopleMember> flatMembers}) async {
     for (final m in flatMembers) {
-      if (m.isPrimary) await db.from('members').update({'is_primary': false}).eq('id', m.id);
+      if (m.isPrimary)
+        await db.from('members').update({'is_primary': false}).eq('id', m.id);
     }
     await db.from('members').update({'is_primary': true}).eq('id', target.id);
-    await db.from('flats').update({'owner_name': target.name}).eq('id', target.flatId);
+    await db
+        .from('flats')
+        .update({'owner_name': target.name}).eq('id', target.flatId);
   }
 
   /// Web `resetFlatPassword` — returns the new shared password.
   Future<String> resetFlatPassword(String flatId) async {
     final newPass = generateFlatPassword();
-    await db.from('resident_users').update({'password': newPass}).eq('flat_id', flatId);
+    await db
+        .from('resident_users')
+        .update({'password': newPass}).eq('flat_id', flatId);
     return newPass;
   }
 

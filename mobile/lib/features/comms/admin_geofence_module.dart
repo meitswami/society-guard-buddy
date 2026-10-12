@@ -57,8 +57,9 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
         }
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -74,8 +75,9 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
         return;
       }
       var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied)
+      if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
+      }
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
         if (!mounted) return;
@@ -130,15 +132,17 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
         setBy: widget.ctx.adminName,
       );
       await _loadExisting();
-      if (mounted)
+      if (mounted) {
         await AppFeedback.success(context,
             title: context.t('swal.success'),
             message: context.t('admin.geofenceSaved'));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context,
             context.ct('comms.geo.saveFailed', {'error': commsErrorMessage(e)}),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -171,8 +175,9 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
           title: context.ct('comms.geo.cleared'),
           message: context.ct('comms.geo.removed'));
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 

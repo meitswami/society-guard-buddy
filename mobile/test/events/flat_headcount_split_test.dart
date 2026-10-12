@@ -42,7 +42,9 @@ void main() {
         ])
           headcountForFlat(p[0]!, p[1], members, 1, 0.5),
       ];
-      expect([for (final r in rows) [r.flatNumber, r.adults, r.kids, r.units]], [
+      expect([
+        for (final r in rows) [r.flatNumber, r.adults, r.kids, r.units]
+      ], [
         ['101', 2, 1, 2.5],
         ['102', 1, 2, 2.0],
         ['103', 0, 1, 0.5],

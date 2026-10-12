@@ -10,6 +10,8 @@ class AdminFlatGeneratorScreen extends StatelessWidget {
   final SessionAdmin session;
 
   @override
-  Widget build(BuildContext context) =>
-      FlatGeneratorPage(societyId: session.societyId, adminId: session.admin.id, adminName: session.admin.name);
+  Widget build(BuildContext context) => FlatGeneratorPage(
+      societyId: session.societyId,
+      adminId: session.admin.id,
+      adminName: session.admin.name);
 }

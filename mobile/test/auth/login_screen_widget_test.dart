@@ -4,10 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kutumbika_mobile/core/i18n/i18n.dart';
 import 'package:kutumbika_mobile/core/prefs/app_prefs.dart';
 import 'package:kutumbika_mobile/core/theme/kutumbika_theme.dart';
+import 'package:kutumbika_mobile/features/auth/data/login_logic.dart';
 import 'package:kutumbika_mobile/features/auth/login_screen.dart';
+import 'package:kutumbika_mobile/features/auth/password_reset_screen.dart';
 import 'package:kutumbika_mobile/features/public/about_screen.dart';
 import 'package:kutumbika_mobile/features/public/privacy_policy_screen.dart';
 import 'package:kutumbika_mobile/features/public/society_signup_screen.dart';
+import 'package:kutumbika_mobile/features/public/society_signup_status_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Widget _host(Widget home, {AppLang lang = AppLang.en}) => ProviderScope(
@@ -53,6 +56,24 @@ void main() {
     expect(find.text('Create your society'), findsOneWidget);
   });
 
+  testWidgets('phone width (360dp): login, signup, reset and legal pages lay out without overflow', (tester) async {
+    _phoneSize(tester);
+    await tester.pumpWidget(_host(const LoginScreen(), lang: AppLang.hi));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(_host(const SocietySignupScreen(), lang: AppLang.hi));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(_host(const SocietySignupScreen()));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(_host(const PasswordResetScreen(userType: ResetUserType.guard, societyId: 's')));
+    await tester.pumpAndSettle();
+    expect(find.text('Guard ID / Phone'), findsOneWidget);
+    await tester.pumpWidget(_host(const AboutScreen(), lang: AppLang.hi));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(_host(const SocietySignupStatusScreen()));
+    await tester.pumpAndSettle();
+    expect(find.text('FAILED'), findsOneWidget);
+  });
+
   testWidgets('public pages render in Hindi', (tester) async {
     await tester.pumpWidget(_host(const AboutScreen(), lang: AppLang.hi));
     await tester.pumpAndSettle();
@@ -64,4 +85,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('अपनी सोसाइटी बनाएं'), findsOneWidget);
   });
+}
+
+void _phoneSize(WidgetTester tester) {
+  tester.view.physicalSize = const Size(360 * 3, 740 * 3);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
 }

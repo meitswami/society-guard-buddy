@@ -77,8 +77,9 @@ class _AdminPasswordFormState extends State<AdminPasswordForm> {
       _new.clear();
       _confirm.clear();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

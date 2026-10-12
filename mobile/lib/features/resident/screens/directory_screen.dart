@@ -5,7 +5,11 @@ import '../../shared/directory/directory_view.dart';
 
 /// Resident directory tab — wrapper around the shared [DirectoryView].
 class DirectoryScreen extends StatelessWidget {
-  const DirectoryScreen({super.key, required this.session, this.onOpenFamily, this.onOpenVehicles});
+  const DirectoryScreen(
+      {super.key,
+      required this.session,
+      this.onOpenFamily,
+      this.onOpenVehicles});
 
   final SessionResident session;
   final VoidCallback? onOpenFamily;

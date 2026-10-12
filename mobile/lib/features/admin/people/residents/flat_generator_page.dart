@@ -11,7 +11,11 @@ import '../widgets/sensitive_verify.dart';
 /// (`trimSocietyFlatsToConfiguredRange` + `upsertSocietyFlatsFromLayout`, and
 /// "Reset flats from this layout"). Pops `true` when flats changed.
 class FlatGeneratorPage extends StatefulWidget {
-  const FlatGeneratorPage({super.key, required this.societyId, required this.adminId, required this.adminName});
+  const FlatGeneratorPage(
+      {super.key,
+      required this.societyId,
+      required this.adminId,
+      required this.adminName});
 
   final String societyId;
   final String adminId;
@@ -80,18 +84,25 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
   Future<void> _saveAndGenerate() async {
     final layout = _layout;
     if (canTrimFlatsFromSocietyRow(layout) == null) {
-      AppFeedback.toast(context, context.tr(kInvalidLayoutError, 'अमान्य फ्लैट विन्यास (मंज़िलें ≥ 1 और एक सौ-बैंड में मान्य सीमा, जैसे 101–111)।'),
+      AppFeedback.toast(
+          context,
+          context.tr(kInvalidLayoutError,
+              'अमान्य फ्लैट विन्यास (मंज़िलें ≥ 1 और एक सौ-बैंड में मान्य सीमा, जैसे 101–111)।'),
           tone: BadgeTone.alert);
       return;
     }
-    if (!await _verify(context.tr('Generate flats from layout', 'विन्यास से फ्लैट बनाएँ'), 'generate_flats')) return;
+    if (!await _verify(
+        context.tr('Generate flats from layout', 'विन्यास से फ्लैट बनाएँ'),
+        'generate_flats')) return;
     if (!mounted) return;
     setState(() => _busy = true);
     try {
       await _service.saveLayout(widget.societyId, layout);
-      final trimmed = await _service.trimToConfiguredRange(widget.societyId, layout);
+      final trimmed =
+          await _service.trimToConfiguredRange(widget.societyId, layout);
       if (trimmed > 0 && mounted) {
-        AppFeedback.toast(context, context.t('superadmin.flatsTrimmed', {'count': trimmed}));
+        AppFeedback.toast(
+            context, context.t('superadmin.flatsTrimmed', {'count': trimmed}));
         _changed = true;
       }
       final res = await _service.upsertFromLayout(widget.societyId, layout);
@@ -102,7 +113,8 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
         if (res.created > 0) _changed = true;
         AppFeedback.toast(
           context,
-          context.t('superadmin.flatsGenerated', {'created': res.created, 'skipped': res.skipped}),
+          context.t('superadmin.flatsGenerated',
+              {'created': res.created, 'skipped': res.skipped}),
           tone: BadgeTone.success,
         );
       }
@@ -121,7 +133,8 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
       destructive: true,
     );
     if (!ok || !mounted) return;
-    if (!await _verify(context.t('superadmin.resetFlatsButton'), 'reset_flats')) return;
+    if (!await _verify(context.t('superadmin.resetFlatsButton'), 'reset_flats'))
+      return;
     if (!mounted) return;
     setState(() => _busy = true);
     try {
@@ -133,11 +146,16 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
       if (res.error != null) {
         AppFeedback.toast(context, res.error!, tone: BadgeTone.alert);
       } else {
-        AppFeedback.toast(context, context.t('superadmin.flatsRegenerated', {'created': res.created, 'skipped': res.skipped}),
+        AppFeedback.toast(
+            context,
+            context.t('superadmin.flatsRegenerated',
+                {'created': res.created, 'skipped': res.skipped}),
             tone: BadgeTone.success);
       }
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.t('superadmin.flatResetFailed'), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, context.t('superadmin.flatResetFailed'),
+            tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -153,7 +171,8 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
         if (!didPop) Navigator.pop(context, _changed);
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(context.tr('Generate flats', 'फ्लैट बनाएँ'))),
+        appBar:
+            AppBar(title: Text(context.tr('Generate flats', 'फ्लैट बनाएँ'))),
         body: _loading
             ? const LoadingView()
             : ListView(
@@ -163,14 +182,18 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        SectionTitle(context.t('superadmin.flatNumbering'), icon: Icons.apartment_outlined),
-                        Text(context.t('superadmin.flatSeriesHelp'), style: AppText.caption(context)),
+                        SectionTitle(context.t('superadmin.flatNumbering'),
+                            icon: Icons.apartment_outlined),
+                        Text(context.t('superadmin.flatSeriesHelp'),
+                            style: AppText.caption(context)),
                         const SizedBox(height: 12),
                         AppTextField(
                           label: context.t('superadmin.totalFloors'),
                           controller: _floors,
                           keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
                           onChanged: (_) => setState(() {}),
                         ),
                         const SizedBox(height: 12),
@@ -202,25 +225,34 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
                           onChanged: (_) => setState(() {}),
                         ),
                         const SizedBox(height: 4),
-                        Text(context.t('superadmin.blocksHint'), style: AppText.tiny(context)),
+                        Text(context.t('superadmin.blocksHint'),
+                            style: AppText.tiny(context)),
                         const SizedBox(height: 12),
                         NoticeBanner(
-                          tone: range == null ? BadgeTone.warning : BadgeTone.info,
-                          icon: range == null ? Icons.warning_amber_rounded : Icons.grid_view_outlined,
+                          tone: range == null
+                              ? BadgeTone.warning
+                              : BadgeTone.info,
+                          icon: range == null
+                              ? Icons.warning_amber_rounded
+                              : Icons.grid_view_outlined,
                           message: range == null
-                              ? context.tr(kInvalidLayoutError, 'अमान्य फ्लैट विन्यास (मंज़िलें ≥ 1 और एक सौ-बैंड में मान्य सीमा, जैसे 101–111)।')
+                              ? context.tr(kInvalidLayoutError,
+                                  'अमान्य फ्लैट विन्यास (मंज़िलें ≥ 1 और एक सौ-बैंड में मान्य सीमा, जैसे 101–111)।')
                               : context.tr(
                                   '${range.valid.length * wings} flats (${range.valid.length} per wing × $wings): ${range.sortedNumbers.first}–${range.sortedNumbers.last}',
                                   '${range.valid.length * wings} फ्लैट (${range.valid.length} प्रति विंग × $wings): ${range.sortedNumbers.first}–${range.sortedNumbers.last}',
                                 ),
                         ),
                         const SizedBox(height: 12),
-                        Text(context.t('superadmin.flatGenerateHint'), style: AppText.tiny(context)),
+                        Text(context.t('superadmin.flatGenerateHint'),
+                            style: AppText.tiny(context)),
                         const SizedBox(height: 6),
-                        Text(context.t('superadmin.flatTrimHint'), style: AppText.tiny(context)),
+                        Text(context.t('superadmin.flatTrimHint'),
+                            style: AppText.tiny(context)),
                         const SizedBox(height: 16),
                         AppButton(
-                          label: context.tr('Save layout & generate flats', 'विन्यास सहेजें और फ्लैट बनाएँ'),
+                          label: context.tr('Save layout & generate flats',
+                              'विन्यास सहेजें और फ्लैट बनाएँ'),
                           icon: Icons.playlist_add,
                           loading: _busy,
                           onPressed: _saveAndGenerate,
@@ -230,11 +262,13 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
                   ),
                   const SizedBox(height: 16),
                   CardSection(
-                    borderColor: AppTokens.tint(context.tokens.destructive, 0.4),
+                    borderColor:
+                        AppTokens.tint(context.tokens.destructive, 0.4),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(context.t('superadmin.resetFlatsHint'), style: AppText.caption(context)),
+                        Text(context.t('superadmin.resetFlatsHint'),
+                            style: AppText.caption(context)),
                         const SizedBox(height: 12),
                         AppButton.destructive(
                           label: context.t('superadmin.resetFlatsButton'),

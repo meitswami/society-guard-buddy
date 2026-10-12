@@ -40,8 +40,9 @@ class NotificationRepository {
   Future<List<AppNotification>> loadNotifications({String? societyId}) async {
     if (!dbReady) return const [];
     var q = db.from('notifications').select('*');
-    if (societyId != null && societyId.isNotEmpty)
+    if (societyId != null && societyId.isNotEmpty) {
       q = q.eq('society_id', societyId);
+    }
     final data = await q.order('created_at', ascending: false).limit(150);
     return rowsOf(data).map(AppNotification.fromRow).toList();
   }
@@ -134,13 +135,15 @@ class NotificationRepository {
   /// Web `fetchSocietyNotificationSound`.
   Future<SocietyNotificationSound> fetchSocietyNotificationSound(
       String? societyId) async {
-    if (societyId == null || societyId.isEmpty)
+    if (societyId == null || societyId.isEmpty) {
       return const SocietyNotificationSound(soundKey: 'digital');
+    }
     try {
       final url = await fetchSocietySoundUrl(societyId);
-      if (url != null)
+      if (url != null) {
         return SocietyNotificationSound(
             soundKey: 'custom', soundCustomUrl: url);
+      }
     } catch (_) {}
     return const SocietyNotificationSound(soundKey: 'digital');
   }
@@ -256,8 +259,9 @@ class NotificationRepository {
         .select('token, updated_at')
         .eq('user_type', 'admin')
         .eq('app_user_id', adminId);
-    if (societyId != null && societyId.isNotEmpty)
+    if (societyId != null && societyId.isNotEmpty) {
       q = q.eq('society_id', societyId);
+    }
     final data = await q.order('updated_at', ascending: false).limit(1);
     final rows = rowsOf(data);
     if (rows.isEmpty) return null;

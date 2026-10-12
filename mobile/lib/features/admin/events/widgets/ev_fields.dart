@@ -126,9 +126,15 @@ Future<List<PickedAttachment>> pickAttachments(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (allowImages)
-            ListTile(leading: const Icon(Icons.photo_camera_outlined), title: Text(ctx.ev('att.camera')), onTap: () => Navigator.pop(ctx, 'camera')),
+            ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: Text(ctx.ev('att.camera')),
+                onTap: () => Navigator.pop(ctx, 'camera')),
           if (allowImages)
-            ListTile(leading: const Icon(Icons.photo_library_outlined), title: Text(ctx.ev('att.gallery')), onTap: () => Navigator.pop(ctx, 'gallery')),
+            ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: Text(ctx.ev('att.gallery')),
+                onTap: () => Navigator.pop(ctx, 'gallery')),
           ListTile(leading: const Icon(Icons.attach_file), title: Text(ctx.ev('att.files')), onTap: () => Navigator.pop(ctx, 'files')),
         ],
       ),

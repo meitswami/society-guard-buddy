@@ -57,13 +57,17 @@ enum MemberDocKind {
 
   final String db;
 
-  static MemberDocKind fromDb(String? v) =>
-      MemberDocKind.values.firstWhere((k) => k.db == v, orElse: () => MemberDocKind.photoId);
+  static MemberDocKind fromDb(String? v) => MemberDocKind.values
+      .firstWhere((k) => k.db == v, orElse: () => MemberDocKind.photoId);
 }
 
 /// One document being edited in the member form (front/back are data URLs).
 class MemberDocDraft {
-  MemberDocDraft({required this.kind, required this.type, this.front = '', this.back = ''});
+  MemberDocDraft(
+      {required this.kind,
+      required this.type,
+      this.front = '',
+      this.back = ''});
 
   MemberDocKind kind;
   String type;
@@ -161,7 +165,9 @@ class GuardRow {
         authMode: _s(g['auth_mode']) ?? 'password',
         policeVerification: _s(g['police_verification']) ?? 'pending',
         policeVerificationDate: _s(g['police_verification_date']),
-        kycAlertDays: g['kyc_alert_days'] is num ? (g['kyc_alert_days'] as num).toInt() : 7,
+        kycAlertDays: g['kyc_alert_days'] is num
+            ? (g['kyc_alert_days'] as num).toInt()
+            : 7,
         phone: _s(g['phone']),
         photoUrl: _s(g['photo_url']),
       );
@@ -169,7 +175,12 @@ class GuardRow {
 
 /// `guard_documents` row (Photo ID front/back per document type).
 class GuardDoc {
-  const GuardDoc({required this.id, required this.guardId, required this.docLabel, this.frontUrl, this.backUrl});
+  const GuardDoc(
+      {required this.id,
+      required this.guardId,
+      required this.docLabel,
+      this.frontUrl,
+      this.backUrl});
 
   final String id;
   final String guardId;
@@ -210,7 +221,8 @@ class GuardAttachment {
         fileUrl: '${a['file_url'] ?? ''}',
         fileName: _s(a['file_name']),
         docLabel: '${a['doc_label'] ?? ''}',
-        sortOrder: a['sort_order'] is num ? (a['sort_order'] as num).toInt() : 0,
+        sortOrder:
+            a['sort_order'] is num ? (a['sort_order'] as num).toInt() : 0,
       );
 }
 

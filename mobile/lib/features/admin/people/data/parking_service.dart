@@ -15,8 +15,10 @@ class ParkingSnapshot {
   final List<ParkingSpace> spaces;
   final List<ParkingFlatOption> flats;
 
-  List<ParkingSpace> get allocated => spaces.where((s) => s.isAllocated).toList();
-  List<ParkingSpace> get available => spaces.where((s) => !s.isAllocated).toList();
+  List<ParkingSpace> get allocated =>
+      spaces.where((s) => s.isAllocated).toList();
+  List<ParkingSpace> get available =>
+      spaces.where((s) => !s.isAllocated).toList();
 
   static const empty = ParkingSnapshot(spaces: [], flats: []);
 }
@@ -26,13 +28,23 @@ class ParkingService {
   Future<ParkingSnapshot> load(String societyId) async {
     if (!dbReady) return ParkingSnapshot.empty;
     final results = await Future.wait([
-      db.from('parking_spaces').select('*').eq('society_id', societyId).order('space_number'),
-      db.from('flats').select('flat_number, id').eq('society_id', societyId).order('flat_number'),
+      db
+          .from('parking_spaces')
+          .select('*')
+          .eq('society_id', societyId)
+          .order('space_number'),
+      db
+          .from('flats')
+          .select('flat_number, id')
+          .eq('society_id', societyId)
+          .order('flat_number'),
     ]);
     return ParkingSnapshot(
       spaces: rowsOf(results[0]).map(ParkingSpace.fromJson).toList(),
       flats: [
-        for (final f in rowsOf(results[1])) ParkingFlatOption(id: '${f['id']}', flatNumber: '${f['flat_number'] ?? ''}'),
+        for (final f in rowsOf(results[1]))
+          ParkingFlatOption(
+              id: '${f['id']}', flatNumber: '${f['flat_number'] ?? ''}'),
       ],
     );
   }
@@ -63,15 +75,21 @@ class ParkingService {
         'floor_level': floorLevel.isEmpty ? null : floorLevel,
         'is_allocated': allocatedFlatNumber.isNotEmpty,
         'allocated_flat_id': id,
-        'allocated_flat_number': allocatedFlatNumber.isEmpty ? null : allocatedFlatNumber,
-        'allocated_vehicle_number': allocatedVehicleNumber.isEmpty ? null : allocatedVehicleNumber,
+        'allocated_flat_number':
+            allocatedFlatNumber.isEmpty ? null : allocatedFlatNumber,
+        'allocated_vehicle_number':
+            allocatedVehicleNumber.isEmpty ? null : allocatedVehicleNumber,
         'notes': notes.isEmpty ? null : notes,
       },
     ]);
   }
 
   Future<void> deleteSpace({required String societyId, required String id}) =>
-      db.from('parking_spaces').delete().eq('id', id).eq('society_id', societyId);
+      db
+          .from('parking_spaces')
+          .delete()
+          .eq('id', id)
+          .eq('society_id', societyId);
 
   /// Web `deallocate`.
   Future<void> deallocate({required String societyId, required String id}) => db

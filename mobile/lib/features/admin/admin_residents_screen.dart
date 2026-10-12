@@ -11,5 +11,6 @@ class AdminResidentsScreen extends StatelessWidget {
   final SessionAdmin session;
 
   @override
-  Widget build(BuildContext context) => PeopleModulePage(session: session, tab: AdminTab.residents);
+  Widget build(BuildContext context) =>
+      PeopleModulePage(session: session, tab: AdminTab.residents);
 }

@@ -21,9 +21,12 @@ class Flat360MergedTimeline {
 }
 
 /// Newest first, capped at [limit].
-Flat360MergedTimeline mergeFlat360Timeline(List<Flat360TimelineItem> items, int limit) {
-  final sorted = [...items]..sort((a, b) => flat360TimeMs(b.at).compareTo(flat360TimeMs(a.at)));
-  return Flat360MergedTimeline(sorted.take(limit).toList(), sorted.length > limit);
+Flat360MergedTimeline mergeFlat360Timeline(
+    List<Flat360TimelineItem> items, int limit) {
+  final sorted = [...items]
+    ..sort((a, b) => flat360TimeMs(b.at).compareTo(flat360TimeMs(a.at)));
+  return Flat360MergedTimeline(
+      sorted.take(limit).toList(), sorted.length > limit);
 }
 
 /// English labels (web `timelineKindLabel`).
@@ -62,12 +65,15 @@ DateTime subMonthsClamped(DateTime date, int months) {
   final m = totalMonths % 12 + 1;
   final lastDay = DateTime(y, m + 1, 0).day;
   final d = date.day > lastDay ? lastDay : date.day;
-  return DateTime(y, m, d, date.hour, date.minute, date.second, date.millisecond, date.microsecond);
+  return DateTime(y, m, d, date.hour, date.minute, date.second,
+      date.millisecond, date.microsecond);
 }
 
 /// Web `cutoffIso(monthsBack)` → UTC ISO string.
 String flat360CutoffIso(int monthsBack, {DateTime? now}) =>
-    subMonthsClamped(now ?? DateTime.now(), monthsBack).toUtc().toIso8601String();
+    subMonthsClamped(now ?? DateTime.now(), monthsBack)
+        .toUtc()
+        .toIso8601String();
 
 /// Web `notificationVisibleToResident` (flat / person / society-wide).
 bool notificationVisibleToResident({
@@ -105,7 +111,9 @@ bool notificationVisibleForFlatAdmin({
 }) {
   if ((targetType ?? '') != 'flat') return true;
   final target = (targetId ?? '').trim();
-  final targets = target.contains(',') ? target.split(',').map((s) => s.trim()).toList() : [target];
+  final targets = target.contains(',')
+      ? target.split(',').map((s) => s.trim()).toList()
+      : [target];
   if (target.isNotEmpty && !targets.contains(flatNumber)) return false;
   return true;
 }

@@ -55,8 +55,9 @@ class _SocietyAddressPanelState extends State<SocietyAddressPanel> {
       _state.text = a.state;
       _pincode.text = a.pincode;
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -78,8 +79,9 @@ class _SocietyAddressPanelState extends State<SocietyAddressPanel> {
           tone: BadgeTone.success);
       await _reload();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

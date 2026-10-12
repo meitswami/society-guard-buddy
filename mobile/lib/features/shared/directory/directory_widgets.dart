@@ -10,7 +10,8 @@ import 'person_avatar.dart';
 
 /// Small rectangular tag (`text-[10px] px-1.5 py-0.5 rounded`), e.g. "Wing A", "Vacant", "My Flat".
 class TagChip extends StatelessWidget {
-  const TagChip(this.label, {super.key, this.color, this.background, this.fontSize = 10});
+  const TagChip(this.label,
+      {super.key, this.color, this.background, this.fontSize = 10});
 
   final String label;
   final Color? color;
@@ -22,21 +23,32 @@ class TagChip extends StatelessWidget {
     final t = context.tokens;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(color: background ?? t.secondary, borderRadius: BorderRadius.circular(4)),
-      child: Text(label, style: TextStyle(fontSize: fontSize, color: color ?? t.secondaryForeground, height: 1.2)),
+      decoration: BoxDecoration(
+          color: background ?? t.secondary,
+          borderRadius: BorderRadius.circular(4)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: fontSize,
+              color: color ?? t.secondaryForeground,
+              height: 1.2)),
     );
   }
 
   /// `bg-warning/20 text-warning`.
   factory TagChip.warning(BuildContext context, String label) {
     final t = context.tokens;
-    return TagChip(label, color: t.warning, background: AppTokens.tint(t.warning, 0.2));
+    return TagChip(label,
+        color: t.warning, background: AppTokens.tint(t.warning, 0.2));
   }
 
   /// `bg-primary/20 text-primary`.
-  factory TagChip.primary(BuildContext context, String label, {double fontSize = 9}) {
+  factory TagChip.primary(BuildContext context, String label,
+      {double fontSize = 9}) {
     final t = context.tokens;
-    return TagChip(label, color: t.primary, background: AppTokens.tint(t.primary, 0.2), fontSize: fontSize);
+    return TagChip(label,
+        color: t.primary,
+        background: AppTokens.tint(t.primary, 0.2),
+        fontSize: fontSize);
   }
 }
 
@@ -53,16 +65,25 @@ class TinyLabel extends StatelessWidget {
     final c = color ?? context.tokens.mutedForeground;
     final label = Text(
       text.toUpperCase(),
-      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: 0.8, color: c),
+      style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.8,
+          color: c),
     );
     if (icon == null) return label;
-    return Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 12, color: c), const SizedBox(width: 5), Flexible(child: label)]);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 12, color: c),
+      const SizedBox(width: 5),
+      Flexible(child: label)
+    ]);
   }
 }
 
 /// "Floor: 1st Floor" pair (`text-xs`, muted label + medium value).
 class InfoPair extends StatelessWidget {
-  const InfoPair(this.label, this.value, {super.key, this.mono = false, this.valueColor, this.onTap});
+  const InfoPair(this.label, this.value,
+      {super.key, this.mono = false, this.valueColor, this.onTap});
 
   final String label;
   final String value;
@@ -75,12 +96,18 @@ class InfoPair extends StatelessWidget {
     final t = context.tokens;
     final text = Text.rich(
       TextSpan(children: [
-        TextSpan(text: '$label: ', style: TextStyle(fontSize: 12, color: t.mutedForeground)),
+        TextSpan(
+            text: '$label: ',
+            style: TextStyle(fontSize: 12, color: t.mutedForeground)),
         TextSpan(
           text: value,
           style: mono
-              ? AppText.mono(context, size: 12, weight: FontWeight.w600, color: valueColor)
-              : TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: valueColor ?? t.foreground),
+              ? AppText.mono(context,
+                  size: 12, weight: FontWeight.w600, color: valueColor)
+              : TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: valueColor ?? t.foreground),
         ),
       ]),
     );
@@ -91,7 +118,11 @@ class InfoPair extends StatelessWidget {
 
 /// Two-column grid of small widgets (`grid grid-cols-2 gap-2 text-xs`).
 class TwoColGrid extends StatelessWidget {
-  const TwoColGrid({super.key, required this.children, this.fullWidth = const {}, this.spacing = 8});
+  const TwoColGrid(
+      {super.key,
+      required this.children,
+      this.fullWidth = const {},
+      this.spacing = 8});
 
   final List<Widget> children;
 
@@ -110,22 +141,32 @@ class TwoColGrid extends StatelessWidget {
       } else if (i + 1 < children.length && !fullWidth.contains(i + 1)) {
         rows.add(Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [Expanded(child: children[i]), SizedBox(width: spacing), Expanded(child: children[i + 1])],
+          children: [
+            Expanded(child: children[i]),
+            SizedBox(width: spacing),
+            Expanded(child: children[i + 1])
+          ],
         ));
         i += 2;
       } else {
-        rows.add(Row(children: [Expanded(child: children[i]), SizedBox(width: spacing), const Spacer()]));
+        rows.add(Row(children: [
+          Expanded(child: children[i]),
+          SizedBox(width: spacing),
+          const Spacer()
+        ]));
         i++;
       }
       if (i < children.length) rows.add(SizedBox(height: spacing));
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
   }
 }
 
 /// Matching people (with photos) on a flat row while searching — max 4 + "+N".
 class NameHitChips extends StatelessWidget {
-  const NameHitChips({super.key, required this.members, this.showOverflow = true});
+  const NameHitChips(
+      {super.key, required this.members, this.showOverflow = true});
 
   final List<PeopleMember> members;
   final bool showOverflow;
@@ -144,24 +185,31 @@ class NameHitChips extends StatelessWidget {
           for (final m in members.take(4))
             Container(
               padding: const EdgeInsets.fromLTRB(2, 2, 8, 2),
-              decoration: BoxDecoration(color: AppTokens.tint(t.secondary, 0.7), borderRadius: BorderRadius.circular(999)),
+              decoration: BoxDecoration(
+                  color: AppTokens.tint(t.secondary, 0.7),
+                  borderRadius: BorderRadius.circular(999)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  PersonAvatar(name: m.name, photo: m.photo, size: PersonAvatarSize.xs),
+                  PersonAvatar(
+                      name: m.name, photo: m.photo, size: PersonAvatarSize.xs),
                   const SizedBox(width: 6),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 112),
                     child: Text(
                       m.name,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: t.foreground),
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: t.foreground),
                     ),
                   ),
                 ],
               ),
             ),
-          if (showOverflow && members.length > 4) Text('+${members.length - 4}', style: AppText.tiny(context)),
+          if (showOverflow && members.length > 4)
+            Text('+${members.length - 4}', style: AppText.tiny(context)),
         ],
       ),
     );
@@ -180,13 +228,17 @@ class VehicleChip extends StatelessWidget {
     final t = context.tokens;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: AppTokens.tint(t.secondary, 0.5), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+      decoration: BoxDecoration(
+          color: AppTokens.tint(t.secondary, 0.5),
+          borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.directions_car_outlined, size: 12, color: t.mutedForeground),
+          Icon(Icons.directions_car_outlined,
+              size: 12, color: t.mutedForeground),
           const SizedBox(width: 4),
-          Text(number, style: AppText.mono(context, size: 12, weight: FontWeight.w600)),
+          Text(number,
+              style: AppText.mono(context, size: 12, weight: FontWeight.w600)),
           if (type != null && type!.isNotEmpty) ...[
             const SizedBox(width: 4),
             Text('(${_cap(type!)})', style: AppText.tiny(context)),
@@ -196,12 +248,19 @@ class VehicleChip extends StatelessWidget {
     );
   }
 
-  static String _cap(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+  static String _cap(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 }
 
 /// Rounded image thumbnail for http(s) or `data:image` sources (`object-cover rounded border`).
 class ImageThumb extends StatelessWidget {
-  const ImageThumb({super.key, required this.src, this.width = 56, this.height = 36, this.onTap, this.radius = 4});
+  const ImageThumb(
+      {super.key,
+      required this.src,
+      this.width = 56,
+      this.height = 36,
+      this.onTap,
+      this.radius = 4});
 
   final String src;
   final double width;
@@ -223,15 +282,18 @@ class ImageThumb extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: provider == null
-          ? Icon(Icons.image_not_supported_outlined, size: 16, color: t.mutedForeground)
+          ? Icon(Icons.image_not_supported_outlined,
+              size: 16, color: t.mutedForeground)
           : Image(
               image: provider,
               fit: BoxFit.cover,
               gaplessPlayback: true,
-              errorBuilder: (_, __, ___) => Icon(Icons.broken_image_outlined, size: 16, color: t.mutedForeground),
+              errorBuilder: (_, __, ___) => Icon(Icons.broken_image_outlined,
+                  size: 16, color: t.mutedForeground),
             ),
     );
-    return GestureDetector(onTap: onTap ?? () => PhotoViewer.show(context, src), child: box);
+    return GestureDetector(
+        onTap: onTap ?? () => PhotoViewer.show(context, src), child: box);
   }
 }
 
@@ -239,7 +301,8 @@ class ImageThumb extends StatelessWidget {
 /// PDFs open in the external viewer.
 abstract final class PhotoViewer {
   static bool _isPdf(String url) =>
-      RegExp(r'\.pdf($|\?)', caseSensitive: false).hasMatch(url) || url.toLowerCase().contains('application/pdf');
+      RegExp(r'\.pdf($|\?)', caseSensitive: false).hasMatch(url) ||
+      url.toLowerCase().contains('application/pdf');
 
   static Future<void> show(BuildContext context, String src) async {
     if (_isPdf(src) && !src.startsWith('data:')) {
@@ -261,7 +324,8 @@ abstract final class PhotoViewer {
                 onTap: () => Navigator.pop(ctx),
                 child: InteractiveViewer(
                   maxScale: 5,
-                  child: Center(child: Image(image: provider, fit: BoxFit.contain)),
+                  child: Center(
+                      child: Image(image: provider, fit: BoxFit.contain)),
                 ),
               ),
             ),
@@ -333,14 +397,19 @@ class LazyListPage extends StatelessWidget {
         ],
       );
       if (onRefresh == null) return view;
-      return RefreshIndicator(onRefresh: onRefresh!, color: context.tokens.primary, child: view);
+      return RefreshIndicator(
+          onRefresh: onRefresh!, color: context.tokens.primary, child: view);
     });
   }
 }
 
 /// Search box with a leading search icon (web `input-field pl-9`).
 class DirectorySearchField extends StatelessWidget {
-  const DirectorySearchField({super.key, required this.controller, required this.hint, required this.onChanged});
+  const DirectorySearchField(
+      {super.key,
+      required this.controller,
+      required this.hint,
+      required this.onChanged});
 
   final TextEditingController controller;
   final String hint;
@@ -401,7 +470,11 @@ class TintIconButton extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTokens.radiusSm),
         onTap: onPressed,
-        child: Padding(padding: EdgeInsets.all(padding), child: Icon(icon, size: size, color: onPressed == null ? AppTokens.tint(c, 0.4) : c)),
+        child: Padding(
+            padding: EdgeInsets.all(padding),
+            child: Icon(icon,
+                size: size,
+                color: onPressed == null ? AppTokens.tint(c, 0.4) : c)),
       ),
     );
     return tooltip == null ? btn : Tooltip(message: tooltip!, child: btn);

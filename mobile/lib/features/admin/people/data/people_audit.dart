@@ -8,10 +8,18 @@ import '../../../../core/supabase/db.dart';
 /// (`src/lib/auditLogger.ts`). Best-effort: never throws.
 abstract final class PeopleAudit {
   static Map<String, dynamic> _deviceInfo() {
-    if (kIsWeb) return {'browser': 'web', 'os': 'Unknown', 'platform': 'web', 'isMobile': false};
+    if (kIsWeb)
+      return {
+        'browser': 'web',
+        'os': 'Unknown',
+        'platform': 'web',
+        'isMobile': false
+      };
     return {
       'browser': 'Kutumbika app',
-      'os': Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : Platform.operatingSystem),
+      'os': Platform.isAndroid
+          ? 'Android'
+          : (Platform.isIOS ? 'iOS' : Platform.operatingSystem),
       'platform': Platform.operatingSystem,
       'language': Platform.localeName,
       'isMobile': Platform.isAndroid || Platform.isIOS,
@@ -75,7 +83,12 @@ Future<bool> verifyAdminPassword(String adminId, String password) async {
   final trimmed = password.trim();
   if (trimmed.isEmpty || !dbReady) return false;
   try {
-    final row = await db.from('admins').select('id').eq('id', adminId).eq('password', trimmed).maybeSingle();
+    final row = await db
+        .from('admins')
+        .select('id')
+        .eq('id', adminId)
+        .eq('password', trimmed)
+        .maybeSingle();
     return row != null;
   } catch (e) {
     debugPrint('verifyAdminPassword: $e');

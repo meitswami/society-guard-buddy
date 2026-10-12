@@ -31,7 +31,8 @@ void main() {
 
   group('buildValidFlatNumberSet (web societyFlatRangeTrim.ts)', () {
     test('builds +100 per floor tiers', () {
-      final r = buildValidFlatNumberSet(totalFloors: 3, flatSeriesStart: '101', flatSeriesEnd: '105')!;
+      final r = buildValidFlatNumberSet(
+          totalFloors: 3, flatSeriesStart: '101', flatSeriesEnd: '105')!;
       expect(r.valid.length, 15);
       expect(r.valid, containsAll(['101', '105', '201', '305']));
       expect(r.valid, isNot(contains('106')));
@@ -44,41 +45,74 @@ void main() {
     });
 
     test('ground floor counted as 1st (201–205)', () {
-      final r = buildValidFlatNumberSet(totalFloors: 2, flatSeriesStart: '201', flatSeriesEnd: '205')!;
+      final r = buildValidFlatNumberSet(
+          totalFloors: 2, flatSeriesStart: '201', flatSeriesEnd: '205')!;
       expect(r.valid, containsAll(['201', '305']));
       expect(r.floorBase, 2);
     });
 
     test('rejects invalid ranges', () {
-      expect(buildValidFlatNumberSet(totalFloors: 0, flatSeriesStart: '101', flatSeriesEnd: '105'), isNull);
-      expect(buildValidFlatNumberSet(totalFloors: 2, flatSeriesStart: '105', flatSeriesEnd: '101'), isNull);
-      expect(buildValidFlatNumberSet(totalFloors: 2, flatSeriesStart: '101', flatSeriesEnd: '201'), isNull);
-      expect(buildValidFlatNumberSet(totalFloors: 2, flatSeriesStart: 'x', flatSeriesEnd: '105'), isNull);
+      expect(
+          buildValidFlatNumberSet(
+              totalFloors: 0, flatSeriesStart: '101', flatSeriesEnd: '105'),
+          isNull);
+      expect(
+          buildValidFlatNumberSet(
+              totalFloors: 2, flatSeriesStart: '105', flatSeriesEnd: '101'),
+          isNull);
+      expect(
+          buildValidFlatNumberSet(
+              totalFloors: 2, flatSeriesStart: '101', flatSeriesEnd: '201'),
+          isNull);
+      expect(
+          buildValidFlatNumberSet(
+              totalFloors: 2, flatSeriesStart: 'x', flatSeriesEnd: '105'),
+          isNull);
     });
 
     test('canTrimFlatsFromSocietyRow requires all fields', () {
       expect(
-        canTrimFlatsFromSocietyRow(const SocietyFlatRangeInput(totalFloors: null, flatSeriesStart: '101', flatSeriesEnd: '105')),
+        canTrimFlatsFromSocietyRow(const SocietyFlatRangeInput(
+            totalFloors: null, flatSeriesStart: '101', flatSeriesEnd: '105')),
         isNull,
       );
       expect(
-        canTrimFlatsFromSocietyRow(const SocietyFlatRangeInput(totalFloors: 2, flatSeriesStart: ' ', flatSeriesEnd: '105')),
+        canTrimFlatsFromSocietyRow(const SocietyFlatRangeInput(
+            totalFloors: 2, flatSeriesStart: ' ', flatSeriesEnd: '105')),
         isNull,
       );
       expect(
-        canTrimFlatsFromSocietyRow(const SocietyFlatRangeInput(totalFloors: 2, flatSeriesStart: '101', flatSeriesEnd: '105'))!
+        canTrimFlatsFromSocietyRow(const SocietyFlatRangeInput(
+                totalFloors: 2, flatSeriesStart: '101', flatSeriesEnd: '105'))!
             .valid
             .length,
         10,
       );
-      expect(layoutFromSocietyRow({'total_floors': 2, 'flat_series_start': '101', 'flat_series_end': '102'})!.valid.length, 4);
+      expect(
+          layoutFromSocietyRow({
+            'total_floors': 2,
+            'flat_series_start': '101',
+            'flat_series_end': '102'
+          })!
+              .valid
+              .length,
+          4);
     });
   });
 
   group('flatRowShouldTrim', () {
-    final range = buildValidFlatNumberSet(totalFloors: 3, flatSeriesStart: '101', flatSeriesEnd: '105')!;
-    bool trim(String n, {String? wing, String? type = 'residential', List<String>? blocks}) =>
-        flatRowShouldTrim(flatNumber: n, wing: wing, flatType: type, range: range, blockNames: blocks);
+    final range = buildValidFlatNumberSet(
+        totalFloors: 3, flatSeriesStart: '101', flatSeriesEnd: '105')!;
+    bool trim(String n,
+            {String? wing,
+            String? type = 'residential',
+            List<String>? blocks}) =>
+        flatRowShouldTrim(
+            flatNumber: n,
+            wing: wing,
+            flatType: type,
+            range: range,
+            blockNames: blocks);
 
     test('removes near extras on configured tiers', () {
       expect(trim('106'), isTrue);
@@ -109,13 +143,16 @@ void main() {
   });
 
   group('planFlatsFromLayout (web societyFlatsFromLayout.ts)', () {
-    const single = SocietyFlatRangeInput(totalFloors: 2, flatSeriesStart: '101', flatSeriesEnd: '103');
+    const single = SocietyFlatRangeInput(
+        totalFloors: 2, flatSeriesStart: '101', flatSeriesEnd: '103');
 
     test('single tower generates unwinged rows with floor labels', () {
-      final plan = planFlatsFromLayout(societyId: 's1', row: single, existing: const []);
+      final plan =
+          planFlatsFromLayout(societyId: 's1', row: single, existing: const []);
       expect(plan.error, isNull);
       expect(plan.skipped, 0);
-      expect(plan.rows.map((r) => r['flat_number']).toList(), ['101', '102', '103', '201', '202', '203']);
+      expect(plan.rows.map((r) => r['flat_number']).toList(),
+          ['101', '102', '103', '201', '202', '203']);
       expect(plan.rows.first, {
         'society_id': 's1',
         'flat_number': '101',
@@ -130,7 +167,10 @@ void main() {
       final plan = planFlatsFromLayout(
         societyId: 's1',
         row: single,
-        existing: const [ExistingFlatKey(' 101 ', null), ExistingFlatKey('202', '')],
+        existing: const [
+          ExistingFlatKey(' 101 ', null),
+          ExistingFlatKey('202', '')
+        ],
       );
       expect(plan.skipped, 2);
       expect(plan.rows.length, 4);
@@ -139,17 +179,26 @@ void main() {
     test('multi-wing repeats numbers per wing (upper-cased)', () {
       final plan = planFlatsFromLayout(
         societyId: 's1',
-        row: const SocietyFlatRangeInput(totalFloors: 1, flatSeriesStart: '101', flatSeriesEnd: '102', blockNames: ['a', ' B ']),
+        row: const SocietyFlatRangeInput(
+            totalFloors: 1,
+            flatSeriesStart: '101',
+            flatSeriesEnd: '102',
+            blockNames: ['a', ' B ']),
         existing: const [ExistingFlatKey('101', 'A')],
       );
-      expect(plan.rows.map((r) => '${r['wing']}-${r['flat_number']}').toList(), ['A-102', 'B-101', 'B-102']);
+      expect(plan.rows.map((r) => '${r['wing']}-${r['flat_number']}').toList(),
+          ['A-102', 'B-101', 'B-102']);
       expect(plan.skipped, 1);
     });
 
     test('halts on wing mode conflict', () {
       final plan = planFlatsFromLayout(
         societyId: 's1',
-        row: const SocietyFlatRangeInput(totalFloors: 1, flatSeriesStart: '101', flatSeriesEnd: '102', blockNames: ['A']),
+        row: const SocietyFlatRangeInput(
+            totalFloors: 1,
+            flatSeriesStart: '101',
+            flatSeriesEnd: '102',
+            blockNames: ['A']),
         existing: const [ExistingFlatKey('101', null)],
       );
       expect(plan.error, kWingModeConflictError);
@@ -160,12 +209,16 @@ void main() {
       expect(
         planFlatsFromLayout(
           societyId: 's1',
-          row: const SocietyFlatRangeInput(totalFloors: 0, flatSeriesStart: '101', flatSeriesEnd: '102'),
+          row: const SocietyFlatRangeInput(
+              totalFloors: 0, flatSeriesStart: '101', flatSeriesEnd: '102'),
           existing: const [],
         ).error,
         kInvalidLayoutError,
       );
-      expect(planFlatsFromLayout(societyId: '', row: single, existing: const []).error, 'Missing society id');
+      expect(
+          planFlatsFromLayout(societyId: '', row: single, existing: const [])
+              .error,
+          'Missing society id');
     });
   });
 

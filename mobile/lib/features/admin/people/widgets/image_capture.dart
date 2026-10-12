@@ -23,7 +23,8 @@ Uint8List _compress((Uint8List, int, int) args) {
   final decoded = img.decodeImage(bytes);
   if (decoded == null) return bytes;
   var out = decoded;
-  final longest = decoded.width > decoded.height ? decoded.width : decoded.height;
+  final longest =
+      decoded.width > decoded.height ? decoded.width : decoded.height;
   if (longest > maxSide) {
     out = decoded.width >= decoded.height
         ? img.copyResize(decoded, width: maxSide)
@@ -72,7 +73,8 @@ abstract final class PeopleImagePicker {
     return pickFrom(source, maxSide: maxSide, quality: quality);
   }
 
-  static Future<PickedImage?> pickFrom(ImageSource source, {int maxSide = 800, int quality = 70}) async {
+  static Future<PickedImage?> pickFrom(ImageSource source,
+      {int maxSide = 800, int quality = 70}) async {
     final file = await _picker.pickImage(
       source: source,
       maxWidth: maxSide.toDouble(),
@@ -82,7 +84,10 @@ abstract final class PeopleImagePicker {
     if (file == null) return null;
     final raw = await file.readAsBytes();
     final bytes = await compute(_compress, (raw, maxSide, quality));
-    final base = file.name.contains('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name;
-    return PickedImage(bytes: bytes, name: '${base.isEmpty ? 'photo' : base}.jpg');
+    final base = file.name.contains('.')
+        ? file.name.substring(0, file.name.lastIndexOf('.'))
+        : file.name;
+    return PickedImage(
+        bytes: bytes, name: '${base.isEmpty ? 'photo' : base}.jpg');
   }
 }

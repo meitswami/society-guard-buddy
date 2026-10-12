@@ -37,7 +37,9 @@ class _AdminSplitsModuleState extends State<AdminSplitsModule> {
           title: context.ev('spl.title.payment'),
           subtitle: context.ev('spl.sub.payment'),
           bottomSpacing: 12,
-          actions: [IconPillButton(icon: Icons.account_balance_wallet_outlined, tooltip: context.ev('spl.openFinance'), onPressed: _openFinance)],
+          actions: [
+            IconPillButton(icon: Icons.account_balance_wallet_outlined, tooltip: context.ev('spl.openFinance'), onPressed: _openFinance)
+          ],
         ),
         EvRichHint(context.ev('spl.recordPaymentIntro'), size: 12),
         const SizedBox(height: 12),

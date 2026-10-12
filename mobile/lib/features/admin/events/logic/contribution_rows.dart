@@ -300,8 +300,7 @@ String _label(EventContribution c, ContribLabelWords w, {required bool tagIndivi
 }
 
 /// `EventManager.contribLabel`.
-String contributionLabel(EventContribution c, [ContribLabelWords w = const ContribLabelWords()]) =>
-    _label(c, w, tagIndividual: false);
+String contributionLabel(EventContribution c, [ContribLabelWords w = const ContribLabelWords()]) => _label(c, w, tagIndividual: false);
 
 /// `EventFoodReconciliation.contribReceiptLabel` (adds the `individual` tag).
 String contributionReceiptLabel(EventContribution c, [ContribLabelWords w = const ContribLabelWords()]) =>

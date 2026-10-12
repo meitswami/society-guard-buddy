@@ -211,8 +211,7 @@ void main() {
     });
 
     test('reconciliation label tags individual receipts', () {
-      expect(contributionReceiptLabel(c(flat: '101', mode: 'individual', adults: 1, kids: 0)),
-          'Flat 101 · 1A/0K · individual');
+      expect(contributionReceiptLabel(c(flat: '101', mode: 'individual', adults: 1, kids: 0)), 'Flat 101 · 1A/0K · individual');
       expect(contributionReceiptLabel(c(basis: 'non_flat', outsider: 'Guest')), 'No flat · Guest');
     });
 

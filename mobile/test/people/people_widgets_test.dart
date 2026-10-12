@@ -24,7 +24,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 Widget _host(Widget child) => ProviderScope(
       child: MaterialApp(
         theme: ThemeData(extensions: [AppTokens.light]),
-        builder: (context, c) => I18nScope(translator: const Translator(AppLang.en), child: c!),
+        builder: (context, c) =>
+            I18nScope(translator: const Translator(AppLang.en), child: c!),
         home: Scaffold(body: child),
       ),
     );
@@ -33,7 +34,12 @@ AdminModuleContext _ctx({String? query, String? subTab}) => AdminModuleContext(
       session: const SessionAdmin(
         societyId: 's1',
         societyName: 'Green Park',
-        admin: AdminUser(id: 'a1', name: 'Admin', adminId: 'ADMIN', societyId: 's1', permissions: AdminPanelPermissions.full),
+        admin: AdminUser(
+            id: 'a1',
+            name: 'Admin',
+            adminId: 'ADMIN',
+            societyId: 's1',
+            permissions: AdminPanelPermissions.full),
       ),
       goTo: (tab, {query, subTab}) {},
       initialQuery: query,
@@ -48,12 +54,14 @@ void main() {
   });
 
   testWidgets('admin people modules render without a backend', (tester) async {
-    await tester.pumpWidget(_host(AdminResidentsModule(ctx: _ctx(query: '101'))));
+    await tester
+        .pumpWidget(_host(AdminResidentsModule(ctx: _ctx(query: '101'))));
     await tester.pumpAndSettle();
     expect(find.text('Residents'), findsOneWidget);
     expect(find.text('No flats found'), findsOneWidget);
     expect(find.text('0 Logins'), findsOneWidget);
-    expect(find.text('101'), findsOneWidget); // search pre-filled from ctx.initialQuery
+    expect(find.text('101'),
+        findsOneWidget); // search pre-filled from ctx.initialQuery
 
     await tester.tap(find.text('Add Flat').first);
     await tester.pumpAndSettle();
@@ -79,20 +87,28 @@ void main() {
   });
 
   testWidgets('resident directory variant', (tester) async {
-    await tester.pumpWidget(_host(const DirectoryView(societyId: 's1', viewerRole: 'resident', viewerName: 'Asha', viewerFlatId: 'f1')));
+    await tester.pumpWidget(_host(const DirectoryView(
+        societyId: 's1',
+        viewerRole: 'resident',
+        viewerName: 'Asha',
+        viewerFlatId: 'f1')));
     await tester.pumpAndSettle();
     expect(find.text('Flats & Members'), findsNothing);
     expect(find.textContaining('to manage your household'), findsOneWidget);
   });
 
   testWidgets('person avatar falls back to the initial', (tester) async {
-    await tester.pumpWidget(_host(const PersonAvatar(name: 'ravi', size: PersonAvatarSize.lg)));
+    await tester.pumpWidget(
+        _host(const PersonAvatar(name: 'ravi', size: PersonAvatarSize.lg)));
     expect(find.text('R'), findsOneWidget);
   });
 
-  testWidgets('flat 360 panel without backend shows the empty profile', (tester) async {
+  testWidgets('flat 360 panel without backend shows the empty profile',
+      (tester) async {
     await tester.pumpWidget(_host(const SingleChildScrollView(
-      child: Flat360ProfilePanel(params: Flat360FetchParams(societyId: 's1', flatId: 'f1', flatNumber: '101')),
+      child: Flat360ProfilePanel(
+          params: Flat360FetchParams(
+              societyId: 's1', flatId: 'f1', flatNumber: '101')),
     )));
     await tester.pumpAndSettle();
     expect(find.text('Member 360°'), findsOneWidget);
@@ -101,11 +117,21 @@ void main() {
   });
 
   test('residents PDF helpers', () {
-    expect(residentsDirectoryPdfFilename('Green  Park Society', now: DateTime.utc(2026, 10, 12)), 'Green_Park_Society_residents_2026-10-12.pdf');
+    expect(
+        residentsDirectoryPdfFilename('Green  Park Society',
+            now: DateTime.utc(2026, 10, 12)),
+        'Green_Park_Society_residents_2026-10-12.pdf');
     expect(residentsDirectoryPdfFilename(''), startsWith('society_residents_'));
     final m = PeopleMember.fromJson({
-      'id': 'm', 'flat_id': 'f', 'name': 'N', 'relation': 'tenant', 'phone': '9', 'age': 30, 'spouse_name': 'S',
-      'police_verification': 'verified', 'date_joining': '2026-01-05',
+      'id': 'm',
+      'flat_id': 'f',
+      'name': 'N',
+      'relation': 'tenant',
+      'phone': '9',
+      'age': 30,
+      'spouse_name': 'S',
+      'police_verification': 'verified',
+      'date_joining': '2026-01-05',
     });
     expect(residentPdfMemberLines(m), [
       'Relation: tenant',
@@ -115,9 +141,22 @@ void main() {
       'Police verification: verified',
       'Joined: 05/01/2026',
     ]);
-    expect(residentPdfFlatMeta(PeopleFlat.fromJson({'id': 'f', 'flat_number': '101', 'owner_name': 'R', 'floor': '1st Floor', 'wing': 'A'})),
+    expect(
+        residentPdfFlatMeta(PeopleFlat.fromJson({
+          'id': 'f',
+          'flat_number': '101',
+          'owner_name': 'R',
+          'floor': '1st Floor',
+          'wing': 'A'
+        })),
         'Owner: R · 1st Floor · Wing A');
-    final lh = SocietyLetterhead(name: 'X', address: 'Road 1', city: 'Pune', state: 'MH', pincode: '411001', contactEmail: 'a@b.c');
+    final lh = SocietyLetterhead(
+        name: 'X',
+        address: 'Road 1',
+        city: 'Pune',
+        state: 'MH',
+        pincode: '411001',
+        contactEmail: 'a@b.c');
     expect(lh.addressLine, 'Road 1 · Pune, MH · 411001');
     expect(lh.contactLine, 'a@b.c');
     expect(lh.brandMode, 'auto');
@@ -125,9 +164,22 @@ void main() {
 
   testWidgets('residents PDF builds (plain mode)', (tester) async {
     final bytes = await tester.runAsync(() => buildResidentsDirectoryPdf(
-          flats: [PeopleFlat.fromJson({'id': 'f1', 'flat_number': '102'}), PeopleFlat.fromJson({'id': 'f2', 'flat_number': '101', 'owner_name': 'राम'})],
-          members: [PeopleMember.fromJson({'id': 'm', 'flat_id': 'f2', 'name': 'राम कुमार', 'relation': 'owner', 'is_primary': true})],
-          letterhead: LetterheadContext(letterhead: SocietyLetterhead(name: 'Green Park'), plain: true),
+          flats: [
+            PeopleFlat.fromJson({'id': 'f1', 'flat_number': '102'}),
+            PeopleFlat.fromJson(
+                {'id': 'f2', 'flat_number': '101', 'owner_name': 'राम'})
+          ],
+          members: [
+            PeopleMember.fromJson({
+              'id': 'm',
+              'flat_id': 'f2',
+              'name': 'राम कुमार',
+              'relation': 'owner',
+              'is_primary': true
+            })
+          ],
+          letterhead: LetterheadContext(
+              letterhead: SocietyLetterhead(name: 'Green Park'), plain: true),
         ));
     expect(bytes, isNotNull);
     expect(String.fromCharCodes(bytes!.take(4)), '%PDF');

@@ -5,7 +5,6 @@ import '../data/events_models.dart';
 import '../data/events_repository.dart';
 import '../data/events_storage.dart';
 import '../data/query_helpers.dart';
-import '../logic/contribution_rows.dart';
 import '../logic/flat_options.dart';
 import '../logic/js_compat.dart';
 import '../widgets/ev_fields.dart';

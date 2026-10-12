@@ -11,7 +11,11 @@ class Flat360Service {
   /// `flats.flat_number` for a flat id (the sheet is opened with just the id).
   Future<String?> flatNumberFor(String flatId) async {
     if (!dbReady) return null;
-    final row = await db.from('flats').select('flat_number').eq('id', flatId).maybeSingle();
+    final row = await db
+        .from('flats')
+        .select('flat_number')
+        .eq('id', flatId)
+        .maybeSingle();
     return row?['flat_number']?.toString();
   }
 
@@ -26,7 +30,8 @@ class Flat360Service {
     }
 
     // Like supabase-js, a failing secondary query yields no rows instead of failing the panel.
-    Future<List<Map<String, dynamic>>> safe(Future<Object?> Function() q) async {
+    Future<List<Map<String, dynamic>>> safe(
+        Future<Object?> Function() q) async {
       try {
         return rowsOf(await q());
       } catch (_) {
@@ -64,7 +69,10 @@ class Flat360Service {
           .gte('created_at', cutoff)
           .order('created_at', ascending: false)
           .limit(100)),
-      safe(() => db.from('maintenance_charges').select('id, title').eq('society_id', societyId)),
+      safe(() => db
+          .from('maintenance_charges')
+          .select('id, title')
+          .eq('society_id', societyId)),
       safe(() => db
           .from('support_tickets')
           .select('id, ticket_number, message, status, created_at')
@@ -75,7 +83,8 @@ class Flat360Service {
           .limit(30)),
       safe(() => db
           .from('parking_spaces')
-          .select('id, space_number, space_type, floor_level, allocated_vehicle_number')
+          .select(
+              'id, space_number, space_type, floor_level, allocated_vehicle_number')
           .eq('society_id', societyId)
           .or('allocated_flat_id.eq.$flatId,allocated_flat_number.eq.$flatNumber')),
       safe(() => db
@@ -90,14 +99,16 @@ class Flat360Service {
           .limit(40)),
       safe(() => db
           .from('notifications')
-          .select('id, title, message, type, target_type, target_id, created_at')
+          .select(
+              'id, title, message, type, target_type, target_id, created_at')
           .eq('society_id', societyId)
           .gte('created_at', cutoff)
           .order('created_at', ascending: false)
           .limit(80)),
       safe(() => db
           .from('event_contributions')
-          .select('id, amount, payment_method, created_at, verified_at, events!inner(id, title, society_id)')
+          .select(
+              'id, amount, payment_method, created_at, verified_at, events!inner(id, title, society_id)')
           .eq('events.society_id', societyId)
           .or('flat_id.eq.$flatId,flat_number.eq.$flatNumber')
           .gte('created_at', cutoff)
@@ -158,7 +169,8 @@ Flat360Profile assembleFlat360Profile({
 }) {
   final flatNumber = params.flatNumber;
   final chargeTitleById = <String, String>{
-    for (final c in charges) '${c['id']}': (c['title'] ?? 'Maintenance').toString(),
+    for (final c in charges)
+      '${c['id']}': (c['title'] ?? 'Maintenance').toString(),
   };
 
   final memberList = [
@@ -196,11 +208,16 @@ Flat360Profile assembleFlat360Profile({
     }
   }
 
-  final openTickets = tickets.where((t) => '${t['status']}'.toLowerCase() == 'pending').length;
+  final openTickets =
+      tickets.where((t) => '${t['status']}'.toLowerCase() == 'pending').length;
 
-  final meetingsAttended = attendees.where((a) => a['is_present'] == true).length;
-  final meetingsTotal = attendees.map((a) => '${a['meeting_id']}').toSet().length;
-  final attendancePct = meetingsTotal > 0 ? ((meetingsAttended / meetingsTotal) * 100).round() : 0;
+  final meetingsAttended =
+      attendees.where((a) => a['is_present'] == true).length;
+  final meetingsTotal =
+      attendees.map((a) => '${a['meeting_id']}').toSet().length;
+  final attendancePct = meetingsTotal > 0
+      ? ((meetingsAttended / meetingsTotal) * 100).round()
+      : 0;
 
   final summary = Flat360Summary(
     verifiedPaid12m: verifiedPaid12m,
@@ -223,7 +240,8 @@ Flat360Profile assembleFlat360Profile({
       kind: Flat360TimelineKind.payment,
       at: '${_str(p['payment_date']) ?? p['created_at']}',
       title: chargeTitle,
-      detail: '${paymentStatusLabel(status)} · ${paymentMethodLabel(_str(p['payment_method']))}',
+      detail:
+          '${paymentStatusLabel(status)} · ${paymentMethodLabel(_str(p['payment_method']))}',
       status: status,
       amount: asDouble(p['amount']),
     ));
@@ -241,7 +259,8 @@ Flat360Profile assembleFlat360Profile({
         flatNumber: flatNumber,
       );
       if (!visible) continue;
-    } else if (!notificationVisibleForFlatAdmin(targetType: targetType, targetId: targetId, flatNumber: flatNumber)) {
+    } else if (!notificationVisibleForFlatAdmin(
+        targetType: targetType, targetId: targetId, flatNumber: flatNumber)) {
       continue;
     }
     items.add(Flat360TimelineItem(
@@ -297,7 +316,9 @@ Flat360Profile assembleFlat360Profile({
       kind: Flat360TimelineKind.visitor,
       at: '${_str(v['entry_time']) ?? v['created_at']}',
       title: (v['name'] ?? 'Visitor').toString(),
-      detail: [_str(v['category']), _str(v['purpose'])].whereType<String>().join(' · '),
+      detail: [_str(v['category']), _str(v['purpose'])]
+          .whereType<String>()
+          .join(' · '),
     ));
   }
 

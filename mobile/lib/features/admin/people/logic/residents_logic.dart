@@ -5,7 +5,8 @@ import '../data/people_models.dart';
 /// Pure rules of web `src/components/AdminResidentManager.tsx` (search, member form
 /// validation, primary-member decision, payloads, login sync planning).
 
-String _joinTruthy(Iterable<String?> parts) => parts.where((p) => p != null && p.isNotEmpty).cast<String>().join(' ');
+String _joinTruthy(Iterable<String?> parts) =>
+    parts.where((p) => p != null && p.isNotEmpty).cast<String>().join(' ');
 
 /// Residents list search — web `filteredFlats` (flat no., owner name/phone, member name/phone/WA/email/relation).
 List<PeopleFlat> filterAdminFlats({
@@ -18,7 +19,8 @@ List<PeopleFlat> filterAdminFlats({
   return flats.where((f) {
     final flatMembers = membersByFlat[f.id] ?? const [];
     final memberHay = flatMembers
-        .map((m) => _joinTruthy([m.name, m.phone, m.whatsappPhone, m.email, m.relation]))
+        .map((m) => _joinTruthy(
+            [m.name, m.phone, m.whatsappPhone, m.email, m.relation]))
         .join(' ')
         .toLowerCase();
     return f.flatNumber.toLowerCase().contains(q) ||
@@ -32,15 +34,21 @@ List<PeopleFlat> filterAdminFlats({
 List<PeopleMember> adminNameHits(List<PeopleMember> flatMembers, String query) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return const [];
-  return flatMembers.where((m) => _joinTruthy([m.name, m.phone, m.relation]).toLowerCase().contains(q)).toList();
+  return flatMembers
+      .where((m) =>
+          _joinTruthy([m.name, m.phone, m.relation]).toLowerCase().contains(q))
+      .toList();
 }
 
 /// Validation failures of the member form (web toasts).
 enum MemberFormIssue {
   nameRequired('Name is required', 'नाम आवश्यक है'),
-  relationRequired('Please select a relation or role', 'कृपया संबंध या भूमिका चुनें'),
-  tenantPhotoId('Tenant: at least 1 Photo ID is required', 'किरायेदार: कम से कम 1 फ़ोटो आईडी आवश्यक है'),
-  tenantAgreement('Tenant: rental agreement document is required', 'किरायेदार: किराया अनुबंध दस्तावेज़ आवश्यक है'),
+  relationRequired(
+      'Please select a relation or role', 'कृपया संबंध या भूमिका चुनें'),
+  tenantPhotoId('Tenant: at least 1 Photo ID is required',
+      'किरायेदार: कम से कम 1 फ़ोटो आईडी आवश्यक है'),
+  tenantAgreement('Tenant: rental agreement document is required',
+      'किरायेदार: किराया अनुबंध दस्तावेज़ आवश्यक है'),
   restrictedPhotoId(
     'Photo ID is required for restricted categories (tenant/other/service)',
     'प्रतिबंधित श्रेणियों (किरायेदार/अन्य/सेवा) के लिए फ़ोटो आईडी आवश्यक है',
@@ -53,7 +61,8 @@ enum MemberFormIssue {
 }
 
 /// True when the form must collect ID documents (tenant, other or staff).
-bool memberNeedsDocs(String relation) => isRestrictedMemberCategory(relation) || isTenantRelation(relation);
+bool memberNeedsDocs(String relation) =>
+    isRestrictedMemberCategory(relation) || isTenantRelation(relation);
 
 MemberFormIssue? validateMemberForm({
   required MemberFormState form,
@@ -66,10 +75,13 @@ MemberFormIssue? validateMemberForm({
   final isTenant = isTenantRelation(form.relation);
   if (!memberNeedsDocs(form.relation)) return null;
 
-  final photoIdDocs = docs.where((d) => d.kind == MemberDocKind.photoId && d.front.isNotEmpty);
-  final tenantDocs = docs.where((d) => d.kind == MemberDocKind.tenantDoc && d.front.isNotEmpty);
+  final photoIdDocs =
+      docs.where((d) => d.kind == MemberDocKind.photoId && d.front.isNotEmpty);
+  final tenantDocs = docs
+      .where((d) => d.kind == MemberDocKind.tenantDoc && d.front.isNotEmpty);
   final hasLegacyFront = (editing?.idPhotoFront ?? '').isNotEmpty;
-  final hasAnyPhotoId = photoIdDocs.isNotEmpty || form.idPhotoFront.isNotEmpty || hasLegacyFront;
+  final hasAnyPhotoId =
+      photoIdDocs.isNotEmpty || form.idPhotoFront.isNotEmpty || hasLegacyFront;
   if (isTenant && !hasAnyPhotoId) return MemberFormIssue.tenantPhotoId;
   if (isTenant && tenantDocs.isEmpty) return MemberFormIssue.tenantAgreement;
   if (!isTenant && !hasAnyPhotoId) return MemberFormIssue.restrictedPhotoId;
@@ -77,7 +89,10 @@ MemberFormIssue? validateMemberForm({
 }
 
 /// Web `showPrimaryCheckbox`.
-bool showPrimaryCheckbox({required String relation, required bool primaryExists, required int flatMemberCount}) =>
+bool showPrimaryCheckbox(
+        {required String relation,
+        required bool primaryExists,
+        required int flatMemberCount}) =>
     allowsPrimaryMember(relation) && !primaryExists && flatMemberCount > 0;
 
 /// Web primary decision inside `saveMember`.
@@ -92,14 +107,19 @@ bool decideIsPrimary({
   if (!allowsPrimaryMember(relation)) return false;
   if (previousWasPrimary) return true;
   if (!isEditing && flatMemberCount == 0) return true;
-  if (formIsPrimary && showPrimaryCheckbox(relation: relation, primaryExists: primaryExists, flatMemberCount: flatMemberCount)) {
+  if (formIsPrimary &&
+      showPrimaryCheckbox(
+          relation: relation,
+          primaryExists: primaryExists,
+          flatMemberCount: flatMemberCount)) {
     return true;
   }
   return false;
 }
 
 /// `household_group` stored for a relation.
-String householdGroupForRelation(String relation) => relation.trim().toLowerCase() == 'tenant' ? 'tenant' : 'owner';
+String householdGroupForRelation(String relation) =>
+    relation.trim().toLowerCase() == 'tenant' ? 'tenant' : 'owner';
 
 String? _orNull(String v) => v.isEmpty ? null : v;
 
@@ -133,8 +153,10 @@ Map<String, dynamic> buildMemberPayload({
         break;
       }
     }
-    payload['id_photo_front'] = _orNull(best?.front ?? '') ?? _orNull(form.idPhotoFront);
-    payload['id_photo_back'] = _orNull(best?.back ?? '') ?? _orNull(form.idPhotoBack);
+    payload['id_photo_front'] =
+        _orNull(best?.front ?? '') ?? _orNull(form.idPhotoFront);
+    payload['id_photo_back'] =
+        _orNull(best?.back ?? '') ?? _orNull(form.idPhotoBack);
     payload['police_verification'] = _orNull(form.policeVerification.trim());
     payload['spouse_name'] = _orNull(form.spouseName.trim());
     payload['date_joining'] = _orNull(form.dateJoining);
@@ -151,7 +173,9 @@ Map<String, dynamic> buildMemberPayload({
 }
 
 /// `member_documents` rows to insert (documents with a type and at least one image).
-List<Map<String, dynamic>> memberDocumentRows(String memberId, List<MemberDocDraft> docs) => [
+List<Map<String, dynamic>> memberDocumentRows(
+        String memberId, List<MemberDocDraft> docs) =>
+    [
       for (final d in docs)
         if (d.type.isNotEmpty && (d.front.isNotEmpty || d.back.isNotEmpty))
           {
@@ -182,7 +206,8 @@ Map<String, dynamic>? staffVehicleRow({
     'flat_number': flatNumber,
     'resident_name': residentName,
     'vehicle_number': num.isEmpty ? 'N/A' : num,
-    'vehicle_type': form.vehicleCategory.isEmpty ? 'other' : form.vehicleCategory,
+    'vehicle_type':
+        form.vehicleCategory.isEmpty ? 'other' : form.vehicleCategory,
     'vehicle_display_name': _orNull(form.vehicleName.trim()),
     'vehicle_color': _orNull(form.vehicleColor.trim()),
     'member_id': memberId,
@@ -204,7 +229,9 @@ List<Map<String, dynamic>> planNewResidentLogins({
   }).toList();
   if (withPhone.isEmpty) return const [];
   final existingPhones = existingUsers.map((u) => '${u['phone']}').toSet();
-  final password = existingUsers.isNotEmpty ? '${existingUsers.first['password']}' : newPassword();
+  final password = existingUsers.isNotEmpty
+      ? '${existingUsers.first['password']}'
+      : newPassword();
   return [
     for (final m in withPhone)
       if (!existingPhones.contains('${m['phone']}'))
@@ -294,8 +321,9 @@ String defaultDocType(MemberDocKind kind) => switch (kind) {
     };
 
 /// CSS `capitalize`: first letter of every word upper-cased.
-String capitalizeWords(String s) =>
-    s.replaceAllMapped(RegExp(r'(^|[\s\-_/(])(\p{L})', unicode: true), (m) => '${m[1]}${m[2]!.toUpperCase()}');
+String capitalizeWords(String s) => s.replaceAllMapped(
+    RegExp(r'(^|[\s\-_/(])(\p{L})', unicode: true),
+    (m) => '${m[1]}${m[2]!.toUpperCase()}');
 
 /// Member subtitle line of the residents list (web `relation · 34y · Male · 📱… · WA … · email`).
 String memberDetailLine(PeopleMember m, {bool includeLoginPhone = true}) {

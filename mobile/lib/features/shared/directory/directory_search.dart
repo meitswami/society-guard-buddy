@@ -3,9 +3,11 @@ import 'directory_models.dart';
 /// Pure search / grouping rules of web `src/pages/DirectoryPage.tsx` and the resident
 /// directory tab of `src/pages/ResidentDashboard.tsx`.
 
-String _joinTruthy(Iterable<String?> parts) => parts.where((p) => p != null && p.isNotEmpty).cast<String>().join(' ');
+String _joinTruthy(Iterable<String?> parts) =>
+    parts.where((p) => p != null && p.isNotEmpty).cast<String>().join(' ');
 
-Map<String, List<PeopleMember>> membersByFlatId(Iterable<PeopleMember> members) {
+Map<String, List<PeopleMember>> membersByFlatId(
+    Iterable<PeopleMember> members) {
   final map = <String, List<PeopleMember>>{};
   for (final m in members) {
     (map[m.flatId] ??= []).add(m);
@@ -13,7 +15,8 @@ Map<String, List<PeopleMember>> membersByFlatId(Iterable<PeopleMember> members) 
   return map;
 }
 
-Map<String, List<PeopleVehicle>> vehiclesByFlatNumber(Iterable<PeopleVehicle> vehicles) {
+Map<String, List<PeopleVehicle>> vehiclesByFlatNumber(
+    Iterable<PeopleVehicle> vehicles) {
   final map = <String, List<PeopleVehicle>>{};
   for (final v in vehicles) {
     (map[v.flatNumber] ??= []).add(v);
@@ -34,9 +37,20 @@ List<PeopleFlat> filterDirectoryFlats({
     final flatMembers = membersByFlat[f.id] ?? const [];
     final flatVehicles = vehiclesByFlat[f.flatNumber] ?? const [];
     final memberText = flatMembers
-        .map((m) => _joinTruthy([m.name, m.phone, m.whatsappPhone, m.email, m.relation, m.age?.toString() ?? '', m.gender]))
+        .map((m) => _joinTruthy([
+              m.name,
+              m.phone,
+              m.whatsappPhone,
+              m.email,
+              m.relation,
+              m.age?.toString() ?? '',
+              m.gender
+            ]))
         .join(' ');
-    final vehicleText = flatVehicles.map((v) => _joinTruthy([v.vehicleNumber, v.vehicleType, v.residentName])).join(' ');
+    final vehicleText = flatVehicles
+        .map((v) =>
+            _joinTruthy([v.vehicleNumber, v.vehicleType, v.residentName]))
+        .join(' ');
     final haystack = [
       f.flatNumber,
       f.ownerName ?? '',
@@ -53,11 +67,15 @@ List<PeopleFlat> filterDirectoryFlats({
 
 /// When searching by name, surface matching people (with photos) on the flat row
 /// (guard / admin directory: name, phone, WhatsApp, email, relation).
-List<PeopleMember> directoryNameHits(List<PeopleMember> flatMembers, String query) {
+List<PeopleMember> directoryNameHits(
+    List<PeopleMember> flatMembers, String query) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return const [];
   return flatMembers
-      .where((m) => _joinTruthy([m.name, m.phone, m.whatsappPhone, m.email, m.relation]).toLowerCase().contains(q))
+      .where((m) =>
+          _joinTruthy([m.name, m.phone, m.whatsappPhone, m.email, m.relation])
+              .toLowerCase()
+              .contains(q))
       .toList();
 }
 
@@ -74,11 +92,15 @@ List<PeopleFlat> filterResidentDirectoryFlats({
     final flatMembers = membersByFlat[f.id] ?? const [];
     final flatVehicles = vehiclesByFlat[f.flatNumber] ?? const [];
     final memberText = flatMembers
-        .map((m) => _joinTruthy([m.name, m.phone, m.relation, m.age?.toString() ?? '', m.gender]))
+        .map((m) => _joinTruthy(
+            [m.name, m.phone, m.relation, m.age?.toString() ?? '', m.gender]))
         .join(' ')
         .toLowerCase();
-    final vehicleText =
-        flatVehicles.map((v) => _joinTruthy([v.vehicleNumber, v.vehicleType, v.residentName])).join(' ').toLowerCase();
+    final vehicleText = flatVehicles
+        .map((v) =>
+            _joinTruthy([v.vehicleNumber, v.vehicleType, v.residentName]))
+        .join(' ')
+        .toLowerCase();
     final haystack = [
       f.flatNumber,
       f.ownerName ?? '',
@@ -93,24 +115,32 @@ List<PeopleFlat> filterResidentDirectoryFlats({
 }
 
 /// Resident directory name hits (name, phone, relation).
-List<PeopleMember> residentNameHits(List<PeopleMember> flatMembers, String query) {
+List<PeopleMember> residentNameHits(
+    List<PeopleMember> flatMembers, String query) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return const [];
-  return flatMembers.where((m) => _joinTruthy([m.name, m.phone, m.relation]).toLowerCase().contains(q)).toList();
+  return flatMembers
+      .where((m) =>
+          _joinTruthy([m.name, m.phone, m.relation]).toLowerCase().contains(q))
+      .toList();
 }
 
 /// Web `visitorDirectory`: one entry per phone with latest visit, total visits and first visit,
 /// newest first.
-List<VisitorDirectoryEntry> buildVisitorDirectory(List<DirectoryVisitor> visitors) {
+List<VisitorDirectoryEntry> buildVisitorDirectory(
+    List<DirectoryVisitor> visitors) {
   final byPhone = <String, VisitorDirectoryEntry>{};
   for (final v in visitors) {
     final existing = byPhone[v.phone];
     if (existing != null) {
       existing.totalVisits++;
-      if (v.entryTime.compareTo(existing.latest.entryTime) > 0) existing.latest = v;
-      if (v.entryTime.compareTo(existing.firstVisit) < 0) existing.firstVisit = v.entryTime;
+      if (v.entryTime.compareTo(existing.latest.entryTime) > 0)
+        existing.latest = v;
+      if (v.entryTime.compareTo(existing.firstVisit) < 0)
+        existing.firstVisit = v.entryTime;
     } else {
-      byPhone[v.phone] = VisitorDirectoryEntry(latest: v, totalVisits: 1, firstVisit: v.entryTime);
+      byPhone[v.phone] = VisitorDirectoryEntry(
+          latest: v, totalVisits: 1, firstVisit: v.entryTime);
     }
   }
   final list = byPhone.values.toList();
@@ -124,7 +154,8 @@ List<VisitorDirectoryEntry> buildVisitorDirectory(List<DirectoryVisitor> visitor
 }
 
 /// Web `filteredVisitors`.
-List<VisitorDirectoryEntry> filterVisitorDirectory(List<VisitorDirectoryEntry> entries, String query) {
+List<VisitorDirectoryEntry> filterVisitorDirectory(
+    List<VisitorDirectoryEntry> entries, String query) {
   if (query.trim().isEmpty) return entries;
   final q = query.toLowerCase();
   return entries.where((e) {
@@ -161,5 +192,6 @@ int compareFlatNumbers(String a, String b) {
   return a.compareTo(b);
 }
 
-List<T> sortByFlatNumber<T>(List<T> items, String Function(T) flatNumberOf) =>
-    [...items]..sort((a, b) => compareFlatNumbers(flatNumberOf(a), flatNumberOf(b)));
+List<T> sortByFlatNumber<T>(List<T> items, String Function(T) flatNumberOf) => [
+      ...items
+    ]..sort((a, b) => compareFlatNumbers(flatNumberOf(a), flatNumberOf(b)));

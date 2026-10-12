@@ -44,7 +44,12 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
 
   void _toggle(String fn) {
     final on = widget.selected.contains(fn);
-    widget.onChanged(on ? [for (final x in widget.selected) if (x != fn) x] : [...widget.selected, fn]);
+    widget.onChanged(on
+        ? [
+            for (final x in widget.selected)
+              if (x != fn) x
+          ]
+        : [...widget.selected, fn]);
   }
 
   void _selectAllFiltered(List<FlatOption> filtered) {
@@ -57,7 +62,10 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
 
   void _clearFiltered(List<FlatOption> filtered) {
     final nums = {for (final f in filtered) f.flatNumber};
-    widget.onChanged([for (final x in widget.selected) if (!nums.contains(x)) x]);
+    widget.onChanged([
+      for (final x in widget.selected)
+        if (!nums.contains(x)) x
+    ]);
   }
 
   @override
@@ -138,16 +146,19 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(f.flatNumber, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.mono(context, size: 12, weight: FontWeight.w600, color: fg)),
-                              if (on && badge != null)
-                                Text(badge, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: fg)),
+                              Text(f.flatNumber,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppText.mono(context, size: 12, weight: FontWeight.w600, color: fg)),
+                              if (on && badge != null) Text(badge, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: fg)),
                               if (f.subtitle != null)
                                 Text(
                                   f.subtitle!,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 9, height: 1.15, color: on ? AppTokens.tint(t.primaryForeground, 0.9) : t.mutedForeground),
+                                  style: TextStyle(
+                                      fontSize: 9, height: 1.15, color: on ? AppTokens.tint(t.primaryForeground, 0.9) : t.mutedForeground),
                                 ),
                             ],
                           ),
@@ -174,7 +185,8 @@ class _MiniLink extends StatelessWidget {
         onTap: onTap,
         child: Text(
           text,
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color, decoration: TextDecoration.underline, decorationColor: color),
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w500, color: color, decoration: TextDecoration.underline, decorationColor: color),
         ),
       );
 }

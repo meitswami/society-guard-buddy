@@ -64,14 +64,16 @@ class _BiometricEnrollmentPromptState extends State<BiometricEnrollmentPrompt> {
 
     try {
       await login.enrollFromSession(widget.session);
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.t('biometric.registered'),
             tone: BadgeTone.success);
+      }
     } on BiometricLoginFailure catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(
             context, '${context.t('biometric.registerFailed')}: ${e.message}',
             tone: BadgeTone.alert);
+      }
     }
   }
 

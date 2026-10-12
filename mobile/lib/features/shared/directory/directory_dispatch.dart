@@ -26,13 +26,16 @@ class DirectoryDispatchChannels {
 
 /// `{ type: 'all' } | { type: 'flat', flatNumbers } | { type: 'user', residentUserIds }`.
 class DirectoryDispatchTarget {
-  const DirectoryDispatchTarget._(this.type, this.flatNumbers, this.residentUserIds);
+  const DirectoryDispatchTarget._(
+      this.type, this.flatNumbers, this.residentUserIds);
 
   const DirectoryDispatchTarget.all() : this._('all', const [], const []);
 
-  const DirectoryDispatchTarget.flats(List<String> flatNumbers) : this._('flat', flatNumbers, const []);
+  const DirectoryDispatchTarget.flats(List<String> flatNumbers)
+      : this._('flat', flatNumbers, const []);
 
-  const DirectoryDispatchTarget.users(List<String> residentUserIds) : this._('user', const [], residentUserIds);
+  const DirectoryDispatchTarget.users(List<String> residentUserIds)
+      : this._('user', const [], residentUserIds);
 
   final String type;
   final List<String> flatNumbers;
@@ -62,13 +65,17 @@ class DirectoryDispatchResult {
   final bool? emailConfigured;
   final String? skipped;
 
-  factory DirectoryDispatchResult.fromJson(Map<String, dynamic> j) => DirectoryDispatchResult(
+  factory DirectoryDispatchResult.fromJson(Map<String, dynamic> j) =>
+      DirectoryDispatchResult(
         whatsappSent: asInt(j['whatsapp_sent']),
         whatsappFailed: asInt(j['whatsapp_failed']),
         emailSent: asInt(j['email_sent']),
         emailFailed: asInt(j['email_failed']),
-        whatsappRecipients: j['whatsapp_recipients'] == null ? null : asInt(j['whatsapp_recipients']),
-        emailRecipients: j['email_recipients'] == null ? null : asInt(j['email_recipients']),
+        whatsappRecipients: j['whatsapp_recipients'] == null
+            ? null
+            : asInt(j['whatsapp_recipients']),
+        emailRecipients:
+            j['email_recipients'] == null ? null : asInt(j['email_recipients']),
         whatsappConfigured: j['whatsapp_configured'] as bool?,
         emailConfigured: j['email_configured'] as bool?,
         skipped: j['skipped']?.toString(),
@@ -90,8 +97,10 @@ Map<String, dynamic> directoryDispatchBody({
       'message': message,
       'channels': {'whatsapp': channels.whatsapp, 'email': channels.email},
       'target_type': target.type,
-      'target_flat_numbers': target.type == 'flat' ? target.flatNumbers : const <String>[],
-      'target_ids': target.type == 'user' ? target.residentUserIds : const <String>[],
+      'target_flat_numbers':
+          target.type == 'flat' ? target.flatNumbers : const <String>[],
+      'target_ids':
+          target.type == 'user' ? target.residentUserIds : const <String>[],
       'image_url': imageUrl,
     };
 

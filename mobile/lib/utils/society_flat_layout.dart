@@ -55,7 +55,9 @@ class SocietyFlatRangeInput {
     final blocks = row['block_names'];
     final floors = row['total_floors'];
     return SocietyFlatRangeInput(
-      totalFloors: floors is int ? floors : (floors is num ? floors.toInt() : int.tryParse('${floors ?? ''}')),
+      totalFloors: floors is int
+          ? floors
+          : (floors is num ? floors.toInt() : int.tryParse('${floors ?? ''}')),
       flatSeriesStart: row['flat_series_start']?.toString(),
       flatSeriesEnd: row['flat_series_end']?.toString(),
       blockNames: blocks is List ? blocks.map((e) => '$e').toList() : null,
@@ -89,7 +91,8 @@ class BuiltFlatRange {
   final int maxTrimUnit;
 
   /// Flat numbers sorted numerically (`parseInt(a) - parseInt(b)`).
-  List<String> get sortedNumbers => valid.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+  List<String> get sortedNumbers =>
+      valid.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
 }
 
 /// Builds the set of valid flat numbers (e.g. 101–105 on tier 1, 201–205 on tier 2, …).
@@ -133,14 +136,18 @@ BuiltFlatRange? buildValidFlatNumberSet({
 
 bool _wingAllowedForTrim(String? wing, List<String>? blockNames) {
   if (blockNames == null || blockNames.isEmpty) return true;
-  final set = blockNames.map((b) => b.trim().toLowerCase()).where((b) => b.isNotEmpty).toSet();
+  final set = blockNames
+      .map((b) => b.trim().toLowerCase())
+      .where((b) => b.isNotEmpty)
+      .toSet();
   final w = (wing ?? '').trim().toLowerCase();
   if (w.isNotEmpty && set.contains(w)) return true;
   if (w.isEmpty && set.length == 1) return true;
   return false;
 }
 
-bool _isResidentialFlatType(String? flatType) => (flatType ?? 'residential') == 'residential';
+bool _isResidentialFlatType(String? flatType) =>
+    (flatType ?? 'residential') == 'residential';
 
 /// True if this flat row should be removed: on a configured tier, unit looks like a mistaken
 /// extra in the same band (e.g. 106 when range is 101–105), but not odd numbers like shop 150.
@@ -163,7 +170,8 @@ bool flatRowShouldTrim({
   if (range.valid.contains('$n')) return false;
 
   final floorPrefix = (n / 100).floor();
-  if (floorPrefix < range.floorBase || floorPrefix > range.floorBase + range.floors - 1) {
+  if (floorPrefix < range.floorBase ||
+      floorPrefix > range.floorBase + range.floors - 1) {
     return false;
   }
 
@@ -194,7 +202,10 @@ BuiltFlatRange? layoutFromSocietyRow(Map<String, dynamic> row) =>
 /// Wings to generate for (`block_names` upper-cased, or a single tower `null`).
 List<String?> layoutWings(List<String>? blockNames) {
   if (blockNames != null && blockNames.isNotEmpty) {
-    return blockNames.map((w) => w.trim().toUpperCase()).where((w) => w.isNotEmpty).toList();
+    return blockNames
+        .map((w) => w.trim().toUpperCase())
+        .where((w) => w.isNotEmpty)
+        .toList();
   }
   return const [null];
 }
@@ -209,7 +220,8 @@ class ExistingFlatKey {
 
 /// Result of [planFlatsFromLayout] — rows to insert, skipped count, or an error message.
 class FlatGenerationPlan {
-  const FlatGenerationPlan({required this.rows, required this.skipped, this.error});
+  const FlatGenerationPlan(
+      {required this.rows, required this.skipped, this.error});
 
   final List<Map<String, dynamic>> rows;
   final int skipped;
@@ -228,10 +240,14 @@ FlatGenerationPlan planFlatsFromLayout({
   required SocietyFlatRangeInput row,
   required List<ExistingFlatKey> existing,
 }) {
-  if (societyId.isEmpty) return const FlatGenerationPlan(rows: [], skipped: 0, error: 'Missing society id');
+  if (societyId.isEmpty)
+    return const FlatGenerationPlan(
+        rows: [], skipped: 0, error: 'Missing society id');
 
   final range = canTrimFlatsFromSocietyRow(row);
-  if (range == null) return const FlatGenerationPlan(rows: [], skipped: 0, error: kInvalidLayoutError);
+  if (range == null)
+    return const FlatGenerationPlan(
+        rows: [], skipped: 0, error: kInvalidLayoutError);
 
   final wings = layoutWings(row.blockNames);
   final sortedNumbers = range.sortedNumbers;
@@ -242,8 +258,10 @@ FlatGenerationPlan planFlatsFromLayout({
   final hasExistingUnwinged = existing.any((r) => wingKey(r.wing).isEmpty);
   final wantsWinged = wings.any((w) => wingKey(w).isNotEmpty);
   final wantsUnwinged = wings.any((w) => wingKey(w).isEmpty);
-  if ((hasExistingWinged && wantsUnwinged) || (hasExistingUnwinged && wantsWinged)) {
-    return const FlatGenerationPlan(rows: [], skipped: 0, error: kWingModeConflictError);
+  if ((hasExistingWinged && wantsUnwinged) ||
+      (hasExistingUnwinged && wantsWinged)) {
+    return const FlatGenerationPlan(
+        rows: [], skipped: 0, error: kWingModeConflictError);
   }
 
   final taken = <String>{};
@@ -277,5 +295,8 @@ FlatGenerationPlan planFlatsFromLayout({
 }
 
 /// Parse a blocks CSV the same way as the superadmin form (`split(/[,;]+/)`).
-List<String> parseBlockNamesCsv(String csv) =>
-    csv.split(RegExp(r'[,;]+')).map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
+List<String> parseBlockNamesCsv(String csv) => csv
+    .split(RegExp(r'[,;]+'))
+    .map((x) => x.trim())
+    .where((x) => x.isNotEmpty)
+    .toList();

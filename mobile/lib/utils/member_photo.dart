@@ -24,7 +24,8 @@ Uint8List? dataUrlBytes(String? value) {
 }
 
 /// True for `data:image/...` URLs (photos stored inline in table rows, like the web app).
-bool isDataImageUrl(String? value) => (value ?? '').trim().startsWith('data:image');
+bool isDataImageUrl(String? value) =>
+    (value ?? '').trim().startsWith('data:image');
 
 /// Supports http(s) URLs and data-URL photos stored on `members.photo`.
 ImageProvider? memberPhotoProvider(String? photo) {

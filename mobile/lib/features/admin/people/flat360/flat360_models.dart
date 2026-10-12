@@ -1,7 +1,14 @@
 /// Port of web `src/lib/flat360Types.ts`.
 library;
 
-enum Flat360TimelineKind { payment, notification, ticket, meeting, eventContribution, visitor }
+enum Flat360TimelineKind {
+  payment,
+  notification,
+  ticket,
+  meeting,
+  eventContribution,
+  visitor
+}
 
 class Flat360TimelineItem {
   const Flat360TimelineItem({

@@ -250,8 +250,9 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
       final next = <EmergencyImage>[];
       for (final x in picked) {
         if (x == null) continue;
-        if (fileMediaKind(mimeType: x.mimeType, fileName: x.name) != 'image')
+        if (fileMediaKind(mimeType: x.mimeType, fileName: x.name) != 'image') {
           continue;
+        }
         if (next.length + _total >= kEmergencyMaxPhotos) break;
         next.add(EmergencyImage(
             bytes: await x.readAsBytes(),

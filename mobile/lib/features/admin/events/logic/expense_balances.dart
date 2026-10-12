@@ -50,8 +50,10 @@ Map<String, double> computeFlatBalances({
 }
 
 /// Non-zero balances in the same order the web prints `Object.entries(balances)`.
-List<MapEntry<String, double>> nonZeroBalances(Map<String, double> balances) =>
-    [for (final e in jsObjectEntries(balances)) if (e.value != 0) e];
+List<MapEntry<String, double>> nonZeroBalances(Map<String, double> balances) => [
+      for (final e in jsObjectEntries(balances))
+        if (e.value != 0) e
+    ];
 
 /// `split_type` stored on new expenses.
 String splitTypeFor({required String splitMode, required bool hasSplitFlats}) {

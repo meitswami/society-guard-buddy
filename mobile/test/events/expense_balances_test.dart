@@ -4,8 +4,7 @@ import 'package:kutumbika_mobile/features/admin/events/logic/expense_balances.da
 
 /// `ExpenseSplitter` balances / paid-by parsing parity.
 void main() {
-  ExpenseRow exp(String id, {Object? paidBy, String paidByFlat = '', String split = 'equal_all', String? status}) =>
-      ExpenseRow(
+  ExpenseRow exp(String id, {Object? paidBy, String paidByFlat = '', String split = 'equal_all', String? status}) => ExpenseRow(
         id: id,
         groupId: 'g',
         title: id,
@@ -33,7 +32,9 @@ void main() {
     test('creditors gain each unsettled share; debtors owe it', () {
       final balances = computeFlatBalances(
         flatNumbers: const ['101', '102', '103'],
-        expenses: [exp('e1', paidBy: const ['101'])],
+        expenses: [
+          exp('e1', paidBy: const ['101'])
+        ],
         splits: [sp('e1', '101', 100), sp('e1', '102', 100), sp('e1', '103', 100, settled: true)],
       );
       expect(balances, {'101': 100.0, '102': -100.0, '103': 0.0});
@@ -43,7 +44,9 @@ void main() {
     test('shares are divided between several creditors', () {
       final balances = computeFlatBalances(
         flatNumbers: const ['101', '102', '103'],
-        expenses: [exp('e1', paidBy: const ['101', '102'])],
+        expenses: [
+          exp('e1', paidBy: const ['101', '102'])
+        ],
         splits: [sp('e1', '101', 50), sp('e1', '102', 50), sp('e1', '103', 50)],
       );
       expect(balances, {'101': 25.0, '102': 25.0, '103': -50.0});
@@ -65,7 +68,9 @@ void main() {
     test('flats outside the society list are appended (JS object semantics)', () {
       final balances = computeFlatBalances(
         flatNumbers: const ['B-1'],
-        expenses: [exp('e', paidBy: const ['B-1'])],
+        expenses: [
+          exp('e', paidBy: const ['B-1'])
+        ],
         splits: [sp('e', 'Z-9', 30)],
       );
       expect(balances.keys.toList(), ['B-1', 'Z-9']);

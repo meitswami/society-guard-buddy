@@ -62,9 +62,7 @@ bool groupMatchesPaymentHeadSearch({
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return true;
   final major = resolveGroupMajorHead(name: name, majorHead: majorHead);
-  return name.toLowerCase().contains(q) ||
-      major.toLowerCase().contains(q) ||
-      (description ?? '').toLowerCase().contains(q);
+  return name.toLowerCase().contains(q) || major.toLowerCase().contains(q) || (description ?? '').toLowerCase().contains(q);
 }
 
 /// Groups by resolved major head, each list sorted by name (web `paymentGroupsByMajorHead`).

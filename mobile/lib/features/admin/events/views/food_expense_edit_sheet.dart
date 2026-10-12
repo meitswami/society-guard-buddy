@@ -92,13 +92,14 @@ class _FoodExpenseEditSheetState extends State<FoodExpenseEditSheet> {
     }
     final all = [..._attachments];
     if (_newFiles.isNotEmpty) {
-      setState(() => _uploading = true);
       for (final f in _newFiles) {
         if (f.size > EventsStorage.maxBytes) {
           evToast(context, context.ev('evc.fileTooLarge', {'name': f.name}), tone: BadgeTone.alert);
-          setState(() => _uploading = false);
           return;
         }
+      }
+      setState(() => _uploading = true);
+      for (final f in _newFiles) {
         try {
           all.add(await EventsStorage.uploadExpenseBill(_groupId, f));
         } catch (e) {
@@ -188,7 +189,8 @@ class _FoodExpenseEditSheetState extends State<FoodExpenseEditSheet> {
           EvColumn(
             spacing: 12,
             children: [
-              AppTextField(key: ValueKey('fem-title-$_v'), hint: context.ev('fem.billTitle'), initialValue: _title, onChanged: (v) => _title = v),
+              AppTextField(
+                  key: ValueKey('fem-title-$_v'), hint: context.ev('fem.billTitle'), initialValue: _title, onChanged: (v) => _title = v),
               AppTextField(
                 key: ValueKey('fem-total-$_v'),
                 hint: context.ev('evc.totalRs'),
@@ -196,7 +198,11 @@ class _FoodExpenseEditSheetState extends State<FoodExpenseEditSheet> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (v) => _total = v,
               ),
-              AppTextField(key: ValueKey('fem-vendor-$_v'), hint: context.ev('spl.vendor.food'), initialValue: _vendor, onChanged: (v) => _vendor = v),
+              AppTextField(
+                  key: ValueKey('fem-vendor-$_v'),
+                  hint: context.ev('spl.vendor.food'),
+                  initialValue: _vendor,
+                  onChanged: (v) => _vendor = v),
               EvDateField(label: context.ev('fem.billDate'), value: _expenseDate, onChanged: (v) => setState(() => _expenseDate = v)),
               EvHint(context.ev('evc.recordedOn', {'date': _recordingDate.isNotEmpty ? fmtIsoDateToDisplay(_recordingDate) : '—'})),
               AppDropdown<String>(
@@ -219,7 +225,8 @@ class _FoodExpenseEditSheetState extends State<FoodExpenseEditSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Row(
                     children: [
-                      Expanded(child: EvLink(attachmentFileName(_attachments[i]), size: 11, onTap: () => openEvUrl(context, _attachments[i]))),
+                      Expanded(
+                          child: EvLink(attachmentFileName(_attachments[i]), size: 11, onTap: () => openEvUrl(context, _attachments[i]))),
                       InkWell(
                         onTap: () => setState(() => _attachments = [..._attachments]..removeAt(i)),
                         child: Icon(Icons.close, size: 16, color: t.destructive),

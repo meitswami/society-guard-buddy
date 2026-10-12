@@ -216,7 +216,12 @@ class DirectoryVisitor {
       phone: '${v['phone'] ?? ''}',
       flatNumber: '${v['flat_number'] ?? ''}',
       entryTime: '${v['entry_time'] ?? ''}',
-      visitorPhotos: photos is List ? photos.whereType<String>().where((p) => p.trim().isNotEmpty).toList() : const [],
+      visitorPhotos: photos is List
+          ? photos
+              .whereType<String>()
+              .where((p) => p.trim().isNotEmpty)
+              .toList()
+          : const [],
       category: '${v['category'] ?? ''}',
       documentType: '${v['document_type'] ?? ''}',
       documentNumber: '${v['document_number'] ?? ''}',
@@ -228,7 +233,10 @@ class DirectoryVisitor {
 
 /// One entry of the visitor directory (grouped by phone).
 class VisitorDirectoryEntry {
-  VisitorDirectoryEntry({required this.latest, required this.totalVisits, required this.firstVisit});
+  VisitorDirectoryEntry(
+      {required this.latest,
+      required this.totalVisits,
+      required this.firstVisit});
 
   DirectoryVisitor latest;
   int totalVisits;

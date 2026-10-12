@@ -200,7 +200,8 @@ class _AdminDonationsModuleState extends State<AdminDonationsModule> {
     if (q.isEmpty) return true;
     return c.title.toLowerCase().contains(q) ||
         (c.description ?? '').toLowerCase().contains(q) ||
-        _data.donations.any((d) => d.campaignId == c.id && (d.flatNumber.toLowerCase().contains(q) || (d.residentName ?? '').toLowerCase().contains(q)));
+        _data.donations.any(
+            (d) => d.campaignId == c.id && (d.flatNumber.toLowerCase().contains(q) || (d.residentName ?? '').toLowerCase().contains(q)));
   }
 
   String _presetLabel(BuildContext context, String title) {
@@ -264,7 +265,7 @@ class _AdminDonationsModuleState extends State<AdminDonationsModule> {
         children: [
           AppDropdown<String>(
             label: context.ev('don.campaignTitle'),
-            items: ['', ...kDonationCampaignTitles, _customTitle],
+            items: const ['', ...kDonationCampaignTitles, _customTitle],
             value: _titleChoice,
             labelOf: (v) => v.isEmpty
                 ? context.ev('don.selectOccasion')
@@ -278,7 +279,11 @@ class _AdminDonationsModuleState extends State<AdminDonationsModule> {
             }),
           ),
           if (_titleChoice == _customTitle)
-            AppTextField(key: ValueKey('cf-title-$_cfV'), hint: context.ev('don.customTitle'), initialValue: _cfTitle, onChanged: (v) => _cfTitle = v),
+            AppTextField(
+                key: ValueKey('cf-title-$_cfV'),
+                hint: context.ev('don.customTitle'),
+                initialValue: _cfTitle,
+                onChanged: (v) => _cfTitle = v),
           AppTextField(
             key: ValueKey('cf-desc-$_cfV'),
             hint: context.ev('don.description'),
@@ -320,8 +325,7 @@ class _AdminDonationsModuleState extends State<AdminDonationsModule> {
                   children: [
                     Text(c.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                     if ((c.description ?? '').isNotEmpty) Text(c.description!, style: AppText.caption(context)),
-                    if ((c.endDate ?? '').isNotEmpty)
-                      EvHint(context.ev('don.ends', {'date': Fmt.isoToDisplay(c.endDate)})),
+                    if ((c.endDate ?? '').isNotEmpty) EvHint(context.ev('don.ends', {'date': Fmt.isoToDisplay(c.endDate)})),
                   ],
                 ),
               ),
@@ -379,7 +383,12 @@ class _AdminDonationsModuleState extends State<AdminDonationsModule> {
                   onChanged: (v) => setState(() => _dfMethod = v ?? 'cash'),
                 ),
                 if (_dfMethod != 'cash') ...[
-                  AppTextField(key: ValueKey('df-txn-$_dfV'), hint: context.ev('don.txn'), initialValue: _dfTxn, caps: false, onChanged: (v) => _dfTxn = v),
+                  AppTextField(
+                      key: ValueKey('df-txn-$_dfV'),
+                      hint: context.ev('don.txn'),
+                      initialValue: _dfTxn,
+                      caps: false,
+                      onChanged: (v) => _dfTxn = v),
                   AppTextField(
                     key: ValueKey('df-shot-$_dfV'),
                     hint: context.ev('don.screenshotUrl'),

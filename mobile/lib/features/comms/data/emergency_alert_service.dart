@@ -102,8 +102,9 @@ class EmergencyAlertService {
       final kind =
           fileMediaKind(mimeType: img.mimeType, fileName: img.fileName);
       if (kind == null) continue;
-      if (kind == 'image' && img.bytes.length > kMaxNotificationImageBytes)
+      if (kind == 'image' && img.bytes.length > kMaxNotificationImageBytes) {
         continue;
+      }
       final safe = sanitizeStorageFileName(img.fileName);
       final path =
           'emergency/${const Uuid().v4()}/${DateTime.now().millisecondsSinceEpoch}_$safe';
@@ -131,9 +132,10 @@ class EmergencyAlertService {
     String? senderFlatNumber,
     List<EmergencyImage> images = const [],
   }) async {
-    if (!dbReady)
+    if (!dbReady) {
       return const EmergencyAlertResult(
           success: false, error: 'Supabase not configured');
+    }
     try {
       final media = await uploadMedia(images);
       final data = await invokeFunction(

@@ -120,8 +120,9 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
           tone: BadgeTone.success);
       await _load(silent: true);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -174,8 +175,9 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
       await _load(silent: true);
       return true;
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      }
       return false;
     }
   }

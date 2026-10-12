@@ -228,7 +228,12 @@ class _SocietySignupScreenState extends State<SocietySignupScreen> {
             maxWidth: 672,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
             children: [
-              Row(
+              // Web `flex justify-between`: back link + toggles (wraps on narrow phones).
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
                 children: [
                   Material(
                     color: t.card,
@@ -243,17 +248,18 @@ class _SocietySignupScreenState extends State<SocietySignupScreen> {
                           children: [
                             Icon(Icons.arrow_back, size: 16, color: t.mutedForeground),
                             const SizedBox(width: 6),
-                            Text(context.t('login.backToSociety'),
+                            // The key text starts with "← "; the icon already shows the arrow.
+                            Text(context.t('login.backToSociety').replaceFirst(RegExp(r'^←\s*'), ''),
                                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.mutedForeground)),
                           ],
                         ),
                       ),
                     ),
                   ),
-                  const Spacer(),
-                  const LanguageToggle(),
-                  const SizedBox(width: 8),
-                  const ThemeToggle(),
+                  const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [LanguageToggle(), SizedBox(width: 8), ThemeToggle()],
+                  ),
                 ],
               ),
               const SizedBox(height: 24),

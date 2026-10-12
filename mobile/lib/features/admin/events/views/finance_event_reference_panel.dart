@@ -66,7 +66,8 @@ class _FinanceEventReferencePanelState extends State<FinanceEventReferencePanel>
               children: [
                 if (contribs.isNotEmpty || food.isNotEmpty)
                   CashBankBreakdown(
-                    receipts: sumByChannel<EventContributionRef>(contribs, (c) => c.contribution.amount, (c) => c.contribution.paymentMethod),
+                    receipts:
+                        sumByChannel<EventContributionRef>(contribs, (c) => c.contribution.amount, (c) => c.contribution.paymentMethod),
                     payments: sumByChannel<FinanceFoodRefRow>(food, (e) => e.totalAmount, (e) => e.paymentMethod),
                     receiptLabel: context.ev('fer.eventContribs'),
                     paymentLabel: context.ev('efr.foodBills'),
@@ -87,7 +88,9 @@ class _FinanceEventReferencePanelState extends State<FinanceEventReferencePanel>
                               children: [
                                 EvHint(r.eventTitle),
                                 Text(eventContribRefLabel(r.contribution, words),
-                                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                                 Wrap(
                                   spacing: 4,
                                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -97,7 +100,8 @@ class _FinanceEventReferencePanelState extends State<FinanceEventReferencePanel>
                                       '${(r.contribution.splitMode ?? '').isNotEmpty ? ' · ${r.contribution.splitMode!.replaceAll('_', ' ')}' : ''}',
                                     ),
                                     ChannelBadge(method: r.contribution.paymentMethod),
-                                    if ((r.contribution.verifiedAt ?? '').isNotEmpty) EvHint('· ${fmtTimestampDate(r.contribution.verifiedAt)}'),
+                                    if ((r.contribution.verifiedAt ?? '').isNotEmpty)
+                                      EvHint('· ${fmtTimestampDate(r.contribution.verifiedAt)}'),
                                   ],
                                 ),
                                 if ((r.contribution.screenshotUrl ?? '').isNotEmpty)
@@ -124,7 +128,10 @@ class _FinanceEventReferencePanelState extends State<FinanceEventReferencePanel>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 EvHint(ex.eventTitle ?? ex.groupName),
-                                Text(ex.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Text(ex.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                                 Wrap(
                                   spacing: 4,
                                   crossAxisAlignment: WrapCrossAlignment.center,

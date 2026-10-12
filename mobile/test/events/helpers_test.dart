@@ -109,8 +109,7 @@ void main() {
       );
       expect(food.ledgerTitle, 'Event food — Holi 2026');
       expect(food.detailNote, 'Item: Catering');
-      expect(buildGroupExpenseLedgerTitle(expenseCategory: 'food', groupName: 'G', expenseTitle: '').ledgerTitle,
-          'Event food — G');
+      expect(buildGroupExpenseLedgerTitle(expenseCategory: 'food', groupName: 'G', expenseTitle: '').ledgerTitle, 'Event food — G');
       final pay = buildGroupExpenseLedgerTitle(expenseCategory: 'payment', groupName: 'Electricity', expenseTitle: 'electricity');
       expect(pay.ledgerTitle, 'Electricity');
       expect(pay.detailNote, isNull);

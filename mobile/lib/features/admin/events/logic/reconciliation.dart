@@ -143,12 +143,7 @@ List<ReconRow> reconciliationRows({
 
   final rows = [
     for (final r in byEvent.values)
-      if (r.contribIn > 0 ||
-          r.foodOut > 0 ||
-          r.contribs.isNotEmpty ||
-          r.expenses.isNotEmpty ||
-          r.eventAdjustments.isNotEmpty)
-        r,
+      if (r.contribIn > 0 || r.foodOut > 0 || r.contribs.isNotEmpty || r.expenses.isNotEmpty || r.eventAdjustments.isNotEmpty) r,
   ];
   if (unlinked.foodOut > 0 || unlinked.expenses.isNotEmpty) rows.add(unlinked);
   return stableSorted(rows, (a, b) => b.event.eventDate.compareTo(a.event.eventDate));

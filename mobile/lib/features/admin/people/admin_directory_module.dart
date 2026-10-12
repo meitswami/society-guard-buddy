@@ -20,7 +20,9 @@ class AdminDirectoryModule extends StatelessWidget {
       viewerName: ctx.adminName,
       initialQuery: ctx.initialQuery,
       canEditResidents: canEdit,
-      onEditFlat: canEdit ? (flatId) => ctx.goTo(AdminTab.residents, subTab: 'flat:$flatId') : null,
+      onEditFlat: canEdit
+          ? (flatId) => ctx.goTo(AdminTab.residents, subTab: 'flat:$flatId')
+          : null,
     );
   }
 }
