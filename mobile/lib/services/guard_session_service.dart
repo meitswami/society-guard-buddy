@@ -4,6 +4,8 @@ import '../core/supabase/supabase_bootstrap.dart';
 import '../models/guard_session.dart';
 
 class GuardSessionService {
+  /// Inserts the `guard_shifts` row and persists the guard session
+  /// (web `useStore.login` / `establishGuardSession`). Throws on database errors.
   Future<String?> startShift({
     required String societyId,
     required GuardSession guard,
@@ -29,6 +31,21 @@ class GuardSessionService {
       'guardId': guard.guardId,
     });
     return shiftId;
+  }
+
+  /// Web `establishGuardSession`: like [startShift] but resolves to null instead of throwing
+  /// when the shift row could not be created (the login screen then shows
+  /// "Invalid credentials", as on the web).
+  Future<String?> establishGuardSession({
+    required String societyId,
+    required GuardSession guard,
+  }) async {
+    if (societyId.isEmpty) return null;
+    try {
+      return await startShift(societyId: societyId, guard: guard);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<GuardSession?> restoreSession({

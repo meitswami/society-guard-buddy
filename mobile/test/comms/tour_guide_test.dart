@@ -2,6 +2,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kutumbika_mobile/features/comms/tour/tour_guide.dart';
 import 'package:kutumbika_mobile/services/admin_permissions.dart';
 
+/// Permissions with only [on] enabled (uses the constructor so the test does not depend on
+/// the JSON merge rules).
+AdminPanelPermissions only(Set<String> on) => AdminPanelPermissions(
+      residentsRw: on.contains('residents_rw'),
+      guardsRw: on.contains('guards_rw'),
+      geofenceRw: on.contains('geofence_rw'),
+      finance: on.contains('finance'),
+      donations: on.contains('donations'),
+      splits: on.contains('splits'),
+      events: on.contains('events'),
+      meetings: on.contains('meetings'),
+      committee: on.contains('committee'),
+      polls: on.contains('polls'),
+      notifications: on.contains('notifications'),
+      parking: on.contains('parking'),
+      visitor: on.contains('visitor'),
+      delivery: on.contains('delivery'),
+      vehicle: on.contains('vehicle'),
+      blacklist: on.contains('blacklist'),
+      directory: on.contains('directory'),
+      quick: on.contains('quick'),
+      report: on.contains('report'),
+      logs: on.contains('logs'),
+      audit: on.contains('audit'),
+      settings: on.contains('settings'),
+      password: on.contains('password'),
+      biometric: on.contains('biometric'),
+    );
+
 void main() {
   group('storage key (web tourStorageKey)', () {
     test('role + encodeURIComponent(userId)', () {
@@ -32,12 +61,7 @@ void main() {
 
     test('locked-down role keeps welcome and only allowed steps', () {
       // Web NEW_CUSTOM_ROLE_PERMISSIONS: finance, directory, password, biometric only.
-      final p = AdminPanelPermissions.fromJson(const {
-        'finance': true,
-        'directory': true,
-        'password': true,
-        'biometric': true,
-      });
+      final p = only({'finance', 'directory', 'password', 'biometric'});
       final ch = getTourChapters('admin', p);
       expect(ch.map((c) => c.id), ['welcome', 'finance', 'ops', 'security']);
       final finance = ch.firstWhere((c) => c.id == 'finance');
@@ -49,7 +73,7 @@ void main() {
     });
 
     test('splits step is gated by events (fn3 → events)', () {
-      final p = AdminPanelPermissions.fromJson(const {'polls': true});
+      final p = only({'polls'});
       final ch = getTourChapters('admin', p);
       final community = ch.firstWhere((c) => c.id == 'community');
       expect(community.steps.map((s) => s.titleKey), ['tour.admin.cm2.title']);
@@ -58,7 +82,7 @@ void main() {
 
   group('tab permission mapping (web isAdminTabAllowed)', () {
     test('overview / tour always allowed, unknown tabs refused', () {
-      final none = AdminPanelPermissions.fromJson(const {'finance': false});
+      final none = only({});
       expect(tourAdminTabAllowed('overview', none), isTrue);
       expect(tourAdminTabAllowed('tour', none), isTrue);
       expect(tourAdminTabAllowed('guards', none), isFalse);
@@ -66,9 +90,9 @@ void main() {
     });
 
     test('splits allowed by events or splits', () {
-      expect(tourAdminTabAllowed('splits', AdminPanelPermissions.fromJson(const {'events': true})), isTrue);
-      expect(tourAdminTabAllowed('splits', AdminPanelPermissions.fromJson(const {'splits': true})), isTrue);
-      expect(tourAdminTabAllowed('splits', AdminPanelPermissions.fromJson(const {'finance': true})), isFalse);
+      expect(tourAdminTabAllowed('splits', only({'events'})), isTrue);
+      expect(tourAdminTabAllowed('splits', only({'splits'})), isTrue);
+      expect(tourAdminTabAllowed('splits', only({'finance'})), isFalse);
     });
 
     test('step → tab overrides', () {

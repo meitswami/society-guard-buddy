@@ -10,7 +10,7 @@ void main() {
   ];
   final members = [
     PeopleMember.fromJson({'id': 'm1', 'flat_id': 'f1', 'name': 'Ravi Kumar', 'phone': '9811111111', 'relation': 'owner', 'is_primary': true}),
-    PeopleMember.fromJson({'id': 'm2', 'flat_id': 'f2', 'name': 'Anil', 'whatsapp_phone': '9722222222', 'email': 'anil@x.com', 'relation': 'tenant', 'age': 34, 'gender': 'Male'}),
+    PeopleMember.fromJson({'id': 'm2', 'flat_id': 'f2', 'name': 'Anil', 'whatsapp_phone': '9722222222', 'email': 'anil@x.com', 'relation': 'tenant', 'age': 57, 'gender': 'Male'}),
     PeopleMember.fromJson({'id': 'm3', 'flat_id': 'f3', 'name': 'Lakshmi', 'relation': 'maid'}),
   ];
   final vehicles = [
@@ -46,7 +46,7 @@ void main() {
     expect(dir('commercial'), ['102']);
     expect(dir('mh12'), ['201']);
     expect(dir('1st floor'), ['101']);
-    expect(dir('34'), ['102']);
+    expect(dir('57'), ['102']);
     expect(dir('male'), ['102']);
   });
 

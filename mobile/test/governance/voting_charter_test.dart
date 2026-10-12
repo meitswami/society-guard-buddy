@@ -21,7 +21,7 @@ void main() {
     expect(electionProgramSteps.length, 6);
     expect(electionProgramSteps.first.stepKey, 'votingCharter.program.s1.title');
     expect(electionProgramSteps.last.pointKeys, ['votingCharter.docs.p1', 'votingCharter.docs.p3', 'votingCharter.committee.p4']);
-    expect(electionProgramSteps.expand((s) => s.pointKeys).length, 17);
+    expect(electionProgramSteps.expand((s) => s.pointKeys).length, 18);
   });
 
   test('every charter key exists in both languages in the shared translations', () {
