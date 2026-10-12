@@ -10,7 +10,8 @@ enum CommitteeSelectionType {
   nominated('nominated', 'Nominated', 'मनोनीत'),
   runnerUp('runner_up', 'Runner-up (2nd/3rd)', 'उपविजेता (द्वितीय/तृतीय)'),
   voluntary('voluntary', 'Voluntary', 'स्वैच्छिक'),
-  executiveProposed('executive_proposed', 'Executive proposed', 'कार्यकारिणी प्रस्तावित');
+  executiveProposed(
+      'executive_proposed', 'Executive proposed', 'कार्यकारिणी प्रस्तावित');
 
   const CommitteeSelectionType(this.value, this.labelEn, this.labelHi);
 
@@ -29,7 +30,8 @@ enum CommitteeSelectionType {
 }
 
 /// Web `selectionTypeLabel` (`—` for unknown / null).
-String selectionTypeLabel(Object? type, {bool hi = false}) => CommitteeSelectionType.parse(type)?.label(hi) ?? '—';
+String selectionTypeLabel(Object? type, {bool hi = false}) =>
+    CommitteeSelectionType.parse(type)?.label(hi) ?? '—';
 
 /// Row of `committee_members`.
 class CommitteeMemberRow {
@@ -123,7 +125,10 @@ bool committeeIsRepresentative({required String name, String? flatOwnerName}) {
 }
 
 class CommitteeDisplayLabels {
-  const CommitteeDisplayLabels({required this.primaryName, required this.subtitle, required this.isRepresentative});
+  const CommitteeDisplayLabels(
+      {required this.primaryName,
+      required this.subtitle,
+      required this.isRepresentative});
 
   final String primaryName;
   final String? subtitle;
@@ -131,17 +136,25 @@ class CommitteeDisplayLabels {
 }
 
 /// Primary label + optional subtitle for cards and lists (web `committeeDisplayLabels`).
-CommitteeDisplayLabels committeeDisplayLabels(CommitteeMemberRow row, {bool hi = false}) {
-  final isRep = committeeIsRepresentative(name: row.name, flatOwnerName: row.flatOwnerName);
+CommitteeDisplayLabels committeeDisplayLabels(CommitteeMemberRow row,
+    {bool hi = false}) {
+  final isRep = committeeIsRepresentative(
+      name: row.name, flatOwnerName: row.flatOwnerName);
   final owner = (row.flatOwnerName ?? '').trim();
   final holder = row.name.trim();
   final flatLabel = (row.flatNumber != null && row.flatNumber!.isNotEmpty)
       ? (hi ? 'फ्लैट ${row.flatNumber}' : 'Flat ${row.flatNumber}')
       : null;
   if (isRep) {
-    final parts = [flatLabel, if (owner.isNotEmpty) (hi ? 'स्वामी: $owner' : 'Owner: $owner')].whereType<String>();
+    final parts = [
+      flatLabel,
+      if (owner.isNotEmpty) (hi ? 'स्वामी: $owner' : 'Owner: $owner')
+    ].whereType<String>();
     final sub = parts.join(' · ');
-    return CommitteeDisplayLabels(primaryName: holder, subtitle: sub.isEmpty ? null : sub, isRepresentative: true);
+    return CommitteeDisplayLabels(
+        primaryName: holder,
+        subtitle: sub.isEmpty ? null : sub,
+        isRepresentative: true);
   }
   return CommitteeDisplayLabels(
     primaryName: owner.isNotEmpty ? owner : holder,
@@ -151,11 +164,14 @@ CommitteeDisplayLabels committeeDisplayLabels(CommitteeMemberRow row, {bool hi =
 }
 
 /// `from → to` or `from → Until retirement` (web `committeeTenureLabel`).
-String? committeeTenureLabel({String? termFrom, String? termTo, bool hi = false}) {
+String? committeeTenureLabel(
+    {String? termFrom, String? termTo, bool hi = false}) {
   final from = _slice10(termFrom);
   if (from == null) return null;
   final to = _slice10(termTo);
-  return to != null ? '$from → $to' : '$from → ${hi ? 'सेवानिवृत्ति तक' : 'Until retirement'}';
+  return to != null
+      ? '$from → $to'
+      : '$from → ${hi ? 'सेवानिवृत्ति तक' : 'Until retirement'}';
 }
 
 String _pad2(int n) => n.toString().padLeft(2, '0');
@@ -173,13 +189,16 @@ String? latestCommitteeTermFrom(Iterable<String?> termFroms) {
   String? latest;
   for (final f in termFroms) {
     final from = _slice10(f);
-    if (from != null && (latest == null || from.compareTo(latest) > 0)) latest = from;
+    if (from != null && (latest == null || from.compareTo(latest) > 0)) {
+      latest = from;
+    }
   }
   return latest;
 }
 
 /// Latest elected/appointed term is "current", even if term_from is a few days in the future.
-bool isCurrentCommitteeTerm({String? termFrom, String? termTo, String? currentTermFrom}) {
+bool isCurrentCommitteeTerm(
+    {String? termFrom, String? termTo, String? currentTermFrom}) {
   if (currentTermFrom == null) return true;
   final from = _slice10(termFrom);
   if (from != null) return from.compareTo(currentTermFrom) >= 0;
@@ -188,18 +207,28 @@ bool isCurrentCommitteeTerm({String? termFrom, String? termTo, String? currentTe
   return true;
 }
 
-const Set<String> _uniquePosts = {'president', 'vice-president', 'secretary', 'treasurer', 'cultural secretary'};
+const Set<String> _uniquePosts = {
+  'president',
+  'vice-president',
+  'secretary',
+  'treasurer',
+  'cultural secretary'
+};
 
-String _normalizePersonKey(String name) => name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+String _normalizePersonKey(String name) =>
+    name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
 /// Collapse accidental duplicate office-bearers in the same term.
 /// Unique posts keep one row (prefer a closed tenure, then longer name).
-List<CommitteeMemberRow> dedupeCommitteeByPosition(List<CommitteeMemberRow> rows) {
+List<CommitteeMemberRow> dedupeCommitteeByPosition(
+    List<CommitteeMemberRow> rows) {
   final groups = <String, List<CommitteeMemberRow>>{};
   final order = <String>[];
   for (final r in rows) {
     final pos = r.position.trim().toLowerCase();
-    final key = _uniquePosts.contains(pos) ? pos : '$pos|${_normalizePersonKey(r.name)}';
+    final key = _uniquePosts.contains(pos)
+        ? pos
+        : '$pos|${_normalizePersonKey(r.name)}';
     if (!groups.containsKey(key)) order.add(key);
     groups.putIfAbsent(key, () => []).add(r);
   }
@@ -234,7 +263,10 @@ List<CommitteeMemberRow> dedupeCommitteeByPosition(List<CommitteeMemberRow> rows
 }
 
 class CommitteeTermSplit {
-  const CommitteeTermSplit({required this.current, required this.previous, required this.currentTermFrom});
+  const CommitteeTermSplit(
+      {required this.current,
+      required this.previous,
+      required this.currentTermFrom});
 
   final List<CommitteeMemberRow> current;
   final List<CommitteeMemberRow> previous;
@@ -244,11 +276,15 @@ class CommitteeTermSplit {
 /// Split the active roster into current term vs earlier terms ("Previous year").
 CommitteeTermSplit splitCommitteeTerms(List<CommitteeMemberRow> rows) {
   final active = rows.where((r) => r.isActive).toList();
-  final currentTermFrom = latestCommitteeTermFrom(active.map((r) => r.termFrom));
+  final currentTermFrom =
+      latestCommitteeTermFrom(active.map((r) => r.termFrom));
   final current = <CommitteeMemberRow>[];
   final previous = <CommitteeMemberRow>[];
   for (final r in active) {
-    if (isCurrentCommitteeTerm(termFrom: r.termFrom, termTo: r.termTo, currentTermFrom: currentTermFrom)) {
+    if (isCurrentCommitteeTerm(
+        termFrom: r.termFrom,
+        termTo: r.termTo,
+        currentTermFrom: currentTermFrom)) {
       current.add(r);
     } else {
       previous.add(r);
@@ -261,7 +297,9 @@ CommitteeTermSplit splitCommitteeTerms(List<CommitteeMemberRow> rows) {
   );
 }
 
-List<CommitteeMemberRow> currentCommitteeMembers(List<CommitteeMemberRow> rows) => splitCommitteeTerms(rows).current;
+List<CommitteeMemberRow> currentCommitteeMembers(
+        List<CommitteeMemberRow> rows) =>
+    splitCommitteeTerms(rows).current;
 
 /// True when the member is on the living roster for the given calendar day.
 bool isCommitteeMemberEffectiveOn(CommitteeMemberRow row, [String? onDate]) {
@@ -274,7 +312,9 @@ bool isCommitteeMemberEffectiveOn(CommitteeMemberRow row, [String? onDate]) {
   return true;
 }
 
-List<CommitteeMemberRow> filterEffectiveCommitteeMembers(List<CommitteeMemberRow> rows, [String? onDate]) =>
+List<CommitteeMemberRow> filterEffectiveCommitteeMembers(
+        List<CommitteeMemberRow> rows,
+        [String? onDate]) =>
     rows.where((r) => isCommitteeMemberEffectiveOn(r, onDate)).toList();
 
 /// Position presets offered in the committee form.
@@ -312,12 +352,26 @@ String positionLabel(String position, {bool hi = false}) {
   required String selectionType,
 }) {
   if (position.trim().isEmpty) return ('Position is required', 'पद आवश्यक है');
-  if (flatId.isEmpty || flatNumber.trim().isEmpty) return ('Select a flat number', 'फ्लैट नंबर चुनें');
-  if (name.trim().isEmpty) return ('Name for this post is required', 'इस पद के लिए नाम आवश्यक है');
-  if (termFrom.isEmpty) return ('Tenure start date (From) is required', 'कार्यकाल आरंभ तिथि आवश्यक है');
-  if (selectionType.isEmpty) return ('Select how the member was chosen', 'सदस्य का चयन कैसे हुआ, चुनें');
+  if (flatId.isEmpty || flatNumber.trim().isEmpty) {
+    return ('Select a flat number', 'फ्लैट नंबर चुनें');
+  }
+  if (name.trim().isEmpty) {
+    return ('Name for this post is required', 'इस पद के लिए नाम आवश्यक है');
+  }
+  if (termFrom.isEmpty) {
+    return (
+      'Tenure start date (From) is required',
+      'कार्यकाल आरंभ तिथि आवश्यक है'
+    );
+  }
+  if (selectionType.isEmpty) {
+    return ('Select how the member was chosen', 'सदस्य का चयन कैसे हुआ, चुनें');
+  }
   if (termTo.isNotEmpty && termTo.compareTo(termFrom) < 0) {
-    return ('Tenure end date must be on or after start date', 'कार्यकाल समाप्ति तिथि आरंभ तिथि के बाद होनी चाहिए');
+    return (
+      'Tenure end date must be on or after start date',
+      'कार्यकाल समाप्ति तिथि आरंभ तिथि के बाद होनी चाहिए'
+    );
   }
   return null;
 }
@@ -342,7 +396,8 @@ Map<String, dynamic> committeeMemberPayload({
   required String termTo,
   required String selectionType,
 }) {
-  final isRep = committeeIsRepresentative(name: name, flatOwnerName: flatOwnerName);
+  final isRep =
+      committeeIsRepresentative(name: name, flatOwnerName: flatOwnerName);
   final isFemale = gender == 'female';
   final showFemaleRep = isFemale && showRepresentative;
   String? orNull(String s) => s.trim().isEmpty ? null : s.trim();
@@ -383,11 +438,25 @@ bool isMemberOnCommitteeRoster({
   final p = (phone ?? '').replaceAll(RegExp(r'\D'), '');
   final f = flatId ?? '';
   for (final row in committeeRows) {
-    if (f.isNotEmpty && row.flatId != null && row.flatId == f && n.isNotEmpty && _norm(row.name) == n) return true;
-    if (f.isNotEmpty && row.flatId != null && row.flatId == f && n.isNotEmpty && _norm(row.flatOwnerName) == n) {
+    if (f.isNotEmpty &&
+        row.flatId != null &&
+        row.flatId == f &&
+        n.isNotEmpty &&
+        _norm(row.name) == n) {
       return true;
     }
-    if (p.isNotEmpty && row.phone != null && row.phone!.replaceAll(RegExp(r'\D'), '') == p) return true;
+    if (f.isNotEmpty &&
+        row.flatId != null &&
+        row.flatId == f &&
+        n.isNotEmpty &&
+        _norm(row.flatOwnerName) == n) {
+      return true;
+    }
+    if (p.isNotEmpty &&
+        row.phone != null &&
+        row.phone!.replaceAll(RegExp(r'\D'), '') == p) {
+      return true;
+    }
     if (id != null && id.isNotEmpty && row.flatId == f) {
       final holder = _norm(row.name);
       final owner = _norm(row.flatOwnerName);
@@ -447,7 +516,8 @@ class CommitteeDutiesChartRow {
   final String? periodTo;
   final bool isActive;
 
-  factory CommitteeDutiesChartRow.fromJson(Map<String, dynamic> j) => CommitteeDutiesChartRow(
+  factory CommitteeDutiesChartRow.fromJson(Map<String, dynamic> j) =>
+      CommitteeDutiesChartRow(
         id: '${j['id']}',
         societyId: '${j['society_id'] ?? ''}',
         periodFrom: (j['period_from'] ?? '').toString(),
@@ -478,7 +548,8 @@ class CommitteeDutyRow {
       id: '${j['id']}',
       chartId: '${j['chart_id'] ?? ''}',
       dutyLabel: (j['duty_label'] ?? '').toString(),
-      supervisorNames: names is List ? names.map((e) => '$e').toList() : const [],
+      supervisorNames:
+          names is List ? names.map((e) => '$e').toList() : const [],
       sortOrder: so is num ? so.toInt() : 0,
     );
   }
@@ -486,7 +557,11 @@ class CommitteeDutyRow {
 
 /// Editable duty row in the chart editor.
 class DutyFormRow {
-  DutyFormRow({this.id, this.dutyLabel = '', this.supervisorNames = '', this.sortOrder = 0});
+  DutyFormRow(
+      {this.id,
+      this.dutyLabel = '',
+      this.supervisorNames = '',
+      this.sortOrder = 0});
 
   String? id;
   String dutyLabel;
@@ -494,44 +569,78 @@ class DutyFormRow {
   int sortOrder;
 }
 
-List<String> parseSupervisorNames(String input) =>
-    input.split(RegExp(r'[,;]+')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+List<String> parseSupervisorNames(String input) => input
+    .split(RegExp(r'[,;]+'))
+    .map((s) => s.trim())
+    .where((s) => s.isNotEmpty)
+    .toList();
 
-String formatSupervisorNames(List<String> names) => names.where((n) => n.isNotEmpty).join(', ');
+String formatSupervisorNames(List<String> names) =>
+    names.where((n) => n.isNotEmpty).join(', ');
 
 /// `from → to` or `from → Ongoing` (web `dutiesPeriodLabel`).
-String dutiesPeriodLabel({required String periodFrom, String? periodTo, bool hi = false}) {
-  final from = periodFrom.length > 10 ? periodFrom.substring(0, 10) : periodFrom;
+String dutiesPeriodLabel(
+    {required String periodFrom, String? periodTo, bool hi = false}) {
+  final from =
+      periodFrom.length > 10 ? periodFrom.substring(0, 10) : periodFrom;
   final to = _slice10(periodTo);
   return to != null ? '$from → $to' : '$from → ${hi ? 'जारी' : 'Ongoing'}';
 }
 
 /// Validated rows for saving the duties chart; `(error en, error hi)` on failure.
-({List<({String dutyLabel, List<String> supervisors, int sortOrder})> rows, (String, String)? error})
-    validateDutyRows({required String periodFrom, required String periodTo, required List<DutyFormRow> forms}) {
+({
+  List<({String dutyLabel, List<String> supervisors, int sortOrder})> rows,
+  (String, String)? error
+}) validateDutyRows(
+    {required String periodFrom,
+    required String periodTo,
+    required List<DutyFormRow> forms}) {
   if (periodFrom.isEmpty) {
-    return (rows: const [], error: ('Period start date (From) is required', 'अवधि आरंभ तिथि आवश्यक है'));
+    return (
+      rows: const [],
+      error: (
+        'Period start date (From) is required',
+        'अवधि आरंभ तिथि आवश्यक है'
+      )
+    );
   }
   if (periodTo.isNotEmpty && periodTo.compareTo(periodFrom) < 0) {
     return (
       rows: const [],
-      error: ('Period end date must be on or after start date', 'अवधि समाप्ति तिथि आरंभ तिथि के बाद होनी चाहिए'),
+      error: (
+        'Period end date must be on or after start date',
+        'अवधि समाप्ति तिथि आरंभ तिथि के बाद होनी चाहिए'
+      ),
     );
   }
-  final valid = <({String dutyLabel, List<String> supervisors, int sortOrder})>[];
+  final valid =
+      <({String dutyLabel, List<String> supervisors, int sortOrder})>[];
   for (var i = 0; i < forms.length; i++) {
     final label = forms[i].dutyLabel.trim();
     if (label.isEmpty) continue;
-    valid.add((dutyLabel: label, supervisors: parseSupervisorNames(forms[i].supervisorNames), sortOrder: i));
+    valid.add((
+      dutyLabel: label,
+      supervisors: parseSupervisorNames(forms[i].supervisorNames),
+      sortOrder: i
+    ));
   }
   if (valid.isEmpty) {
-    return (rows: const [], error: ('Add at least one duty with a label', 'कम-से-कम एक कर्तव्य नाम सहित जोड़ें'));
+    return (
+      rows: const [],
+      error: (
+        'Add at least one duty with a label',
+        'कम-से-कम एक कर्तव्य नाम सहित जोड़ें'
+      )
+    );
   }
   for (final r in valid) {
     if (r.supervisors.isEmpty) {
       return (
         rows: const [],
-        error: ('Supervisor name is required for "${r.dutyLabel}"', '"${r.dutyLabel}" के लिए पर्यवेक्षक का नाम आवश्यक है'),
+        error: (
+          'Supervisor name is required for "${r.dutyLabel}"',
+          '"${r.dutyLabel}" के लिए पर्यवेक्षक का नाम आवश्यक है'
+        ),
       );
     }
   }

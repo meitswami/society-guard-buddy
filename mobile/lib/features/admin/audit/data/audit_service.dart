@@ -101,7 +101,7 @@ class AuditService {
             .from('maintenance_charges')
             .select('id, title')
             .eq('society_id', societyId)
-            .order('title'))
+            .order('title', ascending: true))
         .map((c) => ChargeOption(
             (c['id'] ?? '').toString(), (c['title'] ?? '').toString()))
         .toList();

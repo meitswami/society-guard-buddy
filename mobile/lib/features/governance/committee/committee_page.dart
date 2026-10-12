@@ -11,7 +11,8 @@ import 'duties_chart.dart';
 
 /// Port of web `CommitteeManager.tsx` (admin + resident).
 class CommitteePage extends StatefulWidget {
-  const CommitteePage({super.key, required this.societyId, required this.isResident});
+  const CommitteePage(
+      {super.key, required this.societyId, required this.isResident});
 
   final String societyId;
   final bool isResident;
@@ -46,7 +47,9 @@ class _CommitteePageState extends State<CommitteePage> {
       if (!mounted) return;
       setState(() {
         _rows = results[0] as List<CommitteeMemberRow>;
-        if (!widget.isResident) _flats = results[1] as List<CommitteeFlatOption>;
+        if (!widget.isResident) {
+          _flats = results[1] as List<CommitteeFlatOption>;
+        }
       });
     } catch (e) {
       if (mounted) GovToast.error(context, GovBackend.errorText(e));
@@ -60,7 +63,8 @@ class _CommitteePageState extends State<CommitteePage> {
     await _load();
   }
 
-  Future<void> _openForm({CommitteeMemberRow? editing, required int defaultSort}) async {
+  Future<void> _openForm(
+      {CommitteeMemberRow? editing, required int defaultSort}) async {
     final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(
       builder: (_) => CommitteeMemberFormPage(
         societyId: widget.societyId,
@@ -76,7 +80,9 @@ class _CommitteePageState extends State<CommitteePage> {
     final ok = await govConfirm(
       context,
       title: context.tr('Remove member?', 'सदस्य हटाएँ?'),
-      message: context.tr('${row.name} will be removed from the committee list.', '${row.name} समिति सूची से हटाए जाएँगे।'),
+      message: context.tr(
+          '${row.name} will be removed from the committee list.',
+          '${row.name} समिति सूची से हटाए जाएँगे।'),
       confirmLabel: context.tr('Remove', 'हटाएँ'),
       destructive: true,
     );
@@ -102,7 +108,9 @@ class _CommitteePageState extends State<CommitteePage> {
           children: [
             Icon(Icons.phone_outlined, size: size, color: t.mutedForeground),
             const SizedBox(width: 4),
-            Text(phone, style: AppText.mono(context, size: size, color: t.mutedForeground)),
+            Text(phone,
+                style: AppText.mono(context,
+                    size: size, color: t.mutedForeground)),
           ],
         ),
       ),
@@ -112,9 +120,13 @@ class _CommitteePageState extends State<CommitteePage> {
   Widget _card(CommitteeMemberRow row) {
     final t = context.tokens;
     final labels = committeeDisplayLabels(row, hi: _hi);
-    final tenure = committeeTenureLabel(termFrom: row.termFrom, termTo: row.termTo, hi: _hi);
-    final showFemaleRep = row.gender == 'female' && row.showRepresentative && (row.repName ?? '').isNotEmpty;
-    String d(String s) => Fmt.isoToDisplay(s.substring(0, s.length >= 10 ? 10 : s.length));
+    final tenure = committeeTenureLabel(
+        termFrom: row.termFrom, termTo: row.termTo, hi: _hi);
+    final showFemaleRep = row.gender == 'female' &&
+        row.showRepresentative &&
+        (row.repName ?? '').isNotEmpty;
+    String d(String s) =>
+        Fmt.isoToDisplay(s.substring(0, s.length >= 10 ? 10 : s.length));
     return CardSection(
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -123,24 +135,34 @@ class _CommitteePageState extends State<CommitteePage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PersonAvatar(name: labels.primaryName, photo: row.photo, size: AvatarSize.xl),
+              PersonAvatar(
+                  name: labels.primaryName,
+                  photo: row.photo,
+                  size: AvatarSize.xl),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(labels.primaryName, style: AppText.sectionTitle(context)),
+                    Text(labels.primaryName,
+                        style: AppText.sectionTitle(context)),
                     Text(positionLabel(row.position, hi: _hi),
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.primary)),
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: t.primary)),
                     if (labels.subtitle != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Text(labels.subtitle!, style: AppText.tiny(context)),
+                        child: Text(labels.subtitle!,
+                            style: AppText.tiny(context)),
                       ),
-                    if (row.selectionType != null && row.selectionType!.isNotEmpty)
+                    if (row.selectionType != null &&
+                        row.selectionType!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: TinyTag(selectionTypeLabel(row.selectionType, hi: _hi)),
+                        child: TinyTag(
+                            selectionTypeLabel(row.selectionType, hi: _hi)),
                       ),
                     if (tenure != null)
                       Padding(
@@ -159,7 +181,8 @@ class _CommitteePageState extends State<CommitteePage> {
                   icon: Icons.edit_outlined,
                   tooltip: context.tr('Edit', 'संपादित'),
                   color: t.secondaryForeground,
-                  onPressed: () => _openForm(editing: row, defaultSort: row.sortOrder),
+                  onPressed: () =>
+                      _openForm(editing: row, defaultSort: row.sortOrder),
                 ),
                 const SizedBox(width: 4),
                 IconPillButton(
@@ -178,7 +201,11 @@ class _CommitteePageState extends State<CommitteePage> {
               children: [
                 Icon(Icons.groups_outlined, size: 12, color: t.mutedForeground),
                 const SizedBox(width: 4),
-                Flexible(child: Text(context.tr('REPRESENTATIVE FOR THIS POST', 'इस पद के प्रतिनिधि'), style: AppText.tiny(context))),
+                Flexible(
+                    child: Text(
+                        context.tr('REPRESENTATIVE FOR THIS POST',
+                            'इस पद के प्रतिनिधि'),
+                        style: AppText.tiny(context))),
               ],
             ),
             const SizedBox(height: 4),
@@ -187,7 +214,8 @@ class _CommitteePageState extends State<CommitteePage> {
                 TextSpan(text: '${context.tr('Flat owner', 'फ्लैट स्वामी')}: '),
                 TextSpan(
                   text: row.flatOwnerName ?? '',
-                  style: TextStyle(color: t.foreground, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                      color: t.foreground, fontWeight: FontWeight.w500),
                 ),
               ]),
               style: AppText.caption(context),
@@ -199,7 +227,11 @@ class _CommitteePageState extends State<CommitteePage> {
               children: [
                 Icon(Icons.groups_outlined, size: 12, color: t.mutedForeground),
                 const SizedBox(width: 4),
-                Flexible(child: Text(context.tr('REPRESENTATIVE CONTACT', 'प्रतिनिधि संपर्क'), style: AppText.tiny(context))),
+                Flexible(
+                    child: Text(
+                        context.tr(
+                            'REPRESENTATIVE CONTACT', 'प्रतिनिधि संपर्क'),
+                        style: AppText.tiny(context))),
               ],
             ),
             const SizedBox(height: 8),
@@ -211,17 +243,24 @@ class _CommitteePageState extends State<CommitteePage> {
               ),
               child: Row(
                 children: [
-                  PersonAvatar(name: row.repName ?? 'R', photo: row.repPhoto, size: AvatarSize.sm),
+                  PersonAvatar(
+                      name: row.repName ?? 'R',
+                      photo: row.repPhoto,
+                      size: AvatarSize.sm),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          (row.repName ?? '').isEmpty ? context.tr('Representative', 'प्रतिनिधि') : row.repName!,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                          (row.repName ?? '').isEmpty
+                              ? context.tr('Representative', 'प्रतिनिधि')
+                              : row.repName!,
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w500),
                         ),
-                        if ((row.repPhone ?? '').isNotEmpty) _phoneLink(row.repPhone!, size: 10),
+                        if ((row.repPhone ?? '').isNotEmpty)
+                          _phoneLink(row.repPhone!, size: 10),
                       ],
                     ),
                   ),
@@ -260,7 +299,9 @@ class _CommitteePageState extends State<CommitteePage> {
           actions: [
             if (hasPrevious)
               MiniButton(
-                label: _showPrevious ? context.t('committee.currentButton') : context.t('committee.previousYearButton'),
+                label: _showPrevious
+                    ? context.t('committee.currentButton')
+                    : context.t('committee.previousYearButton'),
                 icon: Icons.history,
                 variant: MiniVariant.secondary,
                 onPressed: () => setState(() => _showPrevious = !_showPrevious),
@@ -276,15 +317,21 @@ class _CommitteePageState extends State<CommitteePage> {
             ],
           ],
         ),
-        if (!_showPrevious) CommitteeDutiesChart(key: _dutiesKey, societyId: widget.societyId, isResident: widget.isResident),
+        if (!_showPrevious)
+          CommitteeDutiesChart(
+              key: _dutiesKey,
+              societyId: widget.societyId,
+              isResident: widget.isResident),
         if (_loading)
-          Text(context.tr('Loading…', 'लोड हो रहा है…'), style: AppText.caption(context))
+          Text(context.tr('Loading…', 'लोड हो रहा है…'),
+              style: AppText.caption(context))
         else if (displayed.isEmpty)
           CardSection(
             padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
             child: Column(
               children: [
-                Icon(Icons.account_circle_outlined, size: 40, color: AppTokens.tint(t.mutedForeground, 0.5)),
+                Icon(Icons.account_circle_outlined,
+                    size: 40, color: AppTokens.tint(t.mutedForeground, 0.5)),
                 const SizedBox(height: 8),
                 Text(
                   _showPrevious
@@ -293,7 +340,8 @@ class _CommitteePageState extends State<CommitteePage> {
                           ? context.t('committee.residentEmpty')
                           : context.t('committee.adminEmpty'),
                   textAlign: TextAlign.center,
-                  style: AppText.body(context).copyWith(color: t.mutedForeground),
+                  style:
+                      AppText.body(context).copyWith(color: t.mutedForeground),
                 ),
               ],
             ),

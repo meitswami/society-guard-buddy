@@ -18,7 +18,7 @@ class GateDirectoryService {
         .from('flats')
         .select('*')
         .eq('society_id', societyId)
-        .order('flat_number');
+        .order('flat_number', ascending: true);
     return rowsOf(rows).map(GateFlat.fromRow).toList();
   }
 

@@ -8,7 +8,9 @@ void main() {
   late Map<String, dynamic> translations;
 
   setUpAll(() {
-    translations = jsonDecode(File('assets/i18n/translations.json').readAsStringSync()) as Map<String, dynamic>;
+    translations =
+        jsonDecode(File('assets/i18n/translations.json').readAsStringSync())
+            as Map<String, dynamic>;
   });
 
   Map<String, String>? rowOf(String key) {
@@ -19,12 +21,18 @@ void main() {
 
   test('six program steps in member journey order', () {
     expect(electionProgramSteps.length, 6);
-    expect(electionProgramSteps.first.stepKey, 'votingCharter.program.s1.title');
-    expect(electionProgramSteps.last.pointKeys, ['votingCharter.docs.p1', 'votingCharter.docs.p3', 'votingCharter.committee.p4']);
+    expect(
+        electionProgramSteps.first.stepKey, 'votingCharter.program.s1.title');
+    expect(electionProgramSteps.last.pointKeys, [
+      'votingCharter.docs.p1',
+      'votingCharter.docs.p3',
+      'votingCharter.committee.p4'
+    ]);
     expect(electionProgramSteps.expand((s) => s.pointKeys).length, 18);
   });
 
-  test('every charter key exists in both languages in the shared translations', () {
+  test('every charter key exists in both languages in the shared translations',
+      () {
     for (final key in allVotingCharterKeys()) {
       final row = rowOf(key);
       expect(row, isNotNull, reason: key);
@@ -42,16 +50,21 @@ void main() {
     expect(charterTextFromRow({'en': 'E', 'hi': ' '}, 'k', hi: true), 'E');
     expect(charterTextFromRow({'en': '', 'hi': 'H'}, 'k', hi: false), 'H');
     expect(charterTextFromRow({'en': '', 'hi': ''}, 'k', hi: false), 'k');
-    expect(charterTextFromRow(rowOf(votingCharterTitleKey), votingCharterTitleKey, hi: false),
+    expect(
+        charterTextFromRow(rowOf(votingCharterTitleKey), votingCharterTitleKey,
+            hi: false),
         'Election of the 7-member Management Committee');
   });
 
   test('pdf filename slug', () {
     final now = DateTime.utc(2026, 10, 12);
-    expect(votingCharterPdfFilename('Green Valley CHS Ltd.', hi: false, now: now),
+    expect(
+        votingCharterPdfFilename('Green Valley CHS Ltd.', hi: false, now: now),
         'voting-charter-en-green-valley-chs-ltd-2026-10-12.pdf');
-    expect(votingCharterPdfFilename(null, hi: true, now: now), 'voting-charter-hi-society-2026-10-12.pdf');
-    expect(votingCharterPdfFilename('हरित सोसायटी', hi: true, now: now), 'voting-charter-hi-society-2026-10-12.pdf');
+    expect(votingCharterPdfFilename(null, hi: true, now: now),
+        'voting-charter-hi-society-2026-10-12.pdf');
+    expect(votingCharterPdfFilename('हरित सोसायटी', hi: true, now: now),
+        'voting-charter-hi-society-2026-10-12.pdf');
     final long = votingCharterPdfFilename('a' * 60, hi: false, now: now);
     expect(long, 'voting-charter-en-${'a' * 40}-2026-10-12.pdf');
   });

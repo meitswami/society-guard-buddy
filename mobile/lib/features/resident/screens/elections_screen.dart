@@ -12,7 +12,8 @@ class ElectionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(context.tr('Society elections', 'सोसायटी चुनाव'))),
+        appBar: AppBar(
+            title: Text(context.tr('Society elections', 'सोसायटी चुनाव'))),
         body: ResidentPollsView(session: session),
       );
 }

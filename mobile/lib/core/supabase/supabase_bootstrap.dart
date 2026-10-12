@@ -7,7 +7,7 @@ abstract final class SupabaseBootstrap {
     if (!Env.isConfigured) return;
     await Supabase.initialize(
       url: Env.supabaseUrl,
-      anonKey: Env.supabaseAnonKey,
+      publishableKey: Env.supabaseAnonKey,
     );
   }
 

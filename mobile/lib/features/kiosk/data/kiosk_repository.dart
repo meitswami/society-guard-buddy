@@ -37,7 +37,7 @@ class KioskRepository {
 
   Future<void> _loadFlats() async {
     try {
-      final rows = rowsOf(await db.from('flats').select('flat_number').eq('society_id', societyId).order('flat_number'));
+      final rows = rowsOf(await db.from('flats').select('flat_number').eq('society_id', societyId).order('flat_number', ascending: true));
       _flatNumbers = [
         for (final r in rows)
           if (r['flat_number'] is String && (r['flat_number'] as String).isNotEmpty) r['flat_number'] as String,

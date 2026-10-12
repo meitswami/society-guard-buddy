@@ -33,33 +33,61 @@ void main() {
   // Port of src/lib/committeeMember.test.ts
   group('splitCommitteeTerms', () {
     final previous = [
-      row(name: 'Abhishek sharma', position: 'President', termFrom: '2026-03-01', termTo: '2026-08-13', sortOrder: 1),
-      row(name: 'Harish Swami', position: 'Committee Member', termTo: '2026-08-13', sortOrder: 6),
+      row(
+          name: 'Abhishek sharma',
+          position: 'President',
+          termFrom: '2026-03-01',
+          termTo: '2026-08-13',
+          sortOrder: 1),
+      row(
+          name: 'Harish Swami',
+          position: 'Committee Member',
+          termTo: '2026-08-13',
+          sortOrder: 6),
     ];
     final current = [
-      row(name: 'Suresh Pareek', position: 'President', termFrom: '2026-08-14', termTo: '2028-08-13', sortOrder: 0),
-      row(name: 'Jaya Sharma', position: 'Vice-President', termFrom: '2026-08-14', termTo: '2028-08-13', sortOrder: 1),
+      row(
+          name: 'Suresh Pareek',
+          position: 'President',
+          termFrom: '2026-08-14',
+          termTo: '2028-08-13',
+          sortOrder: 0),
+      row(
+          name: 'Jaya Sharma',
+          position: 'Vice-President',
+          termFrom: '2026-08-14',
+          termTo: '2028-08-13',
+          sortOrder: 1),
     ];
 
-    test('shows the latest term as current even before term_from calendar date', () {
+    test('shows the latest term as current even before term_from calendar date',
+        () {
       final split = splitCommitteeTerms([...previous, ...current]);
       expect(split.currentTermFrom, '2026-08-14');
-      expect(split.current.map((r) => r.name), ['Suresh Pareek', 'Jaya Sharma']);
-      expect(split.previous.map((r) => r.name), ['Abhishek sharma', 'Harish Swami']);
+      expect(
+          split.current.map((r) => r.name), ['Suresh Pareek', 'Jaya Sharma']);
+      expect(split.previous.map((r) => r.name),
+          ['Abhishek sharma', 'Harish Swami']);
     });
 
     test('currentCommitteeMembers ignores the previous term', () {
-      expect(currentCommitteeMembers([...previous, ...current]).map((r) => r.name), ['Suresh Pareek', 'Jaya Sharma']);
+      expect(
+          currentCommitteeMembers([...previous, ...current]).map((r) => r.name),
+          ['Suresh Pareek', 'Jaya Sharma']);
     });
 
-    test('inactive rows are ignored and an empty roster has no current term', () {
-      final split = splitCommitteeTerms([row(name: 'X', position: 'President', isActive: false)]);
+    test('inactive rows are ignored and an empty roster has no current term',
+        () {
+      final split = splitCommitteeTerms(
+          [row(name: 'X', position: 'President', isActive: false)]);
       expect(split.current, isEmpty);
       expect(split.previous, isEmpty);
       expect(split.currentTermFrom, isNull);
     });
 
-    test('rows without term_from stay current unless their term ended before the current term', () {
+    test(
+        'rows without term_from stay current unless their term ended before the current term',
+        () {
       final split = splitCommitteeTerms([
         row(name: 'A', position: 'Committee Member', termFrom: '2026-08-14'),
         row(name: 'B', position: 'Committee Member'),
@@ -71,12 +99,30 @@ void main() {
   });
 
   group('dedupeCommitteeByPosition', () {
-    test('keeps one office-bearer per unique post, preferring a closed tenure', () {
+    test('keeps one office-bearer per unique post, preferring a closed tenure',
+        () {
       final rows = [
-        row(name: 'Jaya', position: 'Vice-President', termFrom: '2026-08-14', sortOrder: 1),
-        row(name: 'Jaya Sharma', position: 'Vice-President', termFrom: '2026-08-14', termTo: '2028-08-13', sortOrder: 10),
-        row(name: 'Sunil Sharma', position: 'Committee Member', termFrom: '2026-08-14', sortOrder: 5),
-        row(name: 'Abhishek Sharma', position: 'Committee Member', termFrom: '2026-08-14', sortOrder: 6),
+        row(
+            name: 'Jaya',
+            position: 'Vice-President',
+            termFrom: '2026-08-14',
+            sortOrder: 1),
+        row(
+            name: 'Jaya Sharma',
+            position: 'Vice-President',
+            termFrom: '2026-08-14',
+            termTo: '2028-08-13',
+            sortOrder: 10),
+        row(
+            name: 'Sunil Sharma',
+            position: 'Committee Member',
+            termFrom: '2026-08-14',
+            sortOrder: 5),
+        row(
+            name: 'Abhishek Sharma',
+            position: 'Committee Member',
+            termFrom: '2026-08-14',
+            sortOrder: 6),
       ];
       final names = dedupeCommitteeByPosition(rows).map((r) => r.name).toList();
       // The web expectation (`['Jaya Sharma', 'Sunil Sharma', 'Abhishek Sharma']`) is stale and
@@ -105,21 +151,34 @@ void main() {
   });
 
   group('labels', () {
-    test('representative detection is case-insensitive and needs both names', () {
-      expect(committeeIsRepresentative(name: 'Ram', flatOwnerName: 'ram'), isFalse);
-      expect(committeeIsRepresentative(name: 'Ram', flatOwnerName: 'Shyam'), isTrue);
-      expect(committeeIsRepresentative(name: 'Ram', flatOwnerName: null), isFalse);
-      expect(committeeIsRepresentative(name: ' ', flatOwnerName: 'Shyam'), isFalse);
+    test('representative detection is case-insensitive and needs both names',
+        () {
+      expect(committeeIsRepresentative(name: 'Ram', flatOwnerName: 'ram'),
+          isFalse);
+      expect(committeeIsRepresentative(name: 'Ram', flatOwnerName: 'Shyam'),
+          isTrue);
+      expect(
+          committeeIsRepresentative(name: 'Ram', flatOwnerName: null), isFalse);
+      expect(committeeIsRepresentative(name: ' ', flatOwnerName: 'Shyam'),
+          isFalse);
     });
 
     test('display labels for owner and representative', () {
-      final owner = row(name: 'Ram', position: 'President', flatNumber: 'A-1', flatOwnerName: 'Ram');
+      final owner = row(
+          name: 'Ram',
+          position: 'President',
+          flatNumber: 'A-1',
+          flatOwnerName: 'Ram');
       final l1 = committeeDisplayLabels(owner);
       expect(l1.primaryName, 'Ram');
       expect(l1.subtitle, 'Flat A-1');
       expect(l1.isRepresentative, isFalse);
 
-      final rep = row(name: 'Sita', position: 'President', flatNumber: 'A-1', flatOwnerName: 'Ram');
+      final rep = row(
+          name: 'Sita',
+          position: 'President',
+          flatNumber: 'A-1',
+          flatOwnerName: 'Ram');
       final l2 = committeeDisplayLabels(rep);
       expect(l2.primaryName, 'Sita');
       expect(l2.subtitle, 'Flat A-1 · Owner: Ram');
@@ -131,8 +190,12 @@ void main() {
 
     test('tenure label', () {
       expect(committeeTenureLabel(termFrom: null), isNull);
-      expect(committeeTenureLabel(termFrom: '2026-08-14T00:00:00Z', termTo: '2028-08-13'), '2026-08-14 → 2028-08-13');
-      expect(committeeTenureLabel(termFrom: '2026-08-14'), '2026-08-14 → Until retirement');
+      expect(
+          committeeTenureLabel(
+              termFrom: '2026-08-14T00:00:00Z', termTo: '2028-08-13'),
+          '2026-08-14 → 2028-08-13');
+      expect(committeeTenureLabel(termFrom: '2026-08-14'),
+          '2026-08-14 → Until retirement');
     });
 
     test('selection type labels', () {
@@ -140,18 +203,30 @@ void main() {
       expect(selectionTypeLabel('executive_proposed'), 'Executive proposed');
       expect(selectionTypeLabel(null), '—');
       expect(selectionTypeLabel('elected', hi: true), 'निर्वाचित');
-      expect(CommitteeSelectionType.values.map((t) => t.value),
-          ['elected', 'nominated', 'runner_up', 'voluntary', 'executive_proposed']);
+      expect(CommitteeSelectionType.values.map((t) => t.value), [
+        'elected',
+        'nominated',
+        'runner_up',
+        'voluntary',
+        'executive_proposed'
+      ]);
     });
   });
 
   group('effective dates', () {
     test('isCommitteeMemberEffectiveOn', () {
-      final r = row(name: 'A', position: 'President', termFrom: '2026-01-01', termTo: '2026-12-31');
+      final r = row(
+          name: 'A',
+          position: 'President',
+          termFrom: '2026-01-01',
+          termTo: '2026-12-31');
       expect(isCommitteeMemberEffectiveOn(r, '2026-06-01'), isTrue);
       expect(isCommitteeMemberEffectiveOn(r, '2025-12-31'), isFalse);
       expect(isCommitteeMemberEffectiveOn(r, '2027-01-01'), isFalse);
-      expect(isCommitteeMemberEffectiveOn(row(name: 'B', position: 'X', isActive: false), '2026-06-01'), isFalse);
+      expect(
+          isCommitteeMemberEffectiveOn(
+              row(name: 'B', position: 'X', isActive: false), '2026-06-01'),
+          isFalse);
       expect(filterEffectiveCommitteeMembers([r], '2026-06-01'), hasLength(1));
     });
 
@@ -185,11 +260,16 @@ void main() {
       expect(v(name: ''), 'Name for this post is required');
       expect(v(termFrom: ''), 'Tenure start date (From) is required');
       expect(v(selectionType: ''), 'Select how the member was chosen');
-      expect(v(termTo: '2025-12-31'), 'Tenure end date must be on or after start date');
+      expect(v(termTo: '2025-12-31'),
+          'Tenure end date must be on or after start date');
       expect(v(), isNull);
     });
 
-    Map<String, dynamic> payload({String name = 'Ram', String owner = 'Ram', String gender = '', bool rep = false}) =>
+    Map<String, dynamic> payload(
+            {String name = 'Ram',
+            String owner = 'Ram',
+            String gender = '',
+            bool rep = false}) =>
         committeeMemberPayload(
           societyId: 's',
           flatId: 'f',
@@ -241,17 +321,41 @@ void main() {
 
   group('committee protection (committeeProtection.ts)', () {
     final roster = [
-      row(name: 'Ram Lal', position: 'President', flatId: 'f1', flatOwnerName: 'Shyam Lal', phone: '+91 98765-43210'),
+      row(
+          name: 'Ram Lal',
+          position: 'President',
+          flatId: 'f1',
+          flatOwnerName: 'Shyam Lal',
+          phone: '+91 98765-43210'),
     ];
 
     test('matches by flat + holder name, flat + owner name, or phone', () {
-      expect(isMemberOnCommitteeRoster(name: ' ram lal ', flatId: 'f1', committeeRows: roster), isTrue);
-      expect(isMemberOnCommitteeRoster(name: 'Shyam Lal', flatId: 'f1', committeeRows: roster), isTrue);
-      expect(isMemberOnCommitteeRoster(name: 'Other', phone: '9876543210', flatId: 'f9', committeeRows: roster),
-          isFalse);
-      expect(isMemberOnCommitteeRoster(name: 'Other', phone: '+91 98765 43210', flatId: 'f9', committeeRows: roster),
+      expect(
+          isMemberOnCommitteeRoster(
+              name: ' ram lal ', flatId: 'f1', committeeRows: roster),
           isTrue);
-      expect(isMemberOnCommitteeRoster(name: 'Ram Lal', flatId: 'f2', committeeRows: roster), isFalse);
+      expect(
+          isMemberOnCommitteeRoster(
+              name: 'Shyam Lal', flatId: 'f1', committeeRows: roster),
+          isTrue);
+      expect(
+          isMemberOnCommitteeRoster(
+              name: 'Other',
+              phone: '9876543210',
+              flatId: 'f9',
+              committeeRows: roster),
+          isFalse);
+      expect(
+          isMemberOnCommitteeRoster(
+              name: 'Other',
+              phone: '+91 98765 43210',
+              flatId: 'f9',
+              committeeRows: roster),
+          isTrue);
+      expect(
+          isMemberOnCommitteeRoster(
+              name: 'Ram Lal', flatId: 'f2', committeeRows: roster),
+          isFalse);
     });
   });
 }

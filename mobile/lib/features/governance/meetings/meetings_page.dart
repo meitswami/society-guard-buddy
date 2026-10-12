@@ -45,7 +45,8 @@ class MeetingsPage extends StatefulWidget {
 
 class _MeetingsPageState extends State<MeetingsPage> {
   late MeetingViewer _viewer = widget.viewer;
-  late final MeetingRepository _repo = MeetingRepository(widget.viewer.societyId);
+  late final MeetingRepository _repo =
+      MeetingRepository(widget.viewer.societyId);
   List<MeetingRow> _meetings = const [];
   bool _loading = true;
   MeetingKind? _filter;
@@ -76,12 +77,15 @@ class _MeetingsPageState extends State<MeetingsPage> {
     }
   }
 
-  List<MeetingRow> get _visible => _filter == null ? _meetings : _meetings.where((m) => m.meetingKind == _filter).toList();
+  List<MeetingRow> get _visible => _filter == null
+      ? _meetings
+      : _meetings.where((m) => m.meetingKind == _filter).toList();
 
   Future<void> _open(MeetingRow m) async {
     setState(() => _lastOpenedId = m.id);
     await Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => MeetingDetailPage(viewer: _viewer, repo: _repo, initial: m),
+      builder: (_) =>
+          MeetingDetailPage(viewer: _viewer, repo: _repo, initial: m),
     ));
     if (mounted) await _load();
   }
@@ -100,12 +104,17 @@ class _MeetingsPageState extends State<MeetingsPage> {
 
   Future<void> _printFlat() => MeetingPrint.printFlat(
         _visible,
-        _filter == null ? 'Meetings — current list' : '${_filter!.labelEn} — current list',
+        _filter == null
+            ? 'Meetings — current list'
+            : '${_filter!.labelEn} — current list',
       );
 
   Future<void> _printGrouped() async {
     final ok = await MeetingPrint.printGrouped(_meetings);
-    if (!ok && mounted) GovToast.info(context, context.tr('No meetings to print.', 'प्रिंट करने को कोई बैठक नहीं।'));
+    if (!ok && mounted) {
+      GovToast.info(context,
+          context.tr('No meetings to print.', 'प्रिंट करने को कोई बैठक नहीं।'));
+    }
   }
 
   Widget _meetingCard(MeetingRow m) {
@@ -124,9 +133,13 @@ class _MeetingsPageState extends State<MeetingsPage> {
               TinyTag(m.meetingKind.short(_hi), filled: false),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(m.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.bodyMedium(context)),
+                child: Text(m.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.bodyMedium(context)),
               ),
-              if (m.published) TinyTag(context.tr('Published', 'प्रकाशित'), color: t.primary),
+              if (m.published)
+                TinyTag(context.tr('Published', 'प्रकाशित'), color: t.primary),
             ],
           ),
           const SizedBox(height: 6),
@@ -135,17 +148,22 @@ class _MeetingsPageState extends State<MeetingsPage> {
             spacing: 4,
             runSpacing: 2,
             children: [
-              Icon(Icons.calendar_today_outlined, size: 12, color: t.mutedForeground),
-              Text(Fmt.dateTimeFull(m.meetingAt), style: AppText.caption(context).copyWith(fontSize: 11)),
+              Icon(Icons.calendar_today_outlined,
+                  size: 12, color: t.mutedForeground),
+              Text(Fmt.dateTimeFull(m.meetingAt),
+                  style: AppText.caption(context).copyWith(fontSize: 11)),
               if ((m.location ?? '').isNotEmpty) ...[
                 const SizedBox(width: 4),
                 Icon(Icons.place_outlined, size: 12, color: t.mutedForeground),
-                Text(m.location!, style: AppText.caption(context).copyWith(fontSize: 11)),
+                Text(m.location!,
+                    style: AppText.caption(context).copyWith(fontSize: 11)),
               ],
             ],
           ),
           const SizedBox(height: 2),
-          Text('${context.tr('Status', 'स्थिति')}: ${meetingStatusLabel(m.status, hi: _hi)}', style: AppText.tiny(context)),
+          Text(
+              '${context.tr('Status', 'स्थिति')}: ${meetingStatusLabel(m.status, hi: _hi)}',
+              style: AppText.tiny(context)),
         ],
       ),
     );
@@ -160,7 +178,9 @@ class _MeetingsPageState extends State<MeetingsPage> {
       children: [
         PageHeader(
           icon: Icons.groups_outlined,
-          title: _viewer.isResident ? context.tr('Society meetings', 'सोसायटी बैठकें') : context.tr('Meetings', 'बैठकें'),
+          title: _viewer.isResident
+              ? context.tr('Society meetings', 'सोसायटी बैठकें')
+              : context.tr('Meetings', 'बैठकें'),
           subtitle: _viewer.isResident
               ? context.tr(
                   'Published meeting notices — suggest topics and propose agenda items before the day. Session records unlock on the meeting day.',
@@ -178,7 +198,8 @@ class _MeetingsPageState extends State<MeetingsPage> {
               ),
           ],
         ),
-        Text(context.tr('VIEW BY TYPE', 'प्रकार अनुसार देखें'), style: AppText.tiny(context)),
+        Text(context.tr('VIEW BY TYPE', 'प्रकार अनुसार देखें'),
+            style: AppText.tiny(context)),
         const SizedBox(height: 6),
         Wrap(
           spacing: 6,
@@ -186,14 +207,16 @@ class _MeetingsPageState extends State<MeetingsPage> {
           children: [
             MiniButton(
               label: context.tr('All', 'सभी'),
-              variant: _filter == null ? MiniVariant.primary : MiniVariant.outline,
+              variant:
+                  _filter == null ? MiniVariant.primary : MiniVariant.outline,
               fontSize: 11,
               onPressed: () => setState(() => _filter = null),
             ),
             for (final k in MeetingKind.values)
               MiniButton(
                 label: k.short(_hi),
-                variant: _filter == k ? MiniVariant.primary : MiniVariant.outline,
+                variant:
+                    _filter == k ? MiniVariant.primary : MiniVariant.outline,
                 fontSize: 11,
                 onPressed: () => setState(() => _filter = k),
               ),
@@ -205,13 +228,15 @@ class _MeetingsPageState extends State<MeetingsPage> {
           runSpacing: 6,
           children: [
             MiniButton(
-              label: context.tr('Print list (current view)', 'सूची प्रिंट (वर्तमान दृश्य)'),
+              label: context.tr(
+                  'Print list (current view)', 'सूची प्रिंट (वर्तमान दृश्य)'),
               icon: Icons.print_outlined,
               fontSize: 11,
               onPressed: _printFlat,
             ),
             MiniButton(
-              label: context.tr('Print all types (grouped)', 'सभी प्रकार प्रिंट (समूहित)'),
+              label: context.tr(
+                  'Print all types (grouped)', 'सभी प्रकार प्रिंट (समूहित)'),
               icon: Icons.print_outlined,
               fontSize: 11,
               onPressed: _printGrouped,
@@ -225,7 +250,10 @@ class _MeetingsPageState extends State<MeetingsPage> {
           Text(context.tr('No meetings yet.', 'अभी कोई बैठक नहीं।'),
               style: AppText.body(context).copyWith(color: t.mutedForeground))
         else if (visible.isEmpty)
-          Text(context.tr('No meetings in this category — pick another type or All.', 'इस श्रेणी में कोई बैठक नहीं — अन्य प्रकार या सभी चुनें।'),
+          Text(
+              context.tr(
+                  'No meetings in this category — pick another type or All.',
+                  'इस श्रेणी में कोई बैठक नहीं — अन्य प्रकार या सभी चुनें।'),
               style: AppText.body(context).copyWith(color: t.mutedForeground))
         else
           for (final m in visible) _meetingCard(m),

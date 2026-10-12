@@ -16,7 +16,6 @@ import 'export/society_letterhead.dart';
 import 'flat360/flat360_models.dart';
 import 'flat360/flat360_panel.dart';
 import 'logic/residents_logic.dart';
-import 'residents/flat_generator_page.dart';
 import 'residents/member_form_page.dart';
 import 'widgets/sensitive_verify.dart';
 
@@ -439,16 +438,6 @@ class _AdminResidentsModuleState extends State<AdminResidentsModule> {
     }
   }
 
-  Future<void> _openGenerator() async {
-    final changed = await Navigator.of(context).push<bool>(MaterialPageRoute(
-      builder: (_) => FlatGeneratorPage(
-          societyId: _sid,
-          adminId: widget.ctx.adminId,
-          adminName: widget.ctx.adminName),
-    ));
-    if (changed == true) await _load();
-  }
-
   // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
@@ -487,12 +476,6 @@ class _AdminResidentsModuleState extends State<AdminResidentsModule> {
           icon: _addFlatOpen ? Icons.close : Icons.add,
           color: t.primary,
           onPressed: _toggleAddFlat,
-        ),
-        _TintButton(
-          label: context.tr('Generate flats', 'फ्लैट बनाएँ'),
-          icon: Icons.grid_view_outlined,
-          color: t.accent,
-          onPressed: _openGenerator,
         ),
       ]),
       const SizedBox(height: 12),

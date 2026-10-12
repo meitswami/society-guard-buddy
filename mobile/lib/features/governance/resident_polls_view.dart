@@ -16,7 +16,9 @@ class ResidentPollsView extends StatelessWidget {
         voterId: session.resident.id,
         voterPhone: session.resident.phone,
         memberId: memberId,
-        memberName: (memberName == null || memberName.isEmpty) ? session.resident.name : memberName,
+        memberName: (memberName == null || memberName.isEmpty)
+            ? session.resident.name
+            : memberName,
         flatNumber: session.resident.flatNumber,
         flatId: session.resident.flatId,
       );

@@ -16,7 +16,10 @@ abstract final class VotingCharterSummary {
 }
 
 class ElectionProgramStep {
-  const ElectionProgramStep({required this.stepKey, required this.detailKey, required this.pointKeys});
+  const ElectionProgramStep(
+      {required this.stepKey,
+      required this.detailKey,
+      required this.pointKeys});
 
   final String stepKey;
   final String detailKey;
@@ -45,7 +48,11 @@ const List<ElectionProgramStep> electionProgramSteps = [
   ElectionProgramStep(
     stepKey: 'votingCharter.program.s3.title',
     detailKey: 'votingCharter.program.s3.detail',
-    pointKeys: ['votingCharter.nomination.p1', 'votingCharter.nomination.p2', 'votingCharter.nomination.p3'],
+    pointKeys: [
+      'votingCharter.nomination.p1',
+      'votingCharter.nomination.p2',
+      'votingCharter.nomination.p3'
+    ],
   ),
   ElectionProgramStep(
     stepKey: 'votingCharter.program.s4.title',
@@ -65,12 +72,17 @@ const List<ElectionProgramStep> electionProgramSteps = [
   ElectionProgramStep(
     stepKey: 'votingCharter.program.s6.title',
     detailKey: 'votingCharter.program.s6.detail',
-    pointKeys: ['votingCharter.docs.p1', 'votingCharter.docs.p3', 'votingCharter.committee.p4'],
+    pointKeys: [
+      'votingCharter.docs.p1',
+      'votingCharter.docs.p3',
+      'votingCharter.committee.p4'
+    ],
   ),
 ];
 
 /// @deprecated Separate rules list (kept for legacy parity with the web constant).
-const List<({String headingKey, List<String> pointKeys})> votingCharterSections = [
+const List<({String headingKey, List<String> pointKeys})>
+    votingCharterSections = [
   (
     headingKey: 'votingCharter.eligibility.heading',
     pointKeys: [
@@ -82,7 +94,11 @@ const List<({String headingKey, List<String> pointKeys})> votingCharterSections 
   ),
   (
     headingKey: 'votingCharter.nomination.heading',
-    pointKeys: ['votingCharter.nomination.p1', 'votingCharter.nomination.p2', 'votingCharter.nomination.p3'],
+    pointKeys: [
+      'votingCharter.nomination.p1',
+      'votingCharter.nomination.p2',
+      'votingCharter.nomination.p3'
+    ],
   ),
   (
     headingKey: 'votingCharter.method.heading',
@@ -104,7 +120,12 @@ const List<({String headingKey, List<String> pointKeys})> votingCharterSections 
   ),
   (
     headingKey: 'votingCharter.docs.heading',
-    pointKeys: ['votingCharter.docs.p1', 'votingCharter.docs.p2', 'votingCharter.docs.p3', 'votingCharter.docs.p4'],
+    pointKeys: [
+      'votingCharter.docs.p1',
+      'votingCharter.docs.p2',
+      'votingCharter.docs.p3',
+      'votingCharter.docs.p4'
+    ],
   ),
 ];
 
@@ -117,27 +138,36 @@ List<String> allVotingCharterKeys() => [
       'votingCharter.program.heading',
       'votingCharter.program.intro',
       'votingCharter.shareMessage',
-      for (final s in electionProgramSteps) ...[s.stepKey, s.detailKey, ...s.pointKeys],
+      for (final s in electionProgramSteps) ...[
+        s.stepKey,
+        s.detailKey,
+        ...s.pointKeys
+      ],
     ];
 
 /// Resolve charter copy for an explicit language from a static row
 /// (web `charterText`: preferred language → English → Hindi → key).
-String charterTextFromRow(Map<String, String>? row, String key, {required bool hi}) {
+String charterTextFromRow(Map<String, String>? row, String key,
+    {required bool hi}) {
   if (row == null) return key;
   final preferred = (row[hi ? 'hi' : 'en'] ?? '').trim();
   if (preferred.isNotEmpty) return preferred;
-  final fallback = ((row['en'] ?? '').isNotEmpty ? row['en']! : (row['hi'] ?? '')).trim();
+  final fallback =
+      ((row['en'] ?? '').isNotEmpty ? row['en']! : (row['hi'] ?? '')).trim();
   return fallback.isEmpty ? key : fallback;
 }
 
 /// `voting-charter-{lang}-{slug}-{yyyy-MM-dd}.pdf` (web `votingCharterPdfFilename`).
-String votingCharterPdfFilename(String? societyName, {required bool hi, DateTime? now}) {
-  var slug = (societyName == null || societyName.isEmpty ? 'society' : societyName)
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-      .replaceAll(RegExp(r'^-|-$'), '');
+String votingCharterPdfFilename(String? societyName,
+    {required bool hi, DateTime? now}) {
+  var slug =
+      (societyName == null || societyName.isEmpty ? 'society' : societyName)
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+          .replaceAll(RegExp(r'^-|-$'), '');
   if (slug.length > 40) slug = slug.substring(0, 40);
   final d = (now ?? DateTime.now()).toUtc();
-  final day = '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  final day =
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   return 'voting-charter-${hi ? 'hi' : 'en'}-${slug.isEmpty ? 'society' : slug}-$day.pdf';
 }

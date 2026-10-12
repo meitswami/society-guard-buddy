@@ -160,7 +160,7 @@ class NotificationRepository {
         .from('flats')
         .select('id, flat_number, owner_name')
         .eq('society_id', societyId)
-        .order('flat_number');
+        .order('flat_number', ascending: true);
     final flats = rowsOf(flatsData);
     final flatIds = flats
         .map((f) => f['id']?.toString() ?? '')
@@ -172,7 +172,7 @@ class NotificationRepository {
           .from('resident_users')
           .select('id, name, flat_number, flat_id')
           .inFilter('flat_id', flatIds)
-          .order('name'),
+          .order('name', ascending: true),
       db
           .from('members')
           .select('flat_id, name')

@@ -13,6 +13,7 @@ class ResidentDocumentsView extends StatelessWidget {
   Widget build(BuildContext context) => DocumentsPage(
         societyId: session.societyId,
         isResident: true,
-        viewerLabel: '${session.resident.flatNumber} · ${session.resident.name}',
+        viewerLabel:
+            '${session.resident.flatNumber} · ${session.resident.name}',
       );
 }

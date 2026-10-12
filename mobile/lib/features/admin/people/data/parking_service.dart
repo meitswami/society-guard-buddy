@@ -32,12 +32,12 @@ class ParkingService {
           .from('parking_spaces')
           .select('*')
           .eq('society_id', societyId)
-          .order('space_number'),
+          .order('space_number', ascending: true),
       db
           .from('flats')
           .select('flat_number, id')
           .eq('society_id', societyId)
-          .order('flat_number'),
+          .order('flat_number', ascending: true),
     ]);
     return ParkingSnapshot(
       spaces: rowsOf(results[0]).map(ParkingSpace.fromJson).toList(),

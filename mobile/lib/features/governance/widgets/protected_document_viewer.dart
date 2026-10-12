@@ -63,10 +63,12 @@ class ProtectedDocumentViewer extends StatefulWidget {
   }
 
   @override
-  State<ProtectedDocumentViewer> createState() => _ProtectedDocumentViewerState();
+  State<ProtectedDocumentViewer> createState() =>
+      _ProtectedDocumentViewerState();
 }
 
-class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer> with WidgetsBindingObserver {
+class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer>
+    with WidgetsBindingObserver {
   Timer? _clock;
   DateTime _now = DateTime.now();
   bool _obscured = false;
@@ -75,8 +77,10 @@ class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer> with 
   Uint8List? _imageBytes;
   final List<Uint8List> _pdfPages = [];
 
-  bool get _isPdf => viewerIsPdf(mimeType: widget.mimeType, url: widget.fileName);
-  bool get _isImage => viewerIsImage(mimeType: widget.mimeType, url: widget.fileName);
+  bool get _isPdf =>
+      viewerIsPdf(mimeType: widget.mimeType, url: widget.fileName);
+  bool get _isImage =>
+      viewerIsImage(mimeType: widget.mimeType, url: widget.fileName);
 
   @override
   void initState() {
@@ -139,27 +143,36 @@ class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer> with 
     final blurred = widget.protectedForMember && !revealActive;
 
     final status = blurred
-        ? context.tr('Preview hidden — waiting for society office to enable viewing',
+        ? context.tr(
+            'Preview hidden — waiting for society office to enable viewing',
             'पूर्वावलोकन छिपा है — सोसायटी कार्यालय द्वारा देखने की अनुमति की प्रतीक्षा')
         : (widget.protectedForMember && secondsLeft > 0)
-            ? context.tr('Viewing enabled — ${secondsLeft}s remaining', 'देखना सक्षम — $secondsLeft सेकंड शेष')
-            : context.tr('View only — copying, saving, and printing are disabled',
+            ? context.tr('Viewing enabled — ${secondsLeft}s remaining',
+                'देखना सक्षम — $secondsLeft सेकंड शेष')
+            : context.tr(
+                'View only — copying, saving, and printing are disabled',
                 'केवल देखें — कॉपी, सहेजना और प्रिंट अक्षम हैं');
 
     Widget content;
     if (_loading && _pdfPages.isEmpty) {
       content = const SizedBox(height: 400, child: LoadingView());
     } else if (_error != null) {
-      content = ErrorView(message: context.tr('Could not open document', 'दस्तावेज़ नहीं खुल सका'));
+      content = ErrorView(
+          message:
+              context.tr('Could not open document', 'दस्तावेज़ नहीं खुल सका'));
     } else if (_isPdf) {
       content = Column(
         children: [
           for (final p in _pdfPages)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Image.memory(p, fit: BoxFit.fitWidth, gaplessPlayback: true),
+              child:
+                  Image.memory(p, fit: BoxFit.fitWidth, gaplessPlayback: true),
             ),
-          if (_loading) const Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()),
+          if (_loading)
+            const Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator()),
         ],
       );
     } else if (_isImage && _imageBytes != null) {
@@ -168,7 +181,8 @@ class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer> with 
       content = Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
-          context.tr('This file type cannot be previewed in the app. Contact your society office for access.',
+          context.tr(
+              'This file type cannot be previewed in the app. Contact your society office for access.',
               'इस फ़ाइल प्रकार का ऐप में पूर्वावलोकन नहीं हो सकता। पहुँच के लिए सोसायटी कार्यालय से संपर्क करें।'),
           textAlign: TextAlign.center,
           style: AppText.body(context).copyWith(color: t.mutedForeground),
@@ -182,7 +196,9 @@ class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer> with 
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(12),
         child: blurred
-            ? ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24), child: content)
+            ? ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: content)
             : content,
       ),
     );
@@ -194,13 +210,19 @@ class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer> with 
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.sectionTitle(context)),
+            Text(widget.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.sectionTitle(context)),
             Row(
               children: [
                 Icon(Icons.shield_outlined, size: 11, color: t.mutedForeground),
                 const SizedBox(width: 3),
                 Expanded(
-                  child: Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.tiny(context)),
+                  child: Text(status,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.tiny(context)),
                 ),
               ],
             ),
@@ -209,9 +231,11 @@ class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer> with 
       ),
       body: Stack(
         children: [
-          Positioned.fill(child: ColoredBox(color: AppTokens.tint(t.muted, 0.3))),
+          Positioned.fill(
+              child: ColoredBox(color: AppTokens.tint(t.muted, 0.3))),
           Positioned.fill(child: viewer),
-          Positioned.fill(child: IgnorePointer(child: _Watermark(text: widget.watermark))),
+          Positioned.fill(
+              child: IgnorePointer(child: _Watermark(text: widget.watermark))),
           if (blurred)
             Positioned.fill(
               child: ColoredBox(
@@ -222,9 +246,12 @@ class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer> with 
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.lock_outline, size: 32, color: t.mutedForeground),
+                        Icon(Icons.lock_outline,
+                            size: 32, color: t.mutedForeground),
                         const SizedBox(height: 8),
-                        Text(context.tr('Document preview hidden', 'दस्तावेज़ पूर्वावलोकन छिपा है'),
+                        Text(
+                            context.tr('Document preview hidden',
+                                'दस्तावेज़ पूर्वावलोकन छिपा है'),
                             style: AppText.bodyMedium(context)),
                         const SizedBox(height: 4),
                         Text(
@@ -248,7 +275,8 @@ class _ProtectedDocumentViewerState extends State<ProtectedDocumentViewer> with 
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
-                      context.tr('Content hidden — return to this screen to continue viewing.',
+                      context.tr(
+                          'Content hidden — return to this screen to continue viewing.',
                           'सामग्री छिपी है — देखना जारी रखने के लिए इस स्क्रीन पर लौटें।'),
                       textAlign: TextAlign.center,
                       style: AppText.caption(context),
@@ -281,7 +309,11 @@ class _Watermark extends StatelessWidget {
                 top: c.maxHeight * (((i ~/ 4) * 32 + 8) / 100),
                 child: Transform.rotate(
                   angle: -24 * 3.1415926 / 180,
-                  child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: color)),
+                  child: Text(text,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: color)),
                 ),
               ),
           ],

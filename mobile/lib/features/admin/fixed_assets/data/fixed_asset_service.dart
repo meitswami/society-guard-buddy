@@ -21,8 +21,8 @@ class FixedAssetService {
         .from('fixed_assets')
         .select('*')
         .eq('society_id', societyId)
-        .order('sub_head')
-        .order('asset_name');
+        .order('sub_head', ascending: true)
+        .order('asset_name', ascending: true);
     return rowsOf(data).map(FixedAsset.fromJson).toList();
   }
 
@@ -93,7 +93,7 @@ class FixedAssetService {
         .select('id, name, major_head, description')
         .eq('society_id', societyId)
         .eq('group_kind', 'general')
-        .order('name');
+        .order('name', ascending: true);
     return [
       for (final g in rowsOf(data))
         if (isFixedAssetExpenseGroup(

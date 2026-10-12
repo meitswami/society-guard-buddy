@@ -103,7 +103,7 @@ class ResidentRepository {
 
   Future<List<HouseholdMember>> fetchMembers(String flatId) async {
     if (!dbReady) return const [];
-    final data = await db.from('members').select('*').eq('flat_id', flatId).order('created_at');
+    final data = await db.from('members').select('*').eq('flat_id', flatId).order('created_at', ascending: true);
     return rowsOf(data).map(HouseholdMember.fromJson).toList();
   }
 
@@ -273,7 +273,7 @@ class ResidentRepository {
 
   Future<List<ResidentVehicleRow>> fetchVehicles(String flatId) async {
     if (!dbReady) return const [];
-    final data = await db.from('resident_vehicles').select('*').eq('flat_id', flatId).order('created_at');
+    final data = await db.from('resident_vehicles').select('*').eq('flat_id', flatId).order('created_at', ascending: true);
     return rowsOf(data).map(ResidentVehicleRow.fromJson).toList();
   }
 

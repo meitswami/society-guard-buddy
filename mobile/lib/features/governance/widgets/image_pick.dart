@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
@@ -10,10 +9,12 @@ import 'gov_widgets.dart';
 Uint8List _compress(Uint8List bytes) {
   final decoded = img.decodeImage(bytes);
   if (decoded == null) return bytes;
-  final longest = decoded.width > decoded.height ? decoded.width : decoded.height;
+  final longest =
+      decoded.width > decoded.height ? decoded.width : decoded.height;
   final resized = longest > 800
       ? img.copyResize(decoded,
-          width: decoded.width >= decoded.height ? 800 : null, height: decoded.height > decoded.width ? 800 : null)
+          width: decoded.width >= decoded.height ? 800 : null,
+          height: decoded.height > decoded.width ? 800 : null)
       : decoded;
   return Uint8List.fromList(img.encodeJpg(resized, quality: 70));
 }

@@ -88,22 +88,29 @@ class _SessionAudioPlayerState extends State<SessionAudioPlayer> {
     final max = _dur.inMilliseconds <= 0 ? 1.0 : _dur.inMilliseconds.toDouble();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(color: t.muted, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+          color: t.muted, borderRadius: BorderRadius.circular(999)),
       child: Row(
         children: [
           IconButton(
             onPressed: _toggle,
-            icon: Icon(_state == PlayerState.playing ? Icons.pause : Icons.play_arrow, color: t.foreground),
+            icon: Icon(
+                _state == PlayerState.playing ? Icons.pause : Icons.play_arrow,
+                color: t.foreground),
           ),
-          Text('${_fmt(_pos)} / ${_fmt(_dur)}', style: AppText.mono(context, size: 11)),
+          Text('${_fmt(_pos)} / ${_fmt(_dur)}',
+              style: AppText.mono(context, size: 11)),
           Expanded(
             child: Slider(
               value: _pos.inMilliseconds.clamp(0, max).toDouble(),
               max: max,
-              onChanged: _dur == Duration.zero ? null : (v) => _player.seek(Duration(milliseconds: v.round())),
+              onChanged: _dur == Duration.zero
+                  ? null
+                  : (v) => _player.seek(Duration(milliseconds: v.round())),
             ),
           ),
-          if (_failed) Icon(Icons.error_outline, size: 16, color: t.destructive),
+          if (_failed)
+            Icon(Icons.error_outline, size: 16, color: t.destructive),
         ],
       ),
     );

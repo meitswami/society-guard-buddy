@@ -91,7 +91,11 @@ class AttendeeRow {
 
 /// Row of `meeting_decisions`.
 class DecisionRow {
-  const DecisionRow({required this.id, required this.meetingId, required this.decisionText, required this.sortOrder});
+  const DecisionRow(
+      {required this.id,
+      required this.meetingId,
+      required this.decisionText,
+      required this.sortOrder});
 
   final String id;
   final String meetingId;
@@ -128,9 +132,12 @@ class MeetingDocRow {
   final int? sortOrder;
   final String? createdAt;
 
-  bool get isPdf => (fileName ?? '').toLowerCase().endsWith('.pdf') || mimeType == 'application/pdf';
+  bool get isPdf =>
+      (fileName ?? '').toLowerCase().endsWith('.pdf') ||
+      mimeType == 'application/pdf';
 
-  MeetingDocOrder get order => MeetingDocOrder(id: id, sortOrder: sortOrder, createdAt: createdAt);
+  MeetingDocOrder get order =>
+      MeetingDocOrder(id: id, sortOrder: sortOrder, createdAt: createdAt);
 
   factory MeetingDocRow.fromJson(Map<String, dynamic> j) => MeetingDocRow(
         id: '${j['id']}',
@@ -139,7 +146,8 @@ class MeetingDocRow {
         fileUrl: (j['file_url'] ?? '').toString(),
         fileName: _s(j['file_name']),
         mimeType: _s(j['mime_type']),
-        sortOrder: j['sort_order'] is num ? (j['sort_order'] as num).toInt() : null,
+        sortOrder:
+            j['sort_order'] is num ? (j['sort_order'] as num).toInt() : null,
         createdAt: _s(j['created_at']),
       );
 }
@@ -257,7 +265,12 @@ class SuggestionRow {
 
 /// Society member offered in attendance pickers.
 class MemberPick {
-  const MemberPick({required this.id, required this.name, required this.flatId, required this.flatNumber, this.photo});
+  const MemberPick(
+      {required this.id,
+      required this.name,
+      required this.flatId,
+      required this.flatNumber,
+      this.photo});
 
   final String id;
   final String name;
@@ -268,7 +281,11 @@ class MemberPick {
 
 /// Flat with its members (attendance grid).
 class FlatWithMembers {
-  const FlatWithMembers({required this.id, required this.flatNumber, this.ownerName, required this.members});
+  const FlatWithMembers(
+      {required this.id,
+      required this.flatNumber,
+      this.ownerName,
+      required this.members});
 
   final String id;
   final String flatNumber;

@@ -24,7 +24,8 @@ class CommitteeMemberFormPage extends StatefulWidget {
   final int defaultSortOrder;
 
   @override
-  State<CommitteeMemberFormPage> createState() => _CommitteeMemberFormPageState();
+  State<CommitteeMemberFormPage> createState() =>
+      _CommitteeMemberFormPageState();
 }
 
 class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
@@ -61,7 +62,9 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
       _flatOwnerName = r.flatOwnerName ?? '';
       _name.text = r.name;
       _position = r.position;
-      if (!committeePositionPresets.contains(r.position)) _customPosition.text = r.position;
+      if (!committeePositionPresets.contains(r.position)) {
+        _customPosition.text = r.position;
+      }
       _phone.text = r.phone ?? '';
       _gender = r.gender ?? '';
       _photo = r.photo ?? '';
@@ -70,8 +73,14 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
       _repPhone.text = r.repPhone ?? '';
       _repPhoto = r.repPhoto ?? '';
       _sortOrder.text = '${r.sortOrder}';
-      _termFrom = r.termFrom == null ? '' : r.termFrom!.substring(0, r.termFrom!.length >= 10 ? 10 : r.termFrom!.length);
-      _termTo = r.termTo == null ? '' : r.termTo!.substring(0, r.termTo!.length >= 10 ? 10 : r.termTo!.length);
+      _termFrom = r.termFrom == null
+          ? ''
+          : r.termFrom!
+              .substring(0, r.termFrom!.length >= 10 ? 10 : r.termFrom!.length);
+      _termTo = r.termTo == null
+          ? ''
+          : r.termTo!
+              .substring(0, r.termTo!.length >= 10 ? 10 : r.termTo!.length);
       _selectionType = r.selectionType ?? '';
     } else {
       _sortOrder.text = '${widget.defaultSortOrder}';
@@ -82,7 +91,15 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
 
   @override
   void dispose() {
-    for (final c in [_flatSearch, _name, _customPosition, _phone, _repName, _repPhone, _sortOrder]) {
+    for (final c in [
+      _flatSearch,
+      _name,
+      _customPosition,
+      _phone,
+      _repName,
+      _repPhone,
+      _sortOrder
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -115,7 +132,9 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
         _flatOwnerName = '';
         return;
       }
-      final owner = flat.primaryMemberName.isNotEmpty ? flat.primaryMemberName : (flat.ownerName ?? '').trim();
+      final owner = flat.primaryMemberName.isNotEmpty
+          ? flat.primaryMemberName
+          : (flat.ownerName ?? '').trim();
       _flatId = flat.id;
       _flatNumber = flat.flatNumber;
       _flatOwnerName = owner;
@@ -161,10 +180,16 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
     try {
       if (widget.editing != null) {
         await _repo.updateMember(widget.editing!.id, payload);
-        if (mounted) GovToast.ok(context, context.tr('Committee member updated', 'समिति सदस्य अद्यतन'));
+        if (mounted) {
+          GovToast.ok(context,
+              context.tr('Committee member updated', 'समिति सदस्य अद्यतन'));
+        }
       } else {
         await _repo.insertMember(payload);
-        if (mounted) GovToast.ok(context, context.tr('Committee member added', 'समिति सदस्य जोड़ा गया'));
+        if (mounted) {
+          GovToast.ok(context,
+              context.tr('Committee member added', 'समिति सदस्य जोड़ा गया'));
+        }
       }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -204,7 +229,8 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final nameDiffers = committeeIsRepresentative(name: _name.text, flatOwnerName: _flatOwnerName);
+    final nameDiffers = committeeIsRepresentative(
+        name: _name.text, flatOwnerName: _flatOwnerName);
     final isPreset = committeePositionPresets.contains(_position);
     const gap = SizedBox(height: 14);
     return Scaffold(
@@ -219,7 +245,8 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
           FieldLabel(context.tr('Flat no.', 'फ्लैट नं.'), required: true),
           AppTextField(
             controller: _flatSearch,
-            hint: context.tr('Search flat or owner name…', 'फ्लैट या स्वामी का नाम खोजें…'),
+            hint: context.tr(
+                'Search flat or owner name…', 'फ्लैट या स्वामी का नाम खोजें…'),
             prefixIcon: Icons.search,
             caps: false,
           ),
@@ -231,7 +258,9 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
             labelOf: (id) {
               if (id.isEmpty) return context.tr('Select flat…', 'फ्लैट चुनें…');
               final f = widget.flats.firstWhere((x) => x.id == id);
-              return f.primaryMemberName.isNotEmpty ? '${f.flatNumber} — ${f.primaryMemberName}' : f.flatNumber;
+              return f.primaryMemberName.isNotEmpty
+                  ? '${f.flatNumber} — ${f.primaryMemberName}'
+                  : f.flatNumber;
             },
             onChanged: _applyFlat,
           ),
@@ -242,16 +271,24 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
               fill: 0.06,
               child: Row(
                 children: [
-                  PersonAvatar(name: _flatOwnerName, photo: _photo, size: AvatarSize.md),
+                  PersonAvatar(
+                      name: _flatOwnerName, photo: _photo, size: AvatarSize.md),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(context.tr('FLAT OWNER (FROM MEMBERS)', 'फ्लैट स्वामी (सदस्यों से)'), style: AppText.tiny(context)),
-                        Text(_flatOwnerName, style: AppText.bodyMedium(context)),
+                        Text(
+                            context.tr('FLAT OWNER (FROM MEMBERS)',
+                                'फ्लैट स्वामी (सदस्यों से)'),
+                            style: AppText.tiny(context)),
+                        Text(_flatOwnerName,
+                            style: AppText.bodyMedium(context)),
                         if (_flatNumber.isNotEmpty)
-                          Text(context.tr('Flat $_flatNumber', 'फ्लैट $_flatNumber'), style: AppText.tiny(context)),
+                          Text(
+                              context.tr(
+                                  'Flat $_flatNumber', 'फ्लैट $_flatNumber'),
+                              style: AppText.tiny(context)),
                       ],
                     ),
                   ),
@@ -264,7 +301,8 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
             controller: _name,
             label: context.tr('Name for this post', 'इस पद के लिए नाम'),
             required: true,
-            hint: context.tr('Defaults to flat owner; change if a representative holds the post',
+            hint: context.tr(
+                'Defaults to flat owner; change if a representative holds the post',
                 'डिफ़ॉल्ट फ्लैट स्वामी; प्रतिनिधि पद पर हो तो बदलें'),
             caps: false,
           ),
@@ -272,7 +310,8 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                context.tr('Representative name will be shown (owner: $_flatOwnerName)',
+                context.tr(
+                    'Representative name will be shown (owner: $_flatOwnerName)',
                     'प्रतिनिधि का नाम दिखेगा (स्वामी: $_flatOwnerName)'),
                 style: TextStyle(fontSize: 11, color: t.primary),
               ),
@@ -302,13 +341,15 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
             }),
           ),
           gap,
-          FieldLabel(context.tr('How selected', 'चयन कैसे हुआ'), required: true),
+          FieldLabel(context.tr('How selected', 'चयन कैसे हुआ'),
+              required: true),
           Wrap(
             spacing: 4,
             children: [
               for (final opt in CommitteeSelectionType.values)
                 ChoiceChip(
-                  label: Text(opt.label(_hi), style: const TextStyle(fontSize: 12)),
+                  label: Text(opt.label(_hi),
+                      style: const TextStyle(fontSize: 12)),
                   selected: _selectionType == opt.value,
                   onSelected: (_) => setState(() => _selectionType = opt.value),
                 ),
@@ -331,7 +372,8 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
                 child: GovDateField(
                   label: context.tr('Tenure to', 'कार्यकाल तक'),
                   value: _termTo,
-                  helper: context.tr('Leave blank until retirement', 'सेवानिवृत्ति तक खाली छोड़ें'),
+                  helper: context.tr('Leave blank until retirement',
+                      'सेवानिवृत्ति तक खाली छोड़ें'),
                   onChanged: (v) => setState(() => _termTo = v),
                 ),
               ),
@@ -377,7 +419,9 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
             controller: _sortOrder,
             label: context.tr('Display order', 'प्रदर्शन क्रम'),
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'-?\d*'))],
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'-?\d*'))
+            ],
           ),
           if (_gender == 'female') ...[
             gap,
@@ -390,21 +434,28 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
                   CheckRow(
                     value: _showRep,
                     onChanged: (v) => setState(() => _showRep = v),
-                    label: context.tr('Add separate representative contact (photo & mobile) for residents',
+                    label: context.tr(
+                        'Add separate representative contact (photo & mobile) for residents',
                         'निवासियों के लिए अलग प्रतिनिधि संपर्क (फ़ोटो व मोबाइल) जोड़ें'),
                   ),
                   if (_showRep) ...[
                     const SizedBox(height: 10),
-                    AppTextField(controller: _repName, label: context.tr('Representative name', 'प्रतिनिधि का नाम'), caps: false),
+                    AppTextField(
+                        controller: _repName,
+                        label: context.tr(
+                            'Representative name', 'प्रतिनिधि का नाम'),
+                        caps: false),
                     const SizedBox(height: 10),
                     AppTextField(
                       controller: _repPhone,
-                      label: context.tr('Representative mobile', 'प्रतिनिधि मोबाइल'),
+                      label: context.tr(
+                          'Representative mobile', 'प्रतिनिधि मोबाइल'),
                       keyboardType: TextInputType.phone,
                       mono: true,
                     ),
                     const SizedBox(height: 10),
-                    FieldLabel(context.tr('Representative photo', 'प्रतिनिधि फ़ोटो')),
+                    FieldLabel(
+                        context.tr('Representative photo', 'प्रतिनिधि फ़ोटो')),
                     _photoRow(_repPhoto, (v) => setState(() => _repPhoto = v)),
                   ],
                 ],
@@ -421,7 +472,11 @@ class _CommitteeMemberFormPageState extends State<CommitteeMemberFormPage> {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(child: AppButton(label: context.tr('Save', 'सहेजें'), loading: _saving, onPressed: _save)),
+              Expanded(
+                  child: AppButton(
+                      label: context.tr('Save', 'सहेजें'),
+                      loading: _saving,
+                      onPressed: _save)),
             ],
           ),
         ],

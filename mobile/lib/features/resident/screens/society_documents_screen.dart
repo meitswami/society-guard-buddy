@@ -12,7 +12,8 @@ class SocietyDocumentsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(context.tr('Society documents', 'सोसायटी दस्तावेज़'))),
+        appBar: AppBar(
+            title: Text(context.tr('Society documents', 'सोसायटी दस्तावेज़'))),
         body: ResidentDocumentsView(session: session),
       );
 }

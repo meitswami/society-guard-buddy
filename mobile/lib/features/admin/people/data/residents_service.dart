@@ -285,7 +285,9 @@ class ResidentsService {
           {'owner_name': form.name, 'is_occupied': true}).eq('id', flatId);
     }
 
-    if (restricted) {
+    // The form shows the vehicle row for staff and tenants (`memberNeedsDocs`), so save it
+    // for both. The web saves it only for staff and silently deletes a tenant's vehicle.
+    if (restricted || isTenantRelation(form.relation)) {
       await _syncStaffVehicleRow(
           societyId: societyId, memberId: memberId, flat: flat, form: form);
     } else {

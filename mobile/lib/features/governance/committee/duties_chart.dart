@@ -8,7 +8,8 @@ import '../widgets/gov_widgets.dart';
 
 /// Port of web `CommitteeDutiesChart.tsx` (admin edit / resident read-only).
 class CommitteeDutiesChart extends StatefulWidget {
-  const CommitteeDutiesChart({super.key, required this.societyId, required this.isResident});
+  const CommitteeDutiesChart(
+      {super.key, required this.societyId, required this.isResident});
 
   final String societyId;
   final bool isResident;
@@ -86,14 +87,19 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
     _clearForms();
     final chart = _chart;
     if (chart != null) {
-      _periodFrom = chart.periodFrom.length >= 10 ? chart.periodFrom.substring(0, 10) : chart.periodFrom;
+      _periodFrom = chart.periodFrom.length >= 10
+          ? chart.periodFrom.substring(0, 10)
+          : chart.periodFrom;
       final to = chart.periodTo ?? '';
       _periodTo = to.length >= 10 ? to.substring(0, 10) : to;
       if (_rows.isEmpty) {
         _forms.add(_DutyEditor());
       } else {
         for (final r in _rows) {
-          _forms.add(_DutyEditor(id: r.id, label: r.dutyLabel, names: formatSupervisorNames(r.supervisorNames)));
+          _forms.add(_DutyEditor(
+              id: r.id,
+              label: r.dutyLabel,
+              names: formatSupervisorNames(r.supervisorNames)));
         }
       }
     } else {
@@ -110,8 +116,12 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
   }
 
   void _addPreset(String label) {
-    if (_forms.any((f) => f.label.text.trim().toLowerCase() == label.toLowerCase())) {
-      GovToast.info(context, context.tr('$label is already in the chart', '$label पहले से चार्ट में है'));
+    if (_forms
+        .any((f) => f.label.text.trim().toLowerCase() == label.toLowerCase())) {
+      GovToast.info(
+          context,
+          context.tr(
+              '$label is already in the chart', '$label पहले से चार्ट में है'));
       return;
     }
     setState(() => _forms.add(_DutyEditor(label: label)));
@@ -123,7 +133,11 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
       periodTo: _periodTo,
       forms: [
         for (var i = 0; i < _forms.length; i++)
-          DutyFormRow(id: _forms[i].id, dutyLabel: _forms[i].label.text, supervisorNames: _forms[i].names.text, sortOrder: i),
+          DutyFormRow(
+              id: _forms[i].id,
+              dutyLabel: _forms[i].label.text,
+              supervisorNames: _forms[i].names.text,
+              sortOrder: i),
       ],
     );
     if (res.error != null) {
@@ -132,16 +146,26 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
     }
     setState(() => _saving = true);
     try {
-      await _repo.saveDuties(chartId: _chart?.id, periodFrom: _periodFrom, periodTo: _periodTo, rows: res.rows);
+      await _repo.saveDuties(
+          chartId: _chart?.id,
+          periodFrom: _periodFrom,
+          periodTo: _periodTo,
+          rows: res.rows);
       if (!mounted) return;
-      GovToast.ok(context, context.tr('Duties chart saved', 'कर्तव्य चार्ट सहेजा गया'));
+      GovToast.ok(
+          context, context.tr('Duties chart saved', 'कर्तव्य चार्ट सहेजा गया'));
       _clearForms();
       setState(() => _editing = false);
       await _load();
     } catch (e) {
       if (mounted) {
         final msg = GovBackend.errorText(e);
-        GovToast.error(context, msg.isEmpty ? context.tr('Failed to save duties chart', 'कर्तव्य चार्ट सहेजा नहीं गया') : msg);
+        GovToast.error(
+            context,
+            msg.isEmpty
+                ? context.tr('Failed to save duties chart',
+                    'कर्तव्य चार्ट सहेजा नहीं गया')
+                : msg);
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -154,7 +178,8 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
     final ok = await govConfirm(
       context,
       title: context.tr('Remove duties chart?', 'कर्तव्य चार्ट हटाएँ?'),
-      message: context.tr('The standard duties chart will be hidden from residents until you create a new one.',
+      message: context.tr(
+          'The standard duties chart will be hidden from residents until you create a new one.',
           'नया चार्ट बनाने तक मानक कर्तव्य चार्ट निवासियों से छिपा रहेगा।'),
       confirmLabel: context.tr('Remove', 'हटाएँ'),
       destructive: true,
@@ -163,7 +188,8 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
     try {
       await _repo.removeDutiesChart(chart.id);
       if (!mounted) return;
-      GovToast.ok(context, context.tr('Duties chart removed', 'कर्तव्य चार्ट हटाया गया'));
+      GovToast.ok(context,
+          context.tr('Duties chart removed', 'कर्तव्य चार्ट हटाया गया'));
       setState(() => _editing = false);
       await _load();
     } catch (e) {
@@ -193,14 +219,18 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
                 child: GovDateField(
                   label: context.tr('Period to', 'अवधि तक'),
                   value: _periodTo,
-                  helper: context.tr('Leave blank if ongoing', 'जारी हो तो खाली छोड़ें'),
+                  helper: context.tr(
+                      'Leave blank if ongoing', 'जारी हो तो खाली छोड़ें'),
                   onChanged: (v) => setState(() => _periodTo = v),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Text(context.tr('QUICK ADD STANDARD DUTIES', 'मानक कर्तव्य जल्दी जोड़ें'), style: AppText.fieldLabel(context)),
+          Text(
+              context.tr(
+                  'QUICK ADD STANDARD DUTIES', 'मानक कर्तव्य जल्दी जोड़ें'),
+              style: AppText.fieldLabel(context)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
@@ -209,7 +239,8 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
               for (final p in standardDutyPresets)
                 ActionChip(
                   visualDensity: VisualDensity.compact,
-                  label: Text('+ ${dutyPresetLabel(p, hi: _hi)}', style: const TextStyle(fontSize: 11)),
+                  label: Text('+ ${dutyPresetLabel(p, hi: _hi)}',
+                      style: const TextStyle(fontSize: 11)),
                   backgroundColor: AppTokens.tint(t.secondary, 0.5),
                   side: BorderSide(color: t.border),
                   onPressed: () => _addPreset(p),
@@ -217,7 +248,8 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(context.tr('DUTY ASSIGNMENTS', 'कर्तव्य आवंटन'), style: AppText.fieldLabel(context)),
+          Text(context.tr('DUTY ASSIGNMENTS', 'कर्तव्य आवंटन'),
+              style: AppText.fieldLabel(context)),
           const SizedBox(height: 8),
           for (var i = 0; i < _forms.length; i++)
             Container(
@@ -235,19 +267,23 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(context.tr('Duty', 'कर्तव्य'), style: AppText.tiny(context)),
+                        Text(context.tr('Duty', 'कर्तव्य'),
+                            style: AppText.tiny(context)),
                         const SizedBox(height: 2),
                         AppTextField(
                           controller: _forms[i].label,
-                          hint: context.tr('e.g. Security & Gate', 'जैसे सुरक्षा एवं गेट'),
+                          hint: context.tr(
+                              'e.g. Security & Gate', 'जैसे सुरक्षा एवं गेट'),
                           caps: false,
                         ),
                         const SizedBox(height: 8),
-                        Text(context.tr('Supervisor name(s)', 'पर्यवेक्षक नाम'), style: AppText.tiny(context)),
+                        Text(context.tr('Supervisor name(s)', 'पर्यवेक्षक नाम'),
+                            style: AppText.tiny(context)),
                         const SizedBox(height: 2),
                         AppTextField(
                           controller: _forms[i].names,
-                          hint: context.tr('Comma-separated for multiple', 'एक से अधिक हों तो अल्पविराम से अलग करें'),
+                          hint: context.tr('Comma-separated for multiple',
+                              'एक से अधिक हों तो अल्पविराम से अलग करें'),
                           caps: false,
                         ),
                       ],
@@ -270,17 +306,23 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
             child: TextButton.icon(
               onPressed: () => setState(() => _forms.add(_DutyEditor())),
               icon: const Icon(Icons.add, size: 14),
-              label: Text(context.tr('Add duty row', 'कर्तव्य पंक्ति जोड़ें'), style: const TextStyle(fontSize: 12)),
+              label: Text(context.tr('Add duty row', 'कर्तव्य पंक्ति जोड़ें'),
+                  style: const TextStyle(fontSize: 12)),
             ),
           ),
           Divider(color: t.border),
           Row(
             children: [
-              Expanded(child: AppButton.secondary(label: context.tr('Cancel', 'रद्द करें'), onPressed: _saving ? null : _cancel)),
+              Expanded(
+                  child: AppButton.secondary(
+                      label: context.tr('Cancel', 'रद्द करें'),
+                      onPressed: _saving ? null : _cancel)),
               const SizedBox(width: 8),
               Expanded(
                 child: AppButton(
-                  label: _saving ? context.tr('Saving…', 'सहेजा जा रहा है…') : context.tr('Save chart', 'चार्ट सहेजें'),
+                  label: _saving
+                      ? context.tr('Saving…', 'सहेजा जा रहा है…')
+                      : context.tr('Save chart', 'चार्ट सहेजें'),
                   icon: Icons.save_outlined,
                   loading: _saving,
                   onPressed: _save,
@@ -296,7 +338,10 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
   Widget _table() {
     final t = context.tokens;
     final chart = _chart!;
-    String d(String? iso) => iso == null || iso.isEmpty ? '' : Fmt.isoToDisplay(iso.substring(0, iso.length >= 10 ? 10 : iso.length));
+    String d(String? iso) => iso == null || iso.isEmpty
+        ? ''
+        : Fmt.isoToDisplay(
+            iso.substring(0, iso.length >= 10 ? 10 : iso.length));
     return CardSection(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -305,8 +350,10 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
             TextSpan(children: [
               TextSpan(text: '${context.tr('Period', 'अवधि')}: '),
               TextSpan(
-                text: '${d(chart.periodFrom)} → ${chart.periodTo != null ? d(chart.periodTo) : context.tr('Ongoing', 'जारी')}',
-                style: TextStyle(fontWeight: FontWeight.w600, color: t.foreground),
+                text:
+                    '${d(chart.periodFrom)} → ${chart.periodTo != null ? d(chart.periodTo) : context.tr('Ongoing', 'जारी')}',
+                style:
+                    TextStyle(fontWeight: FontWeight.w600, color: t.foreground),
               ),
             ]),
             style: AppText.caption(context),
@@ -314,11 +361,17 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(vertical: 6),
-            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: t.border))),
+            decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: t.border))),
             child: Row(
               children: [
-                Expanded(child: Text(context.tr('DUTY', 'कर्तव्य'), style: AppText.tiny(context))),
-                Expanded(flex: 1, child: Text(context.tr('SUPERVISOR(S)', 'पर्यवेक्षक'), style: AppText.tiny(context))),
+                Expanded(
+                    child: Text(context.tr('DUTY', 'कर्तव्य'),
+                        style: AppText.tiny(context))),
+                Expanded(
+                    flex: 1,
+                    child: Text(context.tr('SUPERVISOR(S)', 'पर्यवेक्षक'),
+                        style: AppText.tiny(context))),
               ],
             ),
           ),
@@ -326,15 +379,22 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 9),
               decoration: BoxDecoration(
-                border: i == _rows.length - 1 ? null : Border(bottom: BorderSide(color: AppTokens.tint(t.border, 0.6))),
+                border: i == _rows.length - 1
+                    ? null
+                    : Border(
+                        bottom:
+                            BorderSide(color: AppTokens.tint(t.border, 0.6))),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: Text(r.dutyLabel, style: AppText.bodyMedium(context))),
+                  Expanded(
+                      child: Text(r.dutyLabel,
+                          style: AppText.bodyMedium(context))),
                   Expanded(
                     child: Text(formatSupervisorNames(r.supervisorNames),
-                        style: AppText.body(context).copyWith(color: t.mutedForeground)),
+                        style: AppText.body(context)
+                            .copyWith(color: t.mutedForeground)),
                   ),
                 ],
               ),
@@ -370,20 +430,26 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.assignment_outlined, size: 16, color: t.primary),
+                        Icon(Icons.assignment_outlined,
+                            size: 16, color: t.primary),
                         const SizedBox(width: 6),
                         Flexible(
-                          child: Text(context.tr('Standard Duties Chart', 'मानक कर्तव्य चार्ट'),
-                              style: AppText.sectionTitle(context).copyWith(fontSize: widget.isResident ? 14 : 16)),
+                          child: Text(
+                              context.tr('Standard Duties Chart',
+                                  'मानक कर्तव्य चार्ट'),
+                              style: AppText.sectionTitle(context).copyWith(
+                                  fontSize: widget.isResident ? 14 : 16)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       widget.isResident
-                          ? context.tr('Who supervises each operational duty for the current period.',
+                          ? context.tr(
+                              'Who supervises each operational duty for the current period.',
                               'वर्तमान अवधि में प्रत्येक कार्य का पर्यवेक्षण कौन करता है।')
-                          : context.tr('Assign supervisors to standard duties for a date period; residents see this read-only.',
+                          : context.tr(
+                              'Assign supervisors to standard duties for a date period; residents see this read-only.',
                               'एक अवधि के लिए मानक कर्तव्यों पर पर्यवेक्षक नियुक्त करें; निवासी इसे केवल देख सकते हैं।'),
                       style: AppText.caption(context),
                     ),
@@ -401,7 +467,9 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
                   ),
                 const SizedBox(width: 6),
                 MiniButton(
-                  label: hasChart ? context.tr('Edit', 'संपादित') : context.tr('Create', 'बनाएँ'),
+                  label: hasChart
+                      ? context.tr('Edit', 'संपादित')
+                      : context.tr('Create', 'बनाएँ'),
                   icon: Icons.edit_outlined,
                   variant: MiniVariant.secondary,
                   onPressed: _startEdit,
@@ -411,7 +479,10 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
           ),
           const SizedBox(height: 12),
           if (_loading)
-            Text(context.tr('Loading duties chart…', 'कर्तव्य चार्ट लोड हो रहा है…'), style: AppText.caption(context))
+            Text(
+                context.tr(
+                    'Loading duties chart…', 'कर्तव्य चार्ट लोड हो रहा है…'),
+                style: AppText.caption(context))
           else if (_editing && !widget.isResident)
             _editor()
           else if (hasChart)
@@ -421,15 +492,19 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
               child: Column(
                 children: [
-                  Icon(Icons.assignment_outlined, size: 32, color: AppTokens.tint(t.mutedForeground, 0.4)),
+                  Icon(Icons.assignment_outlined,
+                      size: 32, color: AppTokens.tint(t.mutedForeground, 0.4)),
                   const SizedBox(height: 8),
                   Text(
                     widget.isResident
-                        ? context.tr('No duties chart published yet.', 'अभी कोई कर्तव्य चार्ट प्रकाशित नहीं।')
-                        : context.tr('Create a standard duties chart for residents to see.',
+                        ? context.tr('No duties chart published yet.',
+                            'अभी कोई कर्तव्य चार्ट प्रकाशित नहीं।')
+                        : context.tr(
+                            'Create a standard duties chart for residents to see.',
                             'निवासियों के लिए मानक कर्तव्य चार्ट बनाएँ।'),
                     textAlign: TextAlign.center,
-                    style: AppText.body(context).copyWith(color: t.mutedForeground),
+                    style: AppText.body(context)
+                        .copyWith(color: t.mutedForeground),
                   ),
                 ],
               ),

@@ -49,14 +49,19 @@ class GovLetterhead {
 
   /// Web `letterheadAddressLine`.
   String get addressLine {
-    final parts = [address, [city, state].where((s) => (s ?? '').trim().isNotEmpty).join(', '), pincode]
-        .map((p) => (p ?? '').trim())
-        .where((p) => p.isNotEmpty);
+    final parts = [
+      address,
+      [city, state].where((s) => (s ?? '').trim().isNotEmpty).join(', '),
+      pincode
+    ].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty);
     return parts.join(' · ');
   }
 
   /// Web `letterheadContactLine`.
-  String get contactLine => [contactPhone, contactEmail].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
+  String get contactLine => [contactPhone, contactEmail]
+      .map((p) => (p ?? '').trim())
+      .where((p) => p.isNotEmpty)
+      .join(' · ');
 
   /// Full-page uploaded letterhead image is available.
   bool get hasPageImage => mode == 'image' && letterheadBytes != null;
@@ -77,7 +82,9 @@ class GovLetterhead {
       final bytes = await consolidateHttpClientResponseBytes(res);
       client.close();
       final ct = res.headers.contentType?.mimeType ?? '';
-      if (ct == 'application/pdf' || url.toLowerCase().contains('.pdf')) return null;
+      if (ct == 'application/pdf' || url.toLowerCase().contains('.pdf')) {
+        return null;
+      }
       return bytes;
     } catch (e) {
       debugPrint('[letterhead] image fetch failed $url: $e');
@@ -94,31 +101,52 @@ class GovLetterhead {
         'id, name, logo_url, letterhead_url, letterhead_mode, letterhead_top_mm, letterhead_bottom_mm, address, city, state, pincode, contact_phone, contact_email';
     Map<String, dynamic>? row;
     try {
-      row = await db.from('societies').select(full).eq('id', societyId).maybeSingle();
+      row = await db
+          .from('societies')
+          .select(full)
+          .eq('id', societyId)
+          .maybeSingle();
     } catch (_) {
       try {
-        row = await db.from('societies').select(fallback).eq('id', societyId).maybeSingle();
+        row = await db
+            .from('societies')
+            .select(fallback)
+            .eq('id', societyId)
+            .maybeSingle();
       } catch (e) {
         debugPrint('[letterhead] fetch failed: $e');
         return null;
       }
     }
-    if (row == null || (row['id'] != null && '${row['id']}' != societyId)) return null;
+    if (row == null || (row['id'] != null && '${row['id']}' != societyId)) {
+      return null;
+    }
     String? s(String k) => row![k] as String?;
     var letterheadUrl = s('letterhead_url');
     final storagePath = s('letterhead_storage_path');
-    if ((letterheadUrl == null || letterheadUrl.isEmpty) && storagePath != null && storagePath.isNotEmpty) {
+    if ((letterheadUrl == null || letterheadUrl.isEmpty) &&
+        storagePath != null &&
+        storagePath.isNotEmpty) {
       try {
-        letterheadUrl = await db.storage.from(GovBackend.societyDocumentsBucket).createSignedUrl(storagePath, 3600);
+        letterheadUrl = await db.storage
+            .from(GovBackend.societyDocumentsBucket)
+            .createSignedUrl(storagePath, 3600);
       } catch (_) {}
     }
     final rawMode = s('letterhead_mode');
-    final mode = (rawMode == 'image' || rawMode == 'stationery' || rawMode == 'auto')
+    final mode = (rawMode == 'image' ||
+            rawMode == 'stationery' ||
+            rawMode == 'auto')
         ? rawMode!
-        : ((letterheadUrl ?? '').isNotEmpty || (storagePath ?? '').isNotEmpty ? 'image' : 'auto');
-    final results = await Future.wait([_fetch(s('logo_url')), _fetch(letterheadUrl)]);
+        : ((letterheadUrl ?? '').isNotEmpty || (storagePath ?? '').isNotEmpty
+            ? 'image'
+            : 'auto');
+    final results =
+        await Future.wait([_fetch(s('logo_url')), _fetch(letterheadUrl)]);
     return GovLetterhead(
-      name: ((row['name'] ?? '') as String).trim().isEmpty ? 'Society' : (row['name'] as String).trim(),
+      name: ((row['name'] ?? '') as String).trim().isEmpty
+          ? 'Society'
+          : (row['name'] as String).trim(),
       // The charter always shows branding: stationery falls back to the digital band.
       mode: mode == 'image' ? 'image' : 'auto',
       logoUrl: s('logo_url'),

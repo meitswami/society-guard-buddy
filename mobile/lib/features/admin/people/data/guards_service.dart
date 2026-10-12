@@ -49,7 +49,7 @@ class GuardsService {
         .from('guards')
         .select('*')
         .eq('society_id', societyId)
-        .order('guard_id'));
+        .order('guard_id', ascending: true));
     final guards = rows.map(GuardRow.fromJson).toList();
     final ids = guards.map((g) => g.id).toList();
     if (ids.isEmpty) {
@@ -64,7 +64,7 @@ class GuardsService {
         columns: '*',
         column: 'guard_id',
         ids: ids,
-        build: (q) => q.order('sort_order'),
+        build: (q) => q.order('sort_order', ascending: true),
       ),
     ]);
     final docs = <String, List<GuardDoc>>{};

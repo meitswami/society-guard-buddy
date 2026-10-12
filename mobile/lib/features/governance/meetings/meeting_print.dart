@@ -11,12 +11,16 @@ import '../models/meeting_models.dart';
 abstract final class MeetingPrint {
   static const _margin = pw.EdgeInsets.all(54); // 0.75 in
 
-  static pw.TextStyle get _h1 => pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold);
-  static pw.TextStyle get _h2 => pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold);
-  static const pw.TextStyle _muted = pw.TextStyle(fontSize: 11, color: PdfColors.grey700);
+  static pw.TextStyle get _h1 =>
+      pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold);
+  static pw.TextStyle get _h2 =>
+      pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold);
+  static const pw.TextStyle _muted =
+      pw.TextStyle(fontSize: 11, color: PdfColors.grey700);
   static const pw.TextStyle _cell = pw.TextStyle(fontSize: 10);
 
-  static pw.Widget _table(List<String> headers, List<List<String>> rows, {String? empty}) {
+  static pw.Widget _table(List<String> headers, List<List<String>> rows,
+      {String? empty}) {
     final data = rows.isEmpty && empty != null
         ? [
             [empty, ...List.filled(headers.length - 1, '')],
@@ -55,7 +59,14 @@ abstract final class MeetingPrint {
         pw.Text('${rows.length} record(s)', style: _muted),
         pw.SizedBox(height: 10),
         _table(
-          const ['Type', 'Title', 'Date & time', 'Venue', 'Status', 'Published'],
+          const [
+            'Type',
+            'Title',
+            'Date & time',
+            'Venue',
+            'Status',
+            'Published'
+          ],
           rows.map(_row).toList(),
           empty: 'No meetings in this list.',
         ),
@@ -83,7 +94,9 @@ abstract final class MeetingPrint {
         build: (_) => [
           if (first) ...[
             pw.Text(heading, style: _h1),
-            pw.Text('All meetings — one section per class (${meetings.length} total)', style: _muted),
+            pw.Text(
+                'All meetings — one section per class (${meetings.length} total)',
+                style: _muted),
             pw.SizedBox(height: 12),
           ],
           pw.Text(entry.key.labelEn, style: _h2),
@@ -117,7 +130,10 @@ abstract final class MeetingPrint {
     final doc = await ExportKit.newPdf(title: 'Meeting: $title');
     pw.Widget label(String k, String v) => pw.RichText(
           text: pw.TextSpan(children: [
-            pw.TextSpan(text: '$k: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+            pw.TextSpan(
+                text: '$k: ',
+                style:
+                    pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
             pw.TextSpan(text: v, style: const pw.TextStyle(fontSize: 11)),
           ]),
         );
@@ -127,7 +143,8 @@ abstract final class MeetingPrint {
             pw.SizedBox(height: 14),
             pw.Text(h, style: _h2),
             pw.SizedBox(height: 6),
-            pw.Text(body.trim().isEmpty ? '—' : body.trim(), style: const pw.TextStyle(fontSize: 10.5)),
+            pw.Text(body.trim().isEmpty ? '—' : body.trim(),
+                style: const pw.TextStyle(fontSize: 10.5)),
           ],
         );
     final decs = decisions.where((d) => d.trim().isNotEmpty).toList();
@@ -148,14 +165,21 @@ abstract final class MeetingPrint {
         pw.Text('Decisions / resolutions', style: _h2),
         pw.SizedBox(height: 6),
         if (decs.isEmpty) pw.Text('1. —', style: _cell),
-        for (final (i, d) in decs.indexed) pw.Text('${i + 1}. $d', style: const pw.TextStyle(fontSize: 10.5)),
+        for (final (i, d) in decs.indexed)
+          pw.Text('${i + 1}. $d', style: const pw.TextStyle(fontSize: 10.5)),
         pw.SizedBox(height: 14),
         pw.Text('Attendance', style: _h2),
         pw.SizedBox(height: 6),
         _table(
           const ['Name', 'Flat', 'Role', 'Presence'],
           [
-            for (final a in attendees) [a.displayName, a.flatNumber ?? '—', a.attendeeRole, a.isPresent ? 'Present' : 'Absent'],
+            for (final a in attendees)
+              [
+                a.displayName,
+                a.flatNumber ?? '—',
+                a.attendeeRole,
+                a.isPresent ? 'Present' : 'Absent'
+              ],
           ],
           empty: '—',
         ),

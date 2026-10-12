@@ -19,12 +19,15 @@ ImageProvider? govPhotoProvider(String? photo) {
       return null;
     }
   }
-  if (p.startsWith('http://') || p.startsWith('https://')) return CachedNetworkImageProvider(p);
+  if (p.startsWith('http://') || p.startsWith('https://')) {
+    return CachedNetworkImageProvider(p);
+  }
   return null;
 }
 
 /// Data URL for an image (`data:image/jpeg;base64,…`), like the web FileReader result.
-String imageDataUrl(Uint8List bytes, {String mime = 'image/jpeg'}) => 'data:$mime;base64,${base64Encode(bytes)}';
+String imageDataUrl(Uint8List bytes, {String mime = 'image/jpeg'}) =>
+    'data:$mime;base64,${base64Encode(bytes)}';
 
 enum AvatarSize { xs, sm, md, lg, xl }
 
@@ -38,7 +41,8 @@ double _avatarPx(AvatarSize s) => switch (s) {
 
 /// Web `PersonAvatar`: circular face photo with an initial fallback.
 class PersonAvatar extends StatelessWidget {
-  const PersonAvatar({super.key, required this.name, this.photo, this.size = AvatarSize.md});
+  const PersonAvatar(
+      {super.key, required this.name, this.photo, this.size = AvatarSize.md});
 
   final String name;
   final String? photo;
@@ -49,7 +53,8 @@ class PersonAvatar extends StatelessWidget {
     final t = context.tokens;
     final px = _avatarPx(size);
     final provider = govPhotoProvider(photo);
-    final initial = name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
+    final initial =
+        name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
     return Container(
       width: px,
       height: px,
@@ -57,11 +62,17 @@ class PersonAvatar extends StatelessWidget {
         shape: BoxShape.circle,
         color: AppTokens.tint(t.primary, 0.10),
         border: Border.all(color: AppTokens.tint(t.border, 0.9)),
-        image: provider == null ? null : DecorationImage(image: provider, fit: BoxFit.cover),
+        image: provider == null
+            ? null
+            : DecorationImage(image: provider, fit: BoxFit.cover),
       ),
       alignment: Alignment.center,
       child: provider == null
-          ? Text(initial, style: TextStyle(color: t.primary, fontWeight: FontWeight.w700, fontSize: px * 0.36))
+          ? Text(initial,
+              style: TextStyle(
+                  color: t.primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: px * 0.36))
           : null,
     );
   }
@@ -69,7 +80,12 @@ class PersonAvatar extends StatelessWidget {
 
 /// Web `PersonPhotoSide`: photo seated beside a name/detail block.
 class PersonPhotoSide extends StatelessWidget {
-  const PersonPhotoSide({super.key, required this.name, this.photo, this.size = AvatarSize.md, required this.child});
+  const PersonPhotoSide(
+      {super.key,
+      required this.name,
+      this.photo,
+      this.size = AvatarSize.md,
+      required this.child});
 
   final String name;
   final String? photo;
@@ -156,8 +172,13 @@ class SectionBox extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                if (icon != null) ...[Icon(icon, size: 13, color: t.mutedForeground), const SizedBox(width: 4)],
-                Expanded(child: Text(title!.toUpperCase(), style: AppText.fieldLabel(context))),
+                if (icon != null) ...[
+                  Icon(icon, size: 13, color: t.mutedForeground),
+                  const SizedBox(width: 4)
+                ],
+                Expanded(
+                    child: Text(title!.toUpperCase(),
+                        style: AppText.fieldLabel(context))),
                 if (trailing != null) trailing!,
               ],
             ),
@@ -170,9 +191,15 @@ class SectionBox extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppTokens.radiusSm),
       border: dashed ? null : Border.all(color: t.border),
     );
-    final box = Container(padding: const EdgeInsets.all(12), decoration: decoration, child: content);
+    final box = Container(
+        padding: const EdgeInsets.all(12),
+        decoration: decoration,
+        child: content);
     if (!dashed) return box;
-    return CustomPaint(painter: _DashedRectPainter(color: t.border, radius: AppTokens.radiusSm), child: box);
+    return CustomPaint(
+        painter:
+            _DashedRectPainter(color: t.border, radius: AppTokens.radiusSm),
+        child: box);
   }
 }
 
@@ -188,7 +215,9 @@ class _DashedRectPainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
-    final path = Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)));
+    final path = Path()
+      ..addRRect(
+          RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)));
     for (final metric in path.computeMetrics()) {
       var d = 0.0;
       while (d < metric.length) {
@@ -199,10 +228,20 @@ class _DashedRectPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DashedRectPainter old) => old.color != color || old.radius != radius;
+  bool shouldRepaint(covariant _DashedRectPainter old) =>
+      old.color != color || old.radius != radius;
 }
 
-enum MiniVariant { primary, secondary, outline, ghost, destructive, success, accent, warning }
+enum MiniVariant {
+  primary,
+  secondary,
+  outline,
+  ghost,
+  destructive,
+  success,
+  accent,
+  warning
+}
 
 /// Small dense button (web `Button size="sm"` / `h-7 text-[10px]`).
 class MiniButton extends StatelessWidget {
@@ -254,7 +293,11 @@ class MiniButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (busy)
-                  SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.6, color: fg))
+                  SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 1.6, color: fg))
                 else if (icon != null)
                   Icon(icon, size: fontSize + 2, color: fg),
                 if (busy || icon != null) const SizedBox(width: 5),
@@ -262,7 +305,10 @@ class MiniButton extends StatelessWidget {
                   child: Text(
                     label,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600, color: fg),
+                    style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w600,
+                        color: fg),
                   ),
                 ),
               ],
@@ -276,7 +322,8 @@ class MiniButton extends StatelessWidget {
 
 /// Underlined text link (web `text-xs text-primary underline`).
 class LinkText extends StatelessWidget {
-  const LinkText(this.text, {super.key, required this.onTap, this.color, this.fontSize = 12});
+  const LinkText(this.text,
+      {super.key, required this.onTap, this.color, this.fontSize = 12});
 
   final String text;
   final VoidCallback? onTap;
@@ -307,7 +354,13 @@ class LinkText extends StatelessWidget {
 
 /// Checkbox + label row (web `<label><input type="checkbox"/> …</label>`).
 class CheckRow extends StatelessWidget {
-  const CheckRow({super.key, required this.value, required this.onChanged, required this.label, this.subtitle, this.dense = true});
+  const CheckRow(
+      {super.key,
+      required this.value,
+      required this.onChanged,
+      required this.label,
+      this.subtitle,
+      this.dense = true});
 
   final bool value;
   final ValueChanged<bool>? onChanged;
@@ -329,7 +382,8 @@ class CheckRow extends StatelessWidget {
               height: 28,
               child: Checkbox(
                 value: value,
-                onChanged: onChanged == null ? null : (v) => onChanged!(v ?? false),
+                onChanged:
+                    onChanged == null ? null : (v) => onChanged!(v ?? false),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
               ),
@@ -341,8 +395,11 @@ class CheckRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: TextStyle(fontSize: 13, color: context.tokens.foreground)),
-                    if (subtitle != null) Text(subtitle!, style: AppText.caption(context)),
+                    Text(label,
+                        style: TextStyle(
+                            fontSize: 13, color: context.tokens.foreground)),
+                    if (subtitle != null)
+                      Text(subtitle!, style: AppText.caption(context)),
                   ],
                 ),
               ),
@@ -399,11 +456,16 @@ class _PickerField extends StatelessWidget {
               Expanded(
                 child: Text(
                   text.isEmpty ? (hint ?? '') : text,
-                  style: TextStyle(fontSize: 14, color: text.isEmpty ? t.mutedForeground : t.foreground),
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: text.isEmpty ? t.mutedForeground : t.foreground),
                 ),
               ),
               if (onClear != null && text.isNotEmpty)
-                InkWell(onTap: onClear, child: Icon(Icons.close, size: 16, color: t.mutedForeground)),
+                InkWell(
+                    onTap: onClear,
+                    child:
+                        Icon(Icons.close, size: 16, color: t.mutedForeground)),
             ],
           ),
         ),
@@ -415,7 +477,10 @@ class _PickerField extends StatelessWidget {
       children: [
         if (label != null) FieldLabel(label!, required: required),
         field,
-        if (helper != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(helper!, style: AppText.tiny(context))),
+        if (helper != null)
+          Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(helper!, style: AppText.tiny(context))),
       ],
     );
   }
@@ -465,7 +530,12 @@ class GovDateField extends StatelessWidget {
 
 /// Time input — emits `HH:mm`.
 class GovTimeField extends StatelessWidget {
-  const GovTimeField({super.key, this.label, required this.value, required this.onChanged, this.required = false});
+  const GovTimeField(
+      {super.key,
+      this.label,
+      required this.value,
+      required this.onChanged,
+      this.required = false});
 
   final String? label;
   final String value;
@@ -476,7 +546,9 @@ class GovTimeField extends StatelessWidget {
   Widget build(BuildContext context) {
     final parts = value.split(':');
     final tod = parts.length >= 2
-        ? TimeOfDay(hour: int.tryParse(parts[0]) ?? 9, minute: int.tryParse(parts[1]) ?? 0)
+        ? TimeOfDay(
+            hour: int.tryParse(parts[0]) ?? 9,
+            minute: int.tryParse(parts[1]) ?? 0)
         : const TimeOfDay(hour: 9, minute: 0);
     return _PickerField(
       label: label,
@@ -487,7 +559,8 @@ class GovTimeField extends StatelessWidget {
       onTap: () async {
         final picked = await showTimePicker(context: context, initialTime: tod);
         if (picked != null) {
-          onChanged('${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
+          onChanged(
+              '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
         }
       },
     );
@@ -496,7 +569,8 @@ class GovTimeField extends StatelessWidget {
 
 /// Date + time input (web `datetime-local`); null when empty.
 class GovDateTimeField extends StatelessWidget {
-  const GovDateTimeField({super.key, this.label, required this.value, required this.onChanged});
+  const GovDateTimeField(
+      {super.key, this.label, required this.value, required this.onChanged});
 
   final String? label;
   final DateTime? value;
@@ -519,9 +593,11 @@ class GovDateTimeField extends StatelessWidget {
           lastDate: DateTime(2100),
         );
         if (day == null || !context.mounted) return;
-        final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(base));
+        final time = await showTimePicker(
+            context: context, initialTime: TimeOfDay.fromDateTime(base));
         if (time == null) return;
-        onChanged(DateTime(day.year, day.month, day.day, time.hour, time.minute));
+        onChanged(
+            DateTime(day.year, day.month, day.day, time.hour, time.minute));
       },
     );
   }
@@ -529,7 +605,8 @@ class GovDateTimeField extends StatelessWidget {
 
 /// Small rounded badge (web `text-[10px] uppercase px-1.5 py-0.5 rounded`).
 class TinyTag extends StatelessWidget {
-  const TinyTag(this.text, {super.key, this.color, this.filled = true, this.uppercase = true});
+  const TinyTag(this.text,
+      {super.key, this.color, this.filled = true, this.uppercase = true});
 
   final String text;
   final Color? color;
@@ -549,7 +626,11 @@ class TinyTag extends StatelessWidget {
       ),
       child: Text(
         uppercase ? text.toUpperCase() : text,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.3, color: c),
+        style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+            color: c),
       ),
     );
   }
@@ -560,22 +641,27 @@ Future<T?> showGovSheet<T>(
   BuildContext context, {
   required String title,
   String? description,
-  required Widget Function(BuildContext sheetContext, StateSetter setSheetState) builder,
-  List<Widget> Function(BuildContext sheetContext, StateSetter setSheetState)? footer,
+  required Widget Function(BuildContext sheetContext, StateSetter setSheetState)
+      builder,
+  List<Widget> Function(BuildContext sheetContext, StateSetter setSheetState)?
+      footer,
 }) {
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: context.tokens.card,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppTokens.radiusXl))),
+    shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppTokens.radiusXl))),
     builder: (sheetCtx) => StatefulBuilder(
       builder: (ctx, setSheetState) {
         final bottom = MediaQuery.of(ctx).viewInsets.bottom;
         return Padding(
           padding: EdgeInsets.only(bottom: bottom),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.92),
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.92),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -589,7 +675,9 @@ Future<T?> showGovSheet<T>(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(title, style: AppText.pageTitle(ctx).copyWith(fontSize: 17)),
+                            Text(title,
+                                style: AppText.pageTitle(ctx)
+                                    .copyWith(fontSize: 17)),
                             if (description != null) ...[
                               const SizedBox(height: 4),
                               Text(description, style: AppText.caption(ctx)),
@@ -599,7 +687,8 @@ Future<T?> showGovSheet<T>(
                       ),
                       IconButton(
                         onPressed: () => Navigator.of(ctx).pop(),
-                        icon: Icon(Icons.close, color: ctx.tokens.mutedForeground),
+                        icon: Icon(Icons.close,
+                            color: ctx.tokens.mutedForeground),
                       ),
                     ],
                   ),
@@ -613,10 +702,13 @@ Future<T?> showGovSheet<T>(
                 if (footer != null)
                   Container(
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-                    decoration: BoxDecoration(border: Border(top: BorderSide(color: ctx.tokens.border))),
+                    decoration: BoxDecoration(
+                        border:
+                            Border(top: BorderSide(color: ctx.tokens.border))),
                     child: Row(
                       children: [
-                        for (final (i, w) in footer(ctx, setSheetState).indexed) ...[
+                        for (final (i, w)
+                            in footer(ctx, setSheetState).indexed) ...[
                           if (i > 0) const SizedBox(width: 10),
                           Expanded(child: w),
                         ],
@@ -634,11 +726,14 @@ Future<T?> showGovSheet<T>(
 
 /// Toast helpers matching web sonner calls.
 abstract final class GovToast {
-  static void ok(BuildContext context, String message) => AppFeedback.toast(context, message, tone: BadgeTone.success);
+  static void ok(BuildContext context, String message) =>
+      AppFeedback.toast(context, message, tone: BadgeTone.success);
 
-  static void error(BuildContext context, String message) => AppFeedback.toast(context, message, tone: BadgeTone.alert);
+  static void error(BuildContext context, String message) =>
+      AppFeedback.toast(context, message, tone: BadgeTone.alert);
 
-  static void info(BuildContext context, String message) => AppFeedback.toast(context, message);
+  static void info(BuildContext context, String message) =>
+      AppFeedback.toast(context, message);
 }
 
 /// Web `confirmAction(title, text, confirm, cancel)`.

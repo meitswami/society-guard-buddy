@@ -142,7 +142,7 @@ class BankReconService {
         .from('bank_statement_lines')
         .select(_lineCols)
         .eq('import_id', importId)
-        .order('line_date');
+        .order('line_date', ascending: true);
     return rowsOf(data).map(BankLineRow.fromJson).toList();
   }
 

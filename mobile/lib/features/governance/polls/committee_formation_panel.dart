@@ -27,7 +27,8 @@ class CommitteeFormationPanel extends StatefulWidget {
   final VoidCallback onReload;
 
   @override
-  State<CommitteeFormationPanel> createState() => _CommitteeFormationPanelState();
+  State<CommitteeFormationPanel> createState() =>
+      _CommitteeFormationPanelState();
 }
 
 class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
@@ -47,9 +48,11 @@ class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
     if (results == null) return;
     setState(() => _saving = true);
     try {
-      await widget.repo.saveResults(widget.poll.id, resultsWithFormationEntries(results, key, entries));
+      await widget.repo.saveResults(
+          widget.poll.id, resultsWithFormationEntries(results, key, entries));
       if (!mounted) return;
-      GovToast.ok(context, context.tr('Committee formation updated', 'समिति गठन अद्यतन'));
+      GovToast.ok(context,
+          context.tr('Committee formation updated', 'समिति गठन अद्यतन'));
       widget.onReload();
     } catch (e) {
       if (mounted) GovToast.error(context, GovBackend.errorText(e));
@@ -70,7 +73,9 @@ class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
     final executive = formationEntries(formation, 'executive_proposed');
     final formed = countFormedCommittee(results);
     final remaining = (target - formed).clamp(0, 1 << 30);
-    final already = v.memberId.isNotEmpty && voluntary.any((e) => e['member_id'] == v.memberId || e['name'] == v.memberName);
+    final already = v.memberId.isNotEmpty &&
+        voluntary.any(
+            (e) => e['member_id'] == v.memberId || e['name'] == v.memberName);
 
     Widget entry(Map<String, dynamic> e, VoidCallback? onRemove) {
       final mid = e['member_id'] as String?;
@@ -86,12 +91,17 @@ class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
                 size: AvatarSize.sm,
                 child: Padding(
                   padding: const EdgeInsets.only(top: 9),
-                  child: Text('${e['name'] ?? ''}${flat.isNotEmpty ? ' · ${context.tr('Flat', 'फ्लैट')} $flat' : ''}',
+                  child: Text(
+                      '${e['name'] ?? ''}${flat.isNotEmpty ? ' · ${context.tr('Flat', 'फ्लैट')} $flat' : ''}',
                       style: const TextStyle(fontSize: 12)),
                 ),
               ),
             ),
-            if (onRemove != null) LinkText(context.tr('Remove', 'हटाएँ'), color: t.destructive, fontSize: 10, onTap: _saving ? null : onRemove),
+            if (onRemove != null)
+              LinkText(context.tr('Remove', 'हटाएँ'),
+                  color: t.destructive,
+                  fontSize: 10,
+                  onTap: _saving ? null : onRemove),
           ],
         ),
       );
@@ -115,13 +125,21 @@ class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
                   children: [
                     Text(
                       '${context.tr('MANAGEMENT COMMITTEE', 'प्रबंध समिति')} ($minCommitteeSize ${context.tr('SEATS', 'पद')})',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: t.warning),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
+                          color: t.warning),
                     ),
                     const SizedBox(height: 2),
                     Text.rich(
                       TextSpan(children: [
                         TextSpan(text: '${context.tr('Progress', 'प्रगति')}: '),
-                        TextSpan(text: '$formed', style: TextStyle(fontWeight: FontWeight.w700, color: t.foreground)),
+                        TextSpan(
+                            text: '$formed',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: t.foreground)),
                         TextSpan(text: ' / $target. '),
                         TextSpan(
                           text: remaining > 0
@@ -139,13 +157,20 @@ class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
             ],
           ),
           const SizedBox(height: 10),
-          Text(context.tr('Voluntary interest', 'स्वैच्छिक रुचि'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(context.tr('Voluntary interest', 'स्वैच्छिक रुचि'),
+              style:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
-          if (voluntary.isEmpty) Text(context.tr('No volunteers yet.', 'अभी कोई स्वयंसेवक नहीं।'), style: AppText.tiny(context).copyWith(fontSize: 11)),
+          if (voluntary.isEmpty)
+            Text(context.tr('No volunteers yet.', 'अभी कोई स्वयंसेवक नहीं।'),
+                style: AppText.tiny(context).copyWith(fontSize: 11)),
           for (final e in voluntary)
             entry(
               e,
-              v.isResident ? null : () => _persist('voluntary', voluntary.where((x) => x['key'] != e['key']).toList()),
+              v.isResident
+                  ? null
+                  : () => _persist('voluntary',
+                      voluntary.where((x) => x['key'] != e['key']).toList()),
             ),
           if (v.isResident && remaining > 0 && !already)
             Padding(
@@ -153,18 +178,30 @@ class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: MiniButton(
-                  label: context.tr('I volunteer for the Committee', 'मैं समिति हेतु स्वेच्छा से तैयार हूँ'),
+                  label: context.tr('I volunteer for the Committee',
+                      'मैं समिति हेतु स्वेच्छा से तैयार हूँ'),
                   icon: Icons.person_add_alt_1_outlined,
                   variant: MiniVariant.warning,
                   busy: _saving,
                   onPressed: () {
                     if (v.memberName.trim().isEmpty) {
-                      GovToast.error(context, context.tr('Your member profile is required to volunteer.', 'स्वयंसेवा हेतु आपकी सदस्य प्रोफ़ाइल आवश्यक है।'));
+                      GovToast.error(
+                          context,
+                          context.tr(
+                              'Your member profile is required to volunteer.',
+                              'स्वयंसेवा हेतु आपकी सदस्य प्रोफ़ाइल आवश्यक है।'));
                       return;
                     }
-                    final key = 'vol-${v.memberId.isNotEmpty ? v.memberId : v.memberName}-${v.flatNumber}';
-                    if (voluntary.any((x) => x['key'] == key || (v.memberId.isNotEmpty && x['member_id'] == v.memberId))) {
-                      GovToast.error(context, context.tr('You are already listed as a volunteer.', 'आप पहले से स्वयंसेवक सूची में हैं।'));
+                    final key =
+                        'vol-${v.memberId.isNotEmpty ? v.memberId : v.memberName}-${v.flatNumber}';
+                    if (voluntary.any((x) =>
+                        x['key'] == key ||
+                        (v.memberId.isNotEmpty &&
+                            x['member_id'] == v.memberId))) {
+                      GovToast.error(
+                          context,
+                          context.tr('You are already listed as a volunteer.',
+                              'आप पहले से स्वयंसेवक सूची में हैं।'));
                       return;
                     }
                     final row = FormationMember(
@@ -182,22 +219,37 @@ class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
             ),
           if (!v.isResident) ...[
             const SizedBox(height: 10),
-            Text(context.tr('Proposed for vacancy fill', 'रिक्ति हेतु प्रस्तावित'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+            Text(
+                context.tr(
+                    'Proposed for vacancy fill', 'रिक्ति हेतु प्रस्तावित'),
+                style:
+                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             for (final e in executive)
-              entry(e, () => _persist('executive_proposed', executive.where((x) => x['key'] != e['key']).toList())),
+              entry(
+                  e,
+                  () => _persist('executive_proposed',
+                      executive.where((x) => x['key'] != e['key']).toList())),
             if (remaining > 0)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     flex: 3,
-                    child: AppTextField(controller: _execName, label: context.tr('Name', 'नाम'), hint: context.tr('Member name', 'सदस्य का नाम'), caps: false),
+                    child: AppTextField(
+                        controller: _execName,
+                        label: context.tr('Name', 'नाम'),
+                        hint: context.tr('Member name', 'सदस्य का नाम'),
+                        caps: false),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     flex: 2,
-                    child: AppTextField(controller: _execFlat, label: context.tr('Flat', 'फ्लैट'), hint: 'A-12', caps: false),
+                    child: AppTextField(
+                        controller: _execFlat,
+                        label: context.tr('Flat', 'फ्लैट'),
+                        hint: 'A-12',
+                        caps: false),
                   ),
                   const SizedBox(width: 6),
                   MiniButton(
@@ -206,13 +258,19 @@ class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
                     onPressed: () {
                       final name = _execName.text.trim();
                       if (name.isEmpty) {
-                        GovToast.error(context, context.tr('Enter a member name.', 'सदस्य का नाम दर्ज करें।'));
+                        GovToast.error(
+                            context,
+                            context.tr('Enter a member name.',
+                                'सदस्य का नाम दर्ज करें।'));
                         return;
                       }
                       final row = FormationMember(
-                        key: 'exec-${DateTime.now().millisecondsSinceEpoch}-$name',
+                        key:
+                            'exec-${DateTime.now().millisecondsSinceEpoch}-$name',
                         name: name,
-                        flatNumber: _execFlat.text.trim().isEmpty ? null : _execFlat.text.trim(),
+                        flatNumber: _execFlat.text.trim().isEmpty
+                            ? null
+                            : _execFlat.text.trim(),
                         source: 'executive_proposed',
                       ).toJson();
                       _execName.clear();
@@ -227,7 +285,8 @@ class _CommitteeFormationPanelState extends State<CommitteeFormationPanel> {
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Text(
-                context.tr('Bye-laws require $minCommitteeSize Management Committee members before publishing the roster.',
+                context.tr(
+                    'Bye-laws require $minCommitteeSize Management Committee members before publishing the roster.',
                     'सूची प्रकाशित करने से पहले उपविधि के अनुसार $minCommitteeSize प्रबंध समिति सदस्य आवश्यक हैं।'),
                 style: TextStyle(fontSize: 11, color: t.warning),
               ),

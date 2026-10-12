@@ -33,7 +33,12 @@ const List<({int seconds, String labelEn, String labelHi})> revealDurations = [
   (seconds: 60, labelEn: '1 min', labelHi: '1 मिनट'),
 ];
 
-const List<String> societyDocAcceptedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+const List<String> societyDocAcceptedTypes = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp'
+];
 
 const List<String> societyDocExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'webp'];
 
@@ -50,13 +55,16 @@ int revealSecondsLeft(String? memberRevealUntil, DateTime now) {
   if (memberRevealUntil == null || memberRevealUntil.isEmpty) return 0;
   final until = DateTime.tryParse(memberRevealUntil);
   if (until == null) return 0;
-  final left = ((until.millisecondsSinceEpoch - now.millisecondsSinceEpoch) / 1000).ceil();
+  final left =
+      ((until.millisecondsSinceEpoch - now.millisecondsSinceEpoch) / 1000)
+          .ceil();
   return left < 0 ? 0 : left;
 }
 
 bool isImageDoc({String? mimeType, required String fileName}) {
   if (mimeType != null && mimeType.startsWith('image/')) return true;
-  return RegExp(r'\.(png|jpe?g|webp|gif)$', caseSensitive: false).hasMatch(fileName);
+  return RegExp(r'\.(png|jpe?g|webp|gif)$', caseSensitive: false)
+      .hasMatch(fileName);
 }
 
 /// Protected viewer content type detection (web `ProtectedDocumentViewer`).
@@ -65,19 +73,28 @@ bool viewerIsPdf({String? mimeType, required String url}) =>
 
 bool viewerIsImage({String? mimeType, required String url}) {
   if (mimeType != null) return mimeType.startsWith('image/');
-  return RegExp(r'\.(png|jpe?g|webp|gif)(\?|$)', caseSensitive: false).hasMatch(url);
+  return RegExp(r'\.(png|jpe?g|webp|gif)(\?|$)', caseSensitive: false)
+      .hasMatch(url);
 }
 
 /// Upload validation (web `handleUpload`); returns (en, hi) or null.
-(String, String)? validateSocietyDocUpload({required String title, required String? mimeType, required int size}) {
-  if (title.trim().isEmpty) return ('Enter a document title', 'दस्तावेज़ का शीर्षक दर्ज करें');
+(String, String)? validateSocietyDocUpload(
+    {required String title, required String? mimeType, required int size}) {
+  if (title.trim().isEmpty) {
+    return ('Enter a document title', 'दस्तावेज़ का शीर्षक दर्ज करें');
+  }
   if (mimeType == null || !societyDocAcceptedTypes.contains(mimeType)) {
     return (
       'Only PDF and image files (PNG, JPEG, WebP) are allowed',
       'केवल PDF और चित्र फ़ाइलें (PNG, JPEG, WebP) अनुमत हैं',
     );
   }
-  if (size > societyDocMaxBytes) return ('File must be 15 MB or smaller', 'फ़ाइल 15 MB या उससे छोटी होनी चाहिए');
+  if (size > societyDocMaxBytes) {
+    return (
+      'File must be 15 MB or smaller',
+      'फ़ाइल 15 MB या उससे छोटी होनी चाहिए'
+    );
+  }
   return null;
 }
 
@@ -110,8 +127,20 @@ enum PollDocKind {
 }
 
 /// Label for a stored kind (falls back to the raw value like the web).
-String pollDocKindLabel(String kind, {bool hi = false}) => PollDocKind.parse(kind)?.label(hi) ?? kind;
+String pollDocKindLabel(String kind, {bool hi = false}) =>
+    PollDocKind.parse(kind)?.label(hi) ?? kind;
 
 const List<String> pollDocExtensions = [
-  'pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif',
+  'pdf',
+  'doc',
+  'docx',
+  'txt',
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'gif',
+  'bmp',
+  'heic',
+  'heif',
 ];

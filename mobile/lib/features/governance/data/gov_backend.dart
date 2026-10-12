@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -21,12 +20,21 @@ abstract final class GovBackend {
   static String newId() => _uuid.v4();
 
   /// Society signature / member-notification tune (`societies.admin_push_sound_url`).
-  static Future<({String soundKey, String? customUrl})> societySound(String? societyId) async {
-    if (societyId == null || societyId.isEmpty || !dbReady) return (soundKey: 'digital', customUrl: null);
+  static Future<({String soundKey, String? customUrl})> societySound(
+      String? societyId) async {
+    if (societyId == null || societyId.isEmpty || !dbReady) {
+      return (soundKey: 'digital', customUrl: null);
+    }
     try {
-      final row = await db.from('societies').select('admin_push_sound_url').eq('id', societyId).maybeSingle();
+      final row = await db
+          .from('societies')
+          .select('admin_push_sound_url')
+          .eq('id', societyId)
+          .maybeSingle();
       final url = (row?['admin_push_sound_url'] as String?)?.trim();
-      if (url != null && url.isNotEmpty) return (soundKey: 'custom', customUrl: url);
+      if (url != null && url.isNotEmpty) {
+        return (soundKey: 'custom', customUrl: url);
+      }
     } catch (e) {
       debugPrint('societySound failed: $e');
     }
@@ -45,7 +53,8 @@ abstract final class GovBackend {
       await db.storage.from(notificationMediaBucket).uploadBinary(
             path,
             bytes,
-            fileOptions: FileOptions(cacheControl: '3600', upsert: upsert, contentType: contentType),
+            fileOptions: FileOptions(
+                cacheControl: '3600', upsert: upsert, contentType: contentType),
           );
       return db.storage.from(notificationMediaBucket).getPublicUrl(path);
     } catch (e) {
@@ -106,7 +115,8 @@ abstract final class GovBackend {
     if (!whatsapp && !email) return null;
     if (!dbReady) return null;
     try {
-      final res = await db.functions.invoke('dispatch-directory-message', body: {
+      final res =
+          await db.functions.invoke('dispatch-directory-message', body: {
         'society_id': societyId,
         'title': title,
         'message': message,
@@ -195,14 +205,17 @@ abstract final class GovBackend {
   }
 
   /// Web `fetchMemberPhotoMap`.
-  static Future<Map<String, String>> fetchMemberPhotoMap(Iterable<String> memberIds) async {
+  static Future<Map<String, String>> fetchMemberPhotoMap(
+      Iterable<String> memberIds) async {
     final ids = memberIds.where((s) => s.isNotEmpty).toSet().toList();
     if (ids.isEmpty || !dbReady) return {};
     try {
-      final rows = rowsOf(await db.from('members').select('id, photo').inFilter('id', ids));
+      final rows = rowsOf(
+          await db.from('members').select('id, photo').inFilter('id', ids));
       final map = <String, String>{};
       for (final r in rows) {
-        final photo = (r['photo'] is String) ? (r['photo'] as String).trim() : '';
+        final photo =
+            (r['photo'] is String) ? (r['photo'] as String).trim() : '';
         if (photo.isNotEmpty) map['${r['id']}'] = photo;
       }
       return map;
@@ -279,7 +292,8 @@ abstract final class GovBackend {
   }
 
   /// DB bye-law eligibility (RPC `member_election_eligibility`).
-  static Future<({ElectionEligibility? data, String? error})> memberEligibility({
+  static Future<({ElectionEligibility? data, String? error})>
+      memberEligibility({
     required String memberId,
     required String societyId,
     String? asOf,
@@ -292,7 +306,10 @@ abstract final class GovBackend {
         'p_as_of': asOf ?? utcIsoDate(),
         'p_arrears_days': arrearsDays,
       });
-      return (data: ElectionEligibility.fromRpc(data, memberId: memberId), error: null);
+      return (
+        data: ElectionEligibility.fromRpc(data, memberId: memberId),
+        error: null
+      );
     } catch (e) {
       return (data: null, error: errorText(e));
     }
@@ -300,13 +317,18 @@ abstract final class GovBackend {
 
   /// The household `members` row of the logged-in resident (matched by phone digits,
   /// like the web `myMemberRecord`).
-  static Future<ResidentMemberRecord?> residentMember(SessionResident session) async {
+  static Future<ResidentMemberRecord?> residentMember(
+      SessionResident session) async {
     if (!dbReady) return null;
     final myPhone = session.resident.phone.replaceAll(RegExp(r'\D'), '');
     if (myPhone.isEmpty) return null;
     try {
       final rows = rowsOf(
-        await db.from('members').select('*').eq('flat_id', session.resident.flatId).order('created_at'),
+        await db
+            .from('members')
+            .select('*')
+            .eq('flat_id', session.resident.flatId)
+            .order('created_at', ascending: true),
       );
       for (final m in rows) {
         final p = (m['phone'] ?? '').toString().replaceAll(RegExp(r'\D'), '');
@@ -328,7 +350,9 @@ abstract final class GovBackend {
   static String errorText(Object e) {
     if (e is PostgrestException) return e.message;
     if (e is StorageException) return e.message;
-    if (e is FunctionException) return '${e.details ?? e.reasonPhrase ?? e.status}';
+    if (e is FunctionException) {
+      return '${e.details ?? e.reasonPhrase ?? e.status}';
+    }
     if (e is StateError) return e.message;
     return e.toString();
   }
@@ -336,7 +360,8 @@ abstract final class GovBackend {
 
 /// Household member record of the logged-in resident.
 class ResidentMemberRecord {
-  const ResidentMemberRecord({required this.id, required this.name, this.photo});
+  const ResidentMemberRecord(
+      {required this.id, required this.name, this.photo});
 
   final String id;
   final String name;

@@ -17,10 +17,22 @@ abstract final class ElectionPosts {
 
   /// Seven Management Committee seats: President, Vice-President, Secretary,
   /// Treasurer and 3 Executive Members (`committee`).
-  static const managementCommittee = [president, vicePresident, secretary, treasurer, committee];
+  static const managementCommittee = [
+    president,
+    vicePresident,
+    secretary,
+    treasurer,
+    committee
+  ];
 
   /// All posts that may appear on legacy elections.
-  static const all = [president, vicePresident, secretary, treasurer, committee];
+  static const all = [
+    president,
+    vicePresident,
+    secretary,
+    treasurer,
+    committee
+  ];
 
   /// @deprecated Prefer [managementCommittee] (bye-law 7-seat MC).
   static const threeExecutive = [president, secretary, treasurer];
@@ -117,11 +129,15 @@ String postDisplay(String post, {bool hi = false}) =>
 
 /// Minimum members that must be represented for election quorum (3/4, rounded up).
 int electionQuorumRequired(int memberCount) =>
-    ((memberCount * ByeLaw.electionQuorumNumerator) / ByeLaw.electionQuorumDenominator).ceil();
+    ((memberCount * ByeLaw.electionQuorumNumerator) /
+            ByeLaw.electionQuorumDenominator)
+        .ceil();
 
 /// Ordinary Management Committee meeting quorum (2/3 of roster size).
 int mcMeetingQuorumRequired([int committeeSize = ByeLaw.committeeSize]) =>
-    ((committeeSize * ByeLaw.mcMeetingQuorumNumerator) / ByeLaw.mcMeetingQuorumDenominator).ceil();
+    ((committeeSize * ByeLaw.mcMeetingQuorumNumerator) /
+            ByeLaw.mcMeetingQuorumDenominator)
+        .ceil();
 
 ElectionPhase? _phaseFromString(Object? raw) => switch (raw) {
       'nomination' => ElectionPhase.nomination,
@@ -137,7 +153,9 @@ ElectionPhase electionPhase(Map<String, dynamic> poll) {
   if (p != null) return p;
   final active = poll['is_active'] == true;
   final applied = poll['election_applied_at'];
-  if (!active && applied != null && applied.toString().isNotEmpty) return ElectionPhase.applied;
+  if (!active && applied != null && applied.toString().isNotEmpty) {
+    return ElectionPhase.applied;
+  }
   if (!active) return ElectionPhase.closed;
   return ElectionPhase.voting;
 }
@@ -162,7 +180,10 @@ bool _inWindow(Object? startsAt, Object? endsAt, int now) {
 }
 
 bool isNominationWindowOpen(Map<String, dynamic> poll, [DateTime? now]) {
-  if (electionPhase(poll) != ElectionPhase.nomination || poll['is_active'] != true) return false;
+  if (electionPhase(poll) != ElectionPhase.nomination ||
+      poll['is_active'] != true) {
+    return false;
+  }
   return _inWindow(
     poll['nomination_starts_at'],
     poll['nomination_ends_at'],
@@ -176,13 +197,17 @@ Map<String, dynamic> _openPostsOf(Map<String, dynamic> poll) {
   return Map<String, dynamic>.from(defaultOpenPosts);
 }
 
-bool isPostOpenForNomination(Map<String, dynamic> poll, String post, [DateTime? now]) {
+bool isPostOpenForNomination(Map<String, dynamic> poll, String post,
+    [DateTime? now]) {
   if (!isNominationWindowOpen(poll, now)) return false;
   return _openPostsOf(poll)[post] != false;
 }
 
 bool isVotingWindowOpen(Map<String, dynamic> poll, [DateTime? now]) {
-  if (electionPhase(poll) != ElectionPhase.voting || poll['is_active'] != true) return false;
+  if (electionPhase(poll) != ElectionPhase.voting ||
+      poll['is_active'] != true) {
+    return false;
+  }
   return _inWindow(
     poll['voting_starts_at'],
     poll['voting_ends_at'],
@@ -196,42 +221,60 @@ final _windowFmt = DateFormat('dd MMM yyyy, hh:mm a', 'en_US');
 String formatElectionInstant(DateTime d) => _windowFmt.format(d.toLocal());
 
 String _windowLabel(Object? startsAt, Object? endsAt, String empty, bool hi) {
-  final start = startsAt == null ? null : DateTime.tryParse(startsAt.toString());
+  final start =
+      startsAt == null ? null : DateTime.tryParse(startsAt.toString());
   final end = endsAt == null ? null : DateTime.tryParse(endsAt.toString());
   if (start == null && end == null) return empty;
-  if (start != null && end != null) return '${formatElectionInstant(start)} → ${formatElectionInstant(end)}';
-  if (start != null) return hi ? '${formatElectionInstant(start)} से' : 'From ${formatElectionInstant(start)}';
-  return hi ? '${formatElectionInstant(end!)} तक' : 'Until ${formatElectionInstant(end!)}';
+  if (start != null && end != null) {
+    return '${formatElectionInstant(start)} → ${formatElectionInstant(end)}';
+  }
+  if (start != null) {
+    return hi
+        ? '${formatElectionInstant(start)} से'
+        : 'From ${formatElectionInstant(start)}';
+  }
+  return hi
+      ? '${formatElectionInstant(end!)} तक'
+      : 'Until ${formatElectionInstant(end!)}';
 }
 
-String nominationWindowLabel(Map<String, dynamic> poll, {bool hi = false}) => _windowLabel(
+String nominationWindowLabel(Map<String, dynamic> poll, {bool hi = false}) =>
+    _windowLabel(
       poll['nomination_starts_at'],
       poll['nomination_ends_at'],
       hi ? 'नामांकन अवधि निर्धारित नहीं' : 'Nomination window not scheduled',
       hi,
     );
 
-String votingWindowLabel(Map<String, dynamic> poll, {bool hi = false}) => _windowLabel(
+String votingWindowLabel(Map<String, dynamic> poll, {bool hi = false}) =>
+    _windowLabel(
       poll['voting_starts_at'],
       poll['voting_ends_at'],
       hi ? 'मतदान अवधि निर्धारित नहीं' : 'Voting window not scheduled',
       hi,
     );
 
-String phaseBadgeLabel(ElectionPhase phase, {bool hi = false}) => switch (phase) {
+String phaseBadgeLabel(ElectionPhase phase, {bool hi = false}) =>
+    switch (phase) {
       ElectionPhase.nomination => hi ? 'नामांकन खुला' : 'Nomination open',
       ElectionPhase.voting => hi ? 'मतदान खुला' : 'Voting open',
-      ElectionPhase.closed => hi ? 'बंद — समिति गठन' : 'Closed — form committee',
-      ElectionPhase.applied => hi ? 'समिति में प्रकाशित' : 'Published to committee',
+      ElectionPhase.closed =>
+        hi ? 'बंद — समिति गठन' : 'Closed — form committee',
+      ElectionPhase.applied =>
+        hi ? 'समिति में प्रकाशित' : 'Published to committee',
     };
 
 /// Posts shown on an election card: open posts first, then legacy posts that only
 /// appear on existing options.
-List<String> postsForPoll(Map<String, dynamic> poll, Iterable<String?> optionPosts) {
+List<String> postsForPoll(
+    Map<String, dynamic> poll, Iterable<String?> optionPosts) {
   final open = _openPostsOf(poll);
-  final fromOpen = ElectionPosts.managementCommittee.where((p) => open[p] != false).toList();
-  final fromOpts = optionPosts.whereType<String>().where(ElectionPosts.isKnown).toSet();
-  final legacy = ElectionPosts.all.where((p) => fromOpts.contains(p) && !fromOpen.contains(p));
+  final fromOpen =
+      ElectionPosts.managementCommittee.where((p) => open[p] != false).toList();
+  final fromOpts =
+      optionPosts.whereType<String>().where(ElectionPosts.isKnown).toSet();
+  final legacy = ElectionPosts.all
+      .where((p) => fromOpts.contains(p) && !fromOpen.contains(p));
   return [...fromOpen, ...legacy];
 }
 
@@ -259,24 +302,31 @@ String toDatetimeLocalValue(String? iso) {
 String jsIsoString(DateTime d) {
   final u = d.toUtc();
   final ms = u.millisecond.toString().padLeft(3, '0');
-  final y = u.year >= 0 && u.year <= 9999 ? u.year.toString().padLeft(4, '0') : u.year.toString();
+  final y = u.year >= 0 && u.year <= 9999
+      ? u.year.toString().padLeft(4, '0')
+      : u.year.toString();
   return '$y-${_pad2(u.month)}-${_pad2(u.day)}T${_pad2(u.hour)}:${_pad2(u.minute)}:${_pad2(u.second)}.${ms}Z';
 }
 
 /// `new Date().toISOString().slice(0, 10)` — UTC calendar date like the web.
-String utcIsoDate([DateTime? d]) => jsIsoString(d ?? DateTime.now()).substring(0, 10);
+String utcIsoDate([DateTime? d]) =>
+    jsIsoString(d ?? DateTime.now()).substring(0, 10);
 
 /// Default `term_to` = `term_from` + [years] (bye-laws: 2 years).
 String defaultTermEndIso(String termFromIso, [int years = defaultTermYears]) {
   final d = DateTime.parse(termFromIso);
   final shifted = d.isUtc
-      ? DateTime.utc(d.year + years, d.month, d.day, d.hour, d.minute, d.second, d.millisecond)
-      : DateTime(d.year + years, d.month, d.day, d.hour, d.minute, d.second, d.millisecond);
+      ? DateTime.utc(d.year + years, d.month, d.day, d.hour, d.minute, d.second,
+          d.millisecond)
+      : DateTime(d.year + years, d.month, d.day, d.hour, d.minute, d.second,
+          d.millisecond);
   return jsIsoString(shifted);
 }
 
 /// `polls.voting_method` label (`Secret Ballot` / `Show of Hands`).
 String votingMethodShortLabel(String? method, {bool hi = false}) {
-  if (method == VotingMethods.showOfHands) return hi ? 'हाथ उठाकर' : 'Show of Hands';
+  if (method == VotingMethods.showOfHands) {
+    return hi ? 'हाथ उठाकर' : 'Show of Hands';
+  }
   return hi ? 'गुप्त मतपत्र' : 'Secret Ballot';
 }

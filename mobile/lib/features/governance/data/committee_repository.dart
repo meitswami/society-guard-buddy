@@ -39,14 +39,24 @@ class CommitteeRepository {
           .order('name', ascending: true),
     ).map(CommitteeMemberRow.fromJson).toList();
 
-    final flatIds = roster.map((r) => r.flatId).whereType<String>().where((s) => s.isNotEmpty).toSet().toList();
+    final flatIds = roster
+        .map((r) => r.flatId)
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .toSet()
+        .toList();
     if (flatIds.isNotEmpty) {
-      final mems = rowsOf(await db.from('members').select('flat_id, name, photo').inFilter('flat_id', flatIds));
+      final mems = rowsOf(await db
+          .from('members')
+          .select('flat_id, name, photo')
+          .inFilter('flat_id', flatIds));
       final live = <String, String>{};
       for (final m in mems) {
         final photo = m['photo'] is String ? (m['photo'] as String).trim() : '';
         final name = m['name'] is String ? (m['name'] as String).trim() : '';
-        if (m['flat_id'] != null && name.isNotEmpty && photo.isNotEmpty) live['${m['flat_id']}|$name'] = photo;
+        if (m['flat_id'] != null && name.isNotEmpty && photo.isNotEmpty) {
+          live['${m['flat_id']}|$name'] = photo;
+        }
       }
       for (final row in roster) {
         if (row.flatId == null || row.name.isEmpty) continue;
@@ -61,17 +71,28 @@ class CommitteeRepository {
   Future<List<CommitteeFlatOption>> loadFlats() async {
     if (!dbReady) return const [];
     final flats = rowsOf(
-      await db.from('flats').select('id, flat_number, owner_name').eq('society_id', societyId).order('flat_number'),
+      await db
+          .from('flats')
+          .select('id, flat_number, owner_name')
+          .eq('society_id', societyId)
+          .order('flat_number', ascending: true),
     );
     final ids = flats.map((f) => '${f['id']}').toList();
     final primaries = ids.isEmpty
         ? const <Map<String, dynamic>>[]
-        : rowsOf(await db.from('members').select('flat_id, name, photo').eq('is_primary', true).inFilter('flat_id', ids));
+        : rowsOf(await db
+            .from('members')
+            .select('flat_id, name, photo')
+            .eq('is_primary', true)
+            .inFilter('flat_id', ids));
     final byFlat = <String, ({String name, String? photo})>{};
     for (final p in primaries) {
       final name = (p['name'] ?? '').toString().trim();
       if (p['flat_id'] != null && name.isNotEmpty) {
-        final photo = p['photo'] is String && (p['photo'] as String).trim().isNotEmpty ? (p['photo'] as String).trim() : null;
+        final photo =
+            p['photo'] is String && (p['photo'] as String).trim().isNotEmpty
+                ? (p['photo'] as String).trim()
+                : null;
         byFlat['${p['flat_id']}'] = (name: name, photo: photo);
       }
     }
@@ -88,17 +109,20 @@ class CommitteeRepository {
     }).toList();
   }
 
-  Future<void> insertMember(Map<String, dynamic> payload) => db.from('committee_members').insert(payload);
+  Future<void> insertMember(Map<String, dynamic> payload) =>
+      db.from('committee_members').insert(payload);
 
   Future<void> updateMember(String id, Map<String, dynamic> payload) =>
       db.from('committee_members').update(payload).eq('id', id);
 
   /// Soft remove (`is_active = false`).
-  Future<void> removeMember(String id) => db.from('committee_members').update({'is_active': false}).eq('id', id);
+  Future<void> removeMember(String id) =>
+      db.from('committee_members').update({'is_active': false}).eq('id', id);
 
   // --- duties chart -------------------------------------------------------
 
-  Future<({CommitteeDutiesChartRow? chart, List<CommitteeDutyRow> rows})> loadDuties() async {
+  Future<({CommitteeDutiesChartRow? chart, List<CommitteeDutyRow> rows})>
+      loadDuties() async {
     if (!dbReady) return (chart: null, rows: const <CommitteeDutyRow>[]);
     final chartData = await db
         .from('committee_duties_charts')
@@ -106,7 +130,9 @@ class CommitteeRepository {
         .eq('society_id', societyId)
         .eq('is_active', true)
         .maybeSingle();
-    if (chartData == null) return (chart: null, rows: const <CommitteeDutyRow>[]);
+    if (chartData == null) {
+      return (chart: null, rows: const <CommitteeDutyRow>[]);
+    }
     final chart = CommitteeDutiesChartRow.fromJson(chartData);
     final rows = rowsOf(
       await db
@@ -124,27 +150,41 @@ class CommitteeRepository {
     required String? chartId,
     required String periodFrom,
     required String periodTo,
-    required List<({String dutyLabel, List<String> supervisors, int sortOrder})> rows,
+    required List<({String dutyLabel, List<String> supervisors, int sortOrder})>
+        rows,
   }) async {
     var id = chartId;
     final to = periodTo.trim().isEmpty ? null : periodTo.trim();
     if (id != null) {
-      await db.from('committee_duties_charts').update({'period_from': periodFrom, 'period_to': to}).eq('id', id);
+      await db
+          .from('committee_duties_charts')
+          .update({'period_from': periodFrom, 'period_to': to}).eq('id', id);
       await db.from('committee_duty_rows').delete().eq('chart_id', id);
     } else {
       final inserted = await db
           .from('committee_duties_charts')
-          .insert({'society_id': societyId, 'period_from': periodFrom, 'period_to': to, 'is_active': true})
+          .insert({
+            'society_id': societyId,
+            'period_from': periodFrom,
+            'period_to': to,
+            'is_active': true
+          })
           .select('id')
           .single();
       id = '${inserted['id']}';
     }
     await db.from('committee_duty_rows').insert([
       for (final r in rows)
-        {'chart_id': id, 'duty_label': r.dutyLabel, 'supervisor_names': r.supervisors, 'sort_order': r.sortOrder},
+        {
+          'chart_id': id,
+          'duty_label': r.dutyLabel,
+          'supervisor_names': r.supervisors,
+          'sort_order': r.sortOrder
+        },
     ]);
   }
 
-  Future<void> removeDutiesChart(String chartId) =>
-      db.from('committee_duties_charts').update({'is_active': false}).eq('id', chartId);
+  Future<void> removeDutiesChart(String chartId) => db
+      .from('committee_duties_charts')
+      .update({'is_active': false}).eq('id', chartId);
 }

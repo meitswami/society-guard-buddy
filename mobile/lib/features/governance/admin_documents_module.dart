@@ -10,6 +10,6 @@ class AdminDocumentsModule extends StatelessWidget {
   final AdminModuleContext ctx;
 
   @override
-  Widget build(BuildContext context) =>
-      DocumentsPage(societyId: ctx.societyId, isResident: false, adminName: ctx.adminName);
+  Widget build(BuildContext context) => DocumentsPage(
+      societyId: ctx.societyId, isResident: false, adminName: ctx.adminName);
 }

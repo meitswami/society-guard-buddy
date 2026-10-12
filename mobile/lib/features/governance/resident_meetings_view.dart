@@ -10,11 +10,14 @@ class ResidentMeetingsView extends StatelessWidget {
 
   final SessionResident session;
 
-  MeetingViewer _viewer({String? memberId, String? memberName}) => MeetingViewer(
+  MeetingViewer _viewer({String? memberId, String? memberName}) =>
+      MeetingViewer(
         societyId: session.societyId,
         isResident: true,
         residentMemberId: memberId,
-        residentName: (memberName == null || memberName.isEmpty) ? session.resident.name : memberName,
+        residentName: (memberName == null || memberName.isEmpty)
+            ? session.resident.name
+            : memberName,
         residentFlatNumber: session.resident.flatNumber,
       );
 

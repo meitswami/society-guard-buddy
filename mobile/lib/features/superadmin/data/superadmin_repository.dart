@@ -127,9 +127,9 @@ class SuperadminRepository {
     }
 
     final results = await Future.wait([
-      q(db.from('societies').select('*').order('name')),
-      q(db.from('society_roles').select('*').order('role_name')),
-      q(db.from('admins').select('*').order('name')),
+      q(db.from('societies').select('*').order('name', ascending: true)),
+      q(db.from('society_roles').select('*').order('role_name', ascending: true)),
+      q(db.from('admins').select('*').order('name', ascending: true)),
     ]);
     return ConsoleData(
       societies: results[0]?.map(SocietyRow.fromJson).toList(),

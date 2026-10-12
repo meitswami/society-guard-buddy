@@ -71,7 +71,7 @@ class SocietyService {
   Future<List<SocietyRow>> fetchActiveSocieties() async {
     if (!Env.isConfigured) return const [];
 
-    final rows = await _db.from('societies').select('id, name, logo_url').eq('is_active', true).order('name');
+    final rows = await _db.from('societies').select('id, name, logo_url').eq('is_active', true).order('name', ascending: true);
 
     return (rows as List).map((r) => SocietyRow.fromRow(Map<String, dynamic>.from(r as Map))).toList();
   }

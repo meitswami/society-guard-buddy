@@ -334,7 +334,7 @@ class SupabaseFinanceRepository implements FinanceRepository {
           .from('flats')
           .select('flat_number, id, owner_name, is_occupied')
           .eq('society_id', societyId)
-          .order('flat_number')),
+          .order('flat_number', ascending: true)),
       const <Map<String, dynamic>>[],
     );
     final societyF = _soft<Map<String, dynamic>?>(
@@ -365,7 +365,7 @@ class SupabaseFinanceRepository implements FinanceRepository {
           .select('id, name, major_head, description')
           .eq('society_id', societyId)
           .eq('group_kind', 'general')
-          .order('name')),
+          .order('name', ascending: true)),
       const <Map<String, dynamic>>[],
     );
     final ledgerF = c
@@ -419,7 +419,7 @@ class SupabaseFinanceRepository implements FinanceRepository {
                 .from('resident_users')
                 .select('id, name, flat_number, flat_id')
                 .inFilter('flat_id', flatIds)
-                .order('flat_number')),
+                .order('flat_number', ascending: true)),
             const <Map<String, dynamic>>[],
           );
     final categoriesF = linkedExpenseIds.isEmpty
@@ -755,7 +755,7 @@ class SupabaseFinanceRepository implements FinanceRepository {
           .select('id, name, major_head, description')
           .eq('society_id', societyId)
           .eq('group_kind', 'general')
-          .order('name')),
+          .order('name', ascending: true)),
       const <Map<String, dynamic>>[],
     );
     final chRows = await _soft(

@@ -6,7 +6,8 @@ import 'election_governance.dart';
 
 /// Minimal option shape used by validation / tally (`poll_options` row).
 class TallyOption {
-  const TallyOption({required this.id, required this.optionText, this.electionPost});
+  const TallyOption(
+      {required this.id, required this.optionText, this.electionPost});
 
   final String id;
   final String optionText;
@@ -28,7 +29,8 @@ class TallyBallot {
   /// @deprecated Legacy ranked/Borda ballots only.
   final Object? rankings;
 
-  factory TallyBallot.fromJson(Map<String, dynamic> j) => TallyBallot(choices: j['choices'], rankings: j['rankings']);
+  factory TallyBallot.fromJson(Map<String, dynamic> j) =>
+      TallyBallot(choices: j['choices'], rankings: j['rankings']);
 }
 
 /// Ballot validation error (English text identical to the web toast + Hindi).
@@ -45,7 +47,9 @@ class BallotError {
 }
 
 List<String> asStringList(Object? v) {
-  if (v is List) return v.whereType<String>().where((s) => s.isNotEmpty).toList();
+  if (v is List) {
+    return v.whereType<String>().where((s) => s.isNotEmpty).toList();
+  }
   if (v is String && v.isNotEmpty) return [v];
   return const [];
 }
@@ -80,7 +84,8 @@ class NormalizedChoices {
   bool get hasAny =>
       selected.isNotEmpty ||
       committee.isNotEmpty ||
-      [president, vicePresident, secretary, treasurer].any((v) => v != null && v.isNotEmpty);
+      [president, vicePresident, secretary, treasurer]
+          .any((v) => v != null && v.isNotEmpty);
 }
 
 NormalizedChoices normalizeChoices(Object? raw) {
@@ -119,8 +124,10 @@ BallotError? validateElectionChoices(
     for (final post in openPosts) {
       if (post == ElectionPosts.committee) {
         final picks = choices.committee;
-        if (picks.isEmpty && options.any((o) => o.electionPost == ElectionPosts.committee)) {
-          return const BallotError('Select Executive Member candidate(s)', 'कार्यकारिणी सदस्य अभ्यर्थी चुनें');
+        if (picks.isEmpty &&
+            options.any((o) => o.electionPost == ElectionPosts.committee)) {
+          return const BallotError('Select Executive Member candidate(s)',
+              'कार्यकारिणी सदस्य अभ्यर्थी चुनें');
         }
         if (picks.length > committeeSeats) {
           return BallotError(
@@ -132,10 +139,12 @@ BallotError? validateElectionChoices(
         for (final id in picks) {
           final opt = byId[id];
           if (opt == null || opt.electionPost != ElectionPosts.committee) {
-            return const BallotError('Invalid Executive Member selection', 'कार्यकारिणी सदस्य का अमान्य चयन');
+            return const BallotError('Invalid Executive Member selection',
+                'कार्यकारिणी सदस्य का अमान्य चयन');
           }
           if (!seen.add(id)) {
-            return const BallotError('Duplicate Executive Member selection', 'कार्यकारिणी सदस्य का दोहरा चयन');
+            return const BallotError('Duplicate Executive Member selection',
+                'कार्यकारिणी सदस्य का दोहरा चयन');
           }
         }
         continue;
@@ -160,7 +169,8 @@ BallotError? validateElectionChoices(
 
   final selected = choices.selected;
   if (selected.isEmpty) {
-    return const BallotError('Select at least one nominee on your ballot', 'अपने मतपत्र पर कम-से-कम एक नामांकित चुनें');
+    return const BallotError('Select at least one nominee on your ballot',
+        'अपने मतपत्र पर कम-से-कम एक नामांकित चुनें');
   }
   if (selected.length > maxMarks) {
     return BallotError(
@@ -170,15 +180,24 @@ BallotError? validateElectionChoices(
   }
   final seen = <String>{};
   for (final id in selected) {
-    if (!byId.containsKey(id)) return const BallotError('Invalid nominee on ballot', 'मतपत्र पर अमान्य नामांकित');
-    if (!seen.add(id)) return const BallotError('Duplicate selection on ballot', 'मतपत्र पर दोहरा चयन');
+    if (!byId.containsKey(id)) {
+      return const BallotError(
+          'Invalid nominee on ballot', 'मतपत्र पर अमान्य नामांकित');
+    }
+    if (!seen.add(id)) {
+      return const BallotError(
+          'Duplicate selection on ballot', 'मतपत्र पर दोहरा चयन');
+    }
   }
   return null;
 }
 
 /// @deprecated Ranked ballots are no longer used (web `validateElectionRankings`).
-BallotError? validateElectionRankings(List<TallyOption> options, Object? rankings) {
-  if (options.isEmpty) return const BallotError('No candidates', 'कोई अभ्यर्थी नहीं');
+BallotError? validateElectionRankings(
+    List<TallyOption> options, Object? rankings) {
+  if (options.isEmpty) {
+    return const BallotError('No candidates', 'कोई अभ्यर्थी नहीं');
+  }
   return const BallotError(
     'Ranked ballots are no longer used. Refresh and cast a simple ballot.',
     'क्रमांकित मतपत्र अब उपयोग नहीं होते। रीफ़्रेश करें और सामान्य मतपत्र डालें।',
@@ -186,7 +205,12 @@ BallotError? validateElectionRankings(List<TallyOption> options, Object? ranking
 }
 
 class ElectedWinner {
-  const ElectedWinner({required this.optionId, required this.name, required this.score, this.place, this.fromPost});
+  const ElectedWinner(
+      {required this.optionId,
+      required this.name,
+      required this.score,
+      this.place,
+      this.fromPost});
 
   final String optionId;
   final String name;
@@ -280,7 +304,8 @@ Map<String, dynamic> formationRawOf(Object? results) {
 }
 
 /// Raw entries of `formation.voluntary` / `formation.executive_proposed`.
-List<Map<String, dynamic>> formationEntries(Map<String, dynamic> formation, String key) {
+List<Map<String, dynamic>> formationEntries(
+    Map<String, dynamic> formation, String key) {
   final v = formation[key];
   if (v is! List) return [];
   return v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
@@ -313,8 +338,9 @@ class CommitteeFormationState {
 
   static CommitteeFormationState fromJson(Object? raw) {
     if (raw is! Map) return const CommitteeFormationState();
-    List<FormationMember> list(Object? v) =>
-        v is List ? v.map(FormationMember.fromJson).whereType<FormationMember>().toList() : const [];
+    List<FormationMember> list(Object? v) => v is List
+        ? v.map(FormationMember.fromJson).whereType<FormationMember>().toList()
+        : const [];
     return CommitteeFormationState(
       selectedRunnerUpIds: asStringList(raw['selected_runner_up_ids']),
       voluntary: list(raw['voluntary']),
@@ -322,7 +348,9 @@ class CommitteeFormationState {
     );
   }
 
-  CommitteeFormationState copyWith({List<FormationMember>? voluntary, List<FormationMember>? executiveProposed}) =>
+  CommitteeFormationState copyWith(
+          {List<FormationMember>? voluntary,
+          List<FormationMember>? executiveProposed}) =>
       CommitteeFormationState(
         selectedRunnerUpIds: selectedRunnerUpIds,
         voluntary: voluntary ?? this.voluntary,
@@ -336,7 +364,8 @@ class CommitteeFormationState {
       };
 }
 
-Map<String, dynamic> emptyFormationJson() => const CommitteeFormationState().toJson();
+Map<String, dynamic> emptyFormationJson() =>
+    const CommitteeFormationState().toJson();
 
 /// Typed read view over `polls.election_results` (the raw map is kept for persistence).
 class ElectionResults {
@@ -345,7 +374,8 @@ class ElectionResults {
   final Map<String, dynamic> raw;
 
   /// Web `isResultsPayload`: object with `president` and `committee` keys.
-  static bool isPayload(Object? x) => x is Map && x.containsKey('president') && x.containsKey('committee');
+  static bool isPayload(Object? x) =>
+      x is Map && x.containsKey('president') && x.containsKey('committee');
 
   static ElectionResults? tryParse(Object? raw) {
     if (raw is! Map) return null;
@@ -360,14 +390,16 @@ class ElectionResults {
     return c.map(ElectedWinner.fromJson).whereType<ElectedWinner>().toList();
   }
 
-  CommitteeFormationState get formation => CommitteeFormationState.fromJson(raw['formation']);
+  CommitteeFormationState get formation =>
+      CommitteeFormationState.fromJson(raw['formation']);
 
   String? get ballotMode => raw['ballot_mode'] as String?;
 
   String? get talliedAt => raw['tallied_at'] as String?;
 
   /// `{...results, formation: next}` — keeps every other key untouched.
-  Map<String, dynamic> withFormation(CommitteeFormationState next) => {...raw, 'formation': next.toJson()};
+  Map<String, dynamic> withFormation(CommitteeFormationState next) =>
+      {...raw, 'formation': next.toJson()};
 
   /// Legacy helper — returns [] for new tallies (runners_up never written).
   List<ElectedWinner> listRunnersUp() {
@@ -380,7 +412,12 @@ class ElectionResults {
       for (final r in list) {
         final w = ElectedWinner.fromJson(r);
         if (w != null) {
-          out.add(ElectedWinner(optionId: w.optionId, name: w.name, score: w.score, place: w.place, fromPost: post));
+          out.add(ElectedWinner(
+              optionId: w.optionId,
+              name: w.name,
+              score: w.score,
+              place: w.place,
+              fromPost: post));
         }
       }
     }
@@ -428,7 +465,8 @@ int _rankValue(Object? v) {
 }
 
 /// Legacy ranked → one vote for rank-1 only (migration path).
-Map<String, int> _legacyRankOneScores(String post, List<String> optionIds, List<TallyBallot> ballots) {
+Map<String, int> _legacyRankOneScores(
+    String post, List<String> optionIds, List<TallyBallot> ballots) {
   final scores = {for (final id in optionIds) id: 0};
   for (final b in ballots) {
     if (b.choices is Map && normalizeChoices(b.choices).hasAny) continue;
@@ -443,7 +481,8 @@ Map<String, int> _legacyRankOneScores(String post, List<String> optionIds, List<
 }
 
 /// Stable sort by score (descending) — JS `Array.prototype.sort` is stable.
-List<ElectedWinner> _rankedList(List<TallyOption> postOpts, Map<String, int> scores, String fromPost) {
+List<ElectedWinner> _rankedList(
+    List<TallyOption> postOpts, Map<String, int> scores, String fromPost) {
   final indexed = [for (var i = 0; i < postOpts.length; i++) (i, postOpts[i])];
   indexed.sort((a, b) {
     final d = (scores[b.$2.id] ?? 0) - (scores[a.$2.id] ?? 0);
@@ -472,20 +511,27 @@ Map<String, dynamic> tallyElection(
   DateTime? now,
 }) {
   final seats = committeeSeats < 0 ? 0 : committeeSeats;
-  List<TallyOption> byPost(String post) => options.where((o) => o.electionPost == post).toList();
+  List<TallyOption> byPost(String post) =>
+      options.where((o) => o.electionPost == post).toList();
   final normalized = ballots.map((b) => normalizeChoices(b.choices)).toList();
 
   final hasAnyChoices = normalized.any(
-    (c) => c.selected.isNotEmpty || ElectionPosts.offices.any((p) => (c.office(p) ?? '').isNotEmpty) || c.committee.isNotEmpty,
+    (c) =>
+        c.selected.isNotEmpty ||
+        ElectionPosts.offices.any((p) => (c.office(p) ?? '').isNotEmpty) ||
+        c.committee.isNotEmpty,
   );
 
-  final ballotMode = hasAnyChoices ? (separateOfficeVotes ? 'separate_office' : 'combined') : 'ranked_legacy';
+  final ballotMode = hasAnyChoices
+      ? (separateOfficeVotes ? 'separate_office' : 'combined')
+      : 'ranked_legacy';
   final winners = <String, ElectedWinner?>{};
   final talliedAt = jsIsoString(now ?? DateTime.now());
 
   Map<String, dynamic> payload(List<ElectedWinner> committee, String mode) => {
         ElectionPosts.president: winners[ElectionPosts.president]?.toJson(),
-        ElectionPosts.vicePresident: winners[ElectionPosts.vicePresident]?.toJson(),
+        ElectionPosts.vicePresident:
+            winners[ElectionPosts.vicePresident]?.toJson(),
         ElectionPosts.secretary: winners[ElectionPosts.secretary]?.toJson(),
         ElectionPosts.treasurer: winners[ElectionPosts.treasurer]?.toJson(),
         ElectionPosts.committee: committee.map((c) => c.toJson()).toList(),
@@ -520,7 +566,8 @@ Map<String, dynamic> tallyElection(
 
   // Combined: each marked nominee gets one mark; seat by nominated post.
   final allIds = options.map((o) => o.id).toList();
-  final scores = _scoreMap(allIds, normalized, (c, id) => c.selected.contains(id));
+  final scores =
+      _scoreMap(allIds, normalized, (c, id) => c.selected.contains(id));
   for (final post in ElectionPosts.offices) {
     final postOpts = byPost(post);
     if (postOpts.isEmpty) {

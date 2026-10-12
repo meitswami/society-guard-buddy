@@ -10,5 +10,6 @@ class AdminStandardPollsTab extends StatelessWidget {
   final SessionAdmin session;
 
   @override
-  Widget build(BuildContext context) => AdminPollsHubScreen(session: session, subTab: 'polls');
+  Widget build(BuildContext context) =>
+      AdminPollsHubScreen(session: session, subTab: 'polls');
 }

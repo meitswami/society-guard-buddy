@@ -10,5 +10,6 @@ class AdminCommitteeModule extends StatelessWidget {
   final AdminModuleContext ctx;
 
   @override
-  Widget build(BuildContext context) => CommitteePage(societyId: ctx.societyId, isResident: false);
+  Widget build(BuildContext context) =>
+      CommitteePage(societyId: ctx.societyId, isResident: false);
 }

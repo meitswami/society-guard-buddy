@@ -1,3 +1,13 @@
+import 'extra/audit_strings.dart';
+import 'extra/comms_strings.dart';
+import 'extra/events_strings.dart';
+import 'extra/finance_strings.dart';
+import 'extra/gate_strings.dart';
+import 'extra/kiosk_strings.dart';
+import 'extra/reports_strings.dart';
+import 'extra/resident_strings.dart';
+import 'extra/superadmin_strings.dart';
+
 /// Mobile-only UI strings (keys the web app does not have). Each feature module keeps
 /// its own map in `extra/<module>_strings.dart`; they are merged here.
 /// Web keys always win: these only fill gaps.
@@ -17,4 +27,13 @@ const Map<String, Map<String, String>> kExtraStrings = {
   'mobile.theme.light': {'en': 'Light', 'hi': 'लाइट'},
   'mobile.theme.dark': {'en': 'Dark', 'hi': 'डार्क'},
   'mobile.theme.system': {'en': 'System', 'hi': 'सिस्टम'},
+  ...kAuditStrings,
+  ...kCommsStrings,
+  ...kEventsStrings,
+  ...kFinanceStrings,
+  ...kGateStrings,
+  ...kKioskStrings,
+  ...kReportsStrings,
+  ...kResidentStrings,
+  ...kSuperadminStrings,
 };

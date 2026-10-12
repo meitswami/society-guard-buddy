@@ -49,7 +49,8 @@ const Map<String, VotingMethodOption> votingMethodOptions = {
 };
 
 VotingMethodOption votingMethodOption(String method) =>
-    votingMethodOptions[method] ?? votingMethodOptions[VotingMethods.secretBallot]!;
+    votingMethodOptions[method] ??
+    votingMethodOptions[VotingMethods.secretBallot]!;
 
 /// Row of `election_voting_method_consents`.
 class VotingMethodConsentRow {
@@ -71,7 +72,8 @@ class VotingMethodConsentRow {
   final String? flatNumber;
   final String? createdAt;
 
-  factory VotingMethodConsentRow.fromJson(Map<String, dynamic> j) => VotingMethodConsentRow(
+  factory VotingMethodConsentRow.fromJson(Map<String, dynamic> j) =>
+      VotingMethodConsentRow(
         id: '${j['id']}',
         pollId: '${j['poll_id']}',
         memberId: '${j['member_id']}',
@@ -83,13 +85,17 @@ class VotingMethodConsentRow {
 }
 
 class VotingMethodConsentTally {
-  const VotingMethodConsentTally({required this.secretBallot, required this.showOfHands, required this.total});
+  const VotingMethodConsentTally(
+      {required this.secretBallot,
+      required this.showOfHands,
+      required this.total});
 
   final int secretBallot;
   final int showOfHands;
   final int total;
 
-  int countFor(String method) => method == VotingMethods.secretBallot ? secretBallot : showOfHands;
+  int countFor(String method) =>
+      method == VotingMethods.secretBallot ? secretBallot : showOfHands;
 }
 
 VotingMethodConsentTally tallyFromConsents(List<VotingMethodConsentRow> rows) {
@@ -102,14 +108,17 @@ VotingMethodConsentTally tallyFromConsents(List<VotingMethodConsentRow> rows) {
       hands += 1;
     }
   }
-  return VotingMethodConsentTally(secretBallot: secret, showOfHands: hands, total: rows.length);
+  return VotingMethodConsentTally(
+      secretBallot: secret, showOfHands: hands, total: rows.length);
 }
 
 /// Leading method, or null on no consent / a tie (admin must not auto-pick).
 String? leadingConsentMethod(VotingMethodConsentTally tally) {
   if (tally.total < 1) return null;
   if (tally.secretBallot == tally.showOfHands) return null;
-  return tally.secretBallot > tally.showOfHands ? VotingMethods.secretBallot : VotingMethods.showOfHands;
+  return tally.secretBallot > tally.showOfHands
+      ? VotingMethods.secretBallot
+      : VotingMethods.showOfHands;
 }
 
 /// Error shown when finalizing before every eligible member consented (web text).
@@ -126,4 +135,6 @@ String? consentIncompleteError({
 }
 
 /// Duplicate consent insert → friendly message (web regex `duplicate|unique|immutable`).
-bool isDuplicateConsentError(String message) => RegExp('duplicate|unique|immutable', caseSensitive: false).hasMatch(message);
+bool isDuplicateConsentError(String message) =>
+    RegExp('duplicate|unique|immutable', caseSensitive: false)
+        .hasMatch(message);

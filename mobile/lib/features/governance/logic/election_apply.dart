@@ -6,7 +6,12 @@ import 'election_tally.dart';
 
 /// `poll_options` fields needed to build `committee_members` rows.
 class ApplyOption {
-  const ApplyOption({required this.id, required this.optionText, this.memberId, this.flatId, this.flatNumber});
+  const ApplyOption(
+      {required this.id,
+      required this.optionText,
+      this.memberId,
+      this.flatId,
+      this.flatNumber});
 
   final String id;
   final String optionText;
@@ -36,8 +41,12 @@ List<String> applyMemberIds(List<ApplyOption> options, Object? results) {
   final formation = formationRawOf(results);
   return [
     ...options.map((o) => o.memberId).whereType<String>(),
-    ...formationEntries(formation, 'voluntary').map((v) => v['member_id']).whereType<String>(),
-    ...formationEntries(formation, 'executive_proposed').map((e) => e['member_id']).whereType<String>(),
+    ...formationEntries(formation, 'voluntary')
+        .map((v) => v['member_id'])
+        .whereType<String>(),
+    ...formationEntries(formation, 'executive_proposed')
+        .map((e) => e['member_id'])
+        .whereType<String>(),
   ].where((s) => s.isNotEmpty).toList();
 }
 
@@ -156,22 +165,31 @@ String _pad2(int n) => n.toString().padLeft(2, '0');
 /// The prior roster is retired the day before the new term starts.
 String priorTermTo(String termFrom) {
   final parts = termFrom.split('-').map(int.parse).toList();
-  final prior = DateTime(parts[0], parts[1], parts[2]).subtract(const Duration(days: 1));
+  final prior =
+      DateTime(parts[0], parts[1], parts[2]).subtract(const Duration(days: 1));
   // Normalise across DST-less local dates by rebuilding from components.
   final d = DateTime(prior.year, prior.month, prior.day);
   return '${d.year}-${_pad2(d.month)}-${_pad2(d.day)}';
 }
 
 /// Active rows overlapping the new term (web retirement filter).
-List<String> retireIdsFor(List<Map<String, dynamic>> priorRows, String termFrom) {
+List<String> retireIdsFor(
+    List<Map<String, dynamic>> priorRows, String termFrom) {
   return priorRows
       .where((r) {
         final fromRaw = r['term_from']?.toString();
         final toRaw = r['term_to']?.toString();
-        final from = fromRaw == null || fromRaw.length < 10 ? fromRaw : fromRaw.substring(0, 10);
-        final to = toRaw == null || toRaw.length < 10 ? toRaw : toRaw.substring(0, 10);
-        if (from != null && from.isNotEmpty && from.compareTo(termFrom) >= 0) return false;
-        if (to != null && to.isNotEmpty && to.compareTo(termFrom) < 0) return false;
+        final from = fromRaw == null || fromRaw.length < 10
+            ? fromRaw
+            : fromRaw.substring(0, 10);
+        final to =
+            toRaw == null || toRaw.length < 10 ? toRaw : toRaw.substring(0, 10);
+        if (from != null && from.isNotEmpty && from.compareTo(termFrom) >= 0) {
+          return false;
+        }
+        if (to != null && to.isNotEmpty && to.compareTo(termFrom) < 0) {
+          return false;
+        }
         return true;
       })
       .map((r) => '${r['id']}')

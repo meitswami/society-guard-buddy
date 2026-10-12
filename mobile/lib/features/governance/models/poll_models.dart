@@ -4,7 +4,8 @@ import '../logic/election_tally.dart';
 
 String? _s(Object? v) => v == null ? null : '$v';
 int _i(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
-int? _iOrNull(Object? v) => v == null ? null : (v is num ? v.toInt() : int.tryParse('$v'));
+int? _iOrNull(Object? v) =>
+    v == null ? null : (v is num ? v.toInt() : int.tryParse('$v'));
 
 /// Row of `polls` (standard polls and society elections). The raw JSON is kept
 /// because the governance helpers read it directly (like the web `any` rows).
@@ -32,7 +33,8 @@ class PollRow {
   bool get separateOfficeVotes => raw['separate_office_votes'] == true;
   int? get electionQuorumRequired => _iOrNull(raw['election_quorum_required']);
   int? get memberCountAtElection => _iOrNull(raw['member_count_at_election']);
-  int get electionCommitteeSeats => _iOrNull(raw['election_committee_seats']) ?? 0;
+  int get electionCommitteeSeats =>
+      _iOrNull(raw['election_committee_seats']) ?? 0;
   int get targetCommitteeSize {
     final n = _iOrNull(raw['target_committee_size']) ?? 0;
     return n > 0 ? n : defaultTargetCommitteeSize;
@@ -46,8 +48,9 @@ class PollRow {
   String? get votingEndsAt => _s(raw['voting_ends_at']);
   Object? get electionResultsRaw => raw['election_results'];
   bool get hasResults => raw['election_results'] is Map;
-  Map<String, dynamic>? get electionResults =>
-      raw['election_results'] is Map ? Map<String, dynamic>.from(raw['election_results'] as Map) : null;
+  Map<String, dynamic>? get electionResults => raw['election_results'] is Map
+      ? Map<String, dynamic>.from(raw['election_results'] as Map)
+      : null;
 }
 
 /// Row of `poll_options`.
@@ -76,10 +79,15 @@ class PollOptionRow {
   final String? nominatedBy;
   final String? nominationStatement;
 
-  TallyOption get tally => TallyOption(id: id, optionText: optionText, electionPost: electionPost);
+  TallyOption get tally =>
+      TallyOption(id: id, optionText: optionText, electionPost: electionPost);
 
-  ApplyOption get apply =>
-      ApplyOption(id: id, optionText: optionText, memberId: memberId, flatId: flatId, flatNumber: flatNumber);
+  ApplyOption get apply => ApplyOption(
+      id: id,
+      optionText: optionText,
+      memberId: memberId,
+      flatId: flatId,
+      flatNumber: flatNumber);
 
   factory PollOptionRow.fromJson(Map<String, dynamic> j) => PollOptionRow(
         id: '${j['id']}',
@@ -147,7 +155,8 @@ class BallotRow {
   final Object? rankings;
   final String? ballotMethod;
 
-  TallyBallot get tally => TallyBallot(choices: choices ?? const <String, dynamic>{}, rankings: rankings);
+  TallyBallot get tally => TallyBallot(
+      choices: choices ?? const <String, dynamic>{}, rankings: rankings);
 
   factory BallotRow.fromJson(Map<String, dynamic> j) => BallotRow(
         id: '${j['id']}',
@@ -236,13 +245,21 @@ class PollsBundle {
 
   /// Web `activeElections`: active, or phase other than applied.
   List<PollRow> get activeElections => electionPolls
-      .where((p) => p.isActive || (p.electionPhaseRaw != null && p.electionPhaseRaw!.isNotEmpty && p.electionPhaseRaw != 'applied'))
+      .where((p) =>
+          p.isActive ||
+          (p.electionPhaseRaw != null &&
+              p.electionPhaseRaw!.isNotEmpty &&
+              p.electionPhaseRaw != 'applied'))
       .toList();
 
-  List<PollOptionRow> optionsFor(String pollId) => options.where((o) => o.pollId == pollId).toList();
-  List<BallotRow> ballotsFor(String pollId) => ballots.where((b) => b.pollId == pollId).toList();
-  List<PollVoteRow> votesFor(String pollId) => votes.where((v) => v.pollId == pollId).toList();
-  List<PollDocumentRow> documentsFor(String pollId) => documents.where((d) => d.pollId == pollId).toList();
+  List<PollOptionRow> optionsFor(String pollId) =>
+      options.where((o) => o.pollId == pollId).toList();
+  List<BallotRow> ballotsFor(String pollId) =>
+      ballots.where((b) => b.pollId == pollId).toList();
+  List<PollVoteRow> votesFor(String pollId) =>
+      votes.where((v) => v.pollId == pollId).toList();
+  List<PollDocumentRow> documentsFor(String pollId) =>
+      documents.where((d) => d.pollId == pollId).toList();
 }
 
 /// Identity of the person using the polls page.

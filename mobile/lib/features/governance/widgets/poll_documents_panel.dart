@@ -45,7 +45,8 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
     super.dispose();
   }
 
-  List<PollDocumentRow> get _mine => widget.documents.where((d) => d.pollId == widget.pollId).toList();
+  List<PollDocumentRow> get _mine =>
+      widget.documents.where((d) => d.pollId == widget.pollId).toList();
 
   Future<void> _add() async {
     final res = await FilePicker.pickFiles(
@@ -65,7 +66,9 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
         bytes: f.bytes!,
         fileName: f.name,
         mimeType: mimeFromFileName(f.name),
-        title: _title.text.trim().isEmpty ? stripExtension(f.name) : _title.text.trim(),
+        title: _title.text.trim().isEmpty
+            ? stripExtension(f.name)
+            : _title.text.trim(),
         docKind: _kind.value,
         createdBy: widget.createdBy,
         sortOrder: base + i,
@@ -76,11 +79,15 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
     setState(() => _uploading = false);
     _title.clear();
     if (ok > 0) {
-      GovToast.ok(context, context.tr('$ok document(s) added', '$ok दस्तावेज़ जोड़े गए'));
+      GovToast.ok(context,
+          context.tr('$ok document(s) added', '$ok दस्तावेज़ जोड़े गए'));
       setState(() => _open = true);
       widget.onChanged();
     } else {
-      GovToast.error(context, context.tr('Could not upload document(s)', 'दस्तावेज़ अपलोड नहीं हो सके'));
+      GovToast.error(
+          context,
+          context.tr(
+              'Could not upload document(s)', 'दस्तावेज़ अपलोड नहीं हो सके'));
     }
   }
 
@@ -96,7 +103,8 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
     try {
       await widget.repo.deletePollDocument(doc.id);
       if (!mounted) return;
-      GovToast.ok(context, context.tr('Document removed', 'दस्तावेज़ हटाया गया'));
+      GovToast.ok(
+          context, context.tr('Document removed', 'दस्तावेज़ हटाया गया'));
       widget.onChanged();
     } catch (e) {
       if (mounted) GovToast.error(context, GovBackend.errorText(e));
@@ -111,7 +119,8 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
     return Container(
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.only(top: 10),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: t.border))),
+      decoration:
+          BoxDecoration(border: Border(top: BorderSide(color: t.border))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -124,7 +133,8 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
                 Flexible(
                   child: Text(
                     '${context.tr('Documents', 'दस्तावेज़')}${mine.isNotEmpty ? ' (${mine.length})' : ''}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -137,9 +147,11 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
             if (mine.isEmpty)
               Text(
                 widget.isAdmin
-                    ? context.tr('Attach circulars, letters, or other documents members can open with this poll.',
+                    ? context.tr(
+                        'Attach circulars, letters, or other documents members can open with this poll.',
                         'परिपत्र, पत्र या अन्य दस्तावेज़ संलग्न करें जिन्हें सदस्य इस मतदान के साथ खोल सकें।')
-                    : context.tr('No documents attached.', 'कोई दस्तावेज़ संलग्न नहीं।'),
+                    : context.tr(
+                        'No documents attached.', 'कोई दस्तावेज़ संलग्न नहीं।'),
                 style: AppText.tiny(context).copyWith(fontSize: 11),
               ),
             for (final doc in mine)
@@ -154,8 +166,13 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
                         onTap: () => ExportKit.openUrl(doc.fileUrl),
                         child: Text.rich(
                           TextSpan(children: [
-                            TextSpan(text: doc.title, style: TextStyle(color: t.primary)),
-                            TextSpan(text: ' · ${pollDocKindLabel(doc.docKind, hi: hi)}', style: AppText.tiny(context)),
+                            TextSpan(
+                                text: doc.title,
+                                style: TextStyle(color: t.primary)),
+                            TextSpan(
+                                text:
+                                    ' · ${pollDocKindLabel(doc.docKind, hi: hi)}',
+                                style: AppText.tiny(context)),
                           ]),
                           style: const TextStyle(fontSize: 13),
                           overflow: TextOverflow.ellipsis,
@@ -166,7 +183,8 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
                       IconButton(
                         visualDensity: VisualDensity.compact,
                         onPressed: () => _remove(doc),
-                        icon: Icon(Icons.delete_outline, size: 16, color: t.destructive),
+                        icon: Icon(Icons.delete_outline,
+                            size: 16, color: t.destructive),
                       ),
                   ],
                 ),
@@ -184,15 +202,18 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
                           items: PollDocKind.values,
                           value: _kind,
                           labelOf: (k) => k.label(hi),
-                          onChanged: (v) => setState(() => _kind = v ?? PollDocKind.circular),
+                          onChanged: (v) =>
+                              setState(() => _kind = v ?? PollDocKind.circular),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: AppTextField(
                           controller: _title,
-                          label: context.tr('Title (optional)', 'शीर्षक (वैकल्पिक)'),
-                          hint: context.tr('e.g. Election circular', 'जैसे चुनाव परिपत्र'),
+                          label: context.tr(
+                              'Title (optional)', 'शीर्षक (वैकल्पिक)'),
+                          hint: context.tr(
+                              'e.g. Election circular', 'जैसे चुनाव परिपत्र'),
                           caps: false,
                         ),
                       ),
@@ -202,7 +223,9 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: MiniButton(
-                      label: _uploading ? context.tr('Uploading…', 'अपलोड हो रहा है…') : context.tr('Add document(s)', 'दस्तावेज़ जोड़ें'),
+                      label: _uploading
+                          ? context.tr('Uploading…', 'अपलोड हो रहा है…')
+                          : context.tr('Add document(s)', 'दस्तावेज़ जोड़ें'),
                       icon: Icons.attach_file,
                       busy: _uploading,
                       onPressed: _add,

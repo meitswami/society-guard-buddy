@@ -59,7 +59,7 @@ class Flat360Service {
           .select('id, name, phone, relation, is_primary')
           .eq('flat_id', flatId)
           .order('is_primary', ascending: false)
-          .order('name')),
+          .order('name', ascending: true)),
       safe(() => db
           .from('maintenance_payments')
           .select(

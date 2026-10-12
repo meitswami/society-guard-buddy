@@ -20,8 +20,10 @@ Future<ui.Image> renderWidgetToImage(
     view: view,
     child: RenderPositionedBox(alignment: Alignment.topLeft, child: boundary),
     configuration: ViewConfiguration(
-      logicalConstraints: BoxConstraints(minWidth: width, maxWidth: width, maxHeight: 200000),
-      physicalConstraints: BoxConstraints(minWidth: width, maxWidth: width, maxHeight: 200000),
+      logicalConstraints:
+          BoxConstraints(minWidth: width, maxWidth: width, maxHeight: 200000),
+      physicalConstraints:
+          BoxConstraints(minWidth: width, maxWidth: width, maxHeight: 200000),
     ),
   );
   final pipelineOwner = PipelineOwner()..rootNode = renderView;
@@ -30,7 +32,8 @@ Future<ui.Image> renderWidgetToImage(
   final root = RenderObjectToWidgetAdapter<RenderBox>(
     container: boundary,
     child: MediaQuery(
-      data: MediaQueryData(size: Size(width, 2000), textScaler: TextScaler.noScaling),
+      data: MediaQueryData(
+          size: Size(width, 2000), textScaler: TextScaler.noScaling),
       child: Directionality(
         textDirection: TextDirection.ltr,
         child: SizedBox(width: width, child: child),
@@ -44,7 +47,8 @@ Future<ui.Image> renderWidgetToImage(
   pipelineOwner.flushPaint();
   final image = await boundary.toImage(pixelRatio: pixelRatio);
   // Tear the temporary tree down.
-  RenderObjectToWidgetAdapter<RenderBox>(container: boundary).attachToRenderTree(buildOwner, root);
+  RenderObjectToWidgetAdapter<RenderBox>(container: boundary)
+      .attachToRenderTree(buildOwner, root);
   buildOwner.buildScope(root);
   buildOwner.finalizeTree();
   return image;
@@ -67,7 +71,8 @@ Future<Uint8List> cropToPng(ui.Image src, int top, int height) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   final w = src.width.toDouble();
-  canvas.drawRect(Rect.fromLTWH(0, 0, w, height.toDouble()), Paint()..color = const Color(0xFFFFFFFF));
+  canvas.drawRect(Rect.fromLTWH(0, 0, w, height.toDouble()),
+      Paint()..color = const Color(0xFFFFFFFF));
   canvas.drawImageRect(
     src,
     Rect.fromLTWH(0, top.toDouble(), w, height.toDouble()),
@@ -87,7 +92,8 @@ Future<Uint8List> imageToPng(ui.Image image) async {
 
 /// Page break rows for a tall white-background image: prefers a fully white row
 /// within [lookBack] px above each ideal cut so text lines are not split.
-Future<List<(int top, int height)>> pageSlices(ui.Image image, int sliceHeight, {int lookBack = 140}) async {
+Future<List<(int top, int height)>> pageSlices(ui.Image image, int sliceHeight,
+    {int lookBack = 140}) async {
   final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
   final w = image.width;
   final h = image.height;
@@ -96,7 +102,11 @@ Future<List<(int top, int height)>> pageSlices(ui.Image image, int sliceHeight, 
     final rowStart = y * w * 4;
     for (var x = 0; x < w; x += 2) {
       final i = rowStart + x * 4;
-      if (data.getUint8(i) < 245 || data.getUint8(i + 1) < 245 || data.getUint8(i + 2) < 245) return false;
+      if (data.getUint8(i) < 245 ||
+          data.getUint8(i + 1) < 245 ||
+          data.getUint8(i + 2) < 245) {
+        return false;
+      }
     }
     return true;
   }

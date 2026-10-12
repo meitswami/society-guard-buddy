@@ -27,17 +27,21 @@ class ElectionEligibility {
   final int? arrearsDays;
 
   /// Web parsing of the RPC payload.
-  factory ElectionEligibility.fromRpc(Object? data, {required String memberId}) {
-    final raw = data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{};
+  factory ElectionEligibility.fromRpc(Object? data,
+      {required String memberId}) {
+    final raw =
+        data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{};
     final reasonsRaw = raw['reasons'];
-    final reasons = reasonsRaw is List ? reasonsRaw.map((e) => '$e').toList() : <String>[];
+    final reasons =
+        reasonsRaw is List ? reasonsRaw.map((e) => '$e').toList() : <String>[];
     final ad = raw['arrears_days'];
     return ElectionEligibility(
       eligible: raw['eligible'] == true,
       reasons: reasons,
       arrears: raw['arrears'] == true,
       isDesignatedVoter: raw['is_designated_voter'] != false,
-      memberId: raw['member_id'] is String ? raw['member_id'] as String : memberId,
+      memberId:
+          raw['member_id'] is String ? raw['member_id'] as String : memberId,
       flatId: raw['flat_id'] as String?,
       asOf: raw['as_of'] is String ? raw['as_of'] as String : null,
       arrearsDays: ad is num ? ad.toInt() : null,
@@ -57,9 +61,13 @@ String eligibilityReasonLabel(String reason, {bool hi = false}) {
           ? 'समिति से निष्कासन (विशेष प्रस्ताव) के बाद अयोग्य'
           : 'Disqualified after committee removal (Special Resolution)';
     case 'wrong_society':
-      return hi ? 'सदस्य इस सोसायटी के नहीं हैं' : 'Member does not belong to this Society';
+      return hi
+          ? 'सदस्य इस सोसायटी के नहीं हैं'
+          : 'Member does not belong to this Society';
     case 'not_designated_joint_voter':
-      return hi ? 'संयुक्त स्वामित्व के नामित मतदाता नहीं' : 'Not the designated voter for joint ownership';
+      return hi
+          ? 'संयुक्त स्वामित्व के नामित मतदाता नहीं'
+          : 'Not the designated voter for joint ownership';
     case 'maintenance_arrears_over_60_days':
       return hi
           ? 'अनुरक्षण/साझा व्यय बकाया ${ByeLaw.arrearsDisqualifyDays} दिनों से अधिक'
@@ -70,28 +78,38 @@ String eligibilityReasonLabel(String reason, {bool hi = false}) {
 }
 
 /// Election lifecycle notification events (web `ElectionNotifyEvent`).
-enum ElectionNotifyEvent { nominationOpen, votingOpen, electionClosed, winnersPublished }
+enum ElectionNotifyEvent {
+  nominationOpen,
+  votingOpen,
+  electionClosed,
+  winnersPublished
+}
 
 /// Notification title — stored in `notifications` exactly like the web (English).
 String electionNotifyTitle(ElectionNotifyEvent e) => switch (e) {
-      ElectionNotifyEvent.nominationOpen => 'Society election — nomination open',
+      ElectionNotifyEvent.nominationOpen =>
+        'Society election — nomination open',
       ElectionNotifyEvent.votingOpen => 'Society election — voting open',
       ElectionNotifyEvent.electionClosed => 'Society election closed',
       ElectionNotifyEvent.winnersPublished => 'New committee published',
     };
 
 /// Default notification message (web `defaultMessage`).
-String electionNotifyMessage(ElectionNotifyEvent e, String electionTitle) => switch (e) {
+String electionNotifyMessage(ElectionNotifyEvent e, String electionTitle) =>
+    switch (e) {
       ElectionNotifyEvent.nominationOpen =>
         'Propose yourself for the 7-member Management Committee: $electionTitle',
-      ElectionNotifyEvent.votingOpen => 'Cast your ballot (one vote per eligible member): $electionTitle',
-      ElectionNotifyEvent.electionClosed => 'Voting has closed for: $electionTitle',
+      ElectionNotifyEvent.votingOpen =>
+        'Cast your ballot (one vote per eligible member): $electionTitle',
+      ElectionNotifyEvent.electionClosed =>
+        'Voting has closed for: $electionTitle',
       ElectionNotifyEvent.winnersPublished =>
         'Elected Management Committee is now on the Committee roster: $electionTitle',
     };
 
 /// Proxy submission deadline: meeting − 48 h (web `proxyDeadlineIso`).
-DateTime proxyDeadline(DateTime meetingAt, [int hours = ByeLaw.proxyDeadlineHours]) =>
+DateTime proxyDeadline(DateTime meetingAt,
+        [int hours = ByeLaw.proxyDeadlineHours]) =>
     meetingAt.subtract(Duration(hours: hours));
 
 /// Web `isProxySubmissionOnTime`.

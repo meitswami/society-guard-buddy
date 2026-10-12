@@ -15,7 +15,8 @@ class AdminPollsModule extends StatelessWidget {
   Widget build(BuildContext context) => PollsPage(
         societyId: ctx.societyId,
         societyName: ctx.societyName,
-        initialSection: ctx.subTab == 'polls' ? PollsSection.polls : PollsSection.elections,
+        initialSection:
+            ctx.subTab == 'polls' ? PollsSection.polls : PollsSection.elections,
         viewer: PollViewer(isResident: false, adminName: ctx.adminName),
       );
 }

@@ -31,7 +31,8 @@ void main() {
       expect((r['president'] as Map)['place'], 1);
       expect((r['president'] as Map)['from_post'], 'president');
       expect((r['vice_president'] as Map)['option_id'], 'V1');
-      expect((r['secretary'] as Map)['score'], 0, reason: 'single nominee still seated with 0 marks');
+      expect((r['secretary'] as Map)['score'], 0,
+          reason: 'single nominee still seated with 0 marks');
       expect(r['treasurer'], isNull, reason: 'no nominee → null');
     });
 
@@ -45,7 +46,11 @@ void main() {
     test('payload metadata', () {
       expect(r['ballot_mode'], 'combined');
       expect(r['tallied_at'], '2026-10-12T10:30:00.123Z');
-      expect(r['formation'], {'selected_runner_up_ids': [], 'voluntary': [], 'executive_proposed': []});
+      expect(r['formation'], {
+        'selected_runner_up_ids': [],
+        'voluntary': [],
+        'executive_proposed': []
+      });
       expect(ElectionResults.isPayload(r), isTrue);
     });
 
@@ -57,7 +62,14 @@ void main() {
     });
 
     test('ties keep option order (stable sort like JS)', () {
-      final tie = tallyElection(opts, [sel(['P2']), sel(['P1'])], committeeSeats: 3, now: now);
+      final tie = tallyElection(
+          opts,
+          [
+            sel(['P2']),
+            sel(['P1'])
+          ],
+          committeeSeats: 3,
+          now: now);
       expect((tie['president'] as Map)['option_id'], 'P1');
     });
   });
@@ -74,7 +86,8 @@ void main() {
         'committee': 'C4',
       }),
     ];
-    final r = tallyElection(opts, ballots, separateOfficeVotes: true, committeeSeats: 3, now: now);
+    final r = tallyElection(opts, ballots,
+        separateOfficeVotes: true, committeeSeats: 3, now: now);
 
     test('counts each office separately', () {
       expect(r['ballot_mode'], 'separate_office');
@@ -86,7 +99,13 @@ void main() {
     });
 
     test('selected marks are ignored in separate mode', () {
-      final r2 = tallyElection(opts, [sel(['P1'])], separateOfficeVotes: true, now: now);
+      final r2 = tallyElection(
+          opts,
+          [
+            sel(['P1'])
+          ],
+          separateOfficeVotes: true,
+          now: now);
       expect((r2['president'] as Map)['score'], 0);
       expect(r2['ballot_mode'], 'separate_office');
     });
@@ -119,49 +138,116 @@ void main() {
 
   group('validateElectionChoices', () {
     test('combined mode', () {
-      expect(validateElectionChoices(opts, {'selected': []}, false)?.en, 'Select at least one nominee on your ballot');
+      expect(validateElectionChoices(opts, {'selected': []}, false)?.en,
+          'Select at least one nominee on your ballot');
       expect(
-        validateElectionChoices(opts, {'selected': ['P1', 'P2', 'V1', 'S1', 'C1', 'C2', 'C3', 'C4']}, false)?.en,
+        validateElectionChoices(
+                opts,
+                {
+                  'selected': ['P1', 'P2', 'V1', 'S1', 'C1', 'C2', 'C3', 'C4']
+                },
+                false)
+            ?.en,
         'Select at most 7 nominees (one vote per member)',
       );
-      expect(validateElectionChoices(opts, {'selected': ['ZZ']}, false)?.en, 'Invalid nominee on ballot');
-      expect(validateElectionChoices(opts, {'selected': ['P1', 'P1']}, false)?.en, 'Duplicate selection on ballot');
-      expect(validateElectionChoices(opts, {'selected': ['P1', 'C1']}, false), isNull);
-      expect(validateElectionChoices(opts, null, false)?.en, 'Select at least one nominee on your ballot');
+      expect(
+          validateElectionChoices(
+                  opts,
+                  {
+                    'selected': ['ZZ']
+                  },
+                  false)
+              ?.en,
+          'Invalid nominee on ballot');
+      expect(
+          validateElectionChoices(
+                  opts,
+                  {
+                    'selected': ['P1', 'P1']
+                  },
+                  false)
+              ?.en,
+          'Duplicate selection on ballot');
+      expect(
+          validateElectionChoices(
+              opts,
+              {
+                'selected': ['P1', 'C1']
+              },
+              false),
+          isNull);
+      expect(validateElectionChoices(opts, null, false)?.en,
+          'Select at least one nominee on your ballot');
     });
 
     test('separate office mode', () {
       expect(
-        validateElectionChoices(opts, {'president': 'P1'}, true, committeeSeats: 3)?.en,
+        validateElectionChoices(opts, {'president': 'P1'}, true,
+                committeeSeats: 3)
+            ?.en,
         'Select one candidate for vice president',
       );
       expect(
         validateElectionChoices(opts, {'president': 'V1'}, true)?.en,
         'Invalid selection for president',
       );
-      final full = {'president': 'P1', 'vice_president': 'V1', 'secretary': 'S1'};
-      expect(validateElectionChoices(opts, full, true)?.en, 'Select Executive Member candidate(s)');
+      final full = {
+        'president': 'P1',
+        'vice_president': 'V1',
+        'secretary': 'S1'
+      };
+      expect(validateElectionChoices(opts, full, true)?.en,
+          'Select Executive Member candidate(s)');
       expect(
-        validateElectionChoices(opts, {...full, 'committee': ['C1', 'C2', 'C3', 'C4']}, true)?.en,
+        validateElectionChoices(
+                opts,
+                {
+                  ...full,
+                  'committee': ['C1', 'C2', 'C3', 'C4']
+                },
+                true)
+            ?.en,
         'Select at most 3 Executive Member(s)',
       );
-      expect(validateElectionChoices(opts, {...full, 'committee': ['P1']}, true)?.en, 'Invalid Executive Member selection');
       expect(
-        validateElectionChoices(opts, {...full, 'committee': ['C1', 'C1']}, true)?.en,
+          validateElectionChoices(
+                  opts,
+                  {
+                    ...full,
+                    'committee': ['P1']
+                  },
+                  true)
+              ?.en,
+          'Invalid Executive Member selection');
+      expect(
+        validateElectionChoices(
+                opts,
+                {
+                  ...full,
+                  'committee': ['C1', 'C1']
+                },
+                true)
+            ?.en,
         'Duplicate Executive Member selection',
       );
-      expect(validateElectionChoices(opts, {...full, 'committee': 'C1'}, true), isNull);
-      expect(validateElectionChoices(opts, {...full, 'committee': 'C1'}, true, committeeSeats: 0)?.en,
+      expect(validateElectionChoices(opts, {...full, 'committee': 'C1'}, true),
+          isNull);
+      expect(
+          validateElectionChoices(opts, {...full, 'committee': 'C1'}, true,
+                  committeeSeats: 0)
+              ?.en,
           'Select at most 0 Executive Member(s)');
     });
 
     test('Hindi text is provided', () {
-      expect(validateElectionChoices(opts, {'selected': []}, false)?.hi, isNotEmpty);
+      expect(validateElectionChoices(opts, {'selected': []}, false)?.hi,
+          isNotEmpty);
     });
 
     test('legacy ranked validation always rejects', () {
       expect(validateElectionRankings(const [], {})?.en, 'No candidates');
-      expect(validateElectionRankings(opts, {})?.en, 'Ranked ballots are no longer used. Refresh and cast a simple ballot.');
+      expect(validateElectionRankings(opts, {})?.en,
+          'Ranked ballots are no longer used. Refresh and cast a simple ballot.');
     });
   });
 
@@ -209,15 +295,23 @@ void main() {
 
     test('formation entries keep other keys', () {
       final f = formationRawOf(results);
-      final next = resultsWithFormationEntries(results, 'voluntary', [...formationEntries(f, 'voluntary'), {'key': 'k2'}]);
+      final next = resultsWithFormationEntries(results, 'voluntary', [
+        ...formationEntries(f, 'voluntary'),
+        {'key': 'k2'}
+      ]);
       expect(((next['formation'] as Map)['voluntary'] as List).length, 2);
-      expect(((next['formation'] as Map)['executive_proposed'] as List).length, 1);
+      expect(
+          ((next['formation'] as Map)['executive_proposed'] as List).length, 1);
       expect(next['runners_up'], isNotNull);
       expect(formationRawOf({}), emptyFormationJson());
     });
 
     test('formation member JSON matches the web shapes', () {
-      const vol = FormationMember(key: 'vol-m-A', name: 'Iqbal', source: 'voluntary', flatNumber: 'A-1');
+      const vol = FormationMember(
+          key: 'vol-m-A',
+          name: 'Iqbal',
+          source: 'voluntary',
+          flatNumber: 'A-1');
       expect(vol.toJson(), {
         'key': 'vol-m-A',
         'name': 'Iqbal',
@@ -226,8 +320,14 @@ void main() {
         'member_id': null,
         'source': 'voluntary',
       });
-      const exec = FormationMember(key: 'exec-1', name: 'Jai', source: 'executive_proposed');
-      expect(exec.toJson(), {'key': 'exec-1', 'name': 'Jai', 'flat_number': null, 'source': 'executive_proposed'});
+      const exec = FormationMember(
+          key: 'exec-1', name: 'Jai', source: 'executive_proposed');
+      expect(exec.toJson(), {
+        'key': 'exec-1',
+        'name': 'Jai',
+        'flat_number': null,
+        'source': 'executive_proposed'
+      });
     });
   });
 }

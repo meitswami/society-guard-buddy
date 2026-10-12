@@ -12,6 +12,9 @@ class AdminMeetingsModule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MeetingsPage(
-        viewer: MeetingViewer(societyId: ctx.societyId, isResident: false, adminName: ctx.adminName),
+        viewer: MeetingViewer(
+            societyId: ctx.societyId,
+            isResident: false,
+            adminName: ctx.adminName),
       );
 }

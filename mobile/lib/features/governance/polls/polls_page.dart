@@ -83,22 +83,33 @@ class _PollsPageState extends State<PollsPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 14, color: on ? t.primaryForeground : t.mutedForeground),
+                Icon(icon,
+                    size: 14,
+                    color: on ? t.primaryForeground : t.mutedForeground),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(label,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: on ? t.primaryForeground : t.mutedForeground)),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: on ? t.primaryForeground : t.mutedForeground)),
                 ),
                 if (count > 0) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                     decoration: BoxDecoration(
-                      color: on ? AppTokens.tint(t.primaryForeground, 0.2) : AppTokens.tint(t.primary, 0.15),
+                      color: on
+                          ? AppTokens.tint(t.primaryForeground, 0.2)
+                          : AppTokens.tint(t.primary, 0.15),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Text('$count', style: TextStyle(fontSize: 10, color: on ? t.primaryForeground : t.primary)),
+                    child: Text('$count',
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: on ? t.primaryForeground : t.primary)),
                   ),
                 ],
               ],
@@ -126,13 +137,21 @@ class _PollsPageState extends State<PollsPage> {
         ),
         Container(
           padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(color: t.muted, borderRadius: BorderRadius.circular(AppTokens.radius)),
+          decoration: BoxDecoration(
+              color: t.muted,
+              borderRadius: BorderRadius.circular(AppTokens.radius)),
           child: Row(
             children: [
-              _tab(PollsSection.elections, Icons.account_balance_outlined, context.tr('Society Elections', 'सोसायटी चुनाव'),
+              _tab(
+                  PollsSection.elections,
+                  Icons.account_balance_outlined,
+                  context.tr('Society Elections', 'सोसायटी चुनाव'),
                   _bundle.activeElections.length),
               const SizedBox(width: 6),
-              _tab(PollsSection.polls, Icons.checklist, context.tr('General Polls', 'सामान्य मतदान'),
+              _tab(
+                  PollsSection.polls,
+                  Icons.checklist,
+                  context.tr('General Polls', 'सामान्य मतदान'),
                   _bundle.standardPolls.where((p) => p.isActive).length),
             ],
           ),
@@ -141,15 +160,22 @@ class _PollsPageState extends State<PollsPage> {
         if (_loading)
           const LoadingView()
         else if (_section == PollsSection.elections) ...[
-          if (!_viewer.isResident) ElectionResultsBanner(key: _bannerKey, societyId: widget.societyId),
-          ElectionSection(repo: _repo, viewer: _viewer, bundle: _bundle, onReload: _load, societyName: widget.societyName),
+          if (!_viewer.isResident)
+            ElectionResultsBanner(key: _bannerKey, societyId: widget.societyId),
+          ElectionSection(
+              repo: _repo,
+              viewer: _viewer,
+              bundle: _bundle,
+              onReload: _load,
+              societyName: widget.societyName),
         ] else
           GeneralPollsSection(
             repo: _repo,
             viewer: _viewer,
             bundle: _bundle,
             onReload: _load,
-            onGoToElections: () => setState(() => _section = PollsSection.elections),
+            onGoToElections: () =>
+                setState(() => _section = PollsSection.elections),
           ),
       ],
     );

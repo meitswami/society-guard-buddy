@@ -6,12 +6,15 @@ import 'text_compare.dart';
 
 /// `meetings.meeting_kind` (web `MEETING_KIND_OPTIONS`).
 enum MeetingKind {
-  generalBody('general_body', 'General body meeting', 'सामान्य सभा बैठक', 'GBM', 'GBM'),
+  generalBody(
+      'general_body', 'General body meeting', 'सामान्य सभा बैठक', 'GBM', 'GBM'),
   annual('annual', 'Annual meeting', 'वार्षिक बैठक', 'AGM', 'AGM'),
-  executiveCommittee('executive_committee', 'Executive committee', 'कार्यकारिणी समिति', 'EC', 'EC'),
+  executiveCommittee('executive_committee', 'Executive committee',
+      'कार्यकारिणी समिति', 'EC', 'EC'),
   other('other', 'Other', 'अन्य', 'Other', 'अन्य');
 
-  const MeetingKind(this.value, this.labelEn, this.labelHi, this.shortEn, this.shortHi);
+  const MeetingKind(
+      this.value, this.labelEn, this.labelHi, this.shortEn, this.shortHi);
 
   final String value;
   final String labelEn;
@@ -36,7 +39,12 @@ String meetingKindLabel(Object? kind) => normalizeMeetingKind(kind).labelEn;
 String meetingKindShort(Object? kind) => normalizeMeetingKind(kind).shortEn;
 
 /// `meetings.status` values offered in the admin select.
-const List<String> meetingStatuses = ['draft', 'scheduled', 'completed', 'cancelled'];
+const List<String> meetingStatuses = [
+  'draft',
+  'scheduled',
+  'completed',
+  'cancelled'
+];
 
 String meetingStatusLabel(String status, {bool hi = false}) => switch (status) {
       'draft' => hi ? 'ड्राफ़्ट' : 'Draft',
@@ -65,8 +73,11 @@ String toTimeInput(String? iso) {
 }
 
 /// Local `yyyy-MM-dd` + `HH:mm` → UTC ISO string (defaults: today, 09:00).
-String combineDateAndTimeToIso(String dateStr, String timeStr, {DateTime? now}) {
-  final d = dateStr.isNotEmpty ? dateStr : toDateInput(jsIsoString(now ?? DateTime.now()));
+String combineDateAndTimeToIso(String dateStr, String timeStr,
+    {DateTime? now}) {
+  final d = dateStr.isNotEmpty
+      ? dateStr
+      : toDateInput(jsIsoString(now ?? DateTime.now()));
   final t = timeStr.isNotEmpty ? timeStr : '09:00';
   final dp = d.split('-').map((s) => int.tryParse(s) ?? 0).toList();
   final tp = t.split(':').map((s) => int.tryParse(s) ?? 0).toList();
@@ -92,7 +103,17 @@ bool sameInstant(String? a, String? b) {
 }
 
 const List<String> meetingDocExtensions = [
-  'pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif', 'tif', 'tiff',
+  'pdf',
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'gif',
+  'bmp',
+  'heic',
+  'heif',
+  'tif',
+  'tiff',
 ];
 
 /// Web `isAllowedMeetingAttachment` — images + PDFs.
@@ -118,7 +139,8 @@ String? mimeFromFileName(String name) {
     'heif' => 'image/heif',
     'tif' || 'tiff' => 'image/tiff',
     'doc' => 'application/msword',
-    'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'docx' =>
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'txt' => 'text/plain',
     'mp3' => 'audio/mpeg',
     'm4a' => 'audio/mp4',
@@ -138,10 +160,12 @@ String? mimeFromFileName(String name) {
 }
 
 /// Web `sanitizeStorageFileName` (`[^\w.-]` → `_`).
-String sanitizeStorageFileName(String name) => name.replaceAll(RegExp(r'[^\w.-]'), '_');
+String sanitizeStorageFileName(String name) =>
+    name.replaceAll(RegExp(r'[^\w.-]'), '_');
 
 /// `file.name.replace(/\.[^.]+$/, '')`.
-String stripExtension(String name) => name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+String stripExtension(String name) =>
+    name.replaceFirst(RegExp(r'\.[^.]+$'), '');
 
 /// One agenda issue per line; strips leading bullets / numbers.
 List<String> parseAgendaLines(String text) => text
@@ -157,11 +181,15 @@ String? normText(String? x) {
 }
 
 /// Notification body when a meeting is created with "Bring to notice".
-String meetingCreateNoticeBody({required String purpose, required String when, required String venue}) =>
+String meetingCreateNoticeBody(
+        {required String purpose,
+        required String when,
+        required String venue}) =>
     '$purpose\n\nWhen: $when\nVenue: $venue\nOpen Meetings in the app for agenda and documents.';
 
 /// Notification body for "Publish & notify" / "Re-notify" (sliced to 900 chars).
-String meetingPublishNoticeBody({required String purpose, required String when, required String location}) {
+String meetingPublishNoticeBody(
+    {required String purpose, required String when, required String location}) {
   final body =
       '$purpose\n\nWhen: $when\nVenue: ${location.isEmpty ? '—' : location}\nOpen Meetings for agenda and documents.';
   return body.length > 900 ? body.substring(0, 900) : body;
@@ -169,7 +197,8 @@ String meetingPublishNoticeBody({required String purpose, required String when, 
 
 /// Notification body for "Publish minutes & notify all".
 String meetingMinutesNoticeBody(String minutes) {
-  final base = minutes.isNotEmpty ? minutes : 'Published minutes are available.';
+  final base =
+      minutes.isNotEmpty ? minutes : 'Published minutes are available.';
   final sliced = base.length > 900 ? base.substring(0, 900) : base;
   return '$sliced${minutes.length > 900 ? '…' : ''} Open the Meetings tab in the app.';
 }
@@ -201,7 +230,8 @@ List<T> sortMeetingDocs<T>(List<T> docs, MeetingDocOrder Function(T) key) {
 }
 
 /// New order after moving [id] one step; null when the move is not possible.
-List<T>? moveMeetingDoc<T>(List<T> docs, String id, {required bool up, required MeetingDocOrder Function(T) key}) {
+List<T>? moveMeetingDoc<T>(List<T> docs, String id,
+    {required bool up, required MeetingDocOrder Function(T) key}) {
   final sorted = sortMeetingDocs(docs, key);
   final i = sorted.indexWhere((d) => key(d).id == id);
   if (i < 0) return null;
@@ -225,7 +255,8 @@ int nextMeetingDocOrder(Iterable<int?> sortOrders) {
 }
 
 /// A flat counts as "present" when every member has a present attendance row.
-bool isFlatMarkedPresent(List<String> flatMemberIds, Map<String?, bool> presentByMemberId) {
+bool isFlatMarkedPresent(
+    List<String> flatMemberIds, Map<String?, bool> presentByMemberId) {
   if (flatMemberIds.isEmpty) return false;
   return flatMemberIds.every((id) => presentByMemberId[id] == true);
 }

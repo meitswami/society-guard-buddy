@@ -10,5 +10,6 @@ class ResidentCommitteeView extends StatelessWidget {
   final SessionResident session;
 
   @override
-  Widget build(BuildContext context) => CommitteePage(societyId: session.societyId, isResident: true);
+  Widget build(BuildContext context) =>
+      CommitteePage(societyId: session.societyId, isResident: true);
 }

@@ -46,7 +46,8 @@ class _ElectionSectionState extends State<ElectionSection> {
   String _termFrom = '';
   String _termTo = '';
   final Map<String, List<TextEditingController>> _seeds = {
-    for (final p in ElectionPosts.managementCommittee) p: [TextEditingController()],
+    for (final p in ElectionPosts.managementCommittee)
+      p: [TextEditingController()],
   };
   bool _creating = false;
 
@@ -104,7 +105,13 @@ class _ElectionSectionState extends State<ElectionSection> {
         }
       }
     }
-    final ids = (widget.bundle.options.map((o) => o.memberId).whereType<String>().toSet().toList()..sort()).join(',');
+    final ids = (widget.bundle.options
+            .map((o) => o.memberId)
+            .whereType<String>()
+            .toSet()
+            .toList()
+          ..sort())
+        .join(',');
     if (ids != _photoKey) {
       _photoKey = ids;
       if (ids.isEmpty) {
@@ -117,7 +124,8 @@ class _ElectionSectionState extends State<ElectionSection> {
     }
   }
 
-  String? _photoForOption(PollOptionRow o) => o.memberId == null ? null : _photos[o.memberId];
+  String? _photoForOption(PollOptionRow o) =>
+      o.memberId == null ? null : _photos[o.memberId];
 
   Future<void> _run(String pollId, Future<void> Function() action) async {
     setState(() => _busyPolls.add(pollId));
@@ -148,16 +156,28 @@ class _ElectionSectionState extends State<ElectionSection> {
 
   Future<void> _create() async {
     if (_question.text.trim().isEmpty) return;
-    if (_nomStart == null || _nomEnd == null || _voteStart == null || _voteEnd == null) {
-      GovToast.error(context, context.tr('Set open and close dates for both nomination and voting.', 'नामांकन व मतदान दोनों की आरंभ व समाप्ति तिथि दें।'));
+    if (_nomStart == null ||
+        _nomEnd == null ||
+        _voteStart == null ||
+        _voteEnd == null) {
+      GovToast.error(
+          context,
+          context.tr('Set open and close dates for both nomination and voting.',
+              'नामांकन व मतदान दोनों की आरंभ व समाप्ति तिथि दें।'));
       return;
     }
     if (_nomEnd!.isBefore(_nomStart!)) {
-      GovToast.error(context, context.tr('Nomination close must be after open.', 'नामांकन समाप्ति आरंभ के बाद होनी चाहिए।'));
+      GovToast.error(
+          context,
+          context.tr('Nomination close must be after open.',
+              'नामांकन समाप्ति आरंभ के बाद होनी चाहिए।'));
       return;
     }
     if (_voteEnd!.isBefore(_voteStart!)) {
-      GovToast.error(context, context.tr('Voting close must be after open.', 'मतदान समाप्ति आरंभ के बाद होनी चाहिए।'));
+      GovToast.error(
+          context,
+          context.tr('Voting close must be after open.',
+              'मतदान समाप्ति आरंभ के बाद होनी चाहिए।'));
       return;
     }
     setState(() => _creating = true);
@@ -173,16 +193,29 @@ class _ElectionSectionState extends State<ElectionSection> {
         votingEnds: _voteEnd!,
         termFrom: _termFrom,
         termTo: _termTo,
-        seedCandidates: {for (final e in _seeds.entries) e.key: e.value.map((c) => c.text).toList()},
+        seedCandidates: {
+          for (final e in _seeds.entries)
+            e.key: e.value.map((c) => c.text).toList()
+        },
       );
       if (!mounted) return;
       _resetForm();
       setState(() => _showForm = false);
-      GovToast.ok(context, context.tr('Election created — nomination phase', 'चुनाव बना — नामांकन चरण'));
+      GovToast.ok(
+          context,
+          context.tr('Election created — nomination phase',
+              'चुनाव बना — नामांकन चरण'));
       await widget.onReload();
-      await widget.repo.notify(ElectionNotifyEvent.nominationOpen, createdBy: _v.adminName, electionTitle: title);
+      await widget.repo.notify(ElectionNotifyEvent.nominationOpen,
+          createdBy: _v.adminName, electionTitle: title);
     } catch (e) {
-      if (mounted) GovToast.error(context, GovBackend.errorText(e).isEmpty ? context.tr('Could not create election', 'चुनाव नहीं बन सका') : GovBackend.errorText(e));
+      if (mounted) {
+        GovToast.error(
+            context,
+            GovBackend.errorText(e).isEmpty
+                ? context.tr('Could not create election', 'चुनाव नहीं बन सका')
+                : GovBackend.errorText(e));
+      }
     } finally {
       if (mounted) setState(() => _creating = false);
     }
@@ -201,12 +234,21 @@ class _ElectionSectionState extends State<ElectionSection> {
   }
 
   Future<void> _saveSchedule(PollRow p) async {
-    if (_sNomStart == null || _sNomEnd == null || _sVoteStart == null || _sVoteEnd == null) {
-      GovToast.error(context, context.tr('All four dates are required.', 'चारों तिथियाँ आवश्यक हैं।'));
+    if (_sNomStart == null ||
+        _sNomEnd == null ||
+        _sVoteStart == null ||
+        _sVoteEnd == null) {
+      GovToast.error(
+          context,
+          context.tr(
+              'All four dates are required.', 'चारों तिथियाँ आवश्यक हैं।'));
       return;
     }
     if (_sNomEnd!.isBefore(_sNomStart!) || _sVoteEnd!.isBefore(_sVoteStart!)) {
-      GovToast.error(context, context.tr('Each close date must be after its open date.', 'प्रत्येक समाप्ति तिथि उसकी आरंभ तिथि के बाद होनी चाहिए।'));
+      GovToast.error(
+          context,
+          context.tr('Each close date must be after its open date.',
+              'प्रत्येक समाप्ति तिथि उसकी आरंभ तिथि के बाद होनी चाहिए।'));
       return;
     }
     await _run(p.id, () async {
@@ -230,38 +272,58 @@ class _ElectionSectionState extends State<ElectionSection> {
     final post = _nominatePost;
     if (post == null) return;
     if (_v.memberId.isEmpty || _v.memberName.isEmpty || _v.flatId.isEmpty) {
-      GovToast.error(context, context.tr('Your member profile is required to self-nominate.', 'स्व-नामांकन हेतु आपकी सदस्य प्रोफ़ाइल आवश्यक है।'));
+      GovToast.error(
+          context,
+          context.tr('Your member profile is required to self-nominate.',
+              'स्व-नामांकन हेतु आपकी सदस्य प्रोफ़ाइल आवश्यक है।'));
       return;
     }
     if (!isPostOpenForNomination(poll.raw, post)) {
-      GovToast.error(context, context.tr('Self-nomination is not open for this post right now.', 'इस पद हेतु अभी स्व-नामांकन खुला नहीं है।'));
+      GovToast.error(
+          context,
+          context.tr('Self-nomination is not open for this post right now.',
+              'इस पद हेतु अभी स्व-नामांकन खुला नहीं है।'));
       return;
     }
     final statement = _statement.text.trim();
     if (statement.length < 20) {
       GovToast.error(
         context,
-        context.tr('Please write at least a short statement (20+ characters) explaining why you should be chosen.',
+        context.tr(
+            'Please write at least a short statement (20+ characters) explaining why you should be chosen.',
             'कृपया कम-से-कम संक्षिप्त विवरण (20+ अक्षर) लिखें कि आपको क्यों चुना जाए।'),
       );
       return;
     }
-    if (widget.bundle.options.any((o) => o.pollId == poll.id && o.electionPost == post && o.memberId == _v.memberId)) {
-      GovToast.error(context, context.tr('You have already nominated yourself for this post.', 'आप इस पद हेतु पहले ही नामांकन कर चुके हैं।'));
+    if (widget.bundle.options.any((o) =>
+        o.pollId == poll.id &&
+        o.electionPost == post &&
+        o.memberId == _v.memberId)) {
+      GovToast.error(
+          context,
+          context.tr('You have already nominated yourself for this post.',
+              'आप इस पद हेतु पहले ही नामांकन कर चुके हैं।'));
       return;
     }
     await _run(poll.id, () async {
-      final elig = await GovBackend.memberEligibility(memberId: _v.memberId, societyId: _societyId);
+      final elig = await GovBackend.memberEligibility(
+          memberId: _v.memberId, societyId: _societyId);
       if (!mounted) return;
       if (elig.error != null) {
         GovToast.error(context, elig.error!);
         return;
       }
       if (elig.data != null && !elig.data!.eligible) {
-        final detail = elig.data!.reasons.map((r) => eligibilityReasonLabel(r, hi: _hi)).join('; ');
+        final detail = elig.data!.reasons
+            .map((r) => eligibilityReasonLabel(r, hi: _hi))
+            .join('; ');
         GovToast.error(
           context,
-          detail.isNotEmpty ? detail : context.tr('You are not eligible to contest under the bye-laws.', 'उपविधि के अनुसार आप चुनाव लड़ने के पात्र नहीं हैं।'),
+          detail.isNotEmpty
+              ? detail
+              : context.tr(
+                  'You are not eligible to contest under the bye-laws.',
+                  'उपविधि के अनुसार आप चुनाव लड़ने के पात्र नहीं हैं।'),
         );
         return;
       }
@@ -286,7 +348,10 @@ class _ElectionSectionState extends State<ElectionSection> {
         payload: {'post': post},
       );
       if (!mounted) return;
-      GovToast.ok(context, context.tr('Nominated for ${postDisplay(post)}', '${postDisplay(post, hi: true)} हेतु नामांकित'));
+      GovToast.ok(
+          context,
+          context.tr('Nominated for ${postDisplay(post)}',
+              '${postDisplay(post, hi: true)} हेतु नामांकित'));
       setState(() {
         _nominatePost = null;
         _nominatePollId = null;
@@ -332,34 +397,55 @@ class _ElectionSectionState extends State<ElectionSection> {
 
   Future<void> _submitBallot(PollRow poll) async {
     if (_v.voterId.isEmpty || _v.flatId.isEmpty) {
-      GovToast.error(context, context.tr('Missing member or flat context.', 'सदस्य या फ्लैट जानकारी उपलब्ध नहीं।'));
+      GovToast.error(
+          context,
+          context.tr('Missing member or flat context.',
+              'सदस्य या फ्लैट जानकारी उपलब्ध नहीं।'));
       return;
     }
     if (!isVotingWindowOpen(poll.raw)) {
-      GovToast.error(context, context.tr('Voting is not open in the current time window.', 'वर्तमान समय में मतदान खुला नहीं है।'));
+      GovToast.error(
+          context,
+          context.tr('Voting is not open in the current time window.',
+              'वर्तमान समय में मतदान खुला नहीं है।'));
       return;
     }
     if ((poll.votingMethod ?? '').isEmpty) {
-      GovToast.error(context, context.tr('Voting method has not been recorded yet (Secret Ballot or Show of Hands).',
-          'मतदान विधि अभी दर्ज नहीं हुई (गुप्त मतपत्र या हाथ उठाकर)।'));
+      GovToast.error(
+          context,
+          context.tr(
+              'Voting method has not been recorded yet (Secret Ballot or Show of Hands).',
+              'मतदान विधि अभी दर्ज नहीं हुई (गुप्त मतपत्र या हाथ उठाकर)।'));
       return;
     }
     final ballots = widget.bundle.ballotsFor(poll.id);
     if (ballots.any((b) => b.voterId == _v.voterId)) {
-      GovToast.error(context, context.tr('Your ballot is already submitted and cannot be edited.', 'आपका मतपत्र पहले ही जमा है और संपादित नहीं हो सकता।'));
+      GovToast.error(
+          context,
+          context.tr('Your ballot is already submitted and cannot be edited.',
+              'आपका मतपत्र पहले ही जमा है और संपादित नहीं हो सकता।'));
       return;
     }
     await _run(poll.id, () async {
       if (_v.memberId.isNotEmpty) {
-        final elig = await GovBackend.memberEligibility(memberId: _v.memberId, societyId: _societyId);
+        final elig = await GovBackend.memberEligibility(
+            memberId: _v.memberId, societyId: _societyId);
         if (!mounted) return;
         if (elig.error != null) {
           GovToast.error(context, elig.error!);
           return;
         }
         if (elig.data != null && !elig.data!.eligible) {
-          final detail = elig.data!.reasons.map((r) => eligibilityReasonLabel(r, hi: _hi)).join('; ');
-          GovToast.error(context, detail.isNotEmpty ? detail : context.tr('You are not eligible to vote under the bye-laws.', 'उपविधि के अनुसार आप मतदान के पात्र नहीं हैं।'));
+          final detail = elig.data!.reasons
+              .map((r) => eligibilityReasonLabel(r, hi: _hi))
+              .join('; ');
+          GovToast.error(
+              context,
+              detail.isNotEmpty
+                  ? detail
+                  : context.tr(
+                      'You are not eligible to vote under the bye-laws.',
+                      'उपविधि के अनुसार आप मतदान के पात्र नहीं हैं।'));
           await GovBackend.logElectionAudit(
             societyId: _societyId,
             pollId: poll.id,
@@ -367,25 +453,36 @@ class _ElectionSectionState extends State<ElectionSection> {
             actorType: 'resident',
             actorId: _v.memberId,
             actorName: _v.memberName.isEmpty ? null : _v.memberName,
-            payload: {'eligible': false, 'reasons': elig.data!.reasons, 'action': 'ballot'},
+            payload: {
+              'eligible': false,
+              'reasons': elig.data!.reasons,
+              'action': 'ballot'
+            },
           );
           return;
         }
       }
-      final opts = widget.bundle.optionsFor(poll.id).map((o) => o.tally).toList();
+      final opts =
+          widget.bundle.optionsFor(poll.id).map((o) => o.tally).toList();
       final separate = poll.separateOfficeVotes;
       final choices = _ballotDraft[poll.id] ?? <String, dynamic>{};
       final err = validateElectionChoices(opts, choices, separate,
-          committeeSeats: ByeLaw.executiveMembers, maxMarks: ByeLaw.committeeSize);
+          committeeSeats: ByeLaw.executiveMembers,
+          maxMarks: ByeLaw.committeeSize);
       if (err != null) {
         if (mounted) GovToast.error(context, err.text(_hi));
         return;
       }
       final phone = _v.voterPhone.replaceAll(RegExp(r'\D'), '');
-      if (phone.isNotEmpty && ballots.any((b) => (b.voterPhone ?? '').replaceAll(RegExp(r'\D'), '') == phone)) {
+      if (phone.isNotEmpty &&
+          ballots.any((b) =>
+              (b.voterPhone ?? '').replaceAll(RegExp(r'\D'), '') == phone)) {
         if (mounted) {
-          GovToast.error(context, context.tr('You have already voted (one vote per member, even across multiple flats).',
-              'आप पहले ही मतदान कर चुके हैं (प्रति सदस्य एक मत, कई फ्लैट होने पर भी)।'));
+          GovToast.error(
+              context,
+              context.tr(
+                  'You have already voted (one vote per member, even across multiple flats).',
+                  'आप पहले ही मतदान कर चुके हैं (प्रति सदस्य एक मत, कई फ्लैट होने पर भी)।'));
         }
         return;
       }
@@ -406,9 +503,15 @@ class _ElectionSectionState extends State<ElectionSection> {
         final msg = GovBackend.errorText(e);
         if (!mounted) return;
         if (RegExp('duplicate|unique', caseSensitive: false).hasMatch(msg)) {
-          GovToast.error(context, context.tr('Duplicate vote blocked — one ballot per member.', 'दोहरा मत रोका गया — प्रति सदस्य एक मतपत्र।'));
+          GovToast.error(
+              context,
+              context.tr('Duplicate vote blocked — one ballot per member.',
+                  'दोहरा मत रोका गया — प्रति सदस्य एक मतपत्र।'));
         } else if (RegExp('immutable', caseSensitive: false).hasMatch(msg)) {
-          GovToast.error(context, context.tr('Ballots cannot be changed after submission.', 'जमा होने के बाद मतपत्र बदले नहीं जा सकते।'));
+          GovToast.error(
+              context,
+              context.tr('Ballots cannot be changed after submission.',
+                  'जमा होने के बाद मतपत्र बदले नहीं जा सकते।'));
         } else {
           GovToast.error(context, msg);
         }
@@ -421,10 +524,17 @@ class _ElectionSectionState extends State<ElectionSection> {
         actorType: 'resident',
         actorId: _v.memberId.isNotEmpty ? _v.memberId : _v.voterId,
         actorName: _v.memberName.isEmpty ? null : _v.memberName,
-        payload: {'ballot_method': poll.votingMethod, 'separate_office_votes': separate, 'voter_id': _v.voterId},
+        payload: {
+          'ballot_method': poll.votingMethod,
+          'separate_office_votes': separate,
+          'voter_id': _v.voterId
+        },
       );
       if (!mounted) return;
-      GovToast.ok(context, context.tr('Ballot submitted (final — cannot be edited)', 'मतपत्र जमा (अंतिम — संपादित नहीं हो सकता)'));
+      GovToast.ok(
+          context,
+          context.tr('Ballot submitted (final — cannot be edited)',
+              'मतपत्र जमा (अंतिम — संपादित नहीं हो सकता)'));
       await widget.onReload();
     });
   }
@@ -433,8 +543,11 @@ class _ElectionSectionState extends State<ElectionSection> {
 
   Future<void> _startVoting(PollRow poll) async {
     if ((poll.votingMethod ?? '').isEmpty) {
-      GovToast.error(context, context.tr('Record the voting method (Secret Ballot or Show of Hands) before opening the poll.',
-          'मतदान खोलने से पहले मतदान विधि (गुप्त मतपत्र या हाथ उठाकर) दर्ज करें।'));
+      GovToast.error(
+          context,
+          context.tr(
+              'Record the voting method (Secret Ballot or Show of Hands) before opening the poll.',
+              'मतदान खोलने से पहले मतदान विधि (गुप्त मतपत्र या हाथ उठाकर) दर्ज करें।'));
       return;
     }
     final ok = await govConfirm(
@@ -448,7 +561,8 @@ class _ElectionSectionState extends State<ElectionSection> {
     if (!ok) return;
     await _run(poll.id, () async {
       final memberCount = await GovBackend.activeMemberCount(_societyId);
-      final quorum = memberCount == null ? null : electionQuorumRequired(memberCount);
+      final quorum =
+          memberCount == null ? null : electionQuorumRequired(memberCount);
       await widget.repo.patchPoll(poll.id, {
         'election_phase': 'voting',
         'is_active': true,
@@ -473,11 +587,14 @@ class _ElectionSectionState extends State<ElectionSection> {
       GovToast.ok(
         context,
         quorum != null
-            ? context.tr('Voting open — quorum $quorum of $memberCount members (3/4)', 'मतदान खुला — कोरम $memberCount में से $quorum सदस्य (3/4)')
+            ? context.tr(
+                'Voting open — quorum $quorum of $memberCount members (3/4)',
+                'मतदान खुला — कोरम $memberCount में से $quorum सदस्य (3/4)')
             : context.tr('Voting phase started', 'मतदान चरण आरंभ'),
       );
       await widget.onReload();
-      await widget.repo.notify(ElectionNotifyEvent.votingOpen, createdBy: _v.adminName, electionTitle: poll.question);
+      await widget.repo.notify(ElectionNotifyEvent.votingOpen,
+          createdBy: _v.adminName, electionTitle: poll.question);
     });
   }
 
@@ -486,7 +603,8 @@ class _ElectionSectionState extends State<ElectionSection> {
     final quorum = poll.electionQuorumRequired;
     final memberCount = poll.memberCountAtElection;
     final quorumNote = quorum != null
-        ? context.tr(' Ballots cast: ${ballots.length}${memberCount != null ? ' · quorum $quorum of $memberCount' : ''}.',
+        ? context.tr(
+            ' Ballots cast: ${ballots.length}${memberCount != null ? ' · quorum $quorum of $memberCount' : ''}.',
             ' डाले गए मतपत्र: ${ballots.length}${memberCount != null ? ' · कोरम $memberCount में से $quorum' : ''}।')
         : '';
     if (quorum != null && ballots.length < quorum) {
@@ -513,8 +631,10 @@ class _ElectionSectionState extends State<ElectionSection> {
       if (!ok) return;
     }
     await _run(poll.id, () async {
-      final results = widget.repo.tally(poll, widget.bundle.optionsFor(poll.id), ballots);
-      final deadline = utcIsoDate(DateTime.now().add(const Duration(days: ByeLaw.firstMeetingWithinDays)));
+      final results =
+          widget.repo.tally(poll, widget.bundle.optionsFor(poll.id), ballots);
+      final deadline = utcIsoDate(DateTime.now()
+          .add(const Duration(days: ByeLaw.firstMeetingWithinDays)));
       await widget.repo.patchPoll(poll.id, {
         'is_active': false,
         'election_phase': 'closed',
@@ -537,9 +657,11 @@ class _ElectionSectionState extends State<ElectionSection> {
       if (!mounted) return;
       await AppFeedback.success(context,
           title: context.tr('Election closed', 'चुनाव बंद'),
-          message: context.tr('Results are available here in the admin portal.', 'परिणाम यहाँ प्रशासक पोर्टल में उपलब्ध हैं।'));
+          message: context.tr('Results are available here in the admin portal.',
+              'परिणाम यहाँ प्रशासक पोर्टल में उपलब्ध हैं।'));
       await widget.onReload();
-      await widget.repo.notify(ElectionNotifyEvent.electionClosed, createdBy: _v.adminName, electionTitle: poll.question);
+      await widget.repo.notify(ElectionNotifyEvent.electionClosed,
+          createdBy: _v.adminName, electionTitle: poll.question);
     });
   }
 
@@ -559,11 +681,14 @@ class _ElectionSectionState extends State<ElectionSection> {
     }
     final ok = await govConfirm(
       context,
-      title: context.tr('Publish Management Committee?', 'प्रबंध समिति प्रकाशित करें?'),
+      title: context.tr(
+          'Publish Management Committee?', 'प्रबंध समिति प्रकाशित करें?'),
       message: formed < target
-          ? context.tr('Roster has $formed members (required $target). Publish the elected seven-member Management Committee to the Committee tab?',
+          ? context.tr(
+              'Roster has $formed members (required $target). Publish the elected seven-member Management Committee to the Committee tab?',
               'सूची में $formed सदस्य (आवश्यक $target)। निर्वाचित सात-सदस्यीय प्रबंध समिति समिति टैब में प्रकाशित करें?')
-          : context.tr('Publish $formed members of the Management Committee to the Committee tab? All members will be notified.',
+          : context.tr(
+              'Publish $formed members of the Management Committee to the Committee tab? All members will be notified.',
               'प्रबंध समिति के $formed सदस्य समिति टैब में प्रकाशित करें? सभी सदस्यों को सूचित किया जाएगा।'),
       confirmLabel: context.tr('Publish', 'प्रकाशित करें'),
     );
@@ -591,9 +716,12 @@ class _ElectionSectionState extends State<ElectionSection> {
       );
       if (!mounted) return;
       await AppFeedback.success(context,
-          title: context.tr('Published', 'प्रकाशित'), message: context.tr('Committee roster updated for residents.', 'निवासियों हेतु समिति सूची अद्यतन।'));
+          title: context.tr('Published', 'प्रकाशित'),
+          message: context.tr('Committee roster updated for residents.',
+              'निवासियों हेतु समिति सूची अद्यतन।'));
       await widget.onReload();
-      await widget.repo.notify(ElectionNotifyEvent.winnersPublished, createdBy: _v.adminName, electionTitle: poll.question);
+      await widget.repo.notify(ElectionNotifyEvent.winnersPublished,
+          createdBy: _v.adminName, electionTitle: poll.question);
     });
   }
 
@@ -604,30 +732,43 @@ class _ElectionSectionState extends State<ElectionSection> {
         children: [
           Text.rich(
             TextSpan(children: [
-              TextSpan(text: o.optionText, style: const TextStyle(fontWeight: FontWeight.w500)),
-              if ((o.flatNumber ?? '').isNotEmpty) TextSpan(text: '  · ${context.tr('Flat', 'फ्लैट')} ${o.flatNumber}', style: AppText.tiny(context)),
+              TextSpan(
+                  text: o.optionText,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              if ((o.flatNumber ?? '').isNotEmpty)
+                TextSpan(
+                    text: '  · ${context.tr('Flat', 'फ्लैट')} ${o.flatNumber}',
+                    style: AppText.tiny(context)),
             ]),
             style: const TextStyle(fontSize: 13),
           ),
           if (statement && (o.nominationStatement ?? '').isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 3),
-              child: Text(o.nominationStatement!, style: AppText.caption(context).copyWith(fontSize: 11)),
+              child: Text(o.nominationStatement!,
+                  style: AppText.caption(context).copyWith(fontSize: 11)),
             ),
         ],
       );
 
   Widget _candidateList(PollRow poll, String post) {
     final t = context.tokens;
-    final opts = widget.bundle.optionsFor(poll.id).where((o) => o.electionPost == post).toList();
+    final opts = widget.bundle
+        .optionsFor(poll.id)
+        .where((o) => o.electionPost == post)
+        .toList();
     if (opts.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('${postDisplay(post, hi: _hi)} — ${context.tr('nominees', 'नामांकित')}',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.mutedForeground)),
+          Text(
+              '${postDisplay(post, hi: _hi)} — ${context.tr('nominees', 'नामांकित')}',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: t.mutedForeground)),
           const SizedBox(height: 6),
           for (final o in opts)
             Container(
@@ -638,7 +779,10 @@ class _ElectionSectionState extends State<ElectionSection> {
                 border: Border.all(color: AppTokens.tint(t.border, 0.6)),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: PersonPhotoSide(name: o.optionText, photo: _photoForOption(o), child: _nomineeInfo(o)),
+              child: PersonPhotoSide(
+                  name: o.optionText,
+                  photo: _photoForOption(o),
+                  child: _nomineeInfo(o)),
             ),
         ],
       ),
@@ -649,7 +793,11 @@ class _ElectionSectionState extends State<ElectionSection> {
     final t = context.tokens;
     final opts = widget.bundle.optionsFor(poll.id);
     final draft = _ballotDraft[poll.id] ?? const <String, dynamic>{};
-    Widget option(PollOptionRow o, {required bool checked, required bool radio, required VoidCallback onTap, bool statement = true}) =>
+    Widget option(PollOptionRow o,
+            {required bool checked,
+            required bool radio,
+            required VoidCallback onTap,
+            bool statement = true}) =>
         InkWell(
           onTap: onTap,
           child: Container(
@@ -657,7 +805,8 @@ class _ElectionSectionState extends State<ElectionSection> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: checked ? AppTokens.tint(t.primary, 0.05) : null,
-              border: Border.all(color: checked ? t.primary : AppTokens.tint(t.border, 0.6)),
+              border: Border.all(
+                  color: checked ? t.primary : AppTokens.tint(t.border, 0.6)),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
@@ -665,13 +814,21 @@ class _ElectionSectionState extends State<ElectionSection> {
               children: [
                 Icon(
                   radio
-                      ? (checked ? Icons.radio_button_checked : Icons.radio_button_unchecked)
-                      : (checked ? Icons.check_box : Icons.check_box_outline_blank),
+                      ? (checked
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked)
+                      : (checked
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank),
                   size: 20,
                   color: checked ? t.primary : t.mutedForeground,
                 ),
                 const SizedBox(width: 8),
-                Expanded(child: PersonPhotoSide(name: o.optionText, photo: _photoForOption(o), child: _nomineeInfo(o, statement: statement))),
+                Expanded(
+                    child: PersonPhotoSide(
+                        name: o.optionText,
+                        photo: _photoForOption(o),
+                        child: _nomineeInfo(o, statement: statement))),
               ],
             ),
           ),
@@ -682,22 +839,32 @@ class _ElectionSectionState extends State<ElectionSection> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            context.tr('Mark up to ${ByeLaw.committeeSize} nominees (one ballot per member — not ranked)',
+            context.tr(
+                'Mark up to ${ByeLaw.committeeSize} nominees (one ballot per member — not ranked)',
                 'अधिकतम ${ByeLaw.committeeSize} नामांकितों को चिह्नित करें (प्रति सदस्य एक मतपत्र — क्रमांकित नहीं)'),
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.mutedForeground),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: t.mutedForeground),
           ),
           Text(
-            context.tr('Selected ${selected.length} / ${ByeLaw.committeeSize}. Highest marks fill each nominated post.',
+            context.tr(
+                'Selected ${selected.length} / ${ByeLaw.committeeSize}. Highest marks fill each nominated post.',
                 'चयनित ${selected.length} / ${ByeLaw.committeeSize}। सर्वाधिक अंक वाले प्रत्येक पद को भरते हैं।'),
             style: AppText.caption(context).copyWith(fontSize: 11),
           ),
           const SizedBox(height: 8),
           for (final post in ElectionPosts.managementCommittee)
             if (opts.any((o) => o.electionPost == post)) ...[
-              Text(postDisplay(post, hi: _hi), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+              Text(postDisplay(post, hi: _hi),
+                  style: const TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
               for (final o in opts.where((o) => o.electionPost == post))
-                option(o, checked: selected.contains(o.id), radio: false, onTap: () => _toggleCombined(poll.id, o.id)),
+                option(o,
+                    checked: selected.contains(o.id),
+                    radio: false,
+                    onTap: () => _toggleCombined(poll.id, o.id)),
             ],
         ],
       );
@@ -707,9 +874,13 @@ class _ElectionSectionState extends State<ElectionSection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          context.tr('Separate office votes (expressly approved) — pick one per post (not ranked)',
+          context.tr(
+              'Separate office votes (expressly approved) — pick one per post (not ranked)',
               'प्रति-पद मत (स्पष्ट अनुमोदित) — प्रत्येक पद हेतु एक चुनें (क्रमांकित नहीं)'),
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.mutedForeground),
+          style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: t.mutedForeground),
         ),
         const SizedBox(height: 8),
         for (final post in ElectionPosts.managementCommittee)
@@ -722,7 +893,9 @@ class _ElectionSectionState extends State<ElectionSection> {
             for (final o in opts.where((o) => o.electionPost == post))
               option(
                 o,
-                checked: post == ElectionPosts.committee ? committeePicks.contains(o.id) : draft[post] == o.id,
+                checked: post == ElectionPosts.committee
+                    ? committeePicks.contains(o.id)
+                    : draft[post] == o.id,
                 radio: post != ElectionPosts.committee,
                 statement: false,
                 onTap: () => _setOfficePick(poll.id, post, o.id),
@@ -736,19 +909,34 @@ class _ElectionSectionState extends State<ElectionSection> {
     return Container(
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(border: Border.all(color: context.tokens.border), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+      decoration: BoxDecoration(
+          border: Border.all(color: context.tokens.border),
+          borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(context.tr('SCHEDULE', 'समय-सारिणी'), style: AppText.fieldLabel(context)),
+          Text(context.tr('SCHEDULE', 'समय-सारिणी'),
+              style: AppText.fieldLabel(context)),
           const SizedBox(height: 8),
-          GovDateTimeField(label: context.tr('Nomination opens', 'नामांकन आरंभ'), value: _sNomStart, onChanged: (v) => setState(() => _sNomStart = v)),
+          GovDateTimeField(
+              label: context.tr('Nomination opens', 'नामांकन आरंभ'),
+              value: _sNomStart,
+              onChanged: (v) => setState(() => _sNomStart = v)),
           const SizedBox(height: 8),
-          GovDateTimeField(label: context.tr('Nomination closes', 'नामांकन समाप्त'), value: _sNomEnd, onChanged: (v) => setState(() => _sNomEnd = v)),
+          GovDateTimeField(
+              label: context.tr('Nomination closes', 'नामांकन समाप्त'),
+              value: _sNomEnd,
+              onChanged: (v) => setState(() => _sNomEnd = v)),
           const SizedBox(height: 8),
-          GovDateTimeField(label: context.tr('Voting opens', 'मतदान आरंभ'), value: _sVoteStart, onChanged: (v) => setState(() => _sVoteStart = v)),
+          GovDateTimeField(
+              label: context.tr('Voting opens', 'मतदान आरंभ'),
+              value: _sVoteStart,
+              onChanged: (v) => setState(() => _sVoteStart = v)),
           const SizedBox(height: 8),
-          GovDateTimeField(label: context.tr('Voting closes', 'मतदान समाप्त'), value: _sVoteEnd, onChanged: (v) => setState(() => _sVoteEnd = v)),
+          GovDateTimeField(
+              label: context.tr('Voting closes', 'मतदान समाप्त'),
+              value: _sVoteEnd,
+              onChanged: (v) => setState(() => _sVoteEnd = v)),
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerLeft,
@@ -768,7 +956,9 @@ class _ElectionSectionState extends State<ElectionSection> {
     final t = context.tokens;
     final phase = poll.phase;
     final ballots = widget.bundle.ballotsFor(poll.id);
-    final myBallot = ballots.where((b) => b.voterId == _v.voterId && _v.voterId.isNotEmpty).firstOrNull;
+    final myBallot = ballots
+        .where((b) => b.voterId == _v.voterId && _v.voterId.isNotEmpty)
+        .firstOrNull;
     final votingOpen = isVotingWindowOpen(poll.raw);
     final nominationOpen = isNominationWindowOpen(poll.raw);
     final opts = widget.bundle.optionsFor(poll.id);
@@ -787,7 +977,8 @@ class _ElectionSectionState extends State<ElectionSection> {
       ),
       clipBehavior: Clip.antiAlias,
       child: Container(
-        decoration: BoxDecoration(border: Border(left: BorderSide(color: t.primary, width: 4))),
+        decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: t.primary, width: 4))),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -801,14 +992,24 @@ class _ElectionSectionState extends State<ElectionSection> {
                     children: [
                       Text(
                         '${context.tr('ELECTION', 'चुनाव')} · ${ByeLaw.committeeSize}-${context.tr('MEMBER MC', 'सदस्यीय प्रबंध समिति')}',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.primary),
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: t.primary),
                       ),
                       Text(poll.question, style: AppText.sectionTitle(context)),
                       if ((poll.description ?? '').isNotEmpty)
-                        Padding(padding: const EdgeInsets.only(top: 4), child: Text(poll.description!, style: AppText.caption(context))),
+                        Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(poll.description!,
+                                style: AppText.caption(context))),
                       const SizedBox(height: 4),
-                      Text('${context.tr('Nomination', 'नामांकन')}: ${nominationWindowLabel(poll.raw, hi: _hi)}', style: AppText.tiny(context).copyWith(fontSize: 11)),
-                      Text('${context.tr('Voting', 'मतदान')}: ${votingWindowLabel(poll.raw, hi: _hi)}', style: AppText.tiny(context).copyWith(fontSize: 11)),
+                      Text(
+                          '${context.tr('Nomination', 'नामांकन')}: ${nominationWindowLabel(poll.raw, hi: _hi)}',
+                          style: AppText.tiny(context).copyWith(fontSize: 11)),
+                      Text(
+                          '${context.tr('Voting', 'मतदान')}: ${votingWindowLabel(poll.raw, hi: _hi)}',
+                          style: AppText.tiny(context).copyWith(fontSize: 11)),
                       if (!_isResident && poll.electionQuorumRequired != null)
                         Text(
                           '${context.tr('Quorum', 'कोरम')} ${poll.electionQuorumRequired}${poll.memberCountAtElection != null ? ' ${context.tr('of', 'में से')} ${poll.memberCountAtElection}' : ''} (3/4)',
@@ -822,8 +1023,13 @@ class _ElectionSectionState extends State<ElectionSection> {
               ],
             ),
             const SizedBox(height: 6),
-            Text(context.tr('${ballots.length} ballot(s) cast', '${ballots.length} मतपत्र डाले गए'), style: AppText.caption(context)),
-            if ((phase == ElectionPhase.closed || phase == ElectionPhase.applied) && results != null)
+            Text(
+                context.tr('${ballots.length} ballot(s) cast',
+                    '${ballots.length} मतपत्र डाले गए'),
+                style: AppText.caption(context)),
+            if ((phase == ElectionPhase.closed ||
+                    phase == ElectionPhase.applied) &&
+                results != null)
               TintBox(
                 color: t.primary,
                 margin: const EdgeInsets.only(top: 10),
@@ -832,12 +1038,21 @@ class _ElectionSectionState extends State<ElectionSection> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.emoji_events_outlined, size: 14, color: t.primary),
+                        Icon(Icons.emoji_events_outlined,
+                            size: 14, color: t.primary),
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            (!_isResident ? context.tr('Tallied results (admin only)', 'गिने गए परिणाम (केवल प्रशासक)') : context.tr('Results', 'परिणाम')).toUpperCase(),
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.primary, letterSpacing: 0.4),
+                            (!_isResident
+                                    ? context.tr('Tallied results (admin only)',
+                                        'गिने गए परिणाम (केवल प्रशासक)')
+                                    : context.tr('Results', 'परिणाम'))
+                                .toUpperCase(),
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: t.primary,
+                                letterSpacing: 0.4),
                           ),
                         ),
                       ],
@@ -845,22 +1060,33 @@ class _ElectionSectionState extends State<ElectionSection> {
                     const SizedBox(height: 6),
                     ElectionResultsBlock(
                       results: results,
-                      photoForOption: (oid) => optById[oid] == null ? null : _photoForOption(optById[oid]!),
+                      photoForOption: (oid) => optById[oid] == null
+                          ? null
+                          : _photoForOption(optById[oid]!),
                     ),
                   ],
                 ),
               ),
             if (phase == ElectionPhase.closed && results != null)
-              CommitteeFormationPanel(poll: poll, repo: widget.repo, viewer: _v, photoByMemberId: _photos, onReload: widget.onReload),
-            if (phase == ElectionPhase.nomination || phase == ElectionPhase.voting) ...[
+              CommitteeFormationPanel(
+                  poll: poll,
+                  repo: widget.repo,
+                  viewer: _v,
+                  photoByMemberId: _photos,
+                  onReload: widget.onReload),
+            if (phase == ElectionPhase.nomination ||
+                phase == ElectionPhase.voting) ...[
               const SizedBox(height: 10),
-              for (final post in ElectionPosts.managementCommittee.where(posts.contains)) _candidateList(poll, post),
+              for (final post
+                  in ElectionPosts.managementCommittee.where(posts.contains))
+                _candidateList(poll, post),
             ],
             if (_isResident && phase == ElectionPhase.nomination)
               Container(
                 margin: const EdgeInsets.only(top: 8),
                 padding: const EdgeInsets.only(top: 10),
-                decoration: BoxDecoration(border: Border(top: BorderSide(color: t.border))),
+                decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: t.border))),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -870,7 +1096,11 @@ class _ElectionSectionState extends State<ElectionSection> {
                         style: TextStyle(fontSize: 12, color: t.warning),
                       )
                     else ...[
-                      Text(context.tr('Propose yourself for a post', 'स्वयं को किसी पद हेतु प्रस्तावित करें'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                      Text(
+                          context.tr('Propose yourself for a post',
+                              'स्वयं को किसी पद हेतु प्रस्तावित करें'),
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 8,
@@ -897,25 +1127,31 @@ class _ElectionSectionState extends State<ElectionSection> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Text(
-                                context.tr('Nominate for ${postDisplay(_nominatePost!)} — why should members prefer you?',
+                                context.tr(
+                                    'Nominate for ${postDisplay(_nominatePost!)} — why should members prefer you?',
                                     '${postDisplay(_nominatePost!, hi: true)} हेतु नामांकन — सदस्य आपको क्यों चुनें?'),
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w600),
                               ),
                               const SizedBox(height: 6),
                               AppTextField(
                                 controller: _statement,
-                                hint: context.tr('Write why you should be chosen…', 'लिखें कि आपको क्यों चुना जाए…'),
+                                hint: context.tr(
+                                    'Write why you should be chosen…',
+                                    'लिखें कि आपको क्यों चुना जाए…'),
                                 maxLines: 6,
                                 minLines: 4,
                                 maxLength: 2000,
                                 caps: false,
                               ),
-                              Text('${_statement.text.trim().length}/2000', style: AppText.tiny(context)),
+                              Text('${_statement.text.trim().length}/2000',
+                                  style: AppText.tiny(context)),
                               const SizedBox(height: 6),
                               Row(
                                 children: [
                                   MiniButton(
-                                    label: context.tr('Submit nomination', 'नामांकन जमा करें'),
+                                    label: context.tr('Submit nomination',
+                                        'नामांकन जमा करें'),
                                     variant: MiniVariant.primary,
                                     busy: busy,
                                     onPressed: () => _selfNominate(poll),
@@ -942,16 +1178,24 @@ class _ElectionSectionState extends State<ElectionSection> {
               Container(
                 margin: const EdgeInsets.only(top: 8),
                 padding: const EdgeInsets.only(top: 10),
-                decoration: BoxDecoration(border: Border(top: BorderSide(color: t.border))),
+                decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: t.border))),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (!votingOpen)
-                      Text('${context.tr('Voting opens in the scheduled window', 'मतदान निर्धारित अवधि में खुलेगा')}: ${votingWindowLabel(poll.raw, hi: _hi)}',
+                      Text(
+                          '${context.tr('Voting opens in the scheduled window', 'मतदान निर्धारित अवधि में खुलेगा')}: ${votingWindowLabel(poll.raw, hi: _hi)}',
                           style: TextStyle(fontSize: 12, color: t.warning)),
                     if (myBallot != null && votingOpen)
-                      Text(context.tr('Ballot submitted — final (cannot be edited).', 'मतपत्र जमा — अंतिम (संपादित नहीं हो सकता)।'),
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.success)),
+                      Text(
+                          context.tr(
+                              'Ballot submitted — final (cannot be edited).',
+                              'मतपत्र जमा — अंतिम (संपादित नहीं हो सकता)।'),
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: t.success)),
                     if (votingOpen && myBallot == null) ...[
                       Text(
                         '${context.tr('One vote per eligible member. Votes are final after submission.', 'प्रति पात्र सदस्य एक मत। जमा होने के बाद मत अंतिम है।')}${(poll.votingMethod ?? '').isNotEmpty ? ' ${context.tr('Method', 'विधि')}: ${votingMethodShortLabel(poll.votingMethod, hi: _hi)}.' : ' ${context.tr('Voting method not yet recorded by admin.', 'प्रशासक ने अभी मतदान विधि दर्ज नहीं की।')}'}',
@@ -961,9 +1205,14 @@ class _ElectionSectionState extends State<ElectionSection> {
                       _ballotControls(poll),
                       const SizedBox(height: 8),
                       AppButton(
-                        label: context.tr('Submit ballot (final)', 'मतपत्र जमा करें (अंतिम)'),
+                        label: context.tr(
+                            'Submit ballot (final)', 'मतपत्र जमा करें (अंतिम)'),
                         loading: busy,
-                        onPressed: _v.flatId.isEmpty || _v.voterId.isEmpty || (poll.votingMethod ?? '').isEmpty ? null : () => _submitBallot(poll),
+                        onPressed: _v.flatId.isEmpty ||
+                                _v.voterId.isEmpty ||
+                                (poll.votingMethod ?? '').isEmpty
+                            ? null
+                            : () => _submitBallot(poll),
                       ),
                     ],
                   ],
@@ -987,7 +1236,10 @@ class _ElectionSectionState extends State<ElectionSection> {
                         children: [
                           Expanded(
                             child: Text(
-                              widget.bundle.voterProfiles[b.voterId]?.name ?? (b.voterId.length > 8 ? b.voterId.substring(0, 8) : b.voterId),
+                              widget.bundle.voterProfiles[b.voterId]?.name ??
+                                  (b.voterId.length > 8
+                                      ? b.voterId.substring(0, 8)
+                                      : b.voterId),
                               style: AppText.caption(context),
                             ),
                           ),
@@ -1000,7 +1252,11 @@ class _ElectionSectionState extends State<ElectionSection> {
                   ],
                 ),
               ),
-            VotingMethodConsentPanel(poll: poll, repo: widget.repo, viewer: _v, onReload: widget.onReload),
+            VotingMethodConsentPanel(
+                poll: poll,
+                repo: widget.repo,
+                viewer: _v,
+                onReload: widget.onReload),
             if (!_isResident)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
@@ -1009,31 +1265,46 @@ class _ElectionSectionState extends State<ElectionSection> {
                   runSpacing: 8,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    if (phase == ElectionPhase.nomination || phase == ElectionPhase.voting)
+                    if (phase == ElectionPhase.nomination ||
+                        phase == ElectionPhase.voting)
                       MiniButton(
-                        label: editingSchedule ? context.tr('Hide schedule', 'समय-सारिणी छिपाएँ') : context.tr('Edit dates', 'तिथियाँ संपादित करें'),
+                        label: editingSchedule
+                            ? context.tr('Hide schedule', 'समय-सारिणी छिपाएँ')
+                            : context.tr('Edit dates', 'तिथियाँ संपादित करें'),
                         icon: Icons.edit_calendar_outlined,
-                        onPressed: () => editingSchedule ? setState(() => _scheduleEditId = null) : _openSchedule(poll),
+                        onPressed: () => editingSchedule
+                            ? setState(() => _scheduleEditId = null)
+                            : _openSchedule(poll),
                       ),
                     if (phase == ElectionPhase.nomination)
                       MiniButton(
-                        label: context.tr('Start voting window', 'मतदान अवधि आरंभ करें'),
+                        label: context.tr(
+                            'Start voting window', 'मतदान अवधि आरंभ करें'),
                         variant: MiniVariant.primary,
                         busy: busy,
                         onPressed: () => _startVoting(poll),
                       ),
                     if (phase == ElectionPhase.voting && poll.isActive)
-                      LinkText(context.tr('Close election & tally', 'चुनाव बंद करें व गिनें'), color: t.destructive, onTap: busy ? null : () => _closeElection(poll)),
+                      LinkText(
+                          context.tr('Close election & tally',
+                              'चुनाव बंद करें व गिनें'),
+                          color: t.destructive,
+                          onTap: busy ? null : () => _closeElection(poll)),
                     if (phase == ElectionPhase.closed)
                       MiniButton(
-                        label: context.tr('Publish formed Committee to roster', 'गठित समिति सूची में प्रकाशित करें'),
+                        label: context.tr('Publish formed Committee to roster',
+                            'गठित समिति सूची में प्रकाशित करें'),
                         variant: MiniVariant.success,
                         busy: busy,
                         onPressed: () => _publish(poll),
                       ),
                     if (phase == ElectionPhase.applied)
-                      Text('✓ ${context.tr('Published to committee roster', 'समिति सूची में प्रकाशित')}',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.success)),
+                      Text(
+                          '✓ ${context.tr('Published to committee roster', 'समिति सूची में प्रकाशित')}',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: t.success)),
                   ],
                 ),
               ),
@@ -1052,48 +1323,90 @@ class _ElectionSectionState extends State<ElectionSection> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            context.tr('SOCIETY ELECTION — 7-MEMBER MANAGEMENT COMMITTEE (NOMINATION FIRST)', 'सोसायटी चुनाव — 7-सदस्यीय प्रबंध समिति (पहले नामांकन)'),
+            context.tr(
+                'SOCIETY ELECTION — 7-MEMBER MANAGEMENT COMMITTEE (NOMINATION FIRST)',
+                'सोसायटी चुनाव — 7-सदस्यीय प्रबंध समिति (पहले नामांकन)'),
             style: AppText.fieldLabel(context),
           ),
           gap,
-          AppTextField(controller: _question, hint: context.tr('Election title (e.g. Managing Committee 2026)', 'चुनाव शीर्षक (जैसे प्रबंध समिति 2026)')),
+          AppTextField(
+              controller: _question,
+              hint: context.tr('Election title (e.g. Managing Committee 2026)',
+                  'चुनाव शीर्षक (जैसे प्रबंध समिति 2026)')),
           gap,
-          AppTextField(controller: _description, hint: context.tr('Description (optional)', 'विवरण (वैकल्पिक)'), maxLines: 3, minLines: 2),
+          AppTextField(
+              controller: _description,
+              hint: context.tr('Description (optional)', 'विवरण (वैकल्पिक)'),
+              maxLines: 3,
+              minLines: 2),
           gap,
-          Text(context.tr('Nomination window', 'नामांकन अवधि'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+          Text(context.tr('Nomination window', 'नामांकन अवधि'),
+              style:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
-          GovDateTimeField(label: context.tr('Opens', 'आरंभ'), value: _nomStart, onChanged: (v) => setState(() => _nomStart = v)),
+          GovDateTimeField(
+              label: context.tr('Opens', 'आरंभ'),
+              value: _nomStart,
+              onChanged: (v) => setState(() => _nomStart = v)),
           const SizedBox(height: 6),
-          GovDateTimeField(label: context.tr('Closes', 'समाप्त'), value: _nomEnd, onChanged: (v) => setState(() => _nomEnd = v)),
+          GovDateTimeField(
+              label: context.tr('Closes', 'समाप्त'),
+              value: _nomEnd,
+              onChanged: (v) => setState(() => _nomEnd = v)),
           gap,
-          Text(context.tr('Voting window', 'मतदान अवधि'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+          Text(context.tr('Voting window', 'मतदान अवधि'),
+              style:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
-          GovDateTimeField(label: context.tr('Opens', 'आरंभ'), value: _voteStart, onChanged: (v) => setState(() => _voteStart = v)),
+          GovDateTimeField(
+              label: context.tr('Opens', 'आरंभ'),
+              value: _voteStart,
+              onChanged: (v) => setState(() => _voteStart = v)),
           const SizedBox(height: 6),
-          GovDateTimeField(label: context.tr('Closes', 'समाप्त'), value: _voteEnd, onChanged: (v) => setState(() => _voteEnd = v)),
+          GovDateTimeField(
+              label: context.tr('Closes', 'समाप्त'),
+              value: _voteEnd,
+              onChanged: (v) => setState(() => _voteEnd = v)),
           gap,
           Row(
             children: [
-              Expanded(child: GovDateField(label: context.tr('Tenure from', 'कार्यकाल से'), value: _termFrom, onChanged: (v) => setState(() => _termFrom = v))),
+              Expanded(
+                  child: GovDateField(
+                      label: context.tr('Tenure from', 'कार्यकाल से'),
+                      value: _termFrom,
+                      onChanged: (v) => setState(() => _termFrom = v))),
               const SizedBox(width: 8),
-              Expanded(child: GovDateField(label: context.tr('Tenure to (optional)', 'कार्यकाल तक (वैकल्पिक)'), value: _termTo, onChanged: (v) => setState(() => _termTo = v))),
+              Expanded(
+                  child: GovDateField(
+                      label: context.tr(
+                          'Tenure to (optional)', 'कार्यकाल तक (वैकल्पिक)'),
+                      value: _termTo,
+                      onChanged: (v) => setState(() => _termTo = v))),
             ],
           ),
           gap,
           for (final post in ElectionPosts.managementCommittee) ...[
-            Text('${postDisplay(post, hi: _hi)} — ${context.tr('seed candidates (optional)', 'प्रारंभिक अभ्यर्थी (वैकल्पिक)')}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(
+                '${postDisplay(post, hi: _hi)} — ${context.tr('seed candidates (optional)', 'प्रारंभिक अभ्यर्थी (वैकल्पिक)')}',
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             for (final (i, c) in _seeds[post]!.indexed)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
                   children: [
-                    Expanded(child: AppTextField(controller: c, hint: '${context.tr('Name', 'नाम')} ${i + 1}', caps: false)),
+                    Expanded(
+                        child: AppTextField(
+                            controller: c,
+                            hint: '${context.tr('Name', 'नाम')} ${i + 1}',
+                            caps: false)),
                     if (_seeds[post]!.length > 1)
                       IconButton(
-                        onPressed: () => setState(() => _seeds[post]!.removeAt(i).dispose()),
-                        icon: Icon(Icons.delete_outline, size: 18, color: context.tokens.destructive),
+                        onPressed: () =>
+                            setState(() => _seeds[post]!.removeAt(i).dispose()),
+                        icon: Icon(Icons.delete_outline,
+                            size: 18, color: context.tokens.destructive),
                       ),
                   ],
                 ),
@@ -1102,12 +1415,17 @@ class _ElectionSectionState extends State<ElectionSection> {
               alignment: Alignment.centerLeft,
               child: LinkText(
                 '+ ${context.tr('Add', 'जोड़ें')} ${postDisplay(post, hi: _hi)} ${context.tr('candidate', 'अभ्यर्थी')}',
-                onTap: () => setState(() => _seeds[post]!.add(TextEditingController())),
+                onTap: () =>
+                    setState(() => _seeds[post]!.add(TextEditingController())),
               ),
             ),
             const SizedBox(height: 8),
           ],
-          AppButton(label: context.tr('Create election (nomination phase)', 'चुनाव बनाएँ (नामांकन चरण)'), loading: _creating, onPressed: _create),
+          AppButton(
+              label: context.tr('Create election (nomination phase)',
+                  'चुनाव बनाएँ (नामांकन चरण)'),
+              loading: _creating,
+              onPressed: _create),
         ],
       ),
     );
@@ -1120,7 +1438,10 @@ class _ElectionSectionState extends State<ElectionSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        VotingCharterPanel(societyId: _societyId, societyName: widget.societyName, isAdmin: !_isResident),
+        VotingCharterPanel(
+            societyId: _societyId,
+            societyName: widget.societyName,
+            isAdmin: !_isResident),
         if (!_isResident) ...[
           AppButton(
             label: context.tr('New society election', 'नया सोसायटी चुनाव'),
@@ -1134,14 +1455,23 @@ class _ElectionSectionState extends State<ElectionSection> {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                Icon(Icons.account_balance_outlined, size: 32, color: AppTokens.tint(t.mutedForeground, 0.5)),
+                Icon(Icons.account_balance_outlined,
+                    size: 32, color: AppTokens.tint(t.mutedForeground, 0.5)),
                 const SizedBox(height: 8),
-                Text(context.tr('No society elections yet.', 'अभी कोई सोसायटी चुनाव नहीं।'), style: AppText.body(context).copyWith(color: t.mutedForeground)),
+                Text(
+                    context.tr('No society elections yet.',
+                        'अभी कोई सोसायटी चुनाव नहीं।'),
+                    style: AppText.body(context)
+                        .copyWith(color: t.mutedForeground)),
                 const SizedBox(height: 4),
                 Text(
                   _isResident
-                      ? context.tr('When the admin opens an election, you can self-nominate and vote here.', 'प्रशासक द्वारा चुनाव खोलने पर आप यहाँ स्व-नामांकन व मतदान कर सकते हैं।')
-                      : context.tr('Create an election to open nomination for the seven-member Management Committee.', 'सात-सदस्यीय प्रबंध समिति हेतु नामांकन खोलने के लिए चुनाव बनाएँ।'),
+                      ? context.tr(
+                          'When the admin opens an election, you can self-nominate and vote here.',
+                          'प्रशासक द्वारा चुनाव खोलने पर आप यहाँ स्व-नामांकन व मतदान कर सकते हैं।')
+                      : context.tr(
+                          'Create an election to open nomination for the seven-member Management Committee.',
+                          'सात-सदस्यीय प्रबंध समिति हेतु नामांकन खोलने के लिए चुनाव बनाएँ।'),
                   textAlign: TextAlign.center,
                   style: AppText.caption(context),
                 ),

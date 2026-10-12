@@ -16,9 +16,11 @@ class AdminPollsHubScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(context.tr('Polls & elections', 'मतदान व चुनाव'))),
+        appBar: AppBar(
+            title: Text(context.tr('Polls & elections', 'मतदान व चुनाव'))),
         body: AdminPollsModule(
-          ctx: AdminModuleContext(session: session, goTo: (_, {query, subTab}) {}, subTab: subTab),
+          ctx: AdminModuleContext(
+              session: session, goTo: (_, {query, subTab}) {}, subTab: subTab),
         ),
       );
 }

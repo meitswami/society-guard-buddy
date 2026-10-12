@@ -42,7 +42,8 @@ class SocietyDocumentRow {
 
   int secondsLeft(DateTime now) => revealSecondsLeft(memberRevealUntil, now);
 
-  factory SocietyDocumentRow.fromJson(Map<String, dynamic> j) => SocietyDocumentRow(
+  factory SocietyDocumentRow.fromJson(Map<String, dynamic> j) =>
+      SocietyDocumentRow(
         id: '${j['id']}',
         societyId: '${j['society_id'] ?? ''}',
         title: (j['title'] ?? '').toString(),
@@ -53,7 +54,8 @@ class SocietyDocumentRow {
         mimeType: _s(j['mime_type']),
         published: j['published'] == true,
         memberRevealUntil: _s(j['member_reveal_until']),
-        sortOrder: j['sort_order'] is num ? (j['sort_order'] as num).toInt() : 0,
+        sortOrder:
+            j['sort_order'] is num ? (j['sort_order'] as num).toInt() : 0,
         uploadedBy: _s(j['uploaded_by']),
         createdAt: (j['created_at'] ?? '').toString(),
         updatedAt: _s(j['updated_at']),
