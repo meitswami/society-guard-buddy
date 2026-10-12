@@ -47,9 +47,11 @@ void main() {
       expect(tester.takeException(), isNull);
       // Expand a governance section and scroll through the page.
       final principal = find.text(lang == AppLang.hi ? 'प्रधान (शासी निकाय)' : 'Principal');
-      await tester.scrollUntilVisible(principal, 300, scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(principal);
+      await tester.pumpAndSettle();
       await tester.tap(principal);
       await tester.pumpAndSettle();
+      expect(find.text(lang == AppLang.hi ? 'शासी प्राधिकरण' : 'Governing Authority'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
