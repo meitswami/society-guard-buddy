@@ -275,16 +275,16 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
           ),
           Divider(color: t.border),
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              AppButton.secondary(label: context.tr('Cancel', 'रद्द करें'), onPressed: _saving ? null : _cancel, expand: false),
+              Expanded(child: AppButton.secondary(label: context.tr('Cancel', 'रद्द करें'), onPressed: _saving ? null : _cancel)),
               const SizedBox(width: 8),
-              AppButton(
-                label: _saving ? context.tr('Saving…', 'सहेजा जा रहा है…') : context.tr('Save chart', 'चार्ट सहेजें'),
-                icon: Icons.save_outlined,
-                loading: _saving,
-                onPressed: _save,
-                expand: false,
+              Expanded(
+                child: AppButton(
+                  label: _saving ? context.tr('Saving…', 'सहेजा जा रहा है…') : context.tr('Save chart', 'चार्ट सहेजें'),
+                  icon: Icons.save_outlined,
+                  loading: _saving,
+                  onPressed: _save,
+                ),
               ),
             ],
           ),
@@ -372,8 +372,10 @@ class _CommitteeDutiesChartState extends State<CommitteeDutiesChart> {
                       children: [
                         Icon(Icons.assignment_outlined, size: 16, color: t.primary),
                         const SizedBox(width: 6),
-                        Text(context.tr('Standard Duties Chart', 'मानक कर्तव्य चार्ट'),
-                            style: AppText.sectionTitle(context).copyWith(fontSize: widget.isResident ? 14 : 16)),
+                        Flexible(
+                          child: Text(context.tr('Standard Duties Chart', 'मानक कर्तव्य चार्ट'),
+                              style: AppText.sectionTitle(context).copyWith(fontSize: widget.isResident ? 14 : 16)),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 2),

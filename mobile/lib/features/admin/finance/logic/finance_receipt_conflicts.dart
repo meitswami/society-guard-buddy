@@ -22,7 +22,11 @@ String monthlyMaintenanceMonthKey(String flatNumber, String dueDateYmd) {
 }
 
 class ReceiptHeadRecordingTarget {
-  const ReceiptHeadRecordingTarget({required this.flatNumber, required this.dueDate, required this.chargeId, this.paymentMethod});
+  const ReceiptHeadRecordingTarget(
+      {required this.flatNumber,
+      required this.dueDate,
+      required this.chargeId,
+      this.paymentMethod});
 
   final String flatNumber;
   final String dueDate;
@@ -31,7 +35,9 @@ class ReceiptHeadRecordingTarget {
 }
 
 /// Key used to block a new payment when the receipt head is already recorded (channel ignored).
-String receiptHeadKeyFromRecording(String flatNumber, String chargeId, String dueDate, [String? paymentMethod]) {
+String receiptHeadKeyFromRecording(
+    String flatNumber, String chargeId, String dueDate,
+    [String? paymentMethod]) {
   final month = dueDate.length > 7 ? dueDate.substring(0, 7) : dueDate;
   return '$flatNumber||$chargeId||$month';
 }
@@ -44,7 +50,9 @@ List<FinancePayment> findReceiptHeadConflicts(
   List<ReceiptHeadRecordingTarget> targets,
 ) {
   final targetKeys = {
-    for (final t in targets) receiptHeadKeyFromRecording(t.flatNumber, t.chargeId, t.dueDate, t.paymentMethod),
+    for (final t in targets)
+      receiptHeadKeyFromRecording(
+          t.flatNumber, t.chargeId, t.dueDate, t.paymentMethod),
   };
   final seen = <String>{};
   final conflicts = <FinancePayment>[];
@@ -67,7 +75,9 @@ List<FinancePayment> findMonthlyMaintenanceMonthConflicts(
 ) {
   final monthlyIds = monthlyChargeIds.toSet();
   if (monthlyIds.isEmpty || targets.isEmpty) return const [];
-  final targetKeys = {for (final t in targets) monthlyMaintenanceMonthKey(t.flatNumber, t.dueDate)};
+  final targetKeys = {
+    for (final t in targets) monthlyMaintenanceMonthKey(t.flatNumber, t.dueDate)
+  };
   final seen = <String>{};
   final conflicts = <FinancePayment>[];
   for (final p in existingPayments) {

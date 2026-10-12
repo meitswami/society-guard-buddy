@@ -24,14 +24,17 @@ String _ymd(String s) => s.length > 10 ? s.substring(0, 10) : s;
 
 String clampFinancePeriodFrom(String date) {
   final d = _ymd(date);
-  return d.compareTo(kFinanceReportingEarliestDate) < 0 ? kFinanceReportingEarliestDate : d;
+  return d.compareTo(kFinanceReportingEarliestDate) < 0
+      ? kFinanceReportingEarliestDate
+      : d;
 }
 
 /// Inclusive `yyyy-MM-dd` range for a reporting month (`yyyy-MM`).
 ({String from, String to}) financeReportingMonthRange(String ym) {
   final prefix = ym.length > 7 ? ym.substring(0, 7) : ym;
   final parts = prefix.split('-');
-  final y = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? DateTime.now().year;
+  final y =
+      int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? DateTime.now().year;
   final mo = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 1;
   final last = daysInMonth(y, mo);
   return (from: '$prefix-01', to: '$prefix-${last.toString().padLeft(2, '0')}');
@@ -44,10 +47,12 @@ String defaultFinancePeriodFrom([DateTime? now]) {
 
 String defaultFinancePeriodTo([DateTime? now]) => ymdOf(now ?? DateTime.now());
 
-String defaultFinanceFyPeriodFrom([DateTime? now]) => clampFinancePeriodFrom('${(now ?? DateTime.now()).year}-04-01');
+String defaultFinanceFyPeriodFrom([DateTime? now]) =>
+    clampFinancePeriodFrom('${(now ?? DateTime.now()).year}-04-01');
 
 class ChannelByHeadRow {
-  ChannelByHeadRow({this.cash = 0, this.bank = 0, this.other = 0, this.total = 0});
+  ChannelByHeadRow(
+      {this.cash = 0, this.bank = 0, this.other = 0, this.total = 0});
 
   double cash;
   double bank;
@@ -56,13 +61,18 @@ class ChannelByHeadRow {
 
   @override
   bool operator ==(Object other) =>
-      other is ChannelByHeadRow && other.cash == cash && other.bank == bank && other.other == this.other && other.total == total;
+      other is ChannelByHeadRow &&
+      other.cash == cash &&
+      other.bank == bank &&
+      other.other == this.other &&
+      other.total == total;
 
   @override
   int get hashCode => Object.hash(cash, bank, other, total);
 
   @override
-  String toString() => 'ChannelByHeadRow(cash: $cash, bank: $bank, other: $other, total: $total)';
+  String toString() =>
+      'ChannelByHeadRow(cash: $cash, bank: $bank, other: $other, total: $total)';
 }
 
 class FinancePeriodReportResult {
@@ -134,11 +144,17 @@ Set<String> collectLinkedFinanceEntryIds(List<FinancePayment> payments) {
 }
 
 /// Exclude event food / contribution / head-scoped ledger rows — same rule as the Finance module.
-List<FinanceLedgerRow> filterSocietyLedgerEntries(List<FinanceLedgerRow> entries, Map<String, String> expenseCategoryById) =>
-    entries.where((e) => !isEventFoodLedgerEntry(e.expenseId, e.title, expenseCategoryById)).toList();
+List<FinanceLedgerRow> filterSocietyLedgerEntries(
+        List<FinanceLedgerRow> entries,
+        Map<String, String> expenseCategoryById) =>
+    entries
+        .where((e) =>
+            !isEventFoodLedgerEntry(e.expenseId, e.title, expenseCategoryById))
+        .toList();
 
 /// Latest anchor strictly before period start (balance is end-of-day on `as_on_date`).
-OpeningBalanceAnchor? findApplicableOpeningAnchor(List<OpeningBalanceAnchor> anchors, String periodFrom) {
+OpeningBalanceAnchor? findApplicableOpeningAnchor(
+    List<OpeningBalanceAnchor> anchors, String periodFrom) {
   OpeningBalanceAnchor? best;
   for (final a in anchors) {
     final d = _ymd(a.asOnDate);
@@ -151,7 +167,8 @@ OpeningBalanceAnchor? findApplicableOpeningAnchor(List<OpeningBalanceAnchor> anc
 /// JS `String(e.payment_status ?? 'verified') === 'verified'` (null already maps to `verified`).
 bool _verifiedLedger(FinanceLedgerRow e) => e.paymentStatus == 'verified';
 
-bool _isInflowDest(String? d) => d == 'current_month_maintenance' || d == 'corpus';
+bool _isInflowDest(String? d) =>
+    d == 'current_month_maintenance' || d == 'corpus';
 
 ChannelTotals _computeChannelNetBetween(
   String fromYmd,
@@ -182,7 +199,8 @@ ChannelTotals _computeChannelNetBetween(
   return netChannels(receipt, expense);
 }
 
-void _addToHeadRow(Map<String, ChannelByHeadRow> map, String head, PaymentChannel ch, double amt) {
+void _addToHeadRow(Map<String, ChannelByHeadRow> map, String head,
+    PaymentChannel ch, double amt) {
   final label = head.trim().isEmpty ? 'Uncategorized' : head.trim();
   final cur = map.putIfAbsent(label, ChannelByHeadRow.new);
   switch (ch) {
@@ -196,7 +214,8 @@ void _addToHeadRow(Map<String, ChannelByHeadRow> map, String head, PaymentChanne
   cur.total += amt;
 }
 
-List<MapEntry<String, ChannelByHeadRow>> _sortedHeads(Map<String, ChannelByHeadRow> map) {
+List<MapEntry<String, ChannelByHeadRow>> _sortedHeads(
+    Map<String, ChannelByHeadRow> map) {
   final list = map.entries.toList();
   list.sort((a, b) {
     final t = b.value.total.compareTo(a.value.total);
@@ -245,21 +264,25 @@ FinancePeriodReportResult computeFinancePeriodReport({
   final computedBank = openingReceipt.bank - openingExpense.bank;
   final computedOther = openingReceipt.other - openingExpense.other;
 
-  var openingCash = computedCash, openingBank = computedBank, openingOther = computedOther;
+  var openingCash = computedCash,
+      openingBank = computedBank,
+      openingOther = computedOther;
   var bankManual = false, cashManual = false, otherManual = false;
   final anchor = findApplicableOpeningAnchor(anchors, periodFrom);
   if (anchor != null) {
     final deltaFrom = addDaysYmd(anchor.asOnDate, 1);
     final deltaTo = addDaysYmd(periodFrom, -1);
     final delta = deltaFrom.compareTo(deltaTo) <= 0
-        ? _computeChannelNetBetween(deltaFrom, deltaTo, payments, ledgerEntries, linked)
+        ? _computeChannelNetBetween(
+            deltaFrom, deltaTo, payments, ledgerEntries, linked)
         : ChannelTotals();
     cashManual = anchor.cashAmount != null;
     bankManual = anchor.bankAmount != null;
     otherManual = anchor.otherAmount != null;
     openingCash = cashManual ? anchor.cashAmount! + delta.cash : computedCash;
     openingBank = bankManual ? anchor.bankAmount! + delta.bank : computedBank;
-    openingOther = otherManual ? anchor.otherAmount! + delta.other : computedOther;
+    openingOther =
+        otherManual ? anchor.otherAmount! + delta.other : computedOther;
   }
   final openingBalance = openingCash + openingBank + openingOther;
 
@@ -273,7 +296,8 @@ FinancePeriodReportResult computeFinancePeriodReport({
     if (d.isEmpty || !dateInInclusiveRange(d, periodFrom, periodTo)) continue;
     final ch = normalizePaymentChannel(p.paymentMethod);
     receiptByMethod.add(ch, p.amount);
-    _addToHeadRow(receiptByHead, financeReceiptHeadForPayment(p.chargeId, heads), ch, p.amount);
+    _addToHeadRow(receiptByHead,
+        financeReceiptHeadForPayment(p.chargeId, heads), ch, p.amount);
     maintenanceReceipts += p.amount;
     verifiedPaymentCount += 1;
   }
@@ -289,13 +313,19 @@ FinancePeriodReportResult computeFinancePeriodReport({
     final ch = normalizePaymentChannel(e.paymentMethod);
     if (e.destination == 'separate_entry') {
       expenseByMethod.add(ch, e.totalAmount);
-      final head = financeExpenseHeadFromLedgerEntry(e.title, e.expenseId != null ? cats[e.expenseId] : null);
+      final head = financeExpenseHeadFromLedgerEntry(
+          e.title, e.expenseId != null ? cats[e.expenseId] : null);
       _addToHeadRow(expenseByHead, head, ch, e.totalAmount);
     } else if (_isInflowDest(e.destination)) {
       if (!linked.contains(e.id)) {
         extraLedgerReceipt += e.totalAmount;
         receiptByMethod.add(ch, e.totalAmount);
-        _addToHeadRow(receiptByHead, financeReceiptHeadFromLedgerEntry(e.destination, e.title, e.chargeId, heads), ch, e.totalAmount);
+        _addToHeadRow(
+            receiptByHead,
+            financeReceiptHeadFromLedgerEntry(
+                e.destination, e.title, e.chargeId, heads),
+            ch,
+            e.totalAmount);
         if (e.destination == 'corpus') corpusReceipts += e.totalAmount;
       }
     }

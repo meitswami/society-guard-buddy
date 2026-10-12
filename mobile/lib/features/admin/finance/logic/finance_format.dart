@@ -39,7 +39,12 @@ int _classOf(int c) {
   if (_isDigit(c)) return 2;
   final lower = c | 0x20;
   if ((lower >= 0x61 && lower <= 0x7A) || c >= 0xC0) return 3;
-  if (c <= 0x2F || (c >= 0x3A && c <= 0x40) || (c >= 0x5B && c <= 0x60) || (c >= 0x7B && c <= 0x7E)) return 0;
+  if (c <= 0x2F ||
+      (c >= 0x3A && c <= 0x40) ||
+      (c >= 0x5B && c <= 0x60) ||
+      (c >= 0x7B && c <= 0x7E)) {
+    return 0;
+  }
   return 1;
 }
 

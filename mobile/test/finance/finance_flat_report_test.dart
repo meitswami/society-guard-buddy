@@ -4,7 +4,10 @@ import 'package:kutumbika_mobile/features/admin/finance/logic/finance_flat_repor
 import 'package:kutumbika_mobile/features/admin/finance/logic/finance_models.dart';
 
 void main() {
-  const flats = [SocietyFlatRow(id: 'f1', flatNumber: 'A-101', ownerName: 'Owner', isOccupied: true)];
+  const flats = [
+    SocietyFlatRow(
+        id: 'f1', flatNumber: 'A-101', ownerName: 'Owner', isOccupied: true)
+  ];
 
   test('aggregates verified maintenance payments in range', () {
     final rows = buildFlatReportRows(
@@ -42,7 +45,11 @@ void main() {
       to: '2026-03-31',
       selectedFlat: 'B-202',
       payments: const [
-        FinancePayment(paymentStatus: 'verified', flatNumber: 'A-101', amount: 1000, dueDate: '2026-03-10'),
+        FinancePayment(
+            paymentStatus: 'verified',
+            flatNumber: 'A-101',
+            amount: 1000,
+            dueDate: '2026-03-10'),
       ],
       ledgerEntries: const [],
       flatReportExpenses: const [],
@@ -64,13 +71,25 @@ void main() {
       to: '2026-03-31',
       selectedFlat: 'all',
       payments: const [
-        FinancePayment(paymentStatus: 'verified', flatNumber: 'A-101', amount: 2000, dueDate: '2026-03-10'),
+        FinancePayment(
+            paymentStatus: 'verified',
+            flatNumber: 'A-101',
+            amount: 2000,
+            dueDate: '2026-03-10'),
       ],
       ledgerEntries: const [],
       flatReportExpenses: const [
-        FlatReportExpense(id: 'e1', title: 'Lift repair', expenseDate: '2026-03-15', paymentMethod: 'cash', groupName: 'Repairs'),
+        FlatReportExpense(
+            id: 'e1',
+            title: 'Lift repair',
+            expenseDate: '2026-03-15',
+            paymentMethod: 'cash',
+            groupName: 'Repairs'),
       ],
-      flatReportSplits: const [FlatReportSplit(expenseId: 'e1', flatNumber: 'A-101', amount: 500, isSettled: true)],
+      flatReportSplits: const [
+        FlatReportSplit(
+            expenseId: 'e1', flatNumber: 'A-101', amount: 500, isSettled: true)
+      ],
       flats: flats,
       primaryByFlatId: const {},
       charges: const [],
@@ -82,7 +101,9 @@ void main() {
     expect(rows[0].residentName, 'Owner');
   });
 
-  test('counts ledger allocations but skips flats_only entries already linked to payments', () {
+  test(
+      'counts ledger allocations but skips flats_only entries already linked to payments',
+      () {
     final rows = buildFlatReportRows(
       from: '2026-03-01',
       to: '2026-03-31',

@@ -27,12 +27,22 @@ String _modeKey(FinanceLedgerRow e) => e.recordMode ?? '';
 String _destKey(FinanceLedgerRow e) => e.destination ?? '';
 
 /// Group ledger inflows by record_mode + destination (Report page + Finance totals).
-List<LedgerInflowGroup> computeLedgerInflowGroups(List<FinanceLedgerRow> entries, {bool excludeSeparateEntry = false}) {
-  final map = <String, ({double total, int flatUnits, int count, String mode, String dest})>{};
+List<LedgerInflowGroup> computeLedgerInflowGroups(
+    List<FinanceLedgerRow> entries,
+    {bool excludeSeparateEntry = false}) {
+  final map = <String,
+      ({double total, int flatUnits, int count, String mode, String dest})>{};
   for (final e in entries) {
     if (excludeSeparateEntry && e.destination == 'separate_entry') continue;
     final key = '${_modeKey(e)}||${_destKey(e)}';
-    final cur = map[key] ?? (total: 0.0, flatUnits: 0, count: 0, mode: _modeKey(e), dest: _destKey(e));
+    final cur = map[key] ??
+        (
+          total: 0.0,
+          flatUnits: 0,
+          count: 0,
+          mode: _modeKey(e),
+          dest: _destKey(e)
+        );
     map[key] = (
       total: cur.total + e.totalAmount,
       flatUnits: cur.flatUnits + e.aggregateFlatCount,
@@ -43,7 +53,12 @@ List<LedgerInflowGroup> computeLedgerInflowGroups(List<FinanceLedgerRow> entries
   }
   return [
     for (final v in map.values)
-      LedgerInflowGroup(recordMode: v.mode, destination: v.dest, total: v.total, flatUnits: v.flatUnits, count: v.count),
+      LedgerInflowGroup(
+          recordMode: v.mode,
+          destination: v.dest,
+          total: v.total,
+          flatUnits: v.flatUnits,
+          count: v.count),
   ];
 }
 
@@ -81,9 +96,12 @@ class TotalsOutflowRow {
   final ChannelTotals byChannel;
 }
 
-List<TotalsInflowRow> computeTotalsInflowBreakdown(List<FinanceLedgerRow> ledgerEntries, String totalsMonth) {
-  final filtered = ledgerEntries.where((e) => ledgerMonthValue(e) == totalsMonth).toList();
-  final rows = computeLedgerInflowGroups(filtered, excludeSeparateEntry: true).map((g) {
+List<TotalsInflowRow> computeTotalsInflowBreakdown(
+    List<FinanceLedgerRow> ledgerEntries, String totalsMonth) {
+  final filtered =
+      ledgerEntries.where((e) => ledgerMonthValue(e) == totalsMonth).toList();
+  final rows =
+      computeLedgerInflowGroups(filtered, excludeSeparateEntry: true).map((g) {
     final byChannel = emptyChannelTotals();
     for (final e in filtered) {
       if (_modeKey(e) == g.recordMode && _destKey(e) == g.destination) {
@@ -99,7 +117,8 @@ List<TotalsInflowRow> computeTotalsInflowBreakdown(List<FinanceLedgerRow> ledger
       byChannel: byChannel,
     );
   }).toList();
-  rows.sort((a, b) => compareText('${a.mode}${a.destination}', '${b.mode}${b.destination}'));
+  rows.sort((a, b) =>
+      compareText('${a.mode}${a.destination}', '${b.mode}${b.destination}'));
   return rows;
 }
 
@@ -108,12 +127,15 @@ List<TotalsOutflowRow> computeTotalsOutflowBreakdown(
   String totalsMonth,
   Map<String, String> expenseCategoryById,
 ) {
-  final map = <String, ({double total, int flatUnits, int entries, ChannelTotals byChannel})>{};
+  final map = <String,
+      ({double total, int flatUnits, int entries, ChannelTotals byChannel})>{};
   for (final e in societyLedgerEntries) {
     if (ledgerMonthValue(e) != totalsMonth) continue;
     if (e.destination != 'separate_entry') continue;
-    final head = financeExpenseHeadFromLedgerEntry(e.title, e.expenseId != null ? expenseCategoryById[e.expenseId] : null);
-    final cur = map[head] ?? (total: 0.0, flatUnits: 0, entries: 0, byChannel: emptyChannelTotals());
+    final head = financeExpenseHeadFromLedgerEntry(
+        e.title, e.expenseId != null ? expenseCategoryById[e.expenseId] : null);
+    final cur = map[head] ??
+        (total: 0.0, flatUnits: 0, entries: 0, byChannel: emptyChannelTotals());
     addToChannel(cur.byChannel, e.paymentMethod, e.totalAmount);
     map[head] = (
       total: cur.total + e.totalAmount,
@@ -154,13 +176,16 @@ class FinanceTotalsBreakdown {
     required Map<String, String> expenseCategoryById,
   }) {
     final inflow = computeTotalsInflowBreakdown(ledgerEntries, totalsMonth);
-    final outflow = computeTotalsOutflowBreakdown(societyLedgerEntries, totalsMonth, expenseCategoryById);
+    final outflow = computeTotalsOutflowBreakdown(
+        societyLedgerEntries, totalsMonth, expenseCategoryById);
     return FinanceTotalsBreakdown._(
       totalsBreakdown: inflow,
-      totalsMonthReceiptChannels: sumChannelRows(inflow.map((r) => r.byChannel)),
+      totalsMonthReceiptChannels:
+          sumChannelRows(inflow.map((r) => r.byChannel)),
       totalsMonthNet: inflow.fold(0.0, (s, r) => s + r.total),
       totalsOutflowBreakdown: outflow,
-      totalsMonthPaymentChannels: sumChannelRows(outflow.map((r) => r.byChannel)),
+      totalsMonthPaymentChannels:
+          sumChannelRows(outflow.map((r) => r.byChannel)),
       totalsMonthOutflow: outflow.fold(0.0, (s, r) => s + r.total),
     );
   }

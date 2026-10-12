@@ -114,7 +114,16 @@ class RecordReceiptFormModel extends ChangeNotifier {
     destination = kDestCurrentMonth;
     allocationStyle = kAllocSamePerFlat;
     allocationIncludeVacant = false;
-    for (final c in [outsiderName, outsiderRelation, outsiderAmount, entryTitle, amount, transactionId, screenshotUrl, notes]) {
+    for (final c in [
+      outsiderName,
+      outsiderRelation,
+      outsiderAmount,
+      entryTitle,
+      amount,
+      transactionId,
+      screenshotUrl,
+      notes
+    ]) {
       c.clear();
     }
     chargeId = '';
@@ -130,7 +139,16 @@ class RecordReceiptFormModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    for (final c in [outsiderName, outsiderRelation, outsiderAmount, entryTitle, amount, transactionId, screenshotUrl, notes]) {
+    for (final c in [
+      outsiderName,
+      outsiderRelation,
+      outsiderAmount,
+      entryTitle,
+      amount,
+      transactionId,
+      screenshotUrl,
+      notes
+    ]) {
       c.dispose();
     }
     super.dispose();

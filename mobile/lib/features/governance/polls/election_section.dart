@@ -834,9 +834,11 @@ class _ElectionSectionState extends State<ElectionSection> {
                       children: [
                         Icon(Icons.emoji_events_outlined, size: 14, color: t.primary),
                         const SizedBox(width: 4),
-                        Text(
-                          (!_isResident ? context.tr('Tallied results (admin only)', 'गिने गए परिणाम (केवल प्रशासक)') : context.tr('Results', 'परिणाम')).toUpperCase(),
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.primary, letterSpacing: 0.4),
+                        Flexible(
+                          child: Text(
+                            (!_isResident ? context.tr('Tallied results (admin only)', 'गिने गए परिणाम (केवल प्रशासक)') : context.tr('Results', 'परिणाम')).toUpperCase(),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.primary, letterSpacing: 0.4),
+                          ),
                         ),
                       ],
                     ),

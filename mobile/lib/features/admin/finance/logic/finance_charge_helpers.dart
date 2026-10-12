@@ -3,7 +3,8 @@
 import 'finance_dates.dart';
 import 'finance_models.dart';
 
-String normalizeTitle(Object? value) => (value ?? '').toString().trim().toLowerCase();
+String normalizeTitle(Object? value) =>
+    (value ?? '').toString().trim().toLowerCase();
 
 const List<String> kMonthNamesLower = [
   'january',
@@ -27,7 +28,8 @@ bool isMonthlyMaintenanceTitleFreq(Object? title, Object? frequency) {
   return f == 'monthly' && t.contains('maint');
 }
 
-bool isMonthlyMaintenanceCharge(FinanceCharge c) => isMonthlyMaintenanceTitleFreq(c.title, c.frequency);
+bool isMonthlyMaintenanceCharge(FinanceCharge c) =>
+    isMonthlyMaintenanceTitleFreq(c.title, c.frequency);
 
 String _two(int n) => n.toString().padLeft(2, '0');
 
@@ -58,7 +60,8 @@ String? monthNameFromChargeTitle(String title) {
 bool chargeTitleMatchesBillingMonth(String title, String dueDateYmd) {
   final named = monthNameFromChargeTitle(title);
   if (named == null) return true;
-  final d = parseYmd(dueDateYmd.length > 10 ? dueDateYmd.substring(0, 10) : dueDateYmd);
+  final d = parseYmd(
+      dueDateYmd.length > 10 ? dueDateYmd.substring(0, 10) : dueDateYmd);
   if (d == null) return false;
   return englishMonthName(d.month).toLowerCase() == named;
 }
@@ -84,8 +87,12 @@ String paymentMonthValue(String? dueDate) {
   }
 
   final pool = charges.where((c) {
-    if (paymentTypeFilter == 'monthly_maintenance') return isMonthlyMaintenanceCharge(c);
-    if (paymentTypeFilter == 'all' || paymentTypeFilter == 'all_receipts') return true;
+    if (paymentTypeFilter == 'monthly_maintenance') {
+      return isMonthlyMaintenanceCharge(c);
+    }
+    if (paymentTypeFilter == 'all' || paymentTypeFilter == 'all_receipts') {
+      return true;
+    }
     if (paymentTypeFilter == 'other') return false;
     return c.frequency.toLowerCase() == paymentTypeFilter;
   }).toList();
@@ -93,7 +100,8 @@ String paymentMonthValue(String? dueDate) {
 
   if (paymentMonthFilter != 'all') {
     final d = parseYmd('$paymentMonthFilter-15');
-    final monthName = d == null ? 'invalid date' : englishMonthName(d.month).toLowerCase();
+    final monthName =
+        d == null ? 'invalid date' : englishMonthName(d.month).toLowerCase();
     FinanceCharge? match;
     for (final c in pool) {
       if (normalizeTitle(c.title).contains(monthName)) {

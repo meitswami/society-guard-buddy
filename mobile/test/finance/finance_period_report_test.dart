@@ -25,8 +25,10 @@ void main() {
         OpeningBalanceAnchor(asOnDate: '2026-01-31', bankAmount: 10000),
         OpeningBalanceAnchor(asOnDate: '2026-02-28', bankAmount: 18145),
       ];
-      expect(findApplicableOpeningAnchor(anchors, '2026-03-01')?.asOnDate, '2026-02-28');
-      expect(findApplicableOpeningAnchor(anchors, '2026-02-28')?.asOnDate, '2026-01-31');
+      expect(findApplicableOpeningAnchor(anchors, '2026-03-01')?.asOnDate,
+          '2026-02-28');
+      expect(findApplicableOpeningAnchor(anchors, '2026-02-28')?.asOnDate,
+          '2026-01-31');
       expect(findApplicableOpeningAnchor(anchors, '2026-01-31'), isNull);
     });
 
@@ -36,20 +38,26 @@ void main() {
         periodTo: '2026-03-31',
         payments: const [],
         ledgerEntries: const [],
-        openingBalanceAnchors: const [OpeningBalanceAnchor(asOnDate: '2026-02-28', bankAmount: 18145)],
+        openingBalanceAnchors: const [
+          OpeningBalanceAnchor(asOnDate: '2026-02-28', bankAmount: 18145)
+        ],
       );
       expect(report.openingBank, 18145);
       expect(report.openingBankFromManualAnchor, isTrue);
       expect(report.appliedOpeningAnchor?.bankAmount, 18145);
     });
 
-    test('uses manual cash anchor of zero for period starting after anchor date', () {
+    test(
+        'uses manual cash anchor of zero for period starting after anchor date',
+        () {
       final report = computeFinancePeriodReport(
         periodFrom: '2026-03-01',
         periodTo: '2026-03-31',
         payments: const [],
         ledgerEntries: const [],
-        openingBalanceAnchors: const [OpeningBalanceAnchor(asOnDate: '2026-02-28', cashAmount: 0)],
+        openingBalanceAnchors: const [
+          OpeningBalanceAnchor(asOnDate: '2026-02-28', cashAmount: 0)
+        ],
       );
       expect(report.openingCash, 0);
       expect(report.openingCashFromManualAnchor, isTrue);
@@ -60,17 +68,24 @@ void main() {
         periodFrom: '2026-04-01',
         periodTo: '2026-04-30',
         payments: const [
-          FinancePayment(paymentStatus: 'verified', amount: 500, paymentMethod: 'upi', dueDate: '2026-03-15'),
+          FinancePayment(
+              paymentStatus: 'verified',
+              amount: 500,
+              paymentMethod: 'upi',
+              dueDate: '2026-03-15'),
         ],
         ledgerEntries: const [],
-        openingBalanceAnchors: const [OpeningBalanceAnchor(asOnDate: '2026-02-28', bankAmount: 18145)],
+        openingBalanceAnchors: const [
+          OpeningBalanceAnchor(asOnDate: '2026-02-28', bankAmount: 18145)
+        ],
       );
       expect(report.openingBank, 18645);
     });
   });
 
   group('finance period report head-wise columns', () {
-    test('groups verified receipts by head with cash, bank, and total columns', () {
+    test('groups verified receipts by head with cash, bank, and total columns',
+        () {
       final report = computeFinancePeriodReport(
         periodFrom: '2026-04-01',
         periodTo: '2026-04-30',
@@ -99,17 +114,25 @@ void main() {
             transactionDate: '2026-04-12',
           ),
         ],
-        chargeMajorHeadById: const {'ch-maint': 'OPERATION & MAINTENANCE', 'ch-corpus': 'SOCIETY CORPUS FUND'},
+        chargeMajorHeadById: const {
+          'ch-maint': 'OPERATION & MAINTENANCE',
+          'ch-corpus': 'SOCIETY CORPUS FUND'
+        },
       );
 
-      expect(report.receiptByHead.map((e) => e.key).toList(), ['SOCIETY CORPUS FUND', 'OPERATION & MAINTENANCE']);
-      expect(report.receiptByHead[0].value, ChannelByHeadRow(bank: 2500, total: 2500));
-      expect(report.receiptByHead[1].value, ChannelByHeadRow(cash: 1500, total: 1500));
+      expect(report.receiptByHead.map((e) => e.key).toList(),
+          ['SOCIETY CORPUS FUND', 'OPERATION & MAINTENANCE']);
+      expect(report.receiptByHead[0].value,
+          ChannelByHeadRow(bank: 2500, total: 2500));
+      expect(report.receiptByHead[1].value,
+          ChannelByHeadRow(cash: 1500, total: 1500));
       expect(report.receiptByMethod, ChannelTotals(cash: 1500, bank: 2500));
       expect(report.totalReceipts, 4000);
     });
 
-    test('groups separate-entry expenses by head with cash, bank, and total columns', () {
+    test(
+        'groups separate-entry expenses by head with cash, bank, and total columns',
+        () {
       final report = computeFinancePeriodReport(
         periodFrom: '2026-04-01',
         periodTo: '2026-04-30',
@@ -142,14 +165,18 @@ void main() {
         ],
       );
 
-      expect(report.expenseByHead.map((e) => e.key).toList(), ['Electricity', 'Security salary']);
-      expect(report.expenseByHead[0].value, ChannelByHeadRow(cash: 800, bank: 1200, total: 2000));
-      expect(report.expenseByHead[1].value, ChannelByHeadRow(cash: 300, total: 300));
+      expect(report.expenseByHead.map((e) => e.key).toList(),
+          ['Electricity', 'Security salary']);
+      expect(report.expenseByHead[0].value,
+          ChannelByHeadRow(cash: 800, bank: 1200, total: 2000));
+      expect(report.expenseByHead[1].value,
+          ChannelByHeadRow(cash: 300, total: 300));
       expect(report.expenseByMethod, ChannelTotals(cash: 1100, bank: 1200));
       expect(report.totalExpenses, 2300);
     });
 
-    test('includes February 2026 society expenses in the Feb period report', () {
+    test('includes February 2026 society expenses in the Feb period report',
+        () {
       final report = computeFinancePeriodReport(
         periodFrom: '2026-02-01',
         periodTo: '2026-02-28',
@@ -192,7 +219,11 @@ void main() {
           ),
         ],
         ledgerEntries: const [
-          FinanceLedgerRow(id: 'fe-1', destination: 'current_month_maintenance', totalAmount: 1000, transactionDate: '2026-04-05'),
+          FinanceLedgerRow(
+              id: 'fe-1',
+              destination: 'current_month_maintenance',
+              totalAmount: 1000,
+              transactionDate: '2026-04-05'),
         ],
       );
       expect(report.totalReceipts, 1000);

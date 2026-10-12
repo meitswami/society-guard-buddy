@@ -137,7 +137,7 @@ class _ElectionResultsBannerState extends State<ElectionResultsBanner> {
             children: [
               Icon(Icons.emoji_events_outlined, size: 20, color: t.primary),
               const SizedBox(width: 8),
-              Text(context.tr('Election results (admin only)', 'चुनाव परिणाम (केवल प्रशासक)'), style: AppText.sectionTitle(context)),
+              Expanded(child: Text(context.tr('Election results (admin only)', 'चुनाव परिणाम (केवल प्रशासक)'), style: AppText.sectionTitle(context))),
             ],
           ),
           const SizedBox(height: 10),

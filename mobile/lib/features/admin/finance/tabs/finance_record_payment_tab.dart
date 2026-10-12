@@ -15,14 +15,19 @@ import '../widgets/cash_bank_breakdown.dart';
 import '../widgets/fin_kit.dart';
 
 class FinanceRecordPaymentTab extends StatefulWidget {
-  const FinanceRecordPaymentTab({super.key, required this.c, required this.ctx, required this.onOpenRecordReceipt});
+  const FinanceRecordPaymentTab(
+      {super.key,
+      required this.c,
+      required this.ctx,
+      required this.onOpenRecordReceipt});
 
   final FinanceController c;
   final AdminModuleContext ctx;
   final VoidCallback onOpenRecordReceipt;
 
   @override
-  State<FinanceRecordPaymentTab> createState() => _FinanceRecordPaymentTabState();
+  State<FinanceRecordPaymentTab> createState() =>
+      _FinanceRecordPaymentTabState();
 }
 
 class _FinanceRecordPaymentTabState extends State<FinanceRecordPaymentTab> {
@@ -46,7 +51,10 @@ class _FinanceRecordPaymentTabState extends State<FinanceRecordPaymentTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SectionTitle(context.tr('Record society payment', 'सोसाइटी भुगतान दर्ज करें'), icon: Icons.receipt_long_outlined),
+              SectionTitle(
+                  context.tr(
+                      'Record society payment', 'सोसाइटी भुगतान दर्ज करें'),
+                  icon: Icons.receipt_long_outlined),
               Text(
                 context.tr(
                   'Payment heads, vendor bills, bill photos and per-flat splits are recorded in the expense splitter (payment heads only). Saved payments post a separate-entry ledger row and show up in Transactions and Totals.',
@@ -57,8 +65,10 @@ class _FinanceRecordPaymentTabState extends State<FinanceRecordPaymentTab> {
               const SizedBox(height: 12),
               AppButton(
                 icon: Icons.open_in_new,
-                label: context.tr('Open Record payment', 'भुगतान दर्ज करना खोलें'),
-                onPressed: () => widget.ctx.goTo(AdminTab.splits, subTab: 'payment'),
+                label:
+                    context.tr('Open Record payment', 'भुगतान दर्ज करना खोलें'),
+                onPressed: () =>
+                    widget.ctx.goTo(AdminTab.splits, subTab: 'payment'),
               ),
             ],
           ),
@@ -66,11 +76,14 @@ class _FinanceRecordPaymentTabState extends State<FinanceRecordPaymentTab> {
         Container(
           margin: const EdgeInsets.only(top: 16),
           padding: const EdgeInsets.only(top: 12),
-          decoration: BoxDecoration(border: Border(top: BorderSide(color: AppTokens.tint(t.border, 0.6)))),
+          decoration: BoxDecoration(
+              border: Border(
+                  top: BorderSide(color: AppTokens.tint(t.border, 0.6)))),
           child: AppButton.secondary(
             icon: Icons.balance_outlined,
             label: _showRecon
-                ? context.tr('Hide head fund reconciliation', 'शीर्ष निधि मिलान छिपाएँ')
+                ? context.tr(
+                    'Hide head fund reconciliation', 'शीर्ष निधि मिलान छिपाएँ')
                 : context.tr('Head fund reconciliation', 'शीर्ष निधि मिलान'),
             onPressed: () => setState(() => _showRecon = !_showRecon),
           ),
@@ -93,7 +106,8 @@ class _FinanceRecordPaymentTabState extends State<FinanceRecordPaymentTab> {
 }
 
 class _HeadRow {
-  _HeadRow(this.group, this.chargeTitles, this.contribs, this.expenses, this.adjustments);
+  _HeadRow(this.group, this.chargeTitles, this.contribs, this.expenses,
+      this.adjustments);
 
   final HeadFundGroup group;
   final List<String> chargeTitles;
@@ -113,7 +127,8 @@ class _HeadRow {
 
 /// Web `HeadFundReconciliation`.
 class HeadFundReconciliation extends StatefulWidget {
-  const HeadFundReconciliation({super.key, required this.c, this.onOpenRecordReceipt});
+  const HeadFundReconciliation(
+      {super.key, required this.c, this.onOpenRecordReceipt});
 
   final FinanceController c;
   final VoidCallback? onOpenRecordReceipt;
@@ -167,7 +182,10 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
       contribByGroup.putIfAbsent(x.groupId, () => []).add(x);
     }
     bool matches(HeadFundGroup g, HeadFundExpense e) =>
-        expenseMatchesHead(g.name, title: e.title, vendorOrService: e.vendorOrService, groupName: e.groupName);
+        expenseMatchesHead(g.name,
+            title: e.title,
+            vendorOrService: e.vendorOrService,
+            groupName: e.groupName);
     final candidates = d.groups.where((g) =>
         chargeByGroup.containsKey(g.id) ||
         (contribByGroup[g.id]?.isNotEmpty ?? false) ||
@@ -188,7 +206,12 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
         matched,
         d.adjustments.where((a) => a.expenseGroupId == g.id).toList(),
       );
-      if (row.contribIn > 0 || row.adjustIn > 0 || row.expenseOut > 0 || chargeByGroup.containsKey(g.id)) rows.add(row);
+      if (row.contribIn > 0 ||
+          row.adjustIn > 0 ||
+          row.expenseOut > 0 ||
+          chargeByGroup.containsKey(g.id)) {
+        rows.add(row);
+      }
     }
     rows.sort((a, b) => compareText(a.group.name, b.group.name));
     return rows;
@@ -197,11 +220,17 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
   Future<void> _record(String groupId, double shortfall) async {
     final amount = double.tryParse(_amount.text.trim()) ?? 0;
     if (amount <= 0) {
-      AppFeedback.toast(context, context.tr('Enter adjustment amount', 'समायोजन राशि दर्ज करें'), tone: BadgeTone.alert);
+      AppFeedback.toast(context,
+          context.tr('Enter adjustment amount', 'समायोजन राशि दर्ज करें'),
+          tone: BadgeTone.alert);
       return;
     }
     if (_source == 'member_advance' && _flat.text.trim().isEmpty) {
-      AppFeedback.toast(context, context.tr('Enter flat number for member advance', 'सदस्य अग्रिम के लिए फ्लैट नंबर दर्ज करें'), tone: BadgeTone.alert);
+      AppFeedback.toast(
+          context,
+          context.tr('Enter flat number for member advance',
+              'सदस्य अग्रिम के लिए फ्लैट नंबर दर्ज करें'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _saving = true);
@@ -219,7 +248,8 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
       AppFeedback.toast(
         context,
         shortfall > 0 && amount >= shortfall
-            ? context.tr('Shortfall covered — head balanced', 'कमी पूरी — शीर्ष संतुलित')
+            ? context.tr(
+                'Shortfall covered — head balanced', 'कमी पूरी — शीर्ष संतुलित')
             : context.tr('Adjustment recorded', 'समायोजन दर्ज हुआ'),
         tone: BadgeTone.success,
       );
@@ -232,14 +262,18 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
       });
       await _load();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, financeErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, financeErrorMessage(e),
+            tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  String _srcLabel(String k) =>
-      context.lang == AppLang.hi ? (kHeadAdjustmentSourceLabelsHi[k] ?? k) : (kHeadAdjustmentSourceLabels[k] ?? k);
+  String _srcLabel(String k) => context.lang == AppLang.hi
+      ? (kHeadAdjustmentSourceLabelsHi[k] ?? k)
+      : (kHeadAdjustmentSourceLabels[k] ?? k);
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +282,11 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
     if (_loading || d == null) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Text(context.tr('Loading head reconciliation…', 'शीर्ष मिलान लोड हो रहा है…'), textAlign: TextAlign.center, style: AppText.caption(context)),
+        child: Text(
+            context.tr(
+                'Loading head reconciliation…', 'शीर्ष मिलान लोड हो रहा है…'),
+            textAlign: TextAlign.center,
+            style: AppText.caption(context)),
       );
     }
     final rows = _rows(d);
@@ -256,9 +294,14 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
       return CardSection(
         child: Column(
           children: [
-            Icon(Icons.balance_outlined, size: 28, color: AppTokens.tint(t.mutedForeground, 0.5)),
+            Icon(Icons.balance_outlined,
+                size: 28, color: AppTokens.tint(t.mutedForeground, 0.5)),
             const SizedBox(height: 8),
-            Text(context.tr('No linked expense heads yet.', 'अभी कोई जुड़ा व्यय शीर्ष नहीं।'), style: AppText.body(context).copyWith(color: t.mutedForeground)),
+            Text(
+                context.tr('No linked expense heads yet.',
+                    'अभी कोई जुड़ा व्यय शीर्ष नहीं।'),
+                style:
+                    AppText.body(context).copyWith(color: t.mutedForeground)),
             const SizedBox(height: 4),
             Text(
               context.tr(
@@ -272,8 +315,10 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
         ),
       );
     }
-    final receiptCh = sumByChannel<HeadFundContribution>(d.contributions, (x) => x.amount, (x) => x.paymentMethod);
-    final paymentCh = sumByChannel<HeadFundExpense>(d.expenses, (x) => x.totalAmount, (x) => x.paymentMethod);
+    final receiptCh = sumByChannel<HeadFundContribution>(
+        d.contributions, (x) => x.amount, (x) => x.paymentMethod);
+    final paymentCh = sumByChannel<HeadFundExpense>(
+        d.expenses, (x) => x.totalAmount, (x) => x.paymentMethod);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -291,8 +336,10 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
         CashBankBreakdown(
           receipts: receiptCh,
           payments: paymentCh,
-          receiptLabel: context.tr('Head contributions (receipts)', 'शीर्ष योगदान (रसीदें)'),
-          paymentLabel: context.tr('Head expenses (payments)', 'शीर्ष व्यय (भुगतान)'),
+          receiptLabel: context.tr(
+              'Head contributions (receipts)', 'शीर्ष योगदान (रसीदें)'),
+          paymentLabel:
+              context.tr('Head expenses (payments)', 'शीर्ष व्यय (भुगतान)'),
         ),
         const SizedBox(height: 12),
         for (final r in rows) _headCard(context, r),
@@ -316,21 +363,33 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(g.name, style: AppText.sectionTitle(context)),
-                    if ((g.majorHead ?? '').isNotEmpty) Text(g.majorHead!, style: AppText.tiny(context)),
+                    if ((g.majorHead ?? '').isNotEmpty)
+                      Text(g.majorHead!, style: AppText.tiny(context)),
                     if (r.chargeTitles.isNotEmpty)
-                      Text('${context.tr('Receipt type', 'रसीद प्रकार')}: ${r.chargeTitles.join(', ')}', style: AppText.tiny(context)),
+                      Text(
+                          '${context.tr('Receipt type', 'रसीद प्रकार')}: ${r.chargeTitles.join(', ')}',
+                          style: AppText.tiny(context)),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('↑ ${inrLocale(r.contribIn)} ${context.tr('collected', 'एकत्र')}', style: TextStyle(fontSize: 12, color: t.success)),
+                  Text(
+                      '↑ ${inrLocale(r.contribIn)} ${context.tr('collected', 'एकत्र')}',
+                      style: TextStyle(fontSize: 12, color: t.success)),
                   if (r.adjustIn > 0)
-                    Text('+ ${inrLocale(r.adjustIn)} ${context.tr('adjusted', 'समायोजित')}', style: TextStyle(fontSize: 12, color: t.accent)),
-                  Text('↓ ${inrLocale(r.expenseOut)} ${context.tr('spent', 'खर्च')}', style: TextStyle(fontSize: 12, color: t.warning)),
+                    Text(
+                        '+ ${inrLocale(r.adjustIn)} ${context.tr('adjusted', 'समायोजित')}',
+                        style: TextStyle(fontSize: 12, color: t.accent)),
+                  Text(
+                      '↓ ${inrLocale(r.expenseOut)} ${context.tr('spent', 'खर्च')}',
+                      style: TextStyle(fontSize: 12, color: t.warning)),
                   Text('${context.tr('Net', 'शुद्ध')} ${inrLocale(r.net)}',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: r.net >= 0 ? t.foreground : t.destructive)),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: r.net >= 0 ? t.foreground : t.destructive)),
                 ],
               ),
             ],
@@ -340,8 +399,10 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
               padding: const EdgeInsets.only(top: 12),
               child: CashBankBreakdown(
                 variant: CashBankVariant.compact,
-                receipts: sumByChannel<HeadFundContribution>(r.contribs, (x) => x.amount, (x) => x.paymentMethod),
-                payments: sumByChannel<HeadFundExpense>(r.expenses, (x) => x.totalAmount, (x) => x.paymentMethod),
+                receipts: sumByChannel<HeadFundContribution>(
+                    r.contribs, (x) => x.amount, (x) => x.paymentMethod),
+                payments: sumByChannel<HeadFundExpense>(
+                    r.expenses, (x) => x.totalAmount, (x) => x.paymentMethod),
                 receiptLabel: context.tr('Contributions', 'योगदान'),
                 paymentLabel: context.tr('Expenses', 'व्यय'),
               ),
@@ -354,24 +415,35 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.warning_amber_rounded, size: 16, color: t.destructive),
+                  Icon(Icons.warning_amber_rounded,
+                      size: 16, color: t.destructive),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('${context.tr('Short of funds', 'निधि की कमी')}: ${inrLocale(r.shortfall)}',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.destructive)),
+                        Text(
+                            '${context.tr('Short of funds', 'निधि की कमी')}: ${inrLocale(r.shortfall)}',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: t.destructive)),
                         FinHint(context.tr(
                           'Contributions + adjustments are less than expenses. Record member top-up, draw from maintenance collections, or corpus.',
                           'योगदान + समायोजन व्यय से कम हैं। सदस्य टॉप-अप दर्ज करें, रखरखाव संग्रह या कॉर्पस से लें।',
                         )),
-                        if (widget.onOpenRecordReceipt != null && r.contribs.isEmpty)
+                        if (widget.onOpenRecordReceipt != null &&
+                            r.contribs.isEmpty)
                           InkWell(
                             onTap: widget.onOpenRecordReceipt,
                             child: Text(
-                              context.tr('Record flat contributions (Create Receipts / Record receipt)', 'फ्लैट योगदान दर्ज करें (रसीद बनाएँ / दर्ज करें)'),
-                              style: TextStyle(fontSize: 10, color: t.primary, decoration: TextDecoration.underline),
+                              context.tr(
+                                  'Record flat contributions (Create Receipts / Record receipt)',
+                                  'फ्लैट योगदान दर्ज करें (रसीद बनाएँ / दर्ज करें)'),
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: t.primary,
+                                  decoration: TextDecoration.underline),
                             ),
                           ),
                       ],
@@ -394,12 +466,17 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(context.tr('Record shortfall adjustment', 'कमी समायोजन दर्ज करें'), style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
+                  Text(
+                      context.tr('Record shortfall adjustment',
+                          'कमी समायोजन दर्ज करें'),
+                      style:
+                          AppText.bodyMedium(context).copyWith(fontSize: 12)),
                   const SizedBox(height: 8),
                   AppTextField(
                     controller: _amount,
                     hint: context.tr('Amount (₹)', 'राशि (₹)'),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: kAmountFormatters,
                   ),
                   const SizedBox(height: 8),
@@ -407,26 +484,39 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
                     items: kHeadAdjustmentSourceLabels.keys.toList(),
                     value: _source,
                     labelOf: _srcLabel,
-                    onChanged: (v) => setState(() => _source = v ?? 'maintenance_pool'),
+                    onChanged: (v) =>
+                        setState(() => _source = v ?? 'maintenance_pool'),
                   ),
                   if (_source == 'member_advance') ...[
                     const SizedBox(height: 8),
-                    AppTextField(controller: _flat, hint: context.tr('Flat number', 'फ्लैट नंबर')),
+                    AppTextField(
+                        controller: _flat,
+                        hint: context.tr('Flat number', 'फ्लैट नंबर')),
                   ],
                   const SizedBox(height: 8),
-                  AppTextField(controller: _notes, caps: false, hint: context.tr('Notes (optional)', 'टिप्पणी (वैकल्पिक)')),
+                  AppTextField(
+                      controller: _notes,
+                      caps: false,
+                      hint:
+                          context.tr('Notes (optional)', 'टिप्पणी (वैकल्पिक)')),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: AppButton(
-                          label: _saving ? context.tr('Saving…', 'सहेजा जा रहा है…') : context.tr('Save adjustment', 'समायोजन सहेजें'),
+                          label: _saving
+                              ? context.tr('Saving…', 'सहेजा जा रहा है…')
+                              : context.tr('Save adjustment', 'समायोजन सहेजें'),
                           loading: _saving,
                           onPressed: () => _record(g.id, r.shortfall),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(child: AppButton.secondary(label: context.fin('fin.cancel'), onPressed: () => setState(() => _adjustGroup = null))),
+                      Expanded(
+                          child: AppButton.secondary(
+                              label: context.fin('fin.cancel'),
+                              onPressed: () =>
+                                  setState(() => _adjustGroup = null))),
                     ],
                   ),
                 ],
@@ -442,7 +532,8 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
                   spacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text('${context.tr('Flat', 'फ्लैट')} ${x.flatNumber}${(x.residentName ?? '').isNotEmpty ? ' · ${x.residentName}' : ''}',
+                    Text(
+                        '${context.tr('Flat', 'फ्लैट')} ${x.flatNumber}${(x.residentName ?? '').isNotEmpty ? ' · ${x.residentName}' : ''}',
                         style: AppText.body(context).copyWith(fontSize: 12)),
                     FinChannelBadge(method: x.paymentMethod),
                   ],
@@ -463,9 +554,13 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
                       spacing: 6,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text(x.title, style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
+                        Text(x.title,
+                            style: AppText.bodyMedium(context)
+                                .copyWith(fontSize: 12)),
                         FinChannelBadge(method: x.paymentMethod),
-                        if (x.correlated) Text(context.tr('(linked)', '(जुड़ा)'), style: AppText.tiny(context)),
+                        if (x.correlated)
+                          Text(context.tr('(linked)', '(जुड़ा)'),
+                              style: AppText.tiny(context)),
                       ],
                     ),
                     Text(
@@ -484,7 +579,9 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
               Container(
                 margin: const EdgeInsets.only(bottom: 4),
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: AppTokens.tint(t.accent, 0.05), borderRadius: BorderRadius.circular(4)),
+                decoration: BoxDecoration(
+                    color: AppTokens.tint(t.accent, 0.05),
+                    borderRadius: BorderRadius.circular(4)),
                 child: Text(
                   '${inrLocale(a.amount)} — ${_srcLabel(a.sourceType)}'
                   '${(a.flatNumber ?? '').isNotEmpty ? ' (${context.tr('Flat', 'फ्लैट')} ${a.flatNumber})' : ''}'
@@ -498,15 +595,23 @@ class _HeadFundReconciliationState extends State<HeadFundReconciliation> {
     );
   }
 
-  static String numToText(double v) => v == v.roundToDouble() ? '${v.round()}' : '$v';
+  static String numToText(double v) =>
+      v == v.roundToDouble() ? '${v.round()}' : '$v';
 
   Widget _line(BuildContext context, Widget left, String amount) => Container(
         margin: const EdgeInsets.only(bottom: 4),
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: AppTokens.tint(context.tokens.muted, 0.4), borderRadius: BorderRadius.circular(4)),
+        decoration: BoxDecoration(
+            color: AppTokens.tint(context.tokens.muted, 0.4),
+            borderRadius: BorderRadius.circular(4)),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [Expanded(child: left), Text(amount, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))],
+          children: [
+            Expanded(child: left),
+            Text(amount,
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))
+          ],
         ),
       );
 }

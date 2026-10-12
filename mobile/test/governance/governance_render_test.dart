@@ -29,7 +29,8 @@ AdminModuleContext _ctx({String? subTab}) => AdminModuleContext(
       session: const SessionAdmin(
         societyId: 's1',
         societyName: 'Green Park',
-        admin: AdminUser(id: 'a1', name: 'Admin', adminId: 'ADM1', societyId: 's1', permissions: AdminPanelPermissions.full),
+        admin: AdminUser(
+            id: 'a1', name: 'Admin', adminId: 'ADM1', societyId: 's1', permissions: AdminPanelPermissions.full),
       ),
       goTo: (tab, {query, subTab}) {},
       subTab: subTab,
@@ -47,7 +48,8 @@ Widget _host(Widget child, AppLang lang, {bool dark = false}) => ProviderScope(
           brightness: dark ? Brightness.dark : Brightness.light,
           extensions: [dark ? AppTokens.dark : AppTokens.light],
         ),
-        home: I18nScope(translator: Translator(lang), child: Scaffold(body: child)),
+        builder: (context, nav) => I18nScope(translator: Translator(lang), child: nav ?? const SizedBox()),
+        home: Scaffold(body: child),
       ),
     );
 
@@ -80,34 +82,36 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('meeting detail renders every session section (${lang.name})', (tester) async {
-      final meeting = MeetingRow.fromJson({
-        'id': '12345678-aaaa',
-        'society_id': 's1',
-        'title': 'AGM 2026',
-        'description': 'Annual general meeting',
-        'meeting_at': DateTime.now().subtract(const Duration(days: 1)).toUtc().toIso8601String(),
-        'location': 'Club house',
-        'meeting_kind': 'annual',
-        'status': 'scheduled',
-        'published': true,
+    for (final resident in [false, true]) {
+      testWidgets('meeting detail renders every session section (${lang.name}, resident: $resident)', (tester) async {
+        final meeting = MeetingRow.fromJson({
+          'id': '12345678-aaaa',
+          'society_id': 's1',
+          'title': 'AGM 2026',
+          'description': 'Annual general meeting',
+          'meeting_at': DateTime.now().subtract(const Duration(days: 1)).toUtc().toIso8601String(),
+          'location': 'Club house',
+          'meeting_kind': 'annual',
+          'status': 'scheduled',
+          'published': true,
+        });
+        {
+          await _pump(
+            tester,
+            MeetingDetailPage(
+              viewer: MeetingViewer(societyId: 's1', isResident: resident, adminName: 'Admin'),
+              repo: const MeetingRepository('s1'),
+              initial: meeting,
+            ),
+            lang,
+          );
+          expect(find.text(_l(lang, 'Session audio', 'सत्र ऑडियो'), skipOffstage: false), findsOneWidget);
+          await tester.drag(find.byType(Scrollable).first, const Offset(0, -3000));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        }
       });
-      for (final resident in [false, true]) {
-        await _pump(
-          tester,
-          MeetingDetailPage(
-            viewer: MeetingViewer(societyId: 's1', isResident: resident, adminName: 'Admin'),
-            repo: const MeetingRepository('s1'),
-            initial: meeting,
-          ),
-          lang,
-        );
-        expect(find.text(_l(lang, 'Session audio', 'सत्र ऑडियो').toUpperCase()), findsOneWidget);
-        await tester.drag(find.byType(Scrollable).first, const Offset(0, -3000));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-      }
-    });
+    }
 
     testWidgets('resident meetings view (${lang.name})', (tester) async {
       await _pump(tester, const ResidentMeetingsView(session: _resident), lang);
@@ -132,16 +136,26 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(_l(lang, 'Add committee member', 'समिति सदस्य जोड़ें')), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('resident committee view (${lang.name})', (tester) async {
       await _pump(tester, const ResidentCommitteeView(session: _resident), lang);
-      expect(find.text(_l(lang, 'No duties chart published yet.', 'अभी कोई कर्तव्य चार्ट प्रकाशित नहीं।')), findsOneWidget);
+      expect(find.text(_l(lang, 'No duties chart published yet.', 'अभी कोई कर्तव्य चार्ट प्रकाशित नहीं।')),
+          findsOneWidget);
     });
 
     testWidgets('polls admin: election form, charter, general polls (${lang.name})', (tester) async {
       await _pump(tester, AdminPollsModule(ctx: _ctx()), lang);
       expect(find.text(lang == AppLang.hi ? 'हिंदी पीडीएफ' : 'English PDF'), findsOneWidget);
+      await tester.ensureVisible(find.text(_l(lang, 'New society election', 'नया सोसायटी चुनाव')));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(_l(lang, 'New society election', 'नया सोसायटी चुनाव')));
       await tester.pumpAndSettle();
-      expect(find.text(_l(lang, 'Create election (nomination phase)', 'चुनाव बनाएँ (नामांकन चरण)')), findsOneWidget);
+      expect(
+          find.text(_l(lang, 'Create election (nomination phase)', 'चुनाव बनाएँ (नामांकन चरण)'), skipOffstage: false),
+          findsOneWidget);
+      await tester.dragUntilVisible(
+          find.text(_l(lang, 'General Polls', 'सामान्य मतदान')), find.byType(Scrollable).first, const Offset(0, 300));
       await tester.tap(find.text(_l(lang, 'General Polls', 'सामान्य मतदान')));
       await tester.pumpAndSettle();
       await tester.tap(find.text(_l(lang, 'New general poll', 'नया सामान्य मतदान')));
@@ -163,7 +177,8 @@ void main() {
     final context = tester.element(find.byType(SizedBox));
     for (final hi in [true, false]) {
       final bytes = await tester.runAsync(
-        () => buildVotingCharterPdf(context, letterhead: const GovLetterhead(name: 'Green Park CHS', address: 'Sector 5'), hi: hi),
+        () => buildVotingCharterPdf(context,
+            letterhead: const GovLetterhead(name: 'Green Park CHS', address: 'Sector 5'), hi: hi),
       );
       expect(bytes, isNotNull);
       expect(bytes!.length, greaterThan(1000));

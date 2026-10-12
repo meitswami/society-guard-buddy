@@ -22,7 +22,8 @@ int _i(Object? v) {
 
 String? _s(Object? v) => v?.toString();
 
-String _str(Object? v, [String fallback = '']) => v == null ? fallback : v.toString();
+String _str(Object? v, [String fallback = '']) =>
+    v == null ? fallback : v.toString();
 
 bool _b(Object? v) => v == true || v?.toString() == 'true';
 
@@ -150,23 +151,34 @@ class FinanceCounterparty {
   final String? relationToSociety;
 
   factory FinanceCounterparty.fromJson(Map<String, dynamic> j) =>
-      FinanceCounterparty(name: _str(j['name']), relationToSociety: _s(j['relation_to_society']));
+      FinanceCounterparty(
+          name: _str(j['name']),
+          relationToSociety: _s(j['relation_to_society']));
 }
 
 /// `finance_entry_allocations` embed.
 class FinanceAllocation {
-  const FinanceAllocation({required this.flatNumber, this.amount = 0, this.flatId});
+  const FinanceAllocation(
+      {required this.flatNumber, this.amount = 0, this.flatId});
 
   final String flatNumber;
   final double amount;
   final String? flatId;
 
   factory FinanceAllocation.fromJson(Map<String, dynamic> j) =>
-      FinanceAllocation(flatNumber: _str(j['flat_number']), amount: _d(j['amount']), flatId: _s(j['flat_id']));
+      FinanceAllocation(
+          flatNumber: _str(j['flat_number']),
+          amount: _d(j['amount']),
+          flatId: _s(j['flat_id']));
 }
 
 List<Map<String, dynamic>> _embedList(Object? raw) {
-  if (raw is List) return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  if (raw is List) {
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
   if (raw is Map) return [Map<String, dynamic>.from(raw)];
   return const [];
 }
@@ -228,7 +240,8 @@ class FinanceLedgerRow {
   /// False when the row came without the allocations embed (web `null`).
   final bool allocationsLoaded;
 
-  FinanceCounterparty? get counterparty => counterparties.isEmpty ? null : counterparties.first;
+  FinanceCounterparty? get counterparty =>
+      counterparties.isEmpty ? null : counterparties.first;
 
   factory FinanceLedgerRow.fromJson(Map<String, dynamic> j) => FinanceLedgerRow(
         id: _str(j['id']),
@@ -252,15 +265,23 @@ class FinanceLedgerRow {
         paymentStatus: _str(j['payment_status'], 'verified'),
         createdBy: _s(j['created_by']),
         createdAt: _str(j['created_at']),
-        counterparties: _embedList(j['finance_entry_counterparties']).map(FinanceCounterparty.fromJson).toList(),
-        allocations: _embedList(j['finance_entry_allocations']).map(FinanceAllocation.fromJson).toList(),
+        counterparties: _embedList(j['finance_entry_counterparties'])
+            .map(FinanceCounterparty.fromJson)
+            .toList(),
+        allocations: _embedList(j['finance_entry_allocations'])
+            .map(FinanceAllocation.fromJson)
+            .toList(),
         allocationsLoaded: j['finance_entry_allocations'] != null,
       );
 }
 
 /// `flats` row used across finance (web `SocietyFlatRow`).
 class SocietyFlatRow {
-  const SocietyFlatRow({required this.id, required this.flatNumber, this.ownerName, this.isOccupied});
+  const SocietyFlatRow(
+      {required this.id,
+      required this.flatNumber,
+      this.ownerName,
+      this.isOccupied});
 
   final String id;
   final String flatNumber;
@@ -279,14 +300,16 @@ class SocietyFlatRow {
 
 /// `expense_groups` (group_kind = general) — web "payment type" / payment sub-head.
 class PaymentExpenseGroup {
-  const PaymentExpenseGroup({required this.id, required this.name, this.majorHead, this.description});
+  const PaymentExpenseGroup(
+      {required this.id, required this.name, this.majorHead, this.description});
 
   final String id;
   final String name;
   final String? majorHead;
   final String? description;
 
-  factory PaymentExpenseGroup.fromJson(Map<String, dynamic> j) => PaymentExpenseGroup(
+  factory PaymentExpenseGroup.fromJson(Map<String, dynamic> j) =>
+      PaymentExpenseGroup(
         id: _str(j['id']),
         name: _str(j['name']),
         majorHead: _s(j['major_head']),
@@ -295,14 +318,19 @@ class PaymentExpenseGroup {
 }
 
 class FinanceResidentUser {
-  const FinanceResidentUser({required this.id, required this.name, required this.flatNumber, required this.flatId});
+  const FinanceResidentUser(
+      {required this.id,
+      required this.name,
+      required this.flatNumber,
+      required this.flatId});
 
   final String id;
   final String name;
   final String flatNumber;
   final String flatId;
 
-  factory FinanceResidentUser.fromJson(Map<String, dynamic> j) => FinanceResidentUser(
+  factory FinanceResidentUser.fromJson(Map<String, dynamic> j) =>
+      FinanceResidentUser(
         id: _str(j['id']),
         name: _str(j['name']),
         flatNumber: _str(j['flat_number']),
@@ -403,13 +431,23 @@ class FinanceReminderSettings {
     final sound = row['bill_sound_key']?.toString() ?? '';
     return FinanceReminderSettings(
       enabled: row['enabled'] == true,
-      schedule: row['schedule'] == 'twice_12pm_7pm' ? 'twice_12pm_7pm' : 'once_12pm',
+      schedule:
+          row['schedule'] == 'twice_12pm_7pm' ? 'twice_12pm_7pm' : 'once_12pm',
       dueDay: (due == 0 ? 1 : due).clamp(1, 28),
-      autoIssueEnabled: row['auto_issue_enabled'] is bool ? row['auto_issue_enabled'] as bool : true,
-      autoIssueWhatsapp: row['auto_issue_whatsapp'] is bool ? row['auto_issue_whatsapp'] as bool : true,
-      autoIssueEmail: row['auto_issue_email'] is bool ? row['auto_issue_email'] as bool : false,
-      reminderWhatsapp: row['reminder_whatsapp'] is bool ? row['reminder_whatsapp'] as bool : false,
-      reminderEmail: row['reminder_email'] is bool ? row['reminder_email'] as bool : false,
+      autoIssueEnabled: row['auto_issue_enabled'] is bool
+          ? row['auto_issue_enabled'] as bool
+          : true,
+      autoIssueWhatsapp: row['auto_issue_whatsapp'] is bool
+          ? row['auto_issue_whatsapp'] as bool
+          : true,
+      autoIssueEmail: row['auto_issue_email'] is bool
+          ? row['auto_issue_email'] as bool
+          : false,
+      reminderWhatsapp: row['reminder_whatsapp'] is bool
+          ? row['reminder_whatsapp'] as bool
+          : false,
+      reminderEmail:
+          row['reminder_email'] is bool ? row['reminder_email'] as bool : false,
       billSoundKey: sound.isEmpty ? 'melody' : sound,
     );
   }
@@ -499,7 +537,9 @@ class EventContribRefRow {
   final String? screenshotUrl;
   final String eventTitle;
 
-  factory EventContribRefRow.fromJson(Map<String, dynamic> j, {String eventTitle = 'Event'}) => EventContribRefRow(
+  factory EventContribRefRow.fromJson(Map<String, dynamic> j,
+          {String eventTitle = 'Event'}) =>
+      EventContribRefRow(
         id: _str(j['id']),
         eventId: _str(j['event_id']),
         flatNumber: _s(j['flat_number']),
@@ -540,7 +580,8 @@ class EventFoodRefRow {
 }
 
 class FinanceEventReference {
-  const FinanceEventReference({this.contributions = const [], this.foodExpenses = const []});
+  const FinanceEventReference(
+      {this.contributions = const [], this.foodExpenses = const []});
 
   final List<EventContribRefRow> contributions;
   final List<EventFoodRefRow> foodExpenses;
@@ -583,7 +624,8 @@ class FlatReportSplit {
 }
 
 class FinanceFlatReportData {
-  const FinanceFlatReportData({this.expenses = const [], this.splits = const []});
+  const FinanceFlatReportData(
+      {this.expenses = const [], this.splits = const []});
 
   final List<FlatReportExpense> expenses;
   final List<FlatReportSplit> splits;

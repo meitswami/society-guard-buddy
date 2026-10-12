@@ -18,9 +18,13 @@ const _newSubHead = '__new__';
 Widget _majorHeading(BuildContext context, String major) => Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.only(bottom: 4),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppTokens.tint(context.tokens.border, 0.6)))),
+      decoration: BoxDecoration(
+          border: Border(
+              bottom: BorderSide(
+                  color: AppTokens.tint(context.tokens.border, 0.6)))),
       child: Text(major.toUpperCase(),
-          style: AppText.tiny(context).copyWith(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.6)),
+          style: AppText.tiny(context).copyWith(
+              fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.6)),
     );
 
 /// Create → Receipt type.
@@ -33,18 +37,28 @@ class FinanceMaintenanceTab extends StatelessWidget {
   Future<void> _save(BuildContext context) async {
     final title = form.title.text.trim().isEmpty ? '' : form.title.text;
     if (title.isEmpty || form.amount.text.trim().isEmpty) {
-      AppFeedback.toast(context, context.tr('Enter title and amount', 'शीर्षक और राशि दर्ज करें'), tone: BadgeTone.alert);
+      AppFeedback.toast(context,
+          context.tr('Enter title and amount', 'शीर्षक और राशि दर्ज करें'),
+          tone: BadgeTone.alert);
       return;
     }
-    String? groupId = form.expenseGroupId.isNotEmpty && form.expenseGroupId != _newSubHead ? form.expenseGroupId : null;
+    String? groupId =
+        form.expenseGroupId.isNotEmpty && form.expenseGroupId != _newSubHead
+            ? form.expenseGroupId
+            : null;
     try {
       if (form.expenseGroupId == _newSubHead) {
         if (form.majorHead.isEmpty) {
-          AppFeedback.toast(context, context.tr('Choose a major head for the new payment sub-head', 'नए भुगतान उप-शीर्ष के लिए मुख्य शीर्ष चुनें'),
+          AppFeedback.toast(
+              context,
+              context.tr('Choose a major head for the new payment sub-head',
+                  'नए भुगतान उप-शीर्ष के लिए मुख्य शीर्ष चुनें'),
               tone: BadgeTone.alert);
           return;
         }
-        final subName = form.newSubHead.text.trim().isNotEmpty ? form.newSubHead.text.trim() : title.trim();
+        final subName = form.newSubHead.text.trim().isNotEmpty
+            ? form.newSubHead.text.trim()
+            : title.trim();
         groupId = await c.repo.createExpenseGroup(
           societyId: c.societyId,
           name: subName,
@@ -69,7 +83,9 @@ class FinanceMaintenanceTab extends StatelessWidget {
       if (!context.mounted) return;
       AppFeedback.toast(
         context,
-        editing != null ? context.tr('Receipt type updated', 'रसीद प्रकार अपडेट हुआ') : context.tr('Receipt type added', 'रसीद प्रकार जोड़ा गया'),
+        editing != null
+            ? context.tr('Receipt type updated', 'रसीद प्रकार अपडेट हुआ')
+            : context.tr('Receipt type added', 'रसीद प्रकार जोड़ा गया'),
         tone: BadgeTone.success,
       );
       form
@@ -81,20 +97,28 @@ class FinanceMaintenanceTab extends StatelessWidget {
       if (!context.mounted) return;
       AppFeedback.toast(
         context,
-        financeErrorMessage(e, form.editingId != null ? 'Could not update receipt type' : 'Could not add receipt type'),
+        financeErrorMessage(
+            e,
+            form.editingId != null
+                ? 'Could not update receipt type'
+                : 'Could not add receipt type'),
         tone: BadgeTone.alert,
       );
     }
   }
 
   void _startEdit(FinanceCharge ch) {
-    final g = ch.expenseGroupId != null ? c.derived.paymentGroupById[ch.expenseGroupId] : null;
+    final g = ch.expenseGroupId != null
+        ? c.derived.paymentGroupById[ch.expenseGroupId]
+        : null;
     form
       ..editingId = ch.id
       ..title.text = ch.title
       ..amount.text = numToInput(ch.amount)
       ..frequency = ch.frequency.isEmpty ? 'monthly' : ch.frequency
-      ..majorHead = g != null ? resolveGroupMajorHeadOf(g) : inferMajorHeadFromGroupName(ch.title)
+      ..majorHead = g != null
+          ? resolveGroupMajorHeadOf(g)
+          : inferMajorHeadFromGroupName(ch.title)
       ..expenseGroupId = ch.expenseGroupId ?? ''
       ..newSubHead.clear()
       ..showForm = true
@@ -103,10 +127,12 @@ class FinanceMaintenanceTab extends StatelessWidget {
 
   Future<void> _delete(BuildContext context, String id) async {
     final d = c.data;
-    if (d.payments.any((p) => p.chargeId == id) || d.ledgerEntries.any((e) => e.chargeId == id)) {
+    if (d.payments.any((p) => p.chargeId == id) ||
+        d.ledgerEntries.any((e) => e.chargeId == id)) {
       AppFeedback.toast(
         context,
-        context.tr('This receipt type has linked payments or ledger rows. Delete those entries first.',
+        context.tr(
+            'This receipt type has linked payments or ledger rows. Delete those entries first.',
             'इस रसीद प्रकार से भुगतान या खाता पंक्तियाँ जुड़ी हैं। पहले उन्हें हटाएँ।'),
         tone: BadgeTone.alert,
       );
@@ -115,7 +141,8 @@ class FinanceMaintenanceTab extends StatelessWidget {
     final ok = await AppFeedback.confirm(
       context,
       title: context.tr('Delete this receipt type?', 'यह रसीद प्रकार हटाएँ?'),
-      message: context.tr('This will remove the receipt type definition only.', 'केवल रसीद प्रकार की परिभाषा हटेगी।'),
+      message: context.tr('This will remove the receipt type definition only.',
+          'केवल रसीद प्रकार की परिभाषा हटेगी।'),
       confirmLabel: context.fin('fin.delete'),
       cancelLabel: context.fin('fin.cancel'),
       destructive: true,
@@ -125,11 +152,17 @@ class FinanceMaintenanceTab extends StatelessWidget {
       await c.repo.deleteCharge(c.societyId, id);
       await c.invalidateAll();
     } catch (e) {
-      if (context.mounted) AppFeedback.toast(context, financeErrorMessage(e, 'Could not delete receipt type'), tone: BadgeTone.alert);
+      if (context.mounted) {
+        AppFeedback.toast(
+            context, financeErrorMessage(e, 'Could not delete receipt type'),
+            tone: BadgeTone.alert);
+      }
       return;
     }
     if (!context.mounted) return;
-    AppFeedback.toast(context, context.tr('Receipt type deleted', 'रसीद प्रकार हटाया गया'), tone: BadgeTone.success);
+    AppFeedback.toast(
+        context, context.tr('Receipt type deleted', 'रसीद प्रकार हटाया गया'),
+        tone: BadgeTone.success);
     if (form.editingId == id) {
       form
         ..editingId = null
@@ -179,17 +212,23 @@ class FinanceMaintenanceTab extends StatelessWidget {
                   children: [
                     Text(
                       form.editingId != null
-                          ? context.tr('Edit receipt type', 'रसीद प्रकार संपादित करें')
+                          ? context.tr(
+                              'Edit receipt type', 'रसीद प्रकार संपादित करें')
                           : context.tr('New receipt type', 'नया रसीद प्रकार'),
-                      style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500),
+                      style: AppText.caption(context)
+                          .copyWith(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 12),
-                    AppTextField(controller: form.title, hint: context.tr('Title (e.g. Monthly Maintenance)', 'शीर्षक (जैसे मासिक रखरखाव)')),
+                    AppTextField(
+                        controller: form.title,
+                        hint: context.tr('Title (e.g. Monthly Maintenance)',
+                            'शीर्षक (जैसे मासिक रखरखाव)')),
                     const SizedBox(height: 12),
                     AppTextField(
                       controller: form.amount,
                       hint: context.tr('Amount (₹)', 'राशि (₹)'),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: kAmountFormatters,
                     ),
                     const SizedBox(height: 12),
@@ -205,7 +244,8 @@ class FinanceMaintenanceTab extends StatelessWidget {
                     AppDropdown<String>(
                       items: const ['', ...kSocietyPaymentMajorHeads],
                       value: form.majorHead,
-                      labelOf: (h) => h.isEmpty ? context.fin('fin.majorHead') : h,
+                      labelOf: (h) =>
+                          h.isEmpty ? context.fin('fin.majorHead') : h,
                       onChanged: (v) => form
                         ..majorHead = v ?? ''
                         ..expenseGroupId = ''
@@ -218,9 +258,15 @@ class FinanceMaintenanceTab extends StatelessWidget {
                         items: ['', ...subHeads.map((g) => g.id), _newSubHead],
                         value: form.expenseGroupId,
                         labelOf: (id) {
-                          if (id.isEmpty) return context.tr('Payment sub-head (optional link)', 'भुगतान उप-शीर्ष (वैकल्पिक लिंक)');
+                          if (id.isEmpty) {
+                            return context.tr(
+                                'Payment sub-head (optional link)',
+                                'भुगतान उप-शीर्ष (वैकल्पिक लिंक)');
+                          }
                           if (id == _newSubHead) {
-                            return context.tr('+ Create new sub-head under ${form.majorHead}', '+ ${form.majorHead} में नया उप-शीर्ष बनाएँ');
+                            return context.tr(
+                                '+ Create new sub-head under ${form.majorHead}',
+                                '+ ${form.majorHead} में नया उप-शीर्ष बनाएँ');
                           }
                           return derived.paymentGroupById[id]?.name ?? id;
                         },
@@ -233,7 +279,9 @@ class FinanceMaintenanceTab extends StatelessWidget {
                         const SizedBox(height: 12),
                         AppTextField(
                           controller: form.newSubHead,
-                          hint: context.tr('New sub-head name (defaults to receipt title)', 'नए उप-शीर्ष का नाम (डिफ़ॉल्ट रसीद शीर्षक)'),
+                          hint: context.tr(
+                              'New sub-head name (defaults to receipt title)',
+                              'नए उप-शीर्ष का नाम (डिफ़ॉल्ट रसीद शीर्षक)'),
                         ),
                       ],
                     ],
@@ -243,8 +291,10 @@ class FinanceMaintenanceTab extends StatelessWidget {
                         Expanded(
                           child: AppButton(
                             label: form.editingId != null
-                                ? context.tr('Update receipt type', 'रसीद प्रकार अपडेट करें')
-                                : context.tr('Save receipt type', 'रसीद प्रकार सहेजें'),
+                                ? context.tr('Update receipt type',
+                                    'रसीद प्रकार अपडेट करें')
+                                : context.tr(
+                                    'Save receipt type', 'रसीद प्रकार सहेजें'),
                             onPressed: () => _save(context),
                           ),
                         ),
@@ -265,7 +315,10 @@ class FinanceMaintenanceTab extends StatelessWidget {
                   ],
                 ),
               ),
-            for (final major in [...kSocietyPaymentMajorHeads, kUncategorizedHead])
+            for (final major in [
+              ...kSocietyPaymentMajorHeads,
+              kUncategorizedHead
+            ])
               if ((byMajor[major] ?? const []).isNotEmpty) ...[
                 _majorHeading(context, major),
                 for (final ch in byMajor[major]!)
@@ -279,8 +332,10 @@ class FinanceMaintenanceTab extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(ch.title, style: AppText.sectionTitle(context)),
-                              Text(ch.frequency, style: AppText.caption(context)),
+                              Text(ch.title,
+                                  style: AppText.sectionTitle(context)),
+                              Text(ch.frequency,
+                                  style: AppText.caption(context)),
                               if ((ch.expenseGroupId ?? '').isNotEmpty)
                                 Text(
                                   '${context.tr('Sub-head', 'उप-शीर्ष')}: ${derived.paymentGroupById[ch.expenseGroupId]?.name ?? context.tr('Linked', 'जुड़ा')}',
@@ -289,24 +344,35 @@ class FinanceMaintenanceTab extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Text(inrRaw(ch.amount), style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: t.success)),
+                        Text(inrRaw(ch.amount),
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: t.success)),
                         IconButton(
                           tooltip: context.fin('fin.edit'),
-                          icon: Icon(Icons.edit_outlined, size: 18, color: t.mutedForeground),
+                          icon: Icon(Icons.edit_outlined,
+                              size: 18, color: t.mutedForeground),
                           onPressed: () => _startEdit(ch),
                         ),
                         if (!derived.chargeIdsWithDependents.contains(ch.id))
                           IconButton(
-                            tooltip: context.tr('Delete receipt type', 'रसीद प्रकार हटाएँ'),
-                            icon: Icon(Icons.delete_outline, size: 18, color: t.mutedForeground),
+                            tooltip: context.tr(
+                                'Delete receipt type', 'रसीद प्रकार हटाएँ'),
+                            icon: Icon(Icons.delete_outline,
+                                size: 18, color: t.mutedForeground),
                             onPressed: () => _delete(context, ch.id),
                           )
                         else
                           Tooltip(
-                            message: context.tr('Remove linked receipt or ledger rows first', 'पहले जुड़ी रसीद या खाता पंक्तियाँ हटाएँ'),
+                            message: context.tr(
+                                'Remove linked receipt or ledger rows first',
+                                'पहले जुड़ी रसीद या खाता पंक्तियाँ हटाएँ'),
                             child: Padding(
                               padding: const EdgeInsets.only(top: 14, left: 4),
-                              child: Text(context.fin('fin.inUse'), style: AppText.tiny(context).copyWith(fontSize: 9)),
+                              child: Text(context.fin('fin.inUse'),
+                                  style: AppText.tiny(context)
+                                      .copyWith(fontSize: 9)),
                             ),
                           ),
                       ],
@@ -315,7 +381,9 @@ class FinanceMaintenanceTab extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
             if (c.data.charges.isEmpty && !form.showForm)
-              EmptyView(message: context.tr('No receipt types yet', 'अभी कोई रसीद प्रकार नहीं')),
+              EmptyView(
+                  message: context.tr(
+                      'No receipt types yet', 'अभी कोई रसीद प्रकार नहीं')),
           ],
         );
       },
@@ -325,20 +393,26 @@ class FinanceMaintenanceTab extends StatelessWidget {
 
 /// Create → Payment type.
 class FinanceCreatePaymentTab extends StatelessWidget {
-  const FinanceCreatePaymentTab({super.key, required this.c, required this.form});
+  const FinanceCreatePaymentTab(
+      {super.key, required this.c, required this.form});
 
   final FinanceController c;
   final PaymentHeadFormModel form;
 
   Future<void> _save(BuildContext context) async {
     if (form.majorHead.isEmpty) {
-      AppFeedback.toast(context, context.tr('Choose a major head for the payment type', 'भुगतान प्रकार के लिए मुख्य शीर्ष चुनें'),
+      AppFeedback.toast(
+          context,
+          context.tr('Choose a major head for the payment type',
+              'भुगतान प्रकार के लिए मुख्य शीर्ष चुनें'),
           tone: BadgeTone.alert);
       return;
     }
     final name = form.name.text.trim();
     if (name.isEmpty) {
-      AppFeedback.toast(context, context.tr('Enter a sub-head name', 'उप-शीर्ष का नाम दर्ज करें'), tone: BadgeTone.alert);
+      AppFeedback.toast(context,
+          context.tr('Enter a sub-head name', 'उप-शीर्ष का नाम दर्ज करें'),
+          tone: BadgeTone.alert);
       return;
     }
     final desc = form.description.text.trim();
@@ -364,7 +438,13 @@ class FinanceCreatePaymentTab extends StatelessWidget {
       await c.invalidateAll();
     } catch (e) {
       if (context.mounted) {
-        AppFeedback.toast(context, financeErrorMessage(e, editing != null ? 'Could not update payment type' : 'Could not create payment type'),
+        AppFeedback.toast(
+            context,
+            financeErrorMessage(
+                e,
+                editing != null
+                    ? 'Could not update payment type'
+                    : 'Could not create payment type'),
             tone: BadgeTone.alert);
       }
       return;
@@ -372,7 +452,9 @@ class FinanceCreatePaymentTab extends StatelessWidget {
     if (!context.mounted) return;
     AppFeedback.toast(
       context,
-      editing != null ? context.tr('Payment type updated', 'भुगतान प्रकार अपडेट हुआ') : context.tr('Payment type added', 'भुगतान प्रकार जोड़ा गया'),
+      editing != null
+          ? context.tr('Payment type updated', 'भुगतान प्रकार अपडेट हुआ')
+          : context.tr('Payment type added', 'भुगतान प्रकार जोड़ा गया'),
       tone: BadgeTone.success,
     );
     form
@@ -386,7 +468,8 @@ class FinanceCreatePaymentTab extends StatelessWidget {
     final ok = await AppFeedback.confirm(
       context,
       title: context.tr('Delete this payment type?', 'यह भुगतान प्रकार हटाएँ?'),
-      message: context.tr('This removes the payment sub-head definition only.', 'केवल भुगतान उप-शीर्ष की परिभाषा हटेगी।'),
+      message: context.tr('This removes the payment sub-head definition only.',
+          'केवल भुगतान उप-शीर्ष की परिभाषा हटेगी।'),
       confirmLabel: context.fin('fin.delete'),
       cancelLabel: context.fin('fin.cancel'),
       destructive: true,
@@ -396,11 +479,17 @@ class FinanceCreatePaymentTab extends StatelessWidget {
       await c.repo.deleteExpenseGroup(c.societyId, id);
       await c.invalidateAll();
     } catch (e) {
-      if (context.mounted) AppFeedback.toast(context, financeErrorMessage(e, 'Could not delete payment type'), tone: BadgeTone.alert);
+      if (context.mounted) {
+        AppFeedback.toast(
+            context, financeErrorMessage(e, 'Could not delete payment type'),
+            tone: BadgeTone.alert);
+      }
       return;
     }
     if (!context.mounted) return;
-    AppFeedback.toast(context, context.tr('Payment type deleted', 'भुगतान प्रकार हटाया गया'), tone: BadgeTone.success);
+    AppFeedback.toast(
+        context, context.tr('Payment type deleted', 'भुगतान प्रकार हटाया गया'),
+        tone: BadgeTone.success);
     if (form.editingId == id) {
       form
         ..editingId = null
@@ -449,15 +538,18 @@ class FinanceCreatePaymentTab extends StatelessWidget {
                   children: [
                     Text(
                       form.editingId != null
-                          ? context.tr('Edit payment type', 'भुगतान प्रकार संपादित करें')
+                          ? context.tr(
+                              'Edit payment type', 'भुगतान प्रकार संपादित करें')
                           : context.tr('New payment type', 'नया भुगतान प्रकार'),
-                      style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500),
+                      style: AppText.caption(context)
+                          .copyWith(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 12),
                     AppDropdown<String>(
                       items: const ['', ...kSocietyPaymentMajorHeads],
                       value: form.majorHead,
-                      labelOf: (h) => h.isEmpty ? context.fin('fin.majorHead') : h,
+                      labelOf: (h) =>
+                          h.isEmpty ? context.fin('fin.majorHead') : h,
                       onChanged: (v) => form
                         ..majorHead = v ?? ''
                         ..changed(),
@@ -465,7 +557,9 @@ class FinanceCreatePaymentTab extends StatelessWidget {
                     const SizedBox(height: 12),
                     AppTextField(
                       controller: form.name,
-                      hint: context.tr('Sub-head name (e.g. Electricity bill, Lift AMC)', 'उप-शीर्ष नाम (जैसे बिजली बिल, लिफ्ट AMC)'),
+                      hint: context.tr(
+                          'Sub-head name (e.g. Electricity bill, Lift AMC)',
+                          'उप-शीर्ष नाम (जैसे बिजली बिल, लिफ्ट AMC)'),
                     ),
                     const SizedBox(height: 12),
                     AppTextField(
@@ -473,7 +567,8 @@ class FinanceCreatePaymentTab extends StatelessWidget {
                       caps: false,
                       maxLines: 3,
                       minLines: 2,
-                      hint: context.tr('Description (optional)', 'विवरण (वैकल्पिक)'),
+                      hint: context.tr(
+                          'Description (optional)', 'विवरण (वैकल्पिक)'),
                     ),
                     FinHint(context.tr(
                       'Payment types appear under the major head in period reports. Use specific names — e.g. Electricity, Security guards — not generic labels.',
@@ -485,8 +580,10 @@ class FinanceCreatePaymentTab extends StatelessWidget {
                         Expanded(
                           child: AppButton(
                             label: form.editingId != null
-                                ? context.tr('Update payment type', 'भुगतान प्रकार अपडेट करें')
-                                : context.tr('Save payment type', 'भुगतान प्रकार सहेजें'),
+                                ? context.tr('Update payment type',
+                                    'भुगतान प्रकार अपडेट करें')
+                                : context.tr('Save payment type',
+                                    'भुगतान प्रकार सहेजें'),
                             onPressed: () => _save(context),
                           ),
                         ),
@@ -507,7 +604,10 @@ class FinanceCreatePaymentTab extends StatelessWidget {
                   ],
                 ),
               ),
-            for (final major in [...kSocietyPaymentMajorHeads, kUncategorizedHead])
+            for (final major in [
+              ...kSocietyPaymentMajorHeads,
+              kUncategorizedHead
+            ])
               if ((grouped[major] ?? const []).isNotEmpty) ...[
                 _majorHeading(context, major),
                 for (final g in grouped[major]!)
@@ -521,14 +621,18 @@ class FinanceCreatePaymentTab extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(g.name, style: AppText.sectionTitle(context)),
-                              if ((g.description ?? '').isNotEmpty) Text(g.description!, style: AppText.caption(context)),
+                              Text(g.name,
+                                  style: AppText.sectionTitle(context)),
+                              if ((g.description ?? '').isNotEmpty)
+                                Text(g.description!,
+                                    style: AppText.caption(context)),
                             ],
                           ),
                         ),
                         IconButton(
                           tooltip: context.fin('fin.edit'),
-                          icon: Icon(Icons.edit_outlined, size: 18, color: t.mutedForeground),
+                          icon: Icon(Icons.edit_outlined,
+                              size: 18, color: t.mutedForeground),
                           onPressed: () => form
                             ..editingId = g.id
                             ..name.text = g.name
@@ -539,16 +643,22 @@ class FinanceCreatePaymentTab extends StatelessWidget {
                         ),
                         if (!derived.groupIdsInUse.contains(g.id))
                           IconButton(
-                            tooltip: context.tr('Delete payment type', 'भुगतान प्रकार हटाएँ'),
-                            icon: Icon(Icons.delete_outline, size: 18, color: t.mutedForeground),
+                            tooltip: context.tr(
+                                'Delete payment type', 'भुगतान प्रकार हटाएँ'),
+                            icon: Icon(Icons.delete_outline,
+                                size: 18, color: t.mutedForeground),
                             onPressed: () => _delete(context, g.id),
                           )
                         else
                           Tooltip(
-                            message: context.tr('Remove linked receipts or recorded payments first', 'पहले जुड़ी रसीदें या दर्ज भुगतान हटाएँ'),
+                            message: context.tr(
+                                'Remove linked receipts or recorded payments first',
+                                'पहले जुड़ी रसीदें या दर्ज भुगतान हटाएँ'),
                             child: Padding(
                               padding: const EdgeInsets.only(top: 14, left: 4),
-                              child: Text(context.fin('fin.inUse'), style: AppText.tiny(context).copyWith(fontSize: 9)),
+                              child: Text(context.fin('fin.inUse'),
+                                  style: AppText.tiny(context)
+                                      .copyWith(fontSize: 9)),
                             ),
                           ),
                       ],
@@ -557,7 +667,9 @@ class FinanceCreatePaymentTab extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
             if (c.data.paymentExpenseGroups.isEmpty && !form.showForm)
-              EmptyView(message: context.tr('No payment types yet', 'अभी कोई भुगतान प्रकार नहीं')),
+              EmptyView(
+                  message: context.tr(
+                      'No payment types yet', 'अभी कोई भुगतान प्रकार नहीं')),
           ],
         );
       },

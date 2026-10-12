@@ -4,11 +4,24 @@ import 'finance_format.dart';
 
 enum PaymentChannel { cash, bank, other }
 
-const _bankKeys = ['upi', 'bank_transfer', 'razorpay', 'online', 'card', 'neft', 'rtgs', 'imps', 'netbanking', 'cheque', 'dd'];
+const _bankKeys = [
+  'upi',
+  'bank_transfer',
+  'razorpay',
+  'online',
+  'card',
+  'neft',
+  'rtgs',
+  'imps',
+  'netbanking',
+  'cheque',
+  'dd'
+];
 
 /// Web `normalizePaymentChannel`: null → cash; UPI / bank / online / cheque → bank; rest → other.
 PaymentChannel normalizePaymentChannel(Object? method) {
-  final x = (method ?? 'cash').toString().toLowerCase().replaceAll(RegExp(r'\s'), '');
+  final x =
+      (method ?? 'cash').toString().toLowerCase().replaceAll(RegExp(r'\s'), '');
   if (x == 'cash') return PaymentChannel.cash;
   if (_bankKeys.any((k) => x == k || x.contains(k))) return PaymentChannel.bank;
   return PaymentChannel.other;
@@ -45,7 +58,10 @@ class ChannelTotals {
 
   @override
   bool operator ==(Object other) =>
-      other is ChannelTotals && other.cash == cash && other.bank == bank && other.other == this.other;
+      other is ChannelTotals &&
+      other.cash == cash &&
+      other.bank == bank &&
+      other.other == this.other;
 
   @override
   int get hashCode => Object.hash(cash, bank, other);
@@ -62,7 +78,8 @@ void addToChannel(ChannelTotals totals, Object? method, double amount) {
 }
 
 /// Web `sumByChannel`.
-ChannelTotals sumByChannel<T>(Iterable<T> items, double Function(T) getAmount, Object? Function(T) getMethod) {
+ChannelTotals sumByChannel<T>(Iterable<T> items, double Function(T) getAmount,
+    Object? Function(T) getMethod) {
   final totals = emptyChannelTotals();
   for (final item in items) {
     addToChannel(totals, getMethod(item), getAmount(item));
@@ -71,7 +88,8 @@ ChannelTotals sumByChannel<T>(Iterable<T> items, double Function(T) getAmount, O
 }
 
 /// Web `netChannels` (receipts − payments per channel).
-ChannelTotals netChannels(ChannelTotals receipts, ChannelTotals payments) => ChannelTotals(
+ChannelTotals netChannels(ChannelTotals receipts, ChannelTotals payments) =>
+    ChannelTotals(
       cash: receipts.cash - payments.cash,
       bank: receipts.bank - payments.bank,
       other: receipts.other - payments.other,

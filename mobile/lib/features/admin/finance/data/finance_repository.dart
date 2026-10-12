@@ -88,7 +88,8 @@ class SocietySound {
 
 /// Head fund reconciliation source rows.
 class HeadFundGroup {
-  const HeadFundGroup({required this.id, required this.name, this.majorHead, this.description});
+  const HeadFundGroup(
+      {required this.id, required this.name, this.majorHead, this.description});
 
   final String id;
   final String name;
@@ -97,7 +98,8 @@ class HeadFundGroup {
 }
 
 class HeadFundCharge {
-  const HeadFundCharge({required this.id, required this.title, this.expenseGroupId});
+  const HeadFundCharge(
+      {required this.id, required this.title, this.expenseGroupId});
 
   final String id;
   final String title;
@@ -203,7 +205,8 @@ class HeadFundData {
   final List<HeadFundAdjustment> adjustments;
 }
 
-double _d(Object? v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}') ?? 0;
+double _d(Object? v) =>
+    v is num ? v.toDouble() : double.tryParse('${v ?? ''}') ?? 0;
 
 /// Interface so the module can be widget-tested with a fake.
 abstract class FinanceRepository {
@@ -248,8 +251,10 @@ abstract class FinanceRepository {
     required String majorHead,
   });
   Future<void> deleteExpenseGroup(String societyId, String groupId);
-  Future<void> insertCharge(String societyId, String adminName, ChargeInput input);
-  Future<void> updateCharge(String societyId, String chargeId, ChargeInput input);
+  Future<void> insertCharge(
+      String societyId, String adminName, ChargeInput input);
+  Future<void> updateCharge(
+      String societyId, String chargeId, ChargeInput input);
   Future<void> deleteCharge(String societyId, String chargeId);
   Future<void> distributePool({
     required String entryId,
@@ -259,14 +264,19 @@ abstract class FinanceRepository {
     required String title,
   });
   Future<String> persistFinanceRecord(RecordReceiptPlan plan);
-  Future<void> updatePaymentStatus(String paymentId, String status, String adminName, [String? reason]);
+  Future<void> updatePaymentStatus(
+      String paymentId, String status, String adminName,
+      [String? reason]);
   Future<void> updatePayment(String paymentId, Map<String, dynamic> payload);
-  Future<void> deletePaymentRow({required String id, required String flatNumber, String? financeEntryId});
+  Future<void> deletePaymentRow(
+      {required String id, required String flatNumber, String? financeEntryId});
   Future<void> updateLedgerStatus(String entryId, String status);
   Future<void> updateLedger(String entryId, Map<String, dynamic> payload);
   Future<void> deleteLedger(String entryId);
-  Future<void> sendMaintenanceReminders(String societyId, String adminName, List<String> flatNumbers);
-  Future<void> upsertReminderSettings(String societyId, FinanceReminderSettings s);
+  Future<void> sendMaintenanceReminders(
+      String societyId, String adminName, List<String> flatNumbers);
+  Future<void> upsertReminderSettings(
+      String societyId, FinanceReminderSettings s);
   Future<int> invokeReminderTest(String societyId);
   Future<MonthlyBillIssueResult> invokeIssueMonthlyBill(String societyId);
   Future<void> notifyPaymentDecision({
@@ -292,7 +302,8 @@ abstract class FinanceRepository {
     required List<({String flatNumber, String dueDate})> targets,
     List<String> monthlyMaintenanceChargeIds,
   });
-  Future<String?> uploadMaintenanceReceipt(Uint8List bytes, String fileName, {String? contentType});
+  Future<String?> uploadMaintenanceReceipt(Uint8List bytes, String fileName,
+      {String? contentType});
 }
 
 /// Supabase implementation (same project / RLS as the web app).
@@ -327,7 +338,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
       const <Map<String, dynamic>>[],
     );
     final societyF = _soft<Map<String, dynamic>?>(
-      () => c.from('societies').select('name').eq('id', societyId).maybeSingle(),
+      () =>
+          c.from('societies').select('name').eq('id', societyId).maybeSingle(),
       null,
     );
     final reminderF = _soft<Map<String, dynamic>?>(
@@ -358,13 +370,15 @@ class SupabaseFinanceRepository implements FinanceRepository {
     );
     final ledgerF = c
         .from('finance_entries')
-        .select('*, finance_entry_counterparties(*), finance_entry_allocations(*)')
+        .select(
+            '*, finance_entry_counterparties(*), finance_entry_allocations(*)')
         .eq('society_id', societyId)
         .order('created_at', ascending: false)
         .limit(2500);
     final reserveF = c
         .from('reserve_fund_transfers')
-        .select('id, entry_month, amount, direction, payment_method, notes, created_at')
+        .select(
+            'id, entry_month, amount, direction, payment_method, notes, created_at')
         .eq('society_id', societyId)
         .order('entry_month', ascending: false)
         .limit(500);
@@ -377,7 +391,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
     final ledgerRows = rowsOf(await _rethrow(ledgerF));
     final reserveRows = rowsOf(await _rethrow(reserveF));
 
-    final flats = sortFlatsByNumber<SocietyFlatRow>(flatRows.map(SocietyFlatRow.fromJson), (f) => f.flatNumber);
+    final flats = sortFlatsByNumber<SocietyFlatRow>(
+        flatRows.map(SocietyFlatRow.fromJson), (f) => f.flatNumber);
     final flatIds = flats.map((f) => f.id).toList();
     final settings = FinanceReminderSettings.fromRow(reminder);
     final ledgerEntries = ledgerRows.map(FinanceLedgerRow.fromJson).toList();
@@ -390,8 +405,11 @@ class SupabaseFinanceRepository implements FinanceRepository {
     final membersF = flatIds.isEmpty
         ? Future.value(const <Map<String, dynamic>>[])
         : _soft(
-            () async => rowsOf(
-                await c.from('members').select('flat_id, name').eq('is_primary', true).inFilter('flat_id', flatIds)),
+            () async => rowsOf(await c
+                .from('members')
+                .select('flat_id, name')
+                .eq('is_primary', true)
+                .inFilter('flat_id', flatIds)),
             const <Map<String, dynamic>>[],
           );
     final residentsF = flatIds.isEmpty
@@ -406,7 +424,11 @@ class SupabaseFinanceRepository implements FinanceRepository {
           );
     final categoriesF = linkedExpenseIds.isEmpty
         ? Future.value(const <Map<String, dynamic>>[])
-        : c.from('expenses').select('id, expense_category').inFilter('id', linkedExpenseIds).then(rowsOf);
+        : c
+            .from('expenses')
+            .select('id, expense_category')
+            .inFilter('id', linkedExpenseIds)
+            .then(rowsOf);
 
     final charges = await _ensureCurrentMonthMaintenanceCharge(
       societyId,
@@ -437,7 +459,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
       if (fid != null && name.isNotEmpty) primaryByFlatId[fid] = name;
     }
     final expenseCategoryById = <String, String>{
-      for (final r in categories) '${r['id']}': (r['expense_category'] ?? '').toString(),
+      for (final r in categories)
+        '${r['id']}': (r['expense_category'] ?? '').toString(),
     };
 
     return FinanceCoreData(
@@ -447,7 +470,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
       residentUsers: residents.map(FinanceResidentUser.fromJson).toList(),
       settings: settings,
       charges: charges,
-      paymentExpenseGroups: groupRows.map(PaymentExpenseGroup.fromJson).toList(),
+      paymentExpenseGroups:
+          groupRows.map(PaymentExpenseGroup.fromJson).toList(),
       payments: payments.map(FinancePayment.fromJson).toList(),
       ledgerEntries: ledgerEntries,
       expenseCategoryById: expenseCategoryById,
@@ -475,7 +499,10 @@ class SupabaseFinanceRepository implements FinanceRepository {
     if (hasCurrent || monthly.isEmpty) return charges;
     final template = monthly.first;
     final currentTitle = buildCurrentMonthChargeTitle();
-    if (charges.any((c) => normalizeTitle(c.title) == normalizeTitle(currentTitle))) return charges;
+    if (charges
+        .any((c) => normalizeTitle(c.title) == normalizeTitle(currentTitle))) {
+      return charges;
+    }
     try {
       final inserted = await _c
           .from('maintenance_charges')
@@ -518,7 +545,9 @@ class SupabaseFinanceRepository implements FinanceRepository {
     final events = await _rethrow(eventsF);
     final groups = await _rethrow(groupsF);
     final eventIds = events.map((e) => e['id'].toString()).toList();
-    final eventTitleById = {for (final e in events) e['id'].toString(): (e['title'] ?? '').toString()};
+    final eventTitleById = {
+      for (final e in events) e['id'].toString(): (e['title'] ?? '').toString()
+    };
     final groupIds = groups.map((g) => g['id'].toString()).toList();
     final groupById = {for (final g in groups) g['id'].toString(): g};
 
@@ -535,7 +564,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
         ? Future.value(const <Map<String, dynamic>>[])
         : c
             .from('expenses')
-            .select('id, title, total_amount, expense_date, payment_method, bill_screenshot_url, group_id')
+            .select(
+                'id, title, total_amount, expense_date, payment_method, bill_screenshot_url, group_id')
             .inFilter('group_id', groupIds)
             .eq('expense_category', 'food')
             .eq('record_status', 'active')
@@ -548,7 +578,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
     return FinanceEventReference(
       contributions: [
         for (final r in contribs)
-          EventContribRefRow.fromJson(r, eventTitle: eventTitleById[r['event_id']?.toString()] ?? 'Event'),
+          EventContribRefRow.fromJson(r,
+              eventTitle: eventTitleById[r['event_id']?.toString()] ?? 'Event'),
       ],
       foodExpenses: [
         for (final r in exps)
@@ -575,11 +606,18 @@ class SupabaseFinanceRepository implements FinanceRepository {
     if (!dbReady) return const FinanceFlatReportData();
     final c = _c;
     final groups = await _rethrow(
-      c.from('expense_groups').select('id, name').eq('society_id', societyId).eq('group_kind', 'general').then(rowsOf),
+      c
+          .from('expense_groups')
+          .select('id, name')
+          .eq('society_id', societyId)
+          .eq('group_kind', 'general')
+          .then(rowsOf),
     );
     final groupIds = groups.map((g) => g['id'].toString()).toList();
     if (groupIds.isEmpty) return const FinanceFlatReportData();
-    final groupNameById = {for (final g in groups) g['id'].toString(): (g['name'] ?? '').toString()};
+    final groupNameById = {
+      for (final g in groups) g['id'].toString(): (g['name'] ?? '').toString()
+    };
     final expRows = await _rethrow(
       c
           .from('expenses')
@@ -596,7 +634,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
       splits = await _rethrow(
         c
             .from('expense_splits')
-            .select('id, expense_id, flat_number, amount, is_settled, settled_at')
+            .select(
+                'id, expense_id, flat_number, amount, is_settled, settled_at')
             .inFilter('expense_id', expIds)
             .then(rowsOf),
       );
@@ -610,7 +649,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
             totalAmount: _d(e['total_amount']),
             expenseDate: (e['expense_date'] ?? '').toString(),
             paymentMethod: (e['payment_method'] ?? '').toString(),
-            groupName: groupNameById[e['group_id']?.toString()] ?? 'Unknown group',
+            groupName:
+                groupNameById[e['group_id']?.toString()] ?? 'Unknown group',
           ),
       ],
       splits: [
@@ -627,12 +667,14 @@ class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<List<OpeningBalanceAnchor>> fetchOpeningAnchors(String societyId) async {
+  Future<List<OpeningBalanceAnchor>> fetchOpeningAnchors(
+      String societyId) async {
     if (!dbReady) return const [];
     return _soft(
       () async => rowsOf(await _c
               .from('finance_opening_balance_anchors')
-              .select('id, as_on_date, cash_amount, bank_amount, other_amount, notes')
+              .select(
+                  'id, as_on_date, cash_amount, bank_amount, other_amount, notes')
               .eq('society_id', societyId)
               .order('as_on_date', ascending: false))
           .map(OpeningBalanceAnchor.fromJson)
@@ -642,14 +684,20 @@ class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<void> saveOpeningAnchor(String societyId, OpeningBalanceAnchor anchor) async {
-    if (anchor.cashAmount == null && anchor.bankAmount == null && anchor.otherAmount == null) {
-      throw const FinanceException('Enter at least one channel amount (cash, bank, or other)');
+  Future<void> saveOpeningAnchor(
+      String societyId, OpeningBalanceAnchor anchor) async {
+    if (anchor.cashAmount == null &&
+        anchor.bankAmount == null &&
+        anchor.otherAmount == null) {
+      throw const FinanceException(
+          'Enter at least one channel amount (cash, bank, or other)');
     }
     final notes = anchor.notes?.trim() ?? '';
     await _wrap(() => _c.from('finance_opening_balance_anchors').upsert({
           'society_id': societyId,
-          'as_on_date': anchor.asOnDate.length > 10 ? anchor.asOnDate.substring(0, 10) : anchor.asOnDate,
+          'as_on_date': anchor.asOnDate.length > 10
+              ? anchor.asOnDate.substring(0, 10)
+              : anchor.asOnDate,
           'cash_amount': anchor.cashAmount,
           'bank_amount': anchor.bankAmount,
           'other_amount': anchor.otherAmount,
@@ -659,8 +707,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<void> deleteOpeningAnchor(String id) =>
-      _wrap(() => _c.from('finance_opening_balance_anchors').delete().eq('id', id));
+  Future<void> deleteOpeningAnchor(String id) => _wrap(
+      () => _c.from('finance_opening_balance_anchors').delete().eq('id', id));
 
   @override
   Future<List<ReserveTransfer>> fetchReserveTransfers(String societyId) async {
@@ -711,7 +759,10 @@ class SupabaseFinanceRepository implements FinanceRepository {
       const <Map<String, dynamic>>[],
     );
     final chRows = await _soft(
-      () async => rowsOf(await c.from('maintenance_charges').select('id, title, expense_group_id').eq('society_id', societyId)),
+      () async => rowsOf(await c
+          .from('maintenance_charges')
+          .select('id, title, expense_group_id')
+          .eq('society_id', societyId)),
       const <Map<String, dynamic>>[],
     );
     final groups = [
@@ -731,8 +782,13 @@ class SupabaseFinanceRepository implements FinanceRepository {
           expenseGroupId: ch['expense_group_id']?.toString(),
         ),
     ];
-    final linked = charges.where((ch) => ch.expenseGroupId != null && ch.expenseGroupId!.isNotEmpty).toList();
-    final chargeIdToGroup = {for (final ch in linked) ch.id: ch.expenseGroupId!};
+    final linked = charges
+        .where(
+            (ch) => ch.expenseGroupId != null && ch.expenseGroupId!.isNotEmpty)
+        .toList();
+    final chargeIdToGroup = {
+      for (final ch in linked) ch.id: ch.expenseGroupId!
+    };
     final chargeTitleById = {for (final ch in charges) ch.id: ch.title};
     final activeGroupIds = groups.map((g) => g.id).toList();
 
@@ -741,7 +797,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
         : await _soft(
             () async => rowsOf(await c
                 .from('maintenance_payments')
-                .select('id, flat_number, resident_name, amount, payment_method, screenshot_url, due_date, charge_id')
+                .select(
+                    'id, flat_number, resident_name, amount, payment_method, screenshot_url, due_date, charge_id')
                 .inFilter('charge_id', linked.map((ch) => ch.id).toList())
                 .inFilter('payment_status', ['verified', 'pending'])),
             const <Map<String, dynamic>>[],
@@ -786,7 +843,11 @@ class SupabaseFinanceRepository implements FinanceRepository {
           paymentMethod: (row['payment_method'] ?? '').toString(),
           billScreenshotUrl: row['bill_screenshot_url']?.toString(),
           vendorOrService: row['vendor_or_service']?.toString(),
-          groupName: ((row['expense_groups'] is Map ? (row['expense_groups'] as Map)['name'] : null) ?? '').toString(),
+          groupName: ((row['expense_groups'] is Map
+                      ? (row['expense_groups'] as Map)['name']
+                      : null) ??
+                  '')
+              .toString(),
         ),
     ];
 
@@ -795,7 +856,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
         : await _soft(
             () async => rowsOf(await c
                 .from('head_fund_adjustments')
-                .select('id, expense_group_id, amount, source_type, flat_number, notes, created_at')
+                .select(
+                    'id, expense_group_id, amount, source_type, flat_number, notes, created_at')
                 .eq('society_id', societyId)
                 .order('created_at', ascending: false)),
             const <Map<String, dynamic>>[],
@@ -835,7 +897,12 @@ class SupabaseFinanceRepository implements FinanceRepository {
     String? flatId;
     if (flat.isNotEmpty) {
       final row = await _soft<Map<String, dynamic>?>(
-        () => _c.from('flats').select('id').eq('society_id', societyId).eq('flat_number', flat).maybeSingle(),
+        () => _c
+            .from('flats')
+            .select('id')
+            .eq('society_id', societyId)
+            .eq('flat_number', flat)
+            .maybeSingle(),
         null,
       );
       flatId = row?['id']?.toString();
@@ -887,7 +954,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
           .single();
       return row['id'].toString();
     } on PostgrestException catch (e) {
-      throw FinanceException(e.message.isEmpty ? 'Could not create payment sub-head' : e.message);
+      throw FinanceException(
+          e.message.isEmpty ? 'Could not create payment sub-head' : e.message);
     }
   }
 
@@ -901,26 +969,46 @@ class SupabaseFinanceRepository implements FinanceRepository {
   }) =>
       _wrap(() => _c
           .from('expense_groups')
-          .update({'name': name, 'description': description, 'major_head': majorHead, 'event_id': null})
+          .update({
+            'name': name,
+            'description': description,
+            'major_head': majorHead,
+            'event_id': null
+          })
           .eq('id', groupId)
           .eq('society_id', societyId));
 
   @override
   Future<void> deleteExpenseGroup(String societyId, String groupId) async {
     try {
-      final expenseCount = await _c.from('expenses').count().eq('group_id', groupId);
-      if (expenseCount > 0) throw const FinanceException('Remove all recorded payments in this head before deleting it.');
-      final chargeCount =
-          await _c.from('maintenance_charges').count().eq('expense_group_id', groupId).eq('society_id', societyId);
-      if (chargeCount > 0) throw const FinanceException('Unlink or delete receipt types using this payment head first.');
-      await _c.from('expense_groups').delete().eq('id', groupId).eq('society_id', societyId);
+      final expenseCount =
+          await _c.from('expenses').count().eq('group_id', groupId);
+      if (expenseCount > 0) {
+        throw const FinanceException(
+            'Remove all recorded payments in this head before deleting it.');
+      }
+      final chargeCount = await _c
+          .from('maintenance_charges')
+          .count()
+          .eq('expense_group_id', groupId)
+          .eq('society_id', societyId);
+      if (chargeCount > 0) {
+        throw const FinanceException(
+            'Unlink or delete receipt types using this payment head first.');
+      }
+      await _c
+          .from('expense_groups')
+          .delete()
+          .eq('id', groupId)
+          .eq('society_id', societyId);
     } on PostgrestException catch (e) {
       throw FinanceException(e.message);
     }
   }
 
   @override
-  Future<void> insertCharge(String societyId, String adminName, ChargeInput input) =>
+  Future<void> insertCharge(
+          String societyId, String adminName, ChargeInput input) =>
       _wrap(() => _c.from('maintenance_charges').insert([
             {
               'title': input.title,
@@ -934,21 +1022,26 @@ class SupabaseFinanceRepository implements FinanceRepository {
           ]));
 
   @override
-  Future<void> updateCharge(String societyId, String chargeId, ChargeInput input) => _wrap(() => _c
-      .from('maintenance_charges')
-      .update({
-        'title': input.title,
-        'amount': input.amount,
-        'frequency': input.frequency,
-        'due_day': input.dueDay,
-        'expense_group_id': input.expenseGroupId,
-      })
-      .eq('id', chargeId)
-      .eq('society_id', societyId));
+  Future<void> updateCharge(
+          String societyId, String chargeId, ChargeInput input) =>
+      _wrap(() => _c
+          .from('maintenance_charges')
+          .update({
+            'title': input.title,
+            'amount': input.amount,
+            'frequency': input.frequency,
+            'due_day': input.dueDay,
+            'expense_group_id': input.expenseGroupId,
+          })
+          .eq('id', chargeId)
+          .eq('society_id', societyId));
 
   @override
-  Future<void> deleteCharge(String societyId, String chargeId) =>
-      _wrap(() => _c.from('maintenance_charges').delete().eq('id', chargeId).eq('society_id', societyId));
+  Future<void> deleteCharge(String societyId, String chargeId) => _wrap(() => _c
+      .from('maintenance_charges')
+      .delete()
+      .eq('id', chargeId)
+      .eq('society_id', societyId));
 
   @override
   Future<void> distributePool({
@@ -958,12 +1051,19 @@ class SupabaseFinanceRepository implements FinanceRepository {
     required int aggregateFlatCount,
     required String title,
   }) async {
-    await _wrap(() => _c.from('finance_entry_allocations').insert([for (final a in allocationRows) a.toRow(entryId)]));
+    await _wrap(() => _c
+        .from('finance_entry_allocations')
+        .insert([for (final a in allocationRows) a.toRow(entryId)]));
     if (maintenancePaymentRows.isNotEmpty) {
       try {
         await _c.from('maintenance_payments').insert(maintenancePaymentRows);
       } on PostgrestException catch (e) {
-        await _soft(() => _c.from('finance_entry_allocations').delete().eq('finance_entry_id', entryId), null);
+        await _soft(
+            () => _c
+                .from('finance_entry_allocations')
+                .delete()
+                .eq('finance_entry_id', entryId),
+            null);
         throw FinanceException(e.message);
       }
     }
@@ -979,10 +1079,15 @@ class SupabaseFinanceRepository implements FinanceRepository {
   Future<String> persistFinanceRecord(RecordReceiptPlan plan) async {
     String entryId;
     try {
-      final row = await _c.from('finance_entries').insert(plan.entry).select('id').single();
+      final row = await _c
+          .from('finance_entries')
+          .insert(plan.entry)
+          .select('id')
+          .single();
       entryId = row['id'].toString();
     } on PostgrestException catch (e) {
-      throw FinanceException(e.message.isEmpty ? 'Could not save finance entry' : e.message);
+      throw FinanceException(
+          e.message.isEmpty ? 'Could not save finance entry' : e.message);
     }
     final cp = plan.counterparty;
     if (cp != null) {
@@ -993,18 +1098,23 @@ class SupabaseFinanceRepository implements FinanceRepository {
           }));
     }
     if (plan.allocations.isNotEmpty) {
-      await _wrap(() => _c.from('finance_entry_allocations').insert([for (final a in plan.allocations) a.toRow(entryId)]));
+      await _wrap(() => _c
+          .from('finance_entry_allocations')
+          .insert([for (final a in plan.allocations) a.toRow(entryId)]));
     }
     if (plan.maintenancePayments.isNotEmpty) {
-      await _wrap(() => _c
-          .from('maintenance_payments')
-          .insert([for (final r in plan.maintenancePayments) {...r, 'finance_entry_id': entryId}]));
+      await _wrap(() => _c.from('maintenance_payments').insert([
+            for (final r in plan.maintenancePayments)
+              {...r, 'finance_entry_id': entryId}
+          ]));
     }
     return entryId;
   }
 
   @override
-  Future<void> updatePaymentStatus(String paymentId, String status, String adminName, [String? reason]) {
+  Future<void> updatePaymentStatus(
+      String paymentId, String status, String adminName,
+      [String? reason]) {
     final reviewedAt = DateTime.now().toUtc().toIso8601String();
     final Map<String, dynamic> payload;
     if (status == 'verified') {
@@ -1033,65 +1143,103 @@ class SupabaseFinanceRepository implements FinanceRepository {
         'rejection_reason': null,
       };
     }
-    return _wrap(() => _c.from('maintenance_payments').update(payload).eq('id', paymentId));
+    return _wrap(() =>
+        _c.from('maintenance_payments').update(payload).eq('id', paymentId));
   }
 
   @override
   Future<void> updatePayment(String paymentId, Map<String, dynamic> payload) =>
-      _wrap(() => _c.from('maintenance_payments').update(payload).eq('id', paymentId));
+      _wrap(() =>
+          _c.from('maintenance_payments').update(payload).eq('id', paymentId));
 
   @override
-  Future<void> deletePaymentRow({required String id, required String flatNumber, String? financeEntryId}) async {
+  Future<void> deletePaymentRow(
+      {required String id,
+      required String flatNumber,
+      String? financeEntryId}) async {
     // Web ignores errors on these steps (best-effort cleanup of the linked ledger entry).
     final c = _c;
-    final feId = (financeEntryId == null || financeEntryId.isEmpty) ? null : financeEntryId;
+    final feId = (financeEntryId == null || financeEntryId.isEmpty)
+        ? null
+        : financeEntryId;
     if (feId != null) {
-      await _soft(() => c.from('finance_entry_allocations').delete().eq('finance_entry_id', feId).eq('flat_number', flatNumber), null);
+      await _soft(
+          () => c
+              .from('finance_entry_allocations')
+              .delete()
+              .eq('finance_entry_id', feId)
+              .eq('flat_number', flatNumber),
+          null);
     }
-    await _soft(() => c.from('maintenance_payments').delete().eq('id', id), null);
+    await _soft(
+        () => c.from('maintenance_payments').delete().eq('id', id), null);
     if (feId == null) return;
     final restAllocs = await _soft(
-      () async => rowsOf(await c.from('finance_entry_allocations').select('amount').eq('finance_entry_id', feId)),
+      () async => rowsOf(await c
+          .from('finance_entry_allocations')
+          .select('amount')
+          .eq('finance_entry_id', feId)),
       const <Map<String, dynamic>>[],
     );
     final restMps = await _soft(
-      () async => rowsOf(await c.from('maintenance_payments').select('id').eq('finance_entry_id', feId)),
+      () async => rowsOf(await c
+          .from('maintenance_payments')
+          .select('id')
+          .eq('finance_entry_id', feId)),
       const <Map<String, dynamic>>[],
     );
     final total = restAllocs.fold<double>(0, (s, a) => s + _d(a['amount']));
     final acount = restAllocs.length;
     final mpLeft = restMps.length;
     if (acount == 0 && mpLeft == 0) {
-      await _soft(() => c.from('finance_entries').delete().eq('id', feId), null);
+      await _soft(
+          () => c.from('finance_entries').delete().eq('id', feId), null);
     } else if (acount > 0) {
       await _soft(
-        () => c.from('finance_entries').update({'total_amount': total, 'aggregate_flat_count': acount}).eq('id', feId),
+        () => c
+            .from('finance_entries')
+            .update({'total_amount': total, 'aggregate_flat_count': acount}).eq(
+                'id', feId),
         null,
       );
     } else if (mpLeft > 0) {
-      await _soft(() => c.from('maintenance_payments').update({'finance_entry_id': null}).eq('finance_entry_id', feId), null);
-      await _soft(() => c.from('finance_entries').delete().eq('id', feId), null);
+      await _soft(
+          () => c
+              .from('maintenance_payments')
+              .update({'finance_entry_id': null}).eq('finance_entry_id', feId),
+          null);
+      await _soft(
+          () => c.from('finance_entries').delete().eq('id', feId), null);
     }
   }
 
   @override
   Future<void> updateLedgerStatus(String entryId, String status) =>
-      _wrap(() => _c.from('finance_entries').update({'payment_status': status}).eq('id', entryId));
+      _wrap(() => _c
+          .from('finance_entries')
+          .update({'payment_status': status}).eq('id', entryId));
 
   @override
   Future<void> updateLedger(String entryId, Map<String, dynamic> payload) =>
       _wrap(() => _c.from('finance_entries').update(payload).eq('id', entryId));
 
   @override
-  Future<void> deleteLedger(String entryId) => _wrap(() => _c.from('finance_entries').delete().eq('id', entryId));
+  Future<void> deleteLedger(String entryId) =>
+      _wrap(() => _c.from('finance_entries').delete().eq('id', entryId));
 
   Future<SocietySound> fetchSocietySound(String societyId) async {
     final row = await _soft<Map<String, dynamic>?>(
-      () => _c.from('societies').select('admin_push_sound_url').eq('id', societyId).maybeSingle(),
+      () => _c
+          .from('societies')
+          .select('admin_push_sound_url')
+          .eq('id', societyId)
+          .maybeSingle(),
       null,
     );
     final url = row?['admin_push_sound_url']?.toString().trim() ?? '';
-    return url.isNotEmpty ? SocietySound('custom', url) : const SocietySound('digital', null);
+    return url.isNotEmpty
+        ? SocietySound('custom', url)
+        : const SocietySound('digital', null);
   }
 
   Future<void> _push(Map<String, dynamic> body) async {
@@ -1131,7 +1279,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<void> sendMaintenanceReminders(String societyId, String adminName, List<String> flatNumbers) async {
+  Future<void> sendMaintenanceReminders(
+      String societyId, String adminName, List<String> flatNumbers) async {
     final flats = {...flatNumbers.where((f) => f.isNotEmpty)}.toList();
     if (flats.isEmpty) return;
     const title = 'Maintenance Due Reminder';
@@ -1141,7 +1290,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
             {
               'society_id': societyId,
               'title': title,
-              'message': 'Dear resident of Flat $flatNumber, your maintenance payment is due. Please pay at the earliest.',
+              'message':
+                  'Dear resident of Flat $flatNumber, your maintenance payment is due. Please pay at the earliest.',
               'type': 'payment_reminder',
               'target_type': 'flat',
               'target_id': flatNumber,
@@ -1174,7 +1324,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
         await dispatchDirectoryChannels(
           societyId: societyId,
           title: title,
-          message: 'Your maintenance payment is due. Please pay at the earliest.',
+          message:
+              'Your maintenance payment is due. Please pay at the earliest.',
           whatsapp: wantWa,
           email: wantEmail,
           targetType: 'flat',
@@ -1187,54 +1338,64 @@ class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<void> upsertReminderSettings(String societyId, FinanceReminderSettings s) => _wrap(() => _c
-      .from('finance_reminder_settings')
-      .upsert({
-        'society_id': societyId,
-        'enabled': s.enabled,
-        'schedule': s.schedule,
-        'due_day': s.dueDay.clamp(1, 28),
-        'timezone': 'Asia/Kolkata',
-        'auto_issue_enabled': s.autoIssueEnabled,
-        'auto_issue_whatsapp': s.autoIssueWhatsapp,
-        'auto_issue_email': s.autoIssueEmail,
-        'reminder_whatsapp': s.reminderWhatsapp,
-        'reminder_email': s.reminderEmail,
-        'bill_sound_key': s.billSoundKey.isEmpty ? 'melody' : s.billSoundKey,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }, onConflict: 'society_id'));
+  Future<void> upsertReminderSettings(
+          String societyId, FinanceReminderSettings s) =>
+      _wrap(() => _c.from('finance_reminder_settings').upsert({
+            'society_id': societyId,
+            'enabled': s.enabled,
+            'schedule': s.schedule,
+            'due_day': s.dueDay.clamp(1, 28),
+            'timezone': 'Asia/Kolkata',
+            'auto_issue_enabled': s.autoIssueEnabled,
+            'auto_issue_whatsapp': s.autoIssueWhatsapp,
+            'auto_issue_email': s.autoIssueEmail,
+            'reminder_whatsapp': s.reminderWhatsapp,
+            'reminder_email': s.reminderEmail,
+            'bill_sound_key':
+                s.billSoundKey.isEmpty ? 'melody' : s.billSoundKey,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          }, onConflict: 'society_id'));
 
   @override
   Future<int> invokeReminderTest(String societyId) async {
     try {
-      final res = await _c.functions.invoke('maintenance-reminder', body: {'society_id': societyId, 'force_slot': '12pm'});
+      final res = await _c.functions.invoke('maintenance-reminder',
+          body: {'society_id': societyId, 'force_slot': '12pm'});
       final data = res.data;
-      return data is Map ? (num.tryParse('${data['sent'] ?? 0}') ?? 0).toInt() : 0;
+      return data is Map
+          ? (num.tryParse('${data['sent'] ?? 0}') ?? 0).toInt()
+          : 0;
     } on FunctionException catch (e) {
       throw FinanceException(financeErrorMessage(e, 'Unknown function error'));
     }
   }
 
   @override
-  Future<MonthlyBillIssueResult> invokeIssueMonthlyBill(String societyId) async {
+  Future<MonthlyBillIssueResult> invokeIssueMonthlyBill(
+      String societyId) async {
     try {
       final res = await _c.functions.invoke('issue-monthly-maintenance', body: {
         'society_id': societyId,
         'force': true,
         'amount': 2500,
       });
-      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : const <String, dynamic>{};
-      final results = data['results'];
-      final first = results is List && results.isNotEmpty && results.first is Map
-          ? Map<String, dynamic>.from(results.first as Map)
+      final data = res.data is Map
+          ? Map<String, dynamic>.from(res.data as Map)
           : const <String, dynamic>{};
+      final results = data['results'];
+      final first =
+          results is List && results.isNotEmpty && results.first is Map
+              ? Map<String, dynamic>.from(results.first as Map)
+              : const <String, dynamic>{};
       int? i(Object? v) => v == null ? null : (num.tryParse('$v'))?.toInt();
       return MonthlyBillIssueResult(
         issued: i(data['issued']) ?? 0,
         flats: i(first['flats']),
         whatsappSent: i(first['whatsapp_sent']),
         whatsappFailed: i(first['whatsapp_failed']),
-        whatsappConfigured: first['whatsapp_configured'] is bool ? first['whatsapp_configured'] as bool : null,
+        whatsappConfigured: first['whatsapp_configured'] is bool
+            ? first['whatsapp_configured'] as bool
+            : null,
         chargeTitle: first['charge_title']?.toString(),
         amount: first['amount'] == null ? null : _d(first['amount']),
         note: first['skipped']?.toString(),
@@ -1341,7 +1502,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
           'sound_custom_url': sound.soundCustomUrl ?? '',
         });
       } else {
-        final flats = {...selectedFlatNumbers.where((f) => f.isNotEmpty)}.toList();
+        final flats =
+            {...selectedFlatNumbers.where((f) => f.isNotEmpty)}.toList();
         if (flats.isEmpty) return true;
         for (final flat in flats) {
           await _c.from('notifications').insert([
@@ -1376,7 +1538,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
     final flatNumbers = {for (final t in targets) t.flatNumber}.toList();
     if (flatNumbers.isEmpty || chargeId.isEmpty || !dbReady) return const [];
     final isMonthly = monthlyMaintenanceChargeIds.contains(chargeId);
-    final chargeIds = isMonthly ? {...monthlyMaintenanceChargeIds}.toList() : [chargeId];
+    final chargeIds =
+        isMonthly ? {...monthlyMaintenanceChargeIds}.toList() : [chargeId];
     List<Map<String, dynamic>> rows;
     try {
       rows = rowsOf(await _c
@@ -1390,15 +1553,22 @@ class SupabaseFinanceRepository implements FinanceRepository {
       return const [];
     }
     final existing = rows.map(FinancePayment.fromJson).toList();
-    if (isMonthly) return findMonthlyMaintenanceMonthConflicts(existing, chargeIds, targets);
+    if (isMonthly) {
+      return findMonthlyMaintenanceMonthConflicts(existing, chargeIds, targets);
+    }
     return findReceiptHeadConflicts(existing, [
       for (final t in targets)
-        ReceiptHeadRecordingTarget(flatNumber: t.flatNumber, dueDate: t.dueDate, chargeId: chargeId, paymentMethod: paymentMethod),
+        ReceiptHeadRecordingTarget(
+            flatNumber: t.flatNumber,
+            dueDate: t.dueDate,
+            chargeId: chargeId,
+            paymentMethod: paymentMethod),
     ]);
   }
 
   @override
-  Future<String?> uploadMaintenanceReceipt(Uint8List bytes, String fileName, {String? contentType}) async {
+  Future<String?> uploadMaintenanceReceipt(Uint8List bytes, String fileName,
+      {String? contentType}) async {
     final safe = fileName.replaceAll(RegExp(r'[^\w.-]'), '_');
     final path = 'maintenance-receipts/${const Uuid().v4()}_$safe';
     try {
@@ -1406,7 +1576,8 @@ class SupabaseFinanceRepository implements FinanceRepository {
       await bucket.uploadBinary(
         path,
         bytes,
-        fileOptions: FileOptions(cacheControl: '3600', upsert: false, contentType: contentType),
+        fileOptions: FileOptions(
+            cacheControl: '3600', upsert: false, contentType: contentType),
       );
       return bucket.getPublicUrl(path);
     } catch (_) {

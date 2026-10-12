@@ -30,14 +30,19 @@ class UnpaidFlatGridRow {
 
 class FinanceDerived {
   FinanceDerived(this.data)
-      : chargeById = {for (final c in data.charges) if (c.id.isNotEmpty) c.id: c},
+      : chargeById = {
+          for (final c in data.charges)
+            if (c.id.isNotEmpty) c.id: c
+        },
         paymentGroupById = {for (final g in data.paymentExpenseGroups) g.id: g},
         financeEntryById = {for (final e in data.ledgerEntries) e.id: e},
         financeEntryIdsWithPayments = {
           for (final p in data.payments)
-            if (p.financeEntryId != null && p.financeEntryId!.isNotEmpty) p.financeEntryId!,
+            if (p.financeEntryId != null && p.financeEntryId!.isNotEmpty)
+              p.financeEntryId!,
         },
-        societyLedgerEntries = filterSocietyLedgerEntries(data.ledgerEntries, data.expenseCategoryById),
+        societyLedgerEntries = filterSocietyLedgerEntries(
+            data.ledgerEntries, data.expenseCategoryById),
         monthlyMaintenanceChargeIds = {
           for (final c in data.charges)
             if (isMonthlyMaintenanceCharge(c)) c.id,
@@ -50,7 +55,8 @@ class FinanceDerived {
         },
         groupIdsInUse = {
           for (final c in data.charges)
-            if (c.expenseGroupId != null && c.expenseGroupId!.isNotEmpty) c.expenseGroupId!,
+            if (c.expenseGroupId != null && c.expenseGroupId!.isNotEmpty)
+              c.expenseGroupId!,
         };
 
   final FinanceCoreData data;
@@ -65,18 +71,24 @@ class FinanceDerived {
   final Set<String> chargeIdsWithDependents;
   final Set<String> groupIdsInUse;
 
-  Map<String, String> get chargeTitleById => {for (final e in chargeById.entries) e.key: e.value.title};
+  Map<String, String> get chargeTitleById =>
+      {for (final e in chargeById.entries) e.key: e.value.title};
 
   /// Major head for a receipt type (linked sub-head, else inferred from the title).
   String majorHeadForCharge(FinanceCharge c) {
-    final g = (c.expenseGroupId != null && c.expenseGroupId!.isNotEmpty) ? paymentGroupById[c.expenseGroupId] : null;
+    final g = (c.expenseGroupId != null && c.expenseGroupId!.isNotEmpty)
+        ? paymentGroupById[c.expenseGroupId]
+        : null;
     if (g != null) return resolveGroupMajorHeadOf(g);
     return inferMajorHeadFromGroupName(c.title);
   }
 
   /// Charges bucketed by major head (+ `Uncategorized`), in charge order.
   Map<String, List<FinanceCharge>> get chargesByMajorHead {
-    final map = <String, List<FinanceCharge>>{for (final h in kSocietyPaymentMajorHeads) h: [], kUncategorizedHead: []};
+    final map = <String, List<FinanceCharge>>{
+      for (final h in kSocietyPaymentMajorHeads) h: [],
+      kUncategorizedHead: []
+    };
     for (final c in data.charges) {
       (map[majorHeadForCharge(c)] ?? map[kUncategorizedHead]!).add(c);
     }
@@ -85,12 +97,17 @@ class FinanceDerived {
 
   List<PaymentExpenseGroup> subHeadsForMajor(String major) {
     if (major.isEmpty) return const [];
-    return data.paymentExpenseGroups.where((g) => resolveGroupMajorHeadOf(g) == major).toList();
+    return data.paymentExpenseGroups
+        .where((g) => resolveGroupMajorHeadOf(g) == major)
+        .toList();
   }
 
   Map<String, List<PaymentExpenseGroup>> get paymentGroupsByMajorHeadMap {
     final grouped = paymentGroupsByMajorHead(data.paymentExpenseGroups);
-    return {for (final h in kSocietyPaymentMajorHeads) h: grouped[h] ?? [], kUncategorizedHead: []};
+    return {
+      for (final h in kSocietyPaymentMajorHeads) h: grouped[h] ?? [],
+      kUncategorizedHead: []
+    };
   }
 
   bool isSocietyPaymentLedgerEntry(FinanceLedgerRow e) {
@@ -104,7 +121,9 @@ class FinanceDerived {
     final ch = e.chargeId != null ? chargeById[e.chargeId] : null;
     if (ch != null) return majorHeadForCharge(ch);
     if (e.destination == 'corpus') return 'SOCIETY CORPUS FUND';
-    if (e.destination == 'current_month_maintenance') return 'OPERATION & MAINTENANCE';
+    if (e.destination == 'current_month_maintenance') {
+      return 'OPERATION & MAINTENANCE';
+    }
     final t = (e.title ?? '').trim();
     if (t.isNotEmpty) return inferMajorHeadFromGroupName(t);
     return kUncategorizedHead;
@@ -113,14 +132,18 @@ class FinanceDerived {
   /// Kind label key: `pool` | `ledgerOnly` | `food` | `societyPayment`.
   String ledgerEntryKind(FinanceLedgerRow e) {
     final id = e.expenseId;
-    if (id == null || id.isEmpty) return isLedgerInSocietyPool(e) ? 'pool' : 'ledgerOnly';
+    if (id == null || id.isEmpty) {
+      return isLedgerInSocietyPool(e) ? 'pool' : 'ledgerOnly';
+    }
     if (data.expenseCategoryById[id] == 'food') return 'food';
     return 'societyPayment';
   }
 
   /// Flats in scope for reminders / unpaid (occupied only unless vacant included), one row per flat number.
   List<SocietyFlatRow> uniqueTargetFlats({required bool includeVacant}) {
-    final target = includeVacant ? data.flats : data.flats.where((f) => f.occupied).toList();
+    final target = includeVacant
+        ? data.flats
+        : data.flats.where((f) => f.occupied).toList();
     final seen = <String>{};
     final rows = <SocietyFlatRow>[];
     for (final f in target) {
@@ -132,8 +155,9 @@ class FinanceDerived {
     return rows;
   }
 
-  int targetFlatCount({required bool includeVacant}) =>
-      includeVacant ? data.flats.length : data.flats.where((f) => f.occupied).length;
+  int targetFlatCount({required bool includeVacant}) => includeVacant
+      ? data.flats.length
+      : data.flats.where((f) => f.occupied).length;
 
   /// Flats with no verified payment at all (Reminders panel).
   List<SocietyFlatRow> unpaidFlats({required bool includeVacant}) {
@@ -141,14 +165,18 @@ class FinanceDerived {
       for (final p in data.payments)
         if (p.paymentStatus == 'verified') p.flatNumber,
     };
-    return uniqueTargetFlats(includeVacant: includeVacant).where((f) => !paid.contains(f.flatNumber)).toList();
+    return uniqueTargetFlats(includeVacant: includeVacant)
+        .where((f) => !paid.contains(f.flatNumber))
+        .toList();
   }
 
   /// Current month's monthly maintenance charge (title + amount) used by the reminders grid.
   ({String title, double amount})? get currentMaintenanceCharge {
     final monthly = data.charges.where(isMonthlyMaintenanceCharge).toList();
     if (monthly.isEmpty) return null;
-    final current = monthly.firstWhere((c) => isCurrentMonthChargeTitle(c.title), orElse: () => monthly.first);
+    final current = monthly.firstWhere(
+        (c) => isCurrentMonthChargeTitle(c.title),
+        orElse: () => monthly.first);
     return (title: current.title, amount: current.amount);
   }
 
@@ -157,14 +185,17 @@ class FinanceDerived {
     final rows = unpaidFlats(includeVacant: includeVacant).map((f) {
       String? pending;
       for (final p in data.payments) {
-        if (p.flatNumber == f.flatNumber && (p.paymentStatus == 'pending' || p.paymentStatus == 'rejected')) {
+        if (p.flatNumber == f.flatNumber &&
+            (p.paymentStatus == 'pending' || p.paymentStatus == 'rejected')) {
           pending = p.paymentStatus;
           break;
         }
       }
       return UnpaidFlatGridRow(
         flatNumber: f.flatNumber,
-        primaryName: residentLabelForFlatRow(f.id, f.ownerName, data.primaryByFlatId) ?? '',
+        primaryName:
+            residentLabelForFlatRow(f.id, f.ownerName, data.primaryByFlatId) ??
+                '',
         isOccupied: f.isOccupied,
         pendingPayment: pending,
         dueAmount: current?.amount,
@@ -179,7 +210,9 @@ class FinanceDerived {
   FinanceCharge? get preferredRecordCharge {
     if (data.charges.isEmpty) return null;
     for (final c in data.charges) {
-      if (isMonthlyMaintenanceCharge(c) && isCurrentMonthChargeTitle(c.title)) return c;
+      if (isMonthlyMaintenanceCharge(c) && isCurrentMonthChargeTitle(c.title)) {
+        return c;
+      }
     }
     for (final c in data.charges) {
       if (isMonthlyMaintenanceCharge(c)) return c;

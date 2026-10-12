@@ -1328,7 +1328,9 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
             children: [
               Icon(Icons.campaign_outlined, size: 16, color: t.foreground),
               const SizedBox(width: 4),
-              Text(context.tr('Bring to notice of residents', 'निवासियों के संज्ञान में लाएँ'), style: AppText.bodyMedium(context)),
+              Expanded(
+                child: Text(context.tr('Bring to notice of residents', 'निवासियों के संज्ञान में लाएँ'), style: AppText.bodyMedium(context)),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -1814,12 +1816,13 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
                 await _loadDetail();
               },
               children: [
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     TinyTag(_m.meetingKind.label(_hi), filled: false, uppercase: false),
-                    const SizedBox(width: 8),
                     Text('ID ${_m.id.length > 8 ? _m.id.substring(0, 8) : _m.id}…', style: AppText.tiny(context)),
-                    const Spacer(),
                     if (_m.published) TinyTag(context.tr('Published', 'प्रकाशित'), color: t.primary),
                   ],
                 ),

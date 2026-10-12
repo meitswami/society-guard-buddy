@@ -36,7 +36,8 @@ String operatingLedgerMonthValue(FinanceLedgerRow e) {
 const List<String?> _monthTokens = [
   'january', 'february', 'march', 'april', 'may', 'june', //
   'july', 'august', 'september', 'october', 'november', 'december', //
-  'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec', //
+  'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov',
+  'dec', //
   null,
 ];
 
@@ -50,7 +51,9 @@ String? extractMonthFromChargeTitle(String title, [DateTime? now]) {
     // JS `includes(undefined)` checks for the text "undefined".
     if (lower.contains(full) || lower.contains(abbr ?? 'undefined')) {
       final yearMatch = RegExp(r'20\d{2}').firstMatch(title);
-      final year = yearMatch != null ? yearMatch.group(0)! : '${(now ?? DateTime.now()).year}';
+      final year = yearMatch != null
+          ? yearMatch.group(0)!
+          : '${(now ?? DateTime.now()).year}';
       return '$year-${(i + 1).toString().padLeft(2, '0')}';
     }
   }
@@ -66,7 +69,9 @@ double monthlyOperatingInflow(
 ) {
   final monthlyChargeIds = {
     for (final c in charges)
-      if (c.frequency == 'monthly' && (c.expenseGroupId == null || c.expenseGroupId!.isEmpty)) c.id,
+      if (c.frequency == 'monthly' &&
+          (c.expenseGroupId == null || c.expenseGroupId!.isEmpty))
+        c.id,
   };
   var sum = 0.0;
   for (final p in payments) {
@@ -76,14 +81,18 @@ double monthlyOperatingInflow(
     final due = p.dueDate ?? '';
     final dueMonth = due.length > 7 ? due.substring(0, 7) : due;
     final titleMonth = extractMonthFromChargeTitle(chargeTitleById[cid] ?? '');
-    final pm = (titleMonth == null || titleMonth.isEmpty) ? dueMonth : titleMonth;
+    final pm =
+        (titleMonth == null || titleMonth.isEmpty) ? dueMonth : titleMonth;
     if (pm == month) sum += p.amount;
   }
   return sum;
 }
 
 /// Operational outflows for the month (society payment ledger, separate_entry).
-double monthlyOperatingOutflow(String month, List<FinanceLedgerRow> ledgerEntries, bool Function(FinanceLedgerRow) isOutflowEntry) {
+double monthlyOperatingOutflow(
+    String month,
+    List<FinanceLedgerRow> ledgerEntries,
+    bool Function(FinanceLedgerRow) isOutflowEntry) {
   var sum = 0.0;
   for (final e in ledgerEntries) {
     if (!isOutflowEntry(e)) continue;
@@ -93,9 +102,11 @@ double monthlyOperatingOutflow(String month, List<FinanceLedgerRow> ledgerEntrie
   return sum;
 }
 
-final RegExp _reserveFundTitle = RegExp(r'^reserve fund\s*[—–-]', caseSensitive: false);
+final RegExp _reserveFundTitle =
+    RegExp(r'^reserve fund\s*[—–-]', caseSensitive: false);
 
-double reserveFundBalance(List<FinanceLedgerRow> ledgerEntries, List<ReserveTransfer> transfers) {
+double reserveFundBalance(
+    List<FinanceLedgerRow> ledgerEntries, List<ReserveTransfer> transfers) {
   var balance = 0.0;
   for (final e in ledgerEntries) {
     if (e.destination != 'corpus') continue;
@@ -112,10 +123,12 @@ double reserveFundBalance(List<FinanceLedgerRow> ledgerEntries, List<ReserveTran
   return balance;
 }
 
-List<ReserveTransfer> transfersForMonth(List<ReserveTransfer> transfers, String month) =>
+List<ReserveTransfer> transfersForMonth(
+        List<ReserveTransfer> transfers, String month) =>
     transfers.where((t) => t.entryMonth == month).toList();
 
-double netTransferEffectForMonth(List<ReserveTransfer> transfers, String month) {
+double netTransferEffectForMonth(
+    List<ReserveTransfer> transfers, String month) {
   var net = 0.0;
   for (final t in transfersForMonth(transfers, month)) {
     if (t.direction == kOperatingToReserve) {

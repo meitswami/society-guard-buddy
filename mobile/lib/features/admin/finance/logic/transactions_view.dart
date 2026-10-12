@@ -102,7 +102,8 @@ List<({String value, String label})> monthOptionsForReceipts(FinanceDerived d) {
   }
   for (final e in d.societyLedgerEntries) {
     final value = ledgerMonthValue(e);
-    uniq.putIfAbsent(value, () => parseYmd('$value-15') == null ? value : isoMonthToDisplay(value));
+    uniq.putIfAbsent(value,
+        () => parseYmd('$value-15') == null ? value : isoMonthToDisplay(value));
   }
   final entries = uniq.entries.toList()..sort((a, b) => b.key.compareTo(a.key));
   return [
@@ -138,15 +139,18 @@ class TransactionsView {
   final List<ReceiptLineItem> lineItems;
   final FinanceDerived derived;
 
-  ChannelTotals get receiptChannelTotals => sumChannelRows(receiptHeadSummary.map((r) => r.byChannel));
-  ChannelTotals get paymentChannelTotals => sumChannelRows(paymentHeadSummary.map((r) => r.byChannel));
+  ChannelTotals get receiptChannelTotals =>
+      sumChannelRows(receiptHeadSummary.map((r) => r.byChannel));
+  ChannelTotals get paymentChannelTotals =>
+      sumChannelRows(paymentHeadSummary.map((r) => r.byChannel));
 
   /// Entries for the head-wise receipt drill-down (sorted by flat, then date).
   List<FinReportRow> receiptHeadEntryRows(String head) {
     final items = <({String t, String flat, FinReportRow row})>[];
     for (final p in filteredPayments) {
       final ch = derived.chargeById[p.chargeId ?? ''];
-      final h = ch != null ? derived.majorHeadForCharge(ch) : kUncategorizedHead;
+      final h =
+          ch != null ? derived.majorHeadForCharge(ch) : kUncategorizedHead;
       if (h != head) continue;
       final method = p.paymentMethod.toUpperCase();
       items.add((
@@ -155,7 +159,8 @@ class TransactionsView {
         row: FinReportRow(
           id: 'mp-${p.id}',
           label: 'Flat ${p.flatNumber}',
-          sublabel: '${(ch?.title ?? '').isEmpty ? 'Unknown charge' : ch!.title} · ${(p.residentName ?? '').isEmpty ? '—' : p.residentName}',
+          sublabel:
+              '${(ch?.title ?? '').isEmpty ? 'Unknown charge' : ch!.title} · ${(p.residentName ?? '').isEmpty ? '—' : p.residentName}',
           amount: p.amount,
           date: fmtDateLocal(p.createdAt),
           dateIso: p.createdAt,
@@ -175,7 +180,8 @@ class TransactionsView {
         row: FinReportRow(
           id: 'ledger-${e.id}',
           label: (e.title ?? '').isEmpty ? 'Finance entry' : e.title!,
-          sublabel: '${formatLedgerFieldLabel(e.recordMode)} · ${formatLedgerFieldLabel(e.destination)}',
+          sublabel:
+              '${formatLedgerFieldLabel(e.recordMode)} · ${formatLedgerFieldLabel(e.destination)}',
           amount: e.totalAmount,
           date: fmtDateLocal(e.createdAt),
           dateIso: e.createdAt,
@@ -194,7 +200,11 @@ class TransactionsView {
     final items = <({String t, FinReportRow row})>[];
     for (final e in scopedLedgerOnly) {
       if (!derived.isSocietyPaymentLedgerEntry(e)) continue;
-      final h = financeExpenseHeadFromLedgerEntry(e.title, e.expenseId != null ? derived.data.expenseCategoryById[e.expenseId] : null);
+      final h = financeExpenseHeadFromLedgerEntry(
+          e.title,
+          e.expenseId != null
+              ? derived.data.expenseCategoryById[e.expenseId]
+              : null);
       if (h != head) continue;
       final method = e.paymentMethod.toUpperCase();
       items.add((
@@ -202,7 +212,8 @@ class TransactionsView {
         row: FinReportRow(
           id: 'ledger-${e.id}',
           label: (e.title ?? '').isEmpty ? 'Society payment' : e.title!,
-          sublabel: '${formatLedgerFieldLabel(e.recordMode)} · ${formatLedgerFieldLabel(e.destination)}',
+          sublabel:
+              '${formatLedgerFieldLabel(e.recordMode)} · ${formatLedgerFieldLabel(e.destination)}',
           amount: e.totalAmount,
           date: fmtDateLocal(e.createdAt),
           dateIso: e.createdAt,
@@ -230,10 +241,15 @@ class TransactionsView {
     }
 
     final scopedPayments = data.payments.where((p) {
-      if (typeF == 'corpus' || typeF == 'outsider_mixed' || typeF == 'all_payments' || typeF == 'society_pool_pending') {
+      if (typeF == 'corpus' ||
+          typeF == 'outsider_mixed' ||
+          typeF == 'all_payments' ||
+          typeF == 'society_pool_pending') {
         return false;
       }
-      final fe = (p.financeEntryId != null && p.financeEntryId!.isNotEmpty) ? d.financeEntryById[p.financeEntryId] : null;
+      final fe = (p.financeEntryId != null && p.financeEntryId!.isNotEmpty)
+          ? d.financeEntryById[p.financeEntryId]
+          : null;
       if (fe != null && isGroupExpenseLedgerEntry(fe)) return false;
       if (modeF != 'all') {
         final mode = fe?.recordMode ?? 'flats_only';
@@ -247,7 +263,9 @@ class TransactionsView {
       } else if (typeF != 'all' && typeF != 'all_receipts') {
         if (ch == null || ch.frequency.toLowerCase() != typeF) return false;
       }
-      if (monthF != 'all' && paymentMonthValue(p.dueDate) != monthF) return false;
+      if (monthF != 'all' && paymentMonthValue(p.dueDate) != monthF) {
+        return false;
+      }
       if (search.isNotEmpty) {
         final haystack = [
           p.flatNumber,
@@ -286,13 +304,20 @@ class TransactionsView {
       final societyPayment = d.isSocietyPaymentLedgerEntry(e);
       if (typeF == 'all_payments' && !societyPayment) return false;
       if (receiptTypeFilters.contains(typeF) && societyPayment) return false;
-      if (typeF == 'society_pool_pending' && !isLedgerInSocietyPool(e)) return false;
+      if (typeF == 'society_pool_pending' && !isLedgerInSocietyPool(e)) {
+        return false;
+      }
       if (d.financeEntryIdsWithPayments.contains(e.id)) return false;
       if (modeF != 'all' && e.recordMode != modeF) return false;
       if (monthF != 'all' && ledgerMonthValue(e) != monthF) return false;
-      if (status != 'all' && status != 'unpaid' && e.paymentStatus != status) return false;
+      if (status != 'all' && status != 'unpaid' && e.paymentStatus != status) {
+        return false;
+      }
 
-      if (typeF == 'all' || typeF == 'all_payments' || typeF == 'all_receipts' || typeF == 'society_pool_pending') {
+      if (typeF == 'all' ||
+          typeF == 'all_payments' ||
+          typeF == 'all_receipts' ||
+          typeF == 'society_pool_pending') {
         // include
       } else if (typeF == 'monthly_maintenance') {
         // Web returns early here, so the search box does not narrow these ledger rows.
@@ -300,7 +325,8 @@ class TransactionsView {
         final ch = e.chargeId != null ? d.chargeById[e.chargeId] : null;
         if (ch != null && isMonthlyMaintenanceCharge(ch)) return true;
         if (e.destination == 'current_month_maintenance' &&
-            (e.recordMode == 'outsider_only' || e.recordMode == 'flats_plus_outsider')) {
+            (e.recordMode == 'outsider_only' ||
+                e.recordMode == 'flats_plus_outsider')) {
           return true;
         }
         return false;
@@ -315,10 +341,13 @@ class TransactionsView {
 
       if (search.isEmpty) return true;
       final cp = e.counterparty;
-      final parts = [e.title, e.notes, e.transactionId, cp?.name, cp?.relationToSociety]
-          .where((v) => v != null && v.isNotEmpty)
-          .join(' ')
-          .toLowerCase();
+      final parts = [
+        e.title,
+        e.notes,
+        e.transactionId,
+        cp?.name,
+        cp?.relationToSociety
+      ].where((v) => v != null && v.isNotEmpty).join(' ').toLowerCase();
       return parts.contains(search);
     }).toList();
 
@@ -328,11 +357,14 @@ class TransactionsView {
       final ctx = chargeForUnpaidFilters(data.charges, typeF, monthF);
       final paidSet = {
         for (final p in scopedPayments)
-          if (p.paymentStatus == 'verified' && p.flatNumber.isNotEmpty) p.flatNumber,
+          if (p.paymentStatus == 'verified' && p.flatNumber.isNotEmpty)
+            p.flatNumber,
       };
       final pendingByFlat = <String, String>{};
       for (final p in scopedPayments) {
-        if (p.paymentStatus != 'pending' && p.paymentStatus != 'rejected') continue;
+        if (p.paymentStatus != 'pending' && p.paymentStatus != 'rejected') {
+          continue;
+        }
         if (p.flatNumber.isEmpty) continue;
         pendingByFlat[p.flatNumber] = p.paymentStatus;
       }
@@ -341,13 +373,19 @@ class TransactionsView {
           .where((f) => !paidSet.contains(f.flatNumber))
           .map((f) => UnpaidFlatGridRow(
                 flatNumber: f.flatNumber,
-                primaryName: residentLabelForFlatRow(f.id, f.ownerName, data.primaryByFlatId) ?? '',
+                primaryName: residentLabelForFlatRow(
+                        f.id, f.ownerName, data.primaryByFlatId) ??
+                    '',
                 isOccupied: f.isOccupied,
                 pendingPayment: pendingByFlat[f.flatNumber],
                 dueAmount: ctx?.amount,
                 chargeTitle: ctx?.title,
               ))
-          .where((row) => search.isEmpty || '${row.flatNumber} ${row.primaryName}'.toLowerCase().contains(search))
+          .where((row) =>
+              search.isEmpty ||
+              '${row.flatNumber} ${row.primaryName}'
+                  .toLowerCase()
+                  .contains(search))
           .toList()
         ..sort((a, b) => compareFlatNumbers(a.flatNumber, b.flatNumber));
     }
@@ -383,18 +421,24 @@ class TransactionsView {
       final rMap = <String, TransactionHeadSummaryRow>{};
       for (final p in filteredPayments) {
         final ch = d.chargeById[p.chargeId ?? ''];
-        addTransactionHeadRow(rMap, ch != null ? d.majorHeadForCharge(ch) : kUncategorizedHead, p.amount, p.paymentMethod);
+        addTransactionHeadRow(
+            rMap,
+            ch != null ? d.majorHeadForCharge(ch) : kUncategorizedHead,
+            p.amount,
+            p.paymentMethod);
       }
       for (final e in scopedLedgerOnly) {
         if (d.isSocietyPaymentLedgerEntry(e)) continue;
-        addTransactionHeadRow(rMap, d.ledgerReceiptHead(e), e.totalAmount, e.paymentMethod);
+        addTransactionHeadRow(
+            rMap, d.ledgerReceiptHead(e), e.totalAmount, e.paymentMethod);
       }
       receiptHeads = transactionHeadSummaryRows(rMap);
 
       final pMap = <String, TransactionHeadSummaryRow>{};
       for (final e in scopedLedgerOnly) {
         if (!d.isSocietyPaymentLedgerEntry(e)) continue;
-        final head = financeExpenseHeadFromLedgerEntry(e.title, e.expenseId != null ? data.expenseCategoryById[e.expenseId] : null);
+        final head = financeExpenseHeadFromLedgerEntry(e.title,
+            e.expenseId != null ? data.expenseCategoryById[e.expenseId] : null);
         addTransactionHeadRow(pMap, head, e.totalAmount, e.paymentMethod);
       }
       paymentHeads = transactionHeadSummaryRows(pMap);
@@ -404,8 +448,12 @@ class TransactionsView {
         for (final e in scopedLedgerOnly) ReceiptLineItem.ledger(e),
       ];
       lineItems.sort((a, b) {
-        final flatA = a.payment != null ? a.payment!.flatNumber : primaryFlatFromAllocations(a.entry!.allocations);
-        final flatB = b.payment != null ? b.payment!.flatNumber : primaryFlatFromAllocations(b.entry!.allocations);
+        final flatA = a.payment != null
+            ? a.payment!.flatNumber
+            : primaryFlatFromAllocations(a.entry!.allocations);
+        final flatB = b.payment != null
+            ? b.payment!.flatNumber
+            : primaryFlatFromAllocations(b.entry!.allocations);
         return compareByFlatThenDate(flatA, flatB, a.createdAt, b.createdAt);
       });
     }

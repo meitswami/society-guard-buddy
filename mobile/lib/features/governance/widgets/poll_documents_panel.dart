@@ -121,9 +121,11 @@ class _PollDocumentsPanelState extends State<PollDocumentsPanel> {
               children: [
                 Icon(Icons.description_outlined, size: 14, color: t.primary),
                 const SizedBox(width: 6),
-                Text(
-                  '${context.tr('Documents', 'दस्तावेज़')}${mine.isNotEmpty ? ' (${mine.length})' : ''}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                Flexible(
+                  child: Text(
+                    '${context.tr('Documents', 'दस्तावेज़')}${mine.isNotEmpty ? ' (${mine.length})' : ''}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
                 ),
                 const SizedBox(width: 4),
                 Text(_open ? '▾' : '▸', style: AppText.caption(context)),

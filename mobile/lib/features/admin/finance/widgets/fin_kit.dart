@@ -31,12 +31,16 @@ extension FinI18nX on BuildContext {
 
   String finMethod(String method) {
     final k = 'fin.method.$method';
-    return kFinanceStrings.containsKey(k) ? fin(k) : method.replaceAll('_', ' ');
+    return kFinanceStrings.containsKey(k)
+        ? fin(k)
+        : method.replaceAll('_', ' ');
   }
 }
 
 /// Positive decimal input (web `type="number"`).
-final List<TextInputFormatter> kAmountFormatters = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))];
+final List<TextInputFormatter> kAmountFormatters = [
+  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+];
 
 /// Web `DescriptiveValueButton`: value with an info glyph; tap explains the number.
 class FinInfoValue extends StatelessWidget {
@@ -62,7 +66,8 @@ class FinInfoValue extends StatelessWidget {
     final t = context.tokens;
     return InkWell(
       borderRadius: BorderRadius.circular(6),
-      onTap: () => AppFeedback.info(context, title: title, description: description, howCalculated: howCalculated),
+      onTap: () => AppFeedback.info(context,
+          title: title, description: description, howCalculated: howCalculated),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
         child: Row(
@@ -71,7 +76,10 @@ class FinInfoValue extends StatelessWidget {
             Flexible(
               child: Text(
                 value,
-                style: (style ?? AppText.mono(context, size: 12, weight: FontWeight.w700)).copyWith(color: color),
+                style: (style ??
+                        AppText.mono(context,
+                            size: 12, weight: FontWeight.w700))
+                    .copyWith(color: color),
               ),
             ),
             const SizedBox(width: 3),
@@ -85,7 +93,11 @@ class FinInfoValue extends StatelessWidget {
 
 /// Web `DescriptiveStatSummary`: muted one-liner; tap for description.
 class FinSummaryLine extends StatelessWidget {
-  const FinSummaryLine({super.key, required this.label, required this.description, this.howCalculated});
+  const FinSummaryLine(
+      {super.key,
+      required this.label,
+      required this.description,
+      this.howCalculated});
 
   final String label;
   final String description;
@@ -96,7 +108,8 @@ class FinSummaryLine extends StatelessWidget {
     final t = context.tokens;
     return InkWell(
       borderRadius: BorderRadius.circular(8),
-      onTap: () => AppFeedback.info(context, title: label, description: description, howCalculated: howCalculated),
+      onTap: () => AppFeedback.info(context,
+          title: label, description: description, howCalculated: howCalculated),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
         child: Row(
@@ -104,10 +117,13 @@ class FinSummaryLine extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 1),
-              child: Icon(Icons.info_outline, size: 12, color: t.mutedForeground),
+              child:
+                  Icon(Icons.info_outline, size: 12, color: t.mutedForeground),
             ),
             const SizedBox(width: 6),
-            Expanded(child: Text(label, style: AppText.tiny(context).copyWith(fontSize: 11))),
+            Expanded(
+                child: Text(label,
+                    style: AppText.tiny(context).copyWith(fontSize: 11))),
           ],
         ),
       ),
@@ -133,10 +149,13 @@ class FinChannelBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: ch == PaymentChannel.other ? t.muted : AppTokens.tint(color, 0.15),
+        color:
+            ch == PaymentChannel.other ? t.muted : AppTokens.tint(color, 0.15),
         borderRadius: BorderRadius.circular(99),
       ),
-      child: Text(label.toUpperCase(), style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+      child: Text(label.toUpperCase(),
+          style: TextStyle(
+              fontSize: 9, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }
@@ -158,15 +177,20 @@ class FinStatusPill extends StatelessWidget {
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: AppTokens.tint(c, 0.18), borderRadius: BorderRadius.circular(99)),
-      child: Text(context.finStatus(status), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: c)),
+      decoration: BoxDecoration(
+          color: AppTokens.tint(c, 0.18),
+          borderRadius: BorderRadius.circular(99)),
+      child: Text(context.finStatus(status),
+          style:
+              TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: c)),
     );
   }
 }
 
 /// Uppercase tiny label (`text-[10px] font-medium uppercase text-muted-foreground`).
 class FinMicroLabel extends StatelessWidget {
-  const FinMicroLabel(this.text, {super.key, this.padding = const EdgeInsets.only(bottom: 4)});
+  const FinMicroLabel(this.text,
+      {super.key, this.padding = const EdgeInsets.only(bottom: 4)});
 
   final String text;
   final EdgeInsets padding;
@@ -174,13 +198,16 @@ class FinMicroLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: padding,
-        child: Text(text.toUpperCase(), style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+        child: Text(text.toUpperCase(),
+            style: AppText.tiny(context)
+                .copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.5)),
       );
 }
 
 /// Muted helper text (`text-[10px] text-muted-foreground leading-snug`).
 class FinHint extends StatelessWidget {
-  const FinHint(this.text, {super.key, this.color, this.padding = const EdgeInsets.only(top: 4)});
+  const FinHint(this.text,
+      {super.key, this.color, this.padding = const EdgeInsets.only(top: 4)});
 
   final String text;
   final Color? color;
@@ -189,13 +216,20 @@ class FinHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: padding,
-        child: Text(text, style: AppText.tiny(context).copyWith(fontSize: 11, height: 1.35, color: color)),
+        child: Text(text,
+            style: AppText.tiny(context)
+                .copyWith(fontSize: 11, height: 1.35, color: color)),
       );
 }
 
 /// Tinted bordered box (`rounded-lg border p-3 bg-x/5`).
 class FinTintBox extends StatelessWidget {
-  const FinTintBox({super.key, required this.child, this.color, this.padding = const EdgeInsets.all(12), this.margin});
+  const FinTintBox(
+      {super.key,
+      required this.child,
+      this.color,
+      this.padding = const EdgeInsets.all(12),
+      this.margin});
 
   final Widget child;
   final Color? color;
@@ -210,9 +244,11 @@ class FinTintBox extends StatelessWidget {
       margin: margin,
       padding: padding,
       decoration: BoxDecoration(
-        color: c == null ? AppTokens.tint(t.muted, 0.35) : AppTokens.tint(c, 0.06),
+        color:
+            c == null ? AppTokens.tint(t.muted, 0.35) : AppTokens.tint(c, 0.06),
         borderRadius: BorderRadius.circular(AppTokens.radiusSm),
-        border: Border.all(color: c == null ? t.border : AppTokens.tint(c, 0.3)),
+        border:
+            Border.all(color: c == null ? t.border : AppTokens.tint(c, 0.3)),
       ),
       child: child,
     );
@@ -221,7 +257,12 @@ class FinTintBox extends StatelessWidget {
 
 /// Radio row (web `<label><input type="radio"/> …</label>`).
 class FinRadioRow<T> extends StatelessWidget {
-  const FinRadioRow({super.key, required this.value, required this.group, required this.onChanged, required this.label});
+  const FinRadioRow(
+      {super.key,
+      required this.value,
+      required this.group,
+      required this.onChanged,
+      required this.label});
 
   final T value;
   final T group;
@@ -239,9 +280,12 @@ class FinRadioRow<T> extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(on ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18, color: on ? t.primary : t.mutedForeground),
+            Icon(on ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                size: 18, color: on ? t.primary : t.mutedForeground),
             const SizedBox(width: 8),
-            Expanded(child: Text(label, style: AppText.body(context).copyWith(fontSize: 12))),
+            Expanded(
+                child: Text(label,
+                    style: AppText.body(context).copyWith(fontSize: 12))),
           ],
         ),
       ),
@@ -251,7 +295,12 @@ class FinRadioRow<T> extends StatelessWidget {
 
 /// Checkbox row (web `<label><input type="checkbox"/> …</label>`).
 class FinCheckRow extends StatelessWidget {
-  const FinCheckRow({super.key, required this.value, required this.onChanged, required this.label, this.enabled = true});
+  const FinCheckRow(
+      {super.key,
+      required this.value,
+      required this.onChanged,
+      required this.label,
+      this.enabled = true});
 
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -270,9 +319,12 @@ class FinCheckRow extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(value ? Icons.check_box : Icons.check_box_outline_blank, size: 18, color: value ? t.primary : t.mutedForeground),
+              Icon(value ? Icons.check_box : Icons.check_box_outline_blank,
+                  size: 18, color: value ? t.primary : t.mutedForeground),
               const SizedBox(width: 8),
-              Expanded(child: Text(label, style: AppText.body(context).copyWith(fontSize: 12))),
+              Expanded(
+                  child: Text(label,
+                      style: AppText.body(context).copyWith(fontSize: 12))),
             ],
           ),
         ),
@@ -283,7 +335,12 @@ class FinCheckRow extends StatelessWidget {
 
 /// Web `DateInput`: dd/MM/yyyy typing + calendar picker; emits `yyyy-MM-dd`.
 class FinDateField extends StatefulWidget {
-  const FinDateField({super.key, required this.value, required this.onChanged, this.label, this.enabled = true});
+  const FinDateField(
+      {super.key,
+      required this.value,
+      required this.onChanged,
+      this.label,
+      this.enabled = true});
 
   final String value;
   final ValueChanged<String> onChanged;
@@ -295,7 +352,8 @@ class FinDateField extends StatefulWidget {
 }
 
 class _FinDateFieldState extends State<FinDateField> {
-  late final TextEditingController _ctrl = TextEditingController(text: isoDateToDisplay(widget.value));
+  late final TextEditingController _ctrl =
+      TextEditingController(text: isoDateToDisplay(widget.value));
   final _focus = FocusNode();
 
   @override
@@ -316,7 +374,9 @@ class _FinDateFieldState extends State<FinDateField> {
   @override
   void didUpdateWidget(FinDateField old) {
     super.didUpdateWidget(old);
-    if (!_focus.hasFocus && old.value != widget.value) _ctrl.text = isoDateToDisplay(widget.value);
+    if (!_focus.hasFocus && old.value != widget.value) {
+      _ctrl.text = isoDateToDisplay(widget.value);
+    }
   }
 
   @override
@@ -356,7 +416,8 @@ class _FinDateFieldState extends State<FinDateField> {
       decoration: InputDecoration(
         hintText: 'dd/mm/yyyy',
         suffixIcon: IconButton(
-          icon: Icon(Icons.calendar_today_outlined, size: 18, color: t.mutedForeground),
+          icon: Icon(Icons.calendar_today_outlined,
+              size: 18, color: t.mutedForeground),
           onPressed: widget.enabled ? _pick : null,
         ),
       ),
@@ -368,7 +429,10 @@ class _FinDateFieldState extends State<FinDateField> {
         if (widget.label != null) FieldLabel(widget.label!),
         field,
         if (_ctrl.text.isEmpty)
-          FinHint(context.tr('Type dd/mm/yyyy or use the calendar', 'dd/mm/yyyy लिखें या कैलेंडर चुनें'), padding: const EdgeInsets.only(top: 2)),
+          FinHint(
+              context.tr('Type dd/mm/yyyy or use the calendar',
+                  'dd/mm/yyyy लिखें या कैलेंडर चुनें'),
+              padding: const EdgeInsets.only(top: 2)),
       ],
     );
   }
@@ -376,7 +440,12 @@ class _FinDateFieldState extends State<FinDateField> {
 
 /// Web `<input type="month" min=…>`: shows `MM/yyyy`, opens a month grid.
 class FinMonthField extends StatelessWidget {
-  const FinMonthField({super.key, required this.value, required this.onChanged, this.label, this.min = kFinanceReportingEarliestMonth});
+  const FinMonthField(
+      {super.key,
+      required this.value,
+      required this.onChanged,
+      this.label,
+      this.min = kFinanceReportingEarliestMonth});
 
   final String value;
   final ValueChanged<String> onChanged;
@@ -398,8 +467,11 @@ class FinMonthField extends StatelessWidget {
       onTap: () => _pick(context),
       borderRadius: BorderRadius.circular(AppTokens.radiusSm),
       child: InputDecorator(
-        decoration: InputDecoration(suffixIcon: Icon(Icons.calendar_month_outlined, size: 18, color: t.mutedForeground)),
-        child: Text(isoMonthToDisplay(value), style: TextStyle(fontSize: 14, color: t.foreground)),
+        decoration: InputDecoration(
+            suffixIcon: Icon(Icons.calendar_month_outlined,
+                size: 18, color: t.mutedForeground)),
+        child: Text(isoMonthToDisplay(value),
+            style: TextStyle(fontSize: 14, color: t.foreground)),
       ),
     );
     if (label == null) return box;
@@ -422,7 +494,8 @@ class _MonthPickerDialog extends StatefulWidget {
 }
 
 class _MonthPickerDialogState extends State<_MonthPickerDialog> {
-  late int _year = int.tryParse(widget.initial.split('-').first) ?? DateTime.now().year;
+  late int _year =
+      int.tryParse(widget.initial.split('-').first) ?? DateTime.now().year;
 
   @override
   Widget build(BuildContext context) {
@@ -436,7 +509,9 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
             onPressed: _year > minYear ? () => setState(() => _year--) : null,
           ),
           Expanded(child: Text('$_year', textAlign: TextAlign.center)),
-          IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => setState(() => _year++)),
+          IconButton(
+              icon: const Icon(Icons.chevron_right),
+              onPressed: () => setState(() => _year++)),
         ],
       ),
       content: SizedBox(
@@ -457,7 +532,8 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
                     child: PillChoice(
                       label: englishMonthName(m).substring(0, 3),
                       selected: selected,
-                      onTap: disabled ? () {} : () => Navigator.pop(context, ym),
+                      onTap:
+                          disabled ? () {} : () => Navigator.pop(context, ym),
                     ),
                   ),
                 );
@@ -468,7 +544,8 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(context.fin('fin.cancel'), style: TextStyle(color: t.mutedForeground)),
+          child: Text(context.fin('fin.cancel'),
+              style: TextStyle(color: t.mutedForeground)),
         ),
       ],
     );
@@ -477,7 +554,11 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
 
 /// Web `ExportFormatMenu` (PDF / Excel / Word / CSV).
 class FinExportMenuButton extends StatelessWidget {
-  const FinExportMenuButton({super.key, required this.label, required this.onExport, this.enabled = true});
+  const FinExportMenuButton(
+      {super.key,
+      required this.label,
+      required this.onExport,
+      this.enabled = true});
 
   final String label;
   final ValueChanged<FinExportFormat> onExport;
@@ -490,10 +571,18 @@ class FinExportMenuButton extends StatelessWidget {
       enabled: enabled,
       onSelected: onExport,
       itemBuilder: (_) => [
-        PopupMenuItem(value: FinExportFormat.pdf, child: _menuRow(Icons.picture_as_pdf_outlined, 'PDF')),
-        PopupMenuItem(value: FinExportFormat.excel, child: _menuRow(Icons.table_chart_outlined, 'Excel (.xlsx)')),
-        PopupMenuItem(value: FinExportFormat.word, child: _menuRow(Icons.description_outlined, 'Word (.doc)')),
-        PopupMenuItem(value: FinExportFormat.csv, child: _menuRow(Icons.download_outlined, 'CSV')),
+        PopupMenuItem(
+            value: FinExportFormat.pdf,
+            child: _menuRow(Icons.picture_as_pdf_outlined, 'PDF')),
+        PopupMenuItem(
+            value: FinExportFormat.excel,
+            child: _menuRow(Icons.table_chart_outlined, 'Excel (.xlsx)')),
+        PopupMenuItem(
+            value: FinExportFormat.word,
+            child: _menuRow(Icons.description_outlined, 'Word (.doc)')),
+        PopupMenuItem(
+            value: FinExportFormat.csv,
+            child: _menuRow(Icons.download_outlined, 'CSV')),
       ],
       child: Opacity(
         opacity: enabled ? 1 : 0.5,
@@ -507,9 +596,14 @@ class FinExportMenuButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.download_outlined, size: 14, color: t.secondaryForeground),
+              Icon(Icons.download_outlined,
+                  size: 14, color: t.secondaryForeground),
               const SizedBox(width: 4),
-              Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.secondaryForeground)),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: t.secondaryForeground)),
             ],
           ),
         ),
@@ -517,13 +611,20 @@ class FinExportMenuButton extends StatelessWidget {
     );
   }
 
-  Widget _menuRow(IconData icon, String label) =>
-      Row(children: [Icon(icon, size: 16), const SizedBox(width: 8), Text(label, style: const TextStyle(fontSize: 13))]);
+  Widget _menuRow(IconData icon, String label) => Row(children: [
+        Icon(icon, size: 16),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 13))
+      ]);
 }
 
 /// Web `SharePdfWhatsAppButton` (green tint) — builds the PDF and opens the share sheet.
 class FinShareButton extends StatefulWidget {
-  const FinShareButton({super.key, required this.label, required this.onShare, this.enabled = true});
+  const FinShareButton(
+      {super.key,
+      required this.label,
+      required this.onShare,
+      this.enabled = true});
 
   final String label;
   final Future<void> Function() onShare;
@@ -559,7 +660,11 @@ class _FinShareButtonState extends State<FinShareButton> {
                     await widget.onShare();
                   } catch (_) {
                     if (context.mounted) {
-                      AppFeedback.toast(context, context.tr('Could not share PDF', 'PDF साझा नहीं हो सका'), tone: BadgeTone.alert);
+                      AppFeedback.toast(
+                          context,
+                          context.tr(
+                              'Could not share PDF', 'PDF साझा नहीं हो सका'),
+                          tone: BadgeTone.alert);
                     }
                   } finally {
                     if (mounted) setState(() => _busy = false);
@@ -571,13 +676,20 @@ class _FinShareButtonState extends State<FinShareButton> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (_busy)
-                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c))
+                  SizedBox(
+                      width: 14,
+                      height: 14,
+                      child:
+                          CircularProgressIndicator(strokeWidth: 2, color: c))
                 else
                   Icon(Icons.share_outlined, size: 14, color: c),
                 const SizedBox(width: 4),
                 Text(
-                  _busy ? context.tr('Sharing…', 'साझा हो रहा है…') : widget.label,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: c),
+                  _busy
+                      ? context.tr('Sharing…', 'साझा हो रहा है…')
+                      : widget.label,
+                  style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w500, color: c),
                 ),
               ],
             ),
@@ -590,7 +702,13 @@ class _FinShareButtonState extends State<FinShareButton> {
 
 /// Small bordered action (web `btn-secondary text-[10px] py-1 px-2`).
 class FinMiniButton extends StatelessWidget {
-  const FinMiniButton({super.key, required this.label, required this.onTap, this.icon, this.color, this.filled = false});
+  const FinMiniButton(
+      {super.key,
+      required this.label,
+      required this.onTap,
+      this.icon,
+      this.color,
+      this.filled = false});
 
   final String label;
   final VoidCallback? onTap;
@@ -602,7 +720,9 @@ class FinMiniButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final fg = filled ? t.primaryForeground : (color ?? t.secondaryForeground);
-    final bg = filled ? (color ?? t.primary) : (color == null ? t.secondary : Colors.transparent);
+    final bg = filled
+        ? (color ?? t.primary)
+        : (color == null ? t.secondary : Colors.transparent);
     return Opacity(
       opacity: onTap == null ? 0.5 : 1,
       child: Material(
@@ -619,8 +739,18 @@ class FinMiniButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (icon != null) ...[Icon(icon, size: 12, color: fg), const SizedBox(width: 4)],
-                Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: fg)),
+                if (icon != null) ...[
+                  Icon(icon, size: 12, color: fg),
+                  const SizedBox(width: 4)
+                ],
+                Flexible(
+                  child: Text(label,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: fg)),
+                ),
               ],
             ),
           ),
@@ -632,7 +762,12 @@ class FinMiniButton extends StatelessWidget {
 
 /// Compact dropdown used inline on cards (status selects).
 class FinInlineSelect<T> extends StatelessWidget {
-  const FinInlineSelect({super.key, required this.value, required this.items, required this.labelOf, required this.onChanged});
+  const FinInlineSelect(
+      {super.key,
+      required this.value,
+      required this.items,
+      required this.labelOf,
+      required this.onChanged});
 
   final T value;
   final List<T> items;
@@ -644,7 +779,12 @@ class FinInlineSelect<T> extends StatelessWidget {
     final t = context.tokens;
     return PopupMenuButton<T>(
       onSelected: onChanged,
-      itemBuilder: (_) => [for (final i in items) PopupMenuItem(value: i, child: Text(labelOf(i), style: const TextStyle(fontSize: 13)))],
+      itemBuilder: (_) => [
+        for (final i in items)
+          PopupMenuItem(
+              value: i,
+              child: Text(labelOf(i), style: const TextStyle(fontSize: 13)))
+      ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
@@ -655,7 +795,8 @@ class FinInlineSelect<T> extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(labelOf(value), style: TextStyle(fontSize: 11, color: t.foreground)),
+            Text(labelOf(value),
+                style: TextStyle(fontSize: 11, color: t.foreground)),
             Icon(Icons.arrow_drop_down, size: 16, color: t.mutedForeground),
           ],
         ),
@@ -675,7 +816,12 @@ class FinCol {
 
 /// Horizontally scrollable compact table (web `overflow-x-auto` + `table text-[10px]`).
 class FinTable extends StatelessWidget {
-  const FinTable({super.key, required this.columns, required this.rows, this.footer, this.onRowTap});
+  const FinTable(
+      {super.key,
+      required this.columns,
+      required this.rows,
+      this.footer,
+      this.onRowTap});
 
   final List<FinCol> columns;
   final List<List<Widget>> rows;
@@ -685,18 +831,25 @@ class FinTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    Widget line(List<Widget> cells, {Color? bg, bool header = false, VoidCallback? onTap}) {
+    Widget line(List<Widget> cells,
+        {Color? bg, bool header = false, VoidCallback? onTap}) {
       final row = Container(
-        decoration: BoxDecoration(color: bg, border: Border(bottom: BorderSide(color: AppTokens.tint(t.border, 0.8)))),
+        decoration: BoxDecoration(
+            color: bg,
+            border: Border(
+                bottom: BorderSide(color: AppTokens.tint(t.border, 0.8)))),
         child: Row(
           children: [
             for (var i = 0; i < columns.length; i++)
               SizedBox(
                 width: columns[i].width,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
                   child: Align(
-                    alignment: columns[i].right ? Alignment.centerRight : Alignment.centerLeft,
+                    alignment: columns[i].right
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
                     child: i < cells.length ? cells[i] : const SizedBox(),
                   ),
                 ),
@@ -707,18 +860,25 @@ class FinTable extends StatelessWidget {
       return onTap == null ? row : InkWell(onTap: onTap, child: row);
     }
 
-    final headerStyle = TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.mutedForeground);
+    final headerStyle = TextStyle(
+        fontSize: 10, fontWeight: FontWeight.w600, color: t.mutedForeground);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Container(
-        decoration: BoxDecoration(border: Border.all(color: t.border), borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(
+            border: Border.all(color: t.border),
+            borderRadius: BorderRadius.circular(6)),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            line([for (final c in columns) Text(c.label, style: headerStyle)], bg: AppTokens.tint(t.muted, 0.6), header: true),
-            for (var r = 0; r < rows.length; r++) line(rows[r], onTap: onRowTap == null ? null : () => onRowTap!(r)),
-            if (footer != null) line(footer!, bg: AppTokens.tint(t.muted, 0.35)),
+            line([for (final c in columns) Text(c.label, style: headerStyle)],
+                bg: AppTokens.tint(t.muted, 0.6), header: true),
+            for (var r = 0; r < rows.length; r++)
+              line(rows[r],
+                  onTap: onRowTap == null ? null : () => onRowTap!(r)),
+            if (footer != null)
+              line(footer!, bg: AppTokens.tint(t.muted, 0.35)),
           ],
         ),
       ),
@@ -727,14 +887,26 @@ class FinTable extends StatelessWidget {
 }
 
 /// Table cell text helpers.
-Widget finCell(BuildContext context, String text, {bool mono = false, bool bold = false, Color? color, int maxLines = 2}) => Text(
+Widget finCell(BuildContext context, String text,
+        {bool mono = false,
+        bool bold = false,
+        Color? color,
+        int maxLines = 2}) =>
+    Text(
       text,
       maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
       style: mono
-          ? AppText.mono(context, size: 10, weight: bold ? FontWeight.w700 : FontWeight.w400, color: color)
-          : TextStyle(fontSize: 10, fontWeight: bold ? FontWeight.w600 : FontWeight.w400, color: color ?? context.tokens.foreground),
+          ? AppText.mono(context,
+              size: 10,
+              weight: bold ? FontWeight.w700 : FontWeight.w400,
+              color: color)
+          : TextStyle(
+              fontSize: 10,
+              fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
+              color: color ?? context.tokens.foreground),
     );
 
 /// Text-field controller that notifies the parent on change.
-TextEditingController finController([String text = '']) => TextEditingController(text: text);
+TextEditingController finController([String text = '']) =>
+    TextEditingController(text: text);

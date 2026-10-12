@@ -31,14 +31,16 @@ class FinExportFile {
   final String? warning;
 }
 
-const _mimeExcel = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const _mimeExcel =
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const _mimeWord = 'application/msword';
 const _mimeCsv = 'text/csv';
 const _mimePdf = 'application/pdf';
 
 /// Share a generated file via the system share sheet (Save to Files / Drive / WhatsApp …).
 Future<void> shareFinanceFile(FinExportFile f, {String? message}) =>
-    ExportKit.shareBytes(f.bytes, f.fileName, mimeType: f.mimeType, text: message);
+    ExportKit.shareBytes(f.bytes, f.fileName,
+        mimeType: f.mimeType, text: message);
 
 String _nowIso() => DateTime.now().toIso8601String();
 
@@ -90,14 +92,22 @@ String _csvCell(Object? v) {
 
 /// Web `rowsToCsvBlob` (+ UTF-8 BOM so Excel opens Hindi text).
 Uint8List financeCsvBytes(List<String> headers, List<List<Object?>> rows) {
-  final lines = [headers.map(_csvCell).join(','), ...rows.map((r) => r.map(_csvCell).join(','))];
-  return Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(lines.join('\n'))]);
+  final lines = [
+    headers.map(_csvCell).join(','),
+    ...rows.map((r) => r.map(_csvCell).join(','))
+  ];
+  return Uint8List.fromList(
+      [0xEF, 0xBB, 0xBF, ...utf8.encode(lines.join('\n'))]);
 }
 
-String _esc(String t) =>
-    t.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+String _esc(String t) => t
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 
-String _htmlTable(List<String> headers, List<List<Object?>> rows, [Set<int> numericCols = const {}]) {
+String _htmlTable(List<String> headers, List<List<Object?>> rows,
+    [Set<int> numericCols = const {}]) {
   final head = headers.map((h) => '<th>${_esc(h)}</th>').join();
   final body = rows.map((r) {
     final cells = [
@@ -137,29 +147,41 @@ pw.Widget _pdfTable(
   double fontSize = 7,
   Set<int> boldRows = const {},
 }) {
-  pw.Widget c(String text, {bool header = false, bool right = false, bool bold = false}) => pw.Padding(
+  pw.Widget c(String text,
+          {bool header = false, bool right = false, bool bold = false}) =>
+      pw.Padding(
         padding: const pw.EdgeInsets.symmetric(horizontal: 2.5, vertical: 2),
         child: pw.Text(
           text,
           textAlign: right ? pw.TextAlign.right : pw.TextAlign.left,
           maxLines: 3,
-          style: pw.TextStyle(fontSize: header ? fontSize + 0.5 : fontSize, fontWeight: header || bold ? pw.FontWeight.bold : null),
+          style: pw.TextStyle(
+              fontSize: header ? fontSize + 0.5 : fontSize,
+              fontWeight: header || bold ? pw.FontWeight.bold : null),
         ),
       );
   return pw.Table(
     columnWidths: widths,
-    border: const pw.TableBorder(horizontalInside: pw.BorderSide(color: PdfColors.grey300, width: 0.4)),
+    border: const pw.TableBorder(
+        horizontalInside: pw.BorderSide(color: PdfColors.grey300, width: 0.4)),
     children: [
       pw.TableRow(
         decoration: const pw.BoxDecoration(color: kPdfGreyFill),
         repeat: true,
-        children: [for (var i = 0; i < headers.length; i++) c(headers[i], header: true, right: rightAligned.contains(i))],
+        children: [
+          for (var i = 0; i < headers.length; i++)
+            c(headers[i], header: true, right: rightAligned.contains(i))
+        ],
       ),
       for (var r = 0; r < rows.length; r++)
         pw.TableRow(
-          decoration: boldRows.contains(r) ? const pw.BoxDecoration(color: kPdfGreyFill) : null,
+          decoration: boldRows.contains(r)
+              ? const pw.BoxDecoration(color: kPdfGreyFill)
+              : null,
           children: [
-            for (var i = 0; i < rows[r].length; i++) c(rows[r][i], right: rightAligned.contains(i), bold: boldRows.contains(r)),
+            for (var i = 0; i < rows[r].length; i++)
+              c(rows[r][i],
+                  right: rightAligned.contains(i), bold: boldRows.contains(r)),
           ],
         ),
     ],
@@ -205,11 +227,18 @@ class MaintenanceReceiptPdfInput {
 String _orDash(String? v) => (v == null || v.trim().isEmpty) ? '—' : v.trim();
 
 /// Official maintenance payment receipt on society letterhead (Hindi-capable fonts).
-Future<FinExportFile> buildMaintenanceReceiptPdf(MaintenanceReceiptPdfInput input, {FinLetterheadContext? context}) async {
-  final ctx = context ?? await resolveLetterheadContext(input.societyId, preferredMode: 'letterhead');
+Future<FinExportFile> buildMaintenanceReceiptPdf(
+    MaintenanceReceiptPdfInput input,
+    {FinLetterheadContext? context}) async {
+  final ctx = context ??
+      await resolveLetterheadContext(input.societyId,
+          preferredMode: 'letterhead');
   final lh = ctx.letterhead ?? FinLetterhead.nameOnly('Maintenance Receipt');
   final pageTheme = await financePageTheme(letterhead: lh, mode: ctx.mode);
-  final doc = pw.Document(theme: pageTheme.theme, title: 'Maintenance Payment Receipt', author: 'Kutumbika');
+  final doc = pw.Document(
+      theme: pageTheme.theme,
+      title: 'Maintenance Payment Receipt',
+      author: 'Kutumbika');
 
   pw.Widget field(String label, String value) => pw.Padding(
         padding: pw.EdgeInsets.only(bottom: mm(1.3)),
@@ -219,9 +248,14 @@ Future<FinExportFile> buildMaintenanceReceiptPdf(MaintenanceReceiptPdfInput inpu
             pw.SizedBox(
               width: mm(38),
               child: pw.Text('$label:',
-                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: const PdfColor.fromInt(0xFF4B5563))),
+                  style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                      color: const PdfColor.fromInt(0xFF4B5563))),
             ),
-            pw.Expanded(child: pw.Text(value.isEmpty ? '—' : value, style: const pw.TextStyle(fontSize: 9))),
+            pw.Expanded(
+                child: pw.Text(value.isEmpty ? '—' : value,
+                    style: const pw.TextStyle(fontSize: 9))),
           ],
         ),
       );
@@ -238,21 +272,40 @@ Future<FinExportFile> buildMaintenanceReceiptPdf(MaintenanceReceiptPdfInput inpu
       ),
       pw.Text(
         'This is an official acknowledgement of maintenance / charge payment received by the society.',
-        style: const pw.TextStyle(fontSize: 10, color: PdfColor.fromInt(0xFF374151)),
+        style: const pw.TextStyle(
+            fontSize: 10, color: PdfColor.fromInt(0xFF374151)),
       ),
       pw.SizedBox(height: mm(4)),
       field('Receipt No.', input.receiptNumber),
       field('Flat', input.flatNumber),
       field('Member', _orDash(input.residentName)),
-      field('Charge', (input.chargeTitle ?? '').trim().isEmpty ? 'Maintenance' : input.chargeTitle!.trim()),
+      field(
+          'Charge',
+          (input.chargeTitle ?? '').trim().isEmpty
+              ? 'Maintenance'
+              : input.chargeTitle!.trim()),
       field('Amount', moneyInr(input.amount)),
-      field('Method', input.paymentMethod.isEmpty ? '—' : input.paymentMethod.toUpperCase()),
-      field('Paid on', (input.paymentDate ?? '').isEmpty ? '—' : fmtDateLocal(input.paymentDate)),
-      field('Due date', (input.dueDate ?? '').isEmpty ? '—' : fmtDateLocal(input.dueDate)),
+      field(
+          'Method',
+          input.paymentMethod.isEmpty
+              ? '—'
+              : input.paymentMethod.toUpperCase()),
+      field(
+          'Paid on',
+          (input.paymentDate ?? '').isEmpty
+              ? '—'
+              : fmtDateLocal(input.paymentDate)),
+      field('Due date',
+          (input.dueDate ?? '').isEmpty ? '—' : fmtDateLocal(input.dueDate)),
       field('Txn / UTR', _orDash(input.transactionId)),
       field('Verified by', _orDash(input.verifiedBy)),
-      field('Verified at', (input.verifiedAt ?? '').isEmpty ? '—' : fmtDateTimeFullLocal(input.verifiedAt)),
-      if ((input.notes ?? '').trim().isNotEmpty) field('Notes', input.notes!.trim()),
+      field(
+          'Verified at',
+          (input.verifiedAt ?? '').isEmpty
+              ? '—'
+              : fmtDateTimeFullLocal(input.verifiedAt)),
+      if ((input.notes ?? '').trim().isNotEmpty)
+        field('Notes', input.notes!.trim()),
       signatureBlock(),
     ],
   ));
@@ -276,8 +329,10 @@ Future<Uint8List> buildTransactionStatementPdf({
   final total = sumAmountRows(rows.map((r) => r.amountRow));
   final monthly = monthlyAmountTotals(rows.map((r) => r.amountRow));
   final lh = FinLetterhead.nameOnly(societyName);
-  final pageTheme = await financePageTheme(letterhead: lh, mode: 'letterhead', landscape: true);
-  final doc = pw.Document(theme: pageTheme.theme, title: title, author: 'Kutumbika');
+  final pageTheme = await financePageTheme(
+      letterhead: lh, mode: 'letterhead', landscape: true);
+  final doc =
+      pw.Document(theme: pageTheme.theme, title: title, author: 'Kutumbika');
   final cellRows = [
     ...rows.map(transactionRowToCells),
     ['', '', '', '', '', '', 'Total', moneyInr(total), '', ''],
@@ -285,16 +340,24 @@ Future<Uint8List> buildTransactionStatementPdf({
   doc.addPage(pw.MultiPage(
     pageTheme: pageTheme,
     build: (_) => [
-      pw.Text(title, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+      pw.Text(title,
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
       pw.SizedBox(height: 3),
-      pw.Text(subtitle, style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
-      pw.Text('Generated: ${fmtDateTimeFullLocal(generatedAt)}', style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
-      pw.Text('Transaction total: ${moneyInr(total)}', style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
+      pw.Text(subtitle,
+          style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
+      pw.Text('Generated: ${fmtDateTimeFullLocal(generatedAt)}',
+          style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
+      pw.Text('Transaction total: ${moneyInr(total)}',
+          style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
       pw.SizedBox(height: mm(5)),
-      _pdfTable(kTransactionHeaders, cellRows, rightAligned: const {7}, fontSize: 6.5, boldRows: {cellRows.length - 1}),
+      _pdfTable(kTransactionHeaders, cellRows,
+          rightAligned: const {7},
+          fontSize: 6.5,
+          boldRows: {cellRows.length - 1}),
       if (monthly.isNotEmpty) ...[
         pw.SizedBox(height: mm(6)),
-        pw.Text('Monthly totals', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+        pw.Text('Monthly totals',
+            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: mm(2)),
         _pdfTable(
           const ['Month', 'Entries', 'Total'],
@@ -304,7 +367,11 @@ Future<Uint8List> buildTransactionStatementPdf({
           ],
           rightAligned: const {2},
           boldRows: {monthly.length},
-          widths: const {0: pw.FlexColumnWidth(2), 1: pw.FlexColumnWidth(1), 2: pw.FlexColumnWidth(2)},
+          widths: const {
+            0: pw.FlexColumnWidth(2),
+            1: pw.FlexColumnWidth(1),
+            2: pw.FlexColumnWidth(2)
+          },
         ),
       ],
     ],
@@ -325,7 +392,11 @@ Future<FinExportFile> buildTransactionStatement(
   switch (format) {
     case FinExportFormat.pdf:
       return FinExportFile(
-        await buildTransactionStatementPdf(societyName: societyName, title: title, subtitle: subtitle, rows: rows),
+        await buildTransactionStatementPdf(
+            societyName: societyName,
+            title: title,
+            subtitle: subtitle,
+            rows: rows),
         '$filenameBase.pdf',
         _mimePdf,
       );
@@ -336,7 +407,11 @@ Future<FinExportFile> buildTransactionStatement(
             ...rows.map(transactionRowToRawCells),
             ['', '', '', '', '', '', 'Total', total, '', ''],
           ]),
-          FinSheet('Monthly totals', const ['Month', 'Entries', 'Total amount'], [
+          FinSheet('Monthly totals', const [
+            'Month',
+            'Entries',
+            'Total amount'
+          ], [
             for (final m in monthly) [m.label, m.count, m.total],
             ['Total', rows.length, total],
           ]),
@@ -347,13 +422,22 @@ Future<FinExportFile> buildTransactionStatement(
     case FinExportFormat.word:
       final table = _htmlTable(
         kTransactionHeaders,
-        [...rows.map(transactionRowToCells), ['', '', '', '', '', '', 'Total', moneyInr(total), '', '']],
+        [
+          ...rows.map(transactionRowToCells),
+          ['', '', '', '', '', '', 'Total', moneyInr(total), '', '']
+        ],
         const {7},
       );
-      final monthlyTable = _htmlTable(const ['Month', 'Entries', 'Total amount'], [
+      final monthlyTable = _htmlTable(const [
+        'Month',
+        'Entries',
+        'Total amount'
+      ], [
         for (final m in monthly) [m.label, '${m.count}', moneyInr(m.total)],
         ['Total', '${rows.length}', moneyInr(total)],
-      ], const {2});
+      ], const {
+        2
+      });
       final body = '''
     <h1>${_esc(societyName)}</h1>
     <p class="meta">${_esc(title)}</p>
@@ -361,7 +445,8 @@ Future<FinExportFile> buildTransactionStatement(
     <p class="meta">Generated: ${fmtDateTimeFullLocal(_nowIso())} · ${rows.length} row(s) · Total ${moneyInr(total)}</p>
     <h2>Transactions</h2>$table
     <h2>Monthly totals</h2>$monthlyTable''';
-      return FinExportFile(financeWordBytes(title, body), '$filenameBase.doc', _mimeWord);
+      return FinExportFile(
+          financeWordBytes(title, body), '$filenameBase.doc', _mimeWord);
     case FinExportFormat.csv:
       return FinExportFile(
         financeCsvBytes(kTransactionHeaders, [
@@ -383,12 +468,17 @@ Future<FinExportFile> buildTransactionStatement(
 
 const _headWiseHeaders = ['Head', 'Cash', 'Bank / UPI', 'Other', 'Total'];
 
-List<(String, String)> _periodSummaryRows(FinancePeriodReportResult r, String from, String to, String generatedAt) => [
+List<(String, String)> _periodSummaryRows(FinancePeriodReportResult r,
+        String from, String to, String generatedAt) =>
+    [
       ('Period', '${isoDateToDisplay(from)} to ${isoDateToDisplay(to)}'),
       ('Generated', fmtDateTimeFullLocal(generatedAt)),
       ('', ''),
       ('Collection receipts — Cash', moneyInr(r.receiptByMethod.cash)),
-      ('Collection receipts — Bank / UPI / online', moneyInr(r.receiptByMethod.bank)),
+      (
+        'Collection receipts — Bank / UPI / online',
+        moneyInr(r.receiptByMethod.bank)
+      ),
       ('Collection receipts — Other', moneyInr(r.receiptByMethod.other)),
       ('Total receipts', moneyInr(r.totalReceipts)),
       ('Verified payment rows', '${r.verifiedPaymentCount}'),
@@ -412,7 +502,10 @@ List<(String, String)> _periodSummaryRows(FinancePeriodReportResult r, String fr
     ];
 
 List<List<Object?>> _headRows(List<MapEntry<String, ChannelByHeadRow>> rows) =>
-    [for (final e in rows) [e.key, e.value.cash, e.value.bank, e.value.other, e.value.total]];
+    [
+      for (final e in rows)
+        [e.key, e.value.cash, e.value.bank, e.value.other, e.value.total]
+    ];
 
 const _periodFootnote =
     'Receipts use verified maintenance payment dates (verified_at / payment_date / created_at). Expenses use ledger separate-entry rows by transaction_date.';
@@ -428,22 +521,44 @@ Future<Uint8List> buildFinancePeriodReportPdf({
   final generatedAt = _nowIso();
   final lh = context.letterhead ?? FinLetterhead.nameOnly(societyName);
   final pageTheme = await financePageTheme(letterhead: lh, mode: context.mode);
-  final doc = pw.Document(theme: pageTheme.theme, title: 'Finance period report', author: 'Kutumbika');
+  final doc = pw.Document(
+      theme: pageTheme.theme,
+      title: 'Finance period report',
+      author: 'Kutumbika');
 
-  pw.Widget headTable(String title, List<MapEntry<String, ChannelByHeadRow>> rows, String footerLabel, double cash,
-      double bank, double other, double total) {
+  pw.Widget headTable(
+      String title,
+      List<MapEntry<String, ChannelByHeadRow>> rows,
+      String footerLabel,
+      double cash,
+      double bank,
+      double other,
+      double total) {
     final cells = [
       if (rows.isEmpty)
         ['(none in this period)', '—', '—', '—', '—']
       else
         for (final e in rows)
-          [e.key, moneyInr(e.value.cash), moneyInr(e.value.bank), moneyInr(e.value.other), moneyInr(e.value.total)],
-      [footerLabel, moneyInr(cash), moneyInr(bank), moneyInr(other), moneyInr(total)],
+          [
+            e.key,
+            moneyInr(e.value.cash),
+            moneyInr(e.value.bank),
+            moneyInr(e.value.other),
+            moneyInr(e.value.total)
+          ],
+      [
+        footerLabel,
+        moneyInr(cash),
+        moneyInr(bank),
+        moneyInr(other),
+        moneyInr(total)
+      ],
     ];
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(title, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+        pw.Text(title,
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: mm(2)),
         _pdfTable(
           _headWiseHeaders,
@@ -471,25 +586,45 @@ Future<Uint8List> buildFinancePeriodReportPdf({
       reportHeaderBlock(
         title: 'Finance period report',
         society: societyName,
-        period: '${isoDateToDisplay(periodFrom)} to ${isoDateToDisplay(periodTo)}',
+        period:
+            '${isoDateToDisplay(periodFrom)} to ${isoDateToDisplay(periodTo)}',
         date: fmtDateTimeFullLocal(generatedAt),
         generatedBy: generatedBy,
       ),
-      pw.Text('${r.verifiedPaymentCount} verified payment row(s) · Ledger-only inflows: ${moneyInr(r.extraLedgerReceipt)}',
+      pw.Text(
+          '${r.verifiedPaymentCount} verified payment row(s) · Ledger-only inflows: ${moneyInr(r.extraLedgerReceipt)}',
           style: const pw.TextStyle(fontSize: 8)),
       pw.SizedBox(height: mm(4)),
-      headTable('Collection receipts (head-wise)', r.receiptByHead, 'All receipts', r.receiptByMethod.cash,
-          r.receiptByMethod.bank, r.receiptByMethod.other, r.totalReceipts),
-      headTable('Expenses (head-wise)', r.expenseByHead, 'All expenses', r.expenseByMethod.cash, r.expenseByMethod.bank,
-          r.expenseByMethod.other, r.totalExpenses),
-      pw.Text('Summary', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+      headTable(
+          'Collection receipts (head-wise)',
+          r.receiptByHead,
+          'All receipts',
+          r.receiptByMethod.cash,
+          r.receiptByMethod.bank,
+          r.receiptByMethod.other,
+          r.totalReceipts),
+      headTable(
+          'Expenses (head-wise)',
+          r.expenseByHead,
+          'All expenses',
+          r.expenseByMethod.cash,
+          r.expenseByMethod.bank,
+          r.expenseByMethod.other,
+          r.totalExpenses),
+      pw.Text('Summary',
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
       pw.SizedBox(height: 3),
-      pw.Text('  Cash in hand (net): ${moneyInr(r.cashInHand)}', style: const pw.TextStyle(fontSize: 10)),
-      pw.Text('  Cash in bank (net): ${moneyInr(r.cashInBank)}', style: const pw.TextStyle(fontSize: 10)),
-      pw.Text('  Other channels (net): ${moneyInr(r.otherNet)}', style: const pw.TextStyle(fontSize: 10)),
-      pw.Text('  Total balance: ${moneyInr(r.totalBalance)}', style: const pw.TextStyle(fontSize: 11)),
+      pw.Text('  Cash in hand (net): ${moneyInr(r.cashInHand)}',
+          style: const pw.TextStyle(fontSize: 10)),
+      pw.Text('  Cash in bank (net): ${moneyInr(r.cashInBank)}',
+          style: const pw.TextStyle(fontSize: 10)),
+      pw.Text('  Other channels (net): ${moneyInr(r.otherNet)}',
+          style: const pw.TextStyle(fontSize: 10)),
+      pw.Text('  Total balance: ${moneyInr(r.totalBalance)}',
+          style: const pw.TextStyle(fontSize: 11)),
       pw.SizedBox(height: mm(4)),
-      pw.Text(_periodFootnote, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
+      pw.Text(_periodFootnote,
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
       signatureBlock(),
     ],
   ));
@@ -526,28 +661,56 @@ Future<FinExportFile> buildFinancePeriodReport(
     case FinExportFormat.excel:
       return FinExportFile(
         financeExcelBytes([
-          FinSheet('Summary', const ['Item', 'Value'], [for (final s in summary) [s.$1, s.$2]]),
-          FinSheet('Receipts by head', _headWiseHeaders, _headRows(report.receiptByHead)),
-          FinSheet('Expenses by head', _headWiseHeaders, _headRows(report.expenseByHead)),
+          FinSheet('Summary', const [
+            'Item',
+            'Value'
+          ], [
+            for (final s in summary) [s.$1, s.$2]
+          ]),
+          FinSheet('Receipts by head', _headWiseHeaders,
+              _headRows(report.receiptByHead)),
+          FinSheet('Expenses by head', _headWiseHeaders,
+              _headRows(report.expenseByHead)),
         ]),
         '$filenameBase.xlsx',
         _mimeExcel,
       );
     case FinExportFormat.word:
-      List<List<Object?>> money(List<List<Object?>> rows) =>
-          [for (final r in rows) [for (final c in r) c is num ? moneyInr(c) : c]];
+      List<List<Object?>> money(List<List<Object?>> rows) => [
+            for (final r in rows)
+              [for (final c in r) c is num ? moneyInr(c) : c]
+          ];
       final body = '''
     <h1>${_esc(societyName.isEmpty ? 'Society' : societyName)}</h1>
     <p class="meta">Finance period report · ${isoDateToDisplay(periodFrom)} to ${isoDateToDisplay(periodTo)}</p>
     <p class="meta">Generated: ${fmtDateTimeFullLocal(generatedAt)}</p>
-    <h2>Summary</h2>${_htmlTable(const ['Item', 'Value'], [for (final s in summary) [s.$1, s.$2]])}
-    <h2>Collection receipts (head-wise)</h2>${_htmlTable(_headWiseHeaders, money(_headRows(report.receiptByHead)), const {1, 2, 3, 4})}
-    <h2>Expenses (head-wise)</h2>${_htmlTable(_headWiseHeaders, money(_headRows(report.expenseByHead)), const {1, 2, 3, 4})}
+    <h2>Summary</h2>${_htmlTable(const [
+            'Item',
+            'Value'
+          ], [
+            for (final s in summary) [s.$1, s.$2]
+          ])}
+    <h2>Collection receipts (head-wise)</h2>${_htmlTable(_headWiseHeaders, money(_headRows(report.receiptByHead)), const {
+            1,
+            2,
+            3,
+            4
+          })}
+    <h2>Expenses (head-wise)</h2>${_htmlTable(_headWiseHeaders, money(_headRows(report.expenseByHead)), const {
+            1,
+            2,
+            3,
+            4
+          })}
     <p class="meta">Receipts use verified maintenance payment dates. Expenses use ledger separate-entry rows by transaction_date.</p>''';
-      return FinExportFile(financeWordBytes('Finance period report', body), '$filenameBase.doc', _mimeWord);
+      return FinExportFile(financeWordBytes('Finance period report', body),
+          '$filenameBase.doc', _mimeWord);
     case FinExportFormat.csv:
       return FinExportFile(
-        financeCsvBytes(const ['Item', 'Value'], [
+        financeCsvBytes(const [
+          'Item',
+          'Value'
+        ], [
           for (final s in summary) [s.$1, s.$2],
           ['', ''],
           ['Collection receipts (head-wise)', ''],
@@ -567,7 +730,10 @@ Future<FinExportFile> buildFinancePeriodReport(
 // ─────────────── head-wise drill-down PDF (ReportDetailModal share) ───────────────
 
 String reportDetailPdfFilename(String title) {
-  var slug = title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-|-$'), '');
+  var slug = title
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-|-$'), '');
   if (slug.length > 48) slug = slug.substring(0, 48);
   return '${slug.isEmpty ? 'report-detail' : slug}-${todayRecordingDate()}.pdf';
 }
@@ -581,21 +747,28 @@ Future<Uint8List> buildReportDetailPdf({
 }) async {
   final lh = FinLetterhead.nameOnly(societyName);
   final pageTheme = await financePageTheme(letterhead: lh, mode: 'letterhead');
-  final doc = pw.Document(theme: pageTheme.theme, title: title, author: 'Kutumbika');
+  final doc =
+      pw.Document(theme: pageTheme.theme, title: title, author: 'Kutumbika');
   final withAmounts = rows.where((r) => r.amount != null).toList();
-  final amountRows = withAmounts.map((r) => AmountRow(amount: r.amount, dateIso: r.dateIso, date: r.date));
+  final amountRows = withAmounts.map(
+      (r) => AmountRow(amount: r.amount, dateIso: r.dateIso, date: r.date));
   final txTotal = sumAmountRows(amountRows);
   final monthly = monthlyAmountTotals(amountRows);
   String signed(double n) => n < 0 ? '−${moneyInr(n.abs())}' : moneyInr(n);
   doc.addPage(pw.MultiPage(
     pageTheme: pageTheme,
     build: (_) => [
-      pw.Text(title, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-      if ((subtitle ?? '').isNotEmpty) pw.Text(subtitle!, style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
-      pw.Text('Generated: ${fmtDateTimeFullLocal(_nowIso())}', style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
+      pw.Text(title,
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+      if ((subtitle ?? '').isNotEmpty)
+        pw.Text(subtitle!,
+            style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
+      pw.Text('Generated: ${fmtDateTimeFullLocal(_nowIso())}',
+          style: const pw.TextStyle(fontSize: 9, color: kPdfMuted)),
       pw.SizedBox(height: mm(4)),
       if (totalAmount != null) ...[
-        pw.Text('Total: ${moneyInr(totalAmount)}', style: const pw.TextStyle(fontSize: 10)),
+        pw.Text('Total: ${moneyInr(totalAmount)}',
+            style: const pw.TextStyle(fontSize: 10)),
         pw.SizedBox(height: mm(3)),
       ],
       for (final row in rows)
@@ -603,8 +776,12 @@ Future<Uint8List> buildReportDetailPdf({
           padding: const pw.EdgeInsets.only(bottom: 3),
           child: pw.Text(
             [
-              (row.sublabel ?? '').isNotEmpty ? '${row.label} — ${row.sublabel}' : row.label,
-              [row.date, row.status, row.extra].where((v) => (v ?? '').isNotEmpty).join(' · '),
+              (row.sublabel ?? '').isNotEmpty
+                  ? '${row.label} — ${row.sublabel}'
+                  : row.label,
+              [row.date, row.status, row.extra]
+                  .where((v) => (v ?? '').isNotEmpty)
+                  .join(' · '),
               if (row.amount != null) signed(row.amount!),
             ].where((s) => s.isNotEmpty).join(' | '),
             style: const pw.TextStyle(fontSize: 8),
@@ -612,13 +789,16 @@ Future<Uint8List> buildReportDetailPdf({
         ),
       if (monthly.isNotEmpty) ...[
         pw.SizedBox(height: mm(4)),
-        pw.Text('Monthly totals', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+        pw.Text('Monthly totals',
+            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
         for (final m in monthly)
-          pw.Text('${m.label} (${m.count}): ${moneyInr(m.total)}', style: const pw.TextStyle(fontSize: 8)),
+          pw.Text('${m.label} (${m.count}): ${moneyInr(m.total)}',
+              style: const pw.TextStyle(fontSize: 8)),
       ],
       if (withAmounts.isNotEmpty) ...[
         pw.SizedBox(height: mm(3)),
-        pw.Text('Transaction total: ${moneyInr(txTotal)}', style: const pw.TextStyle(fontSize: 9)),
+        pw.Text('Transaction total: ${moneyInr(txTotal)}',
+            style: const pw.TextStyle(fontSize: 9)),
       ],
     ],
   ));

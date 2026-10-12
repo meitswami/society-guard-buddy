@@ -4,10 +4,12 @@
 String _two(int n) => n.toString().padLeft(2, '0');
 
 /// `yyyy-MM-dd` for a local date.
-String ymdOf(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${_two(d.month)}-${_two(d.day)}';
+String ymdOf(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${_two(d.month)}-${_two(d.day)}';
 
 /// `yyyy-MM` for a local date.
-String ymOf(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${_two(d.month)}';
+String ymOf(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${_two(d.month)}';
 
 /// Strict `yyyy-MM-dd` parse (date-fns `parse` + `isValid`): null when invalid.
 DateTime? parseYmd(String? raw) {
@@ -15,7 +17,9 @@ DateTime? parseYmd(String? raw) {
   final s = raw.length >= 10 ? raw.substring(0, 10) : raw;
   final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(s);
   if (m == null) return null;
-  final y = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), d = int.parse(m.group(3)!);
+  final y = int.parse(m.group(1)!),
+      mo = int.parse(m.group(2)!),
+      d = int.parse(m.group(3)!);
   final dt = DateTime(y, mo, d);
   if (dt.year != y || dt.month != mo || dt.day != d) return null;
   return dt;
@@ -47,21 +51,26 @@ String billingMonthFromDate(String billingYmd, [DateTime? now]) {
 /// Ledger entry month must contain the billing date.
 bool isBillingDateInEntryMonth(String billingYmd, String entryMonthYm) {
   if (billingYmd.isEmpty || entryMonthYm.isEmpty) return false;
-  final ym = entryMonthYm.length > 7 ? entryMonthYm.substring(0, 7) : entryMonthYm;
+  final ym =
+      entryMonthYm.length > 7 ? entryMonthYm.substring(0, 7) : entryMonthYm;
   return billingMonthFromDate(billingYmd) == ym;
 }
 
 /// `transaction_date` → `${entry_month}-01` → `created_at` date.
-String ledgerTransactionDateOf({String? transactionDate, String? entryMonth, String? createdAt}) {
+String ledgerTransactionDateOf(
+    {String? transactionDate, String? entryMonth, String? createdAt}) {
   if (transactionDate != null && transactionDate.isNotEmpty) {
-    return transactionDate.length > 10 ? transactionDate.substring(0, 10) : transactionDate;
+    return transactionDate.length > 10
+        ? transactionDate.substring(0, 10)
+        : transactionDate;
   }
   if (entryMonth != null && entryMonth.isNotEmpty) return '$entryMonth-01';
   final c = createdAt ?? '';
   return c.length > 10 ? c.substring(0, 10) : c;
 }
 
-String ledgerEntryMonthFromBilling(String billingYmd) => billingMonthFromDate(billingYmd);
+String ledgerEntryMonthFromBilling(String billingYmd) =>
+    billingMonthFromDate(billingYmd);
 
 /// Web `dateInInclusiveRange` (local day bounds).
 bool dateInInclusiveRange(String iso, String fromYmd, String toYmd) {
@@ -113,12 +122,15 @@ String isoDateToDisplay(String? iso) {
 String? parseDisplayDateToIso(String input) {
   final s = input.trim();
   if (s.isEmpty) return null;
-  if (s.length >= 10 && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(s.substring(0, 10))) {
+  if (s.length >= 10 &&
+      RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(s.substring(0, 10))) {
     return parseYmd(s.substring(0, 10)) == null ? null : s.substring(0, 10);
   }
   final m = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(s);
   if (m == null) return null;
-  final d = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), y = int.parse(m.group(3)!);
+  final d = int.parse(m.group(1)!),
+      mo = int.parse(m.group(2)!),
+      y = int.parse(m.group(3)!);
   final dt = DateTime(y, mo, d);
   if (dt.year != y || dt.month != mo || dt.day != d) return null;
   return ymdOf(dt);

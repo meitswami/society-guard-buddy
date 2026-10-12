@@ -23,12 +23,14 @@ class AdminFinanceModule extends StatelessWidget {
   final AdminModuleContext ctx;
 
   @override
-  Widget build(BuildContext context) => FinanceManagerView(ctx: ctx, repository: SupabaseFinanceRepository());
+  Widget build(BuildContext context) =>
+      FinanceManagerView(ctx: ctx, repository: SupabaseFinanceRepository());
 }
 
 /// The finance page with an injectable repository (widget tests use a fake).
 class FinanceManagerView extends StatefulWidget {
-  const FinanceManagerView({super.key, required this.ctx, required this.repository});
+  const FinanceManagerView(
+      {super.key, required this.ctx, required this.repository});
 
   final AdminModuleContext ctx;
   final FinanceRepository repository;
@@ -38,8 +40,10 @@ class FinanceManagerView extends StatefulWidget {
 }
 
 class _FinanceManagerViewState extends State<FinanceManagerView> {
-  late final FinanceController c =
-      FinanceController(repo: widget.repository, societyId: widget.ctx.societyId, adminName: widget.ctx.adminName);
+  late final FinanceController c = FinanceController(
+      repo: widget.repository,
+      societyId: widget.ctx.societyId,
+      adminName: widget.ctx.adminName);
   final chargeForm = ChargeFormModel();
   final headForm = PaymentHeadFormModel();
   final receiptForm = RecordReceiptFormModel();
@@ -59,7 +63,10 @@ class _FinanceManagerViewState extends State<FinanceManagerView> {
   @override
   void didUpdateWidget(FinanceManagerView old) {
     super.didUpdateWidget(old);
-    if (old.ctx.subTab != widget.ctx.subTab || old.ctx.initialQuery != widget.ctx.initialQuery) _applyCtx(widget.ctx);
+    if (old.ctx.subTab != widget.ctx.subTab ||
+        old.ctx.initialQuery != widget.ctx.initialQuery) {
+      _applyCtx(widget.ctx);
+    }
   }
 
   /// Web `initialSubTab` / `initialSearchQuery` effects.
@@ -110,18 +117,31 @@ class _FinanceManagerViewState extends State<FinanceManagerView> {
       final active = items.contains(_tab);
       return PopupMenuButton<FinanceSubTab>(
         onSelected: _go,
-        itemBuilder: (_) => [for (final i in items) PopupMenuItem(value: i, child: Text(_tabLabel(i), style: const TextStyle(fontSize: 13)))],
+        itemBuilder: (_) => [
+          for (final i in items)
+            PopupMenuItem(
+                value: i,
+                child: Text(_tabLabel(i), style: const TextStyle(fontSize: 13)))
+        ],
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(color: active ? t.primary : t.secondary, borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+          decoration: BoxDecoration(
+              color: active ? t.primary : t.secondary,
+              borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 active ? '$label: ${_tabLabel(_tab)}' : label,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: active ? t.primaryForeground : t.secondaryForeground),
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color:
+                        active ? t.primaryForeground : t.secondaryForeground),
               ),
-              Icon(Icons.expand_more, size: 14, color: active ? t.primaryForeground : t.secondaryForeground),
+              Icon(Icons.expand_more,
+                  size: 14,
+                  color: active ? t.primaryForeground : t.secondaryForeground),
             ],
           ),
         ),
@@ -134,33 +154,57 @@ class _FinanceManagerViewState extends State<FinanceManagerView> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            dropdown(context.fin('fin.tab.create'), const [FinanceSubTab.maintenance, FinanceSubTab.createPayment]),
+            dropdown(context.fin('fin.tab.create'),
+                const [FinanceSubTab.maintenance, FinanceSubTab.createPayment]),
             const SizedBox(width: 4),
-            dropdown(context.fin('fin.tab.record'), const [FinanceSubTab.payments, FinanceSubTab.recordPayment]),
+            dropdown(context.fin('fin.tab.record'),
+                const [FinanceSubTab.payments, FinanceSubTab.recordPayment]),
             const SizedBox(width: 4),
-            for (final tab in const [FinanceSubTab.receipts, FinanceSubTab.totals]) ...[
-              PillChoice(label: _tabLabel(tab), selected: _tab == tab, onTap: () => _go(tab)),
+            for (final tab in const [
+              FinanceSubTab.receipts,
+              FinanceSubTab.totals
+            ]) ...[
+              PillChoice(
+                  label: _tabLabel(tab),
+                  selected: _tab == tab,
+                  onTap: () => _go(tab)),
               const SizedBox(width: 4),
             ],
             const SizedBox(width: 8),
             Material(
-              color: _showReminders ? AppTokens.tint(t.warning, 0.15) : t.secondary,
+              color: _showReminders
+                  ? AppTokens.tint(t.warning, 0.15)
+                  : t.secondary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppTokens.radiusSm),
-                side: _showReminders ? BorderSide(color: AppTokens.tint(t.warning, 0.3)) : BorderSide.none,
+                side: _showReminders
+                    ? BorderSide(color: AppTokens.tint(t.warning, 0.3))
+                    : BorderSide.none,
               ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(AppTokens.radiusSm),
                 onTap: () => setState(() => _showReminders = !_showReminders),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   child: Row(
                     children: [
-                      Icon(Icons.notifications_none, size: 14, color: _showReminders ? t.warning : t.secondaryForeground),
+                      Icon(Icons.notifications_none,
+                          size: 14,
+                          color: _showReminders
+                              ? t.warning
+                              : t.secondaryForeground),
                       const SizedBox(width: 4),
                       Text(
-                        _showReminders ? context.fin('fin.tab.hideReminders') : context.fin('fin.tab.reminders'),
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _showReminders ? t.warning : t.secondaryForeground),
+                        _showReminders
+                            ? context.fin('fin.tab.hideReminders')
+                            : context.fin('fin.tab.reminders'),
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: _showReminders
+                                ? t.warning
+                                : t.secondaryForeground),
                       ),
                     ],
                   ),
@@ -174,11 +218,18 @@ class _FinanceManagerViewState extends State<FinanceManagerView> {
   }
 
   Widget _content() => switch (_tab) {
-        FinanceSubTab.maintenance => FinanceMaintenanceTab(c: c, form: chargeForm),
-        FinanceSubTab.createPayment => FinanceCreatePaymentTab(c: c, form: headForm),
-        FinanceSubTab.payments => FinanceRecordReceiptTab(c: c, form: receiptForm),
-        FinanceSubTab.recordPayment => FinanceRecordPaymentTab(c: c, ctx: widget.ctx, onOpenRecordReceipt: () => _go(FinanceSubTab.payments)),
-        FinanceSubTab.receipts => FinanceTransactionsTab(c: c, filters: filters, includeVacantFlats: _includeVacant),
+        FinanceSubTab.maintenance =>
+          FinanceMaintenanceTab(c: c, form: chargeForm),
+        FinanceSubTab.createPayment =>
+          FinanceCreatePaymentTab(c: c, form: headForm),
+        FinanceSubTab.payments =>
+          FinanceRecordReceiptTab(c: c, form: receiptForm),
+        FinanceSubTab.recordPayment => FinanceRecordPaymentTab(
+            c: c,
+            ctx: widget.ctx,
+            onOpenRecordReceipt: () => _go(FinanceSubTab.payments)),
+        FinanceSubTab.receipts => FinanceTransactionsTab(
+            c: c, filters: filters, includeVacantFlats: _includeVacant),
         FinanceSubTab.totals => FinanceTotalsTab(c: c),
       };
 
@@ -197,9 +248,16 @@ class _FinanceManagerViewState extends State<FinanceManagerView> {
                 children: [
                   const CircularProgressIndicator(),
                   const SizedBox(height: 12),
-                  Text(context.tr('Loading finance data…', 'वित्त डेटा लोड हो रहा है…'), style: AppText.bodyMedium(context)),
-                  Text(context.tr('Fetching receipts, ledger entries, and flat records.', 'रसीदें, खाता प्रविष्टियाँ और फ्लैट रिकॉर्ड लाए जा रहे हैं।'),
-                      textAlign: TextAlign.center, style: AppText.caption(context)),
+                  Text(
+                      context.tr(
+                          'Loading finance data…', 'वित्त डेटा लोड हो रहा है…'),
+                      style: AppText.bodyMedium(context)),
+                  Text(
+                      context.tr(
+                          'Fetching receipts, ledger entries, and flat records.',
+                          'रसीदें, खाता प्रविष्टियाँ और फ्लैट रिकॉर्ड लाए जा रहे हैं।'),
+                      textAlign: TextAlign.center,
+                      style: AppText.caption(context)),
                 ],
               ),
             ),
@@ -208,17 +266,28 @@ class _FinanceManagerViewState extends State<FinanceManagerView> {
         if (c.error != null && !c.hasData) {
           return PageContainer(onRefresh: c.load, children: [
             CardSection(
-              color: Color.alphaBlend(AppTokens.tint(t.destructive, 0.05), t.card),
+              color:
+                  Color.alphaBlend(AppTokens.tint(t.destructive, 0.05), t.card),
               borderColor: AppTokens.tint(t.destructive, 0.4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(context.tr('Finance module could not load', 'वित्त खंड लोड नहीं हो सका'),
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: t.destructive)),
+                  Text(
+                      context.tr('Finance module could not load',
+                          'वित्त खंड लोड नहीं हो सका'),
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: t.destructive)),
                   const SizedBox(height: 6),
-                  Text(financeErrorMessage(c.error!, 'Could not load finance data'), style: AppText.caption(context)),
+                  Text(
+                      financeErrorMessage(
+                          c.error!, 'Could not load finance data'),
+                      style: AppText.caption(context)),
                   const SizedBox(height: 12),
-                  AppButton(label: context.tr('Try again', 'फिर से कोशिश करें'), onPressed: c.load),
+                  AppButton(
+                      label: context.tr('Try again', 'फिर से कोशिश करें'),
+                      onPressed: c.load),
                 ],
               ),
             ),
@@ -243,7 +312,9 @@ class _FinanceManagerViewState extends State<FinanceManagerView> {
                   onPressed: () => AppFeedback.info(
                     context,
                     title: context.fin('fin.title'),
-                    description: context.tr('Quick counts for this society’s finance module scope.', 'इस सोसाइटी के वित्त खंड की त्वरित गिनती।'),
+                    description: context.tr(
+                        'Quick counts for this society’s finance module scope.',
+                        'इस सोसाइटी के वित्त खंड की त्वरित गिनती।'),
                     howCalculated: context.tr(
                       'Receipt types = maintenance_charges rows. Receipts = maintenance_payments. Ledger entries = finance_entries (pool, direct, event mirror).',
                       'रसीद प्रकार = maintenance_charges पंक्तियाँ। रसीदें = maintenance_payments। खाता प्रविष्टियाँ = finance_entries (पूल, सीधा, कार्यक्रम प्रतिबिंब)।',
@@ -257,14 +328,19 @@ class _FinanceManagerViewState extends State<FinanceManagerView> {
             if (c.fetching)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(context.tr('Refreshing finance data…', 'वित्त डेटा ताज़ा हो रहा है…'), textAlign: TextAlign.center, style: AppText.tiny(context)),
+                child: Text(
+                    context.tr('Refreshing finance data…',
+                        'वित्त डेटा ताज़ा हो रहा है…'),
+                    textAlign: TextAlign.center,
+                    style: AppText.tiny(context)),
               ),
             _nav(context),
             if (_showReminders)
               FinanceRemindersPanel(
                 c: c,
                 includeVacant: _includeVacant,
-                onIncludeVacantChanged: (v) => setState(() => _includeVacant = v),
+                onIncludeVacantChanged: (v) =>
+                    setState(() => _includeVacant = v),
               ),
             KeyedSubtree(key: ValueKey(_tab), child: _content()),
           ],

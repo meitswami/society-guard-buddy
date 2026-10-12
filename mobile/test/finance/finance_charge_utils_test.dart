@@ -7,10 +7,13 @@ import 'package:kutumbika_mobile/features/admin/finance/logic/finance_models.dar
 void main() {
   group('financeChargeHelpers', () {
     test('detects monthly maintenance charges', () {
-      expect(isMonthlyMaintenanceTitleFreq('April Monthly Maintenance', 'monthly'), isTrue);
+      expect(
+          isMonthlyMaintenanceTitleFreq('April Monthly Maintenance', 'monthly'),
+          isTrue);
       expect(isMonthlyMaintenanceTitleFreq('Lift repair', 'once'), isFalse);
       expect(
-        isMonthlyMaintenanceCharge(const FinanceCharge(id: 'c', title: 'April Monthly Maintenance', frequency: 'monthly')),
+        isMonthlyMaintenanceCharge(const FinanceCharge(
+            id: 'c', title: 'April Monthly Maintenance', frequency: 'monthly')),
         isTrue,
       );
     });
@@ -32,25 +35,56 @@ void main() {
 
     test('requires billing month to match month named in receipt type', () {
       expect(monthNameFromChargeTitle('June Monthly Maintenance'), 'june');
-      expect(chargeTitleMatchesBillingMonth('June Monthly Maintenance', '2026-06-19'), isTrue);
-      expect(chargeTitleMatchesBillingMonth('June Monthly Maintenance', '2026-07-19'), isFalse);
-      expect(chargeTitleMatchesBillingMonth('Water Softner Installation', '2026-07-19'), isTrue);
+      expect(
+          chargeTitleMatchesBillingMonth(
+              'June Monthly Maintenance', '2026-06-19'),
+          isTrue);
+      expect(
+          chargeTitleMatchesBillingMonth(
+              'June Monthly Maintenance', '2026-07-19'),
+          isFalse);
+      expect(
+          chargeTitleMatchesBillingMonth(
+              'Water Softner Installation', '2026-07-19'),
+          isTrue);
     });
 
     test('isCurrentMonthChargeTitle accepts MM/yyyy and MM-yyyy', () {
-      expect(isCurrentMonthChargeTitle('Maintenance 04/2026', DateTime(2026, 4, 1)), isTrue);
-      expect(isCurrentMonthChargeTitle('Maintenance 04-2026', DateTime(2026, 4, 1)), isTrue);
-      expect(isCurrentMonthChargeTitle('Maintenance 05-2026', DateTime(2026, 4, 1)), isFalse);
+      expect(
+          isCurrentMonthChargeTitle(
+              'Maintenance 04/2026', DateTime(2026, 4, 1)),
+          isTrue);
+      expect(
+          isCurrentMonthChargeTitle(
+              'Maintenance 04-2026', DateTime(2026, 4, 1)),
+          isTrue);
+      expect(
+          isCurrentMonthChargeTitle(
+              'Maintenance 05-2026', DateTime(2026, 4, 1)),
+          isFalse);
     });
 
     test('chargeForUnpaidFilters picks month-named charge', () {
       final charges = [
-        const FinanceCharge(id: 'a', title: 'March Monthly Maintenance', amount: 2000, frequency: 'monthly'),
-        const FinanceCharge(id: 'b', title: 'April Monthly Maintenance', amount: 2500, frequency: 'monthly'),
-        const FinanceCharge(id: 'c', title: 'Lift AMC', amount: 9000, frequency: 'yearly'),
+        const FinanceCharge(
+            id: 'a',
+            title: 'March Monthly Maintenance',
+            amount: 2000,
+            frequency: 'monthly'),
+        const FinanceCharge(
+            id: 'b',
+            title: 'April Monthly Maintenance',
+            amount: 2500,
+            frequency: 'monthly'),
+        const FinanceCharge(
+            id: 'c', title: 'Lift AMC', amount: 9000, frequency: 'yearly'),
       ];
-      expect(chargeForUnpaidFilters(charges, 'monthly_maintenance', '2026-04')?.amount, 2500);
-      expect(chargeForUnpaidFilters(charges, 'yearly', 'all')?.title, 'Lift AMC');
+      expect(
+          chargeForUnpaidFilters(charges, 'monthly_maintenance', '2026-04')
+              ?.amount,
+          2500);
+      expect(
+          chargeForUnpaidFilters(charges, 'yearly', 'all')?.title, 'Lift AMC');
       expect(chargeForUnpaidFilters(charges, 'corpus', 'all'), isNull);
       expect(chargeForUnpaidFilters(charges, 'other', 'all'), isNull);
     });
@@ -75,11 +109,13 @@ void main() {
     test('identifies society pool ledger rows', () {
       expect(isLedgerInSocietyPool(baseLedger), isTrue);
       expect(
-        isLedgerInSocietyPool(const FinanceLedgerRow(id: '1', recordMode: 'society_pool', expenseId: 'exp-1')),
+        isLedgerInSocietyPool(const FinanceLedgerRow(
+            id: '1', recordMode: 'society_pool', expenseId: 'exp-1')),
         isFalse,
       );
       expect(
-        isLedgerInSocietyPool(const FinanceLedgerRow(id: '1', recordMode: 'society_pool', distributedAt: '2026-03-02')),
+        isLedgerInSocietyPool(const FinanceLedgerRow(
+            id: '1', recordMode: 'society_pool', distributedAt: '2026-03-02')),
         isFalse,
       );
       expect(
@@ -107,10 +143,12 @@ void main() {
         'Flat A-101 · Ravi · headcount',
       );
       expect(
-        eventContribRefLabel(const EventContribRefRow(id: 'c2', receiptBasis: 'non_flat', outsiderName: 'Sponsor')),
+        eventContribRefLabel(const EventContribRefRow(
+            id: 'c2', receiptBasis: 'non_flat', outsiderName: 'Sponsor')),
         'Sponsor',
       );
-      expect(eventContribRefLabel(const EventContribRefRow(id: 'c3')), 'Receipt (no flat)');
+      expect(eventContribRefLabel(const EventContribRefRow(id: 'c3')),
+          'Receipt (no flat)');
     });
   });
 }

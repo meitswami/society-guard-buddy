@@ -5,10 +5,18 @@ import 'package:kutumbika_mobile/features/admin/finance/logic/record_receipt_pla
 
 void main() {
   const flats = [
-    SocietyFlatRow(id: 'f1', flatNumber: '101', ownerName: 'Owner 101', isOccupied: true),
-    SocietyFlatRow(id: 'f2', flatNumber: '102', ownerName: 'Owner 102', isOccupied: true),
+    SocietyFlatRow(
+        id: 'f1', flatNumber: '101', ownerName: 'Owner 101', isOccupied: true),
+    SocietyFlatRow(
+        id: 'f2', flatNumber: '102', ownerName: 'Owner 102', isOccupied: true),
   ];
-  const charges = [FinanceCharge(id: 'june', title: 'June Monthly Maintenance', amount: 2500, frequency: 'monthly')];
+  const charges = [
+    FinanceCharge(
+        id: 'june',
+        title: 'June Monthly Maintenance',
+        amount: 2500,
+        frequency: 'monthly')
+  ];
   final now = DateTime(2026, 6, 20, 10);
 
   RecordReceiptBuild build(RecordReceiptInput f) => buildRecordReceiptPlan(
@@ -25,18 +33,27 @@ void main() {
   group('validateRecordReceipt', () {
     test('pool needs a positive amount; other modes need flats', () {
       expect(
-        validateRecordReceipt(const RecordReceiptInput(recordMode: kModeSocietyPool, dueDate: '2026-06-10'), charges),
+        validateRecordReceipt(
+            const RecordReceiptInput(
+                recordMode: kModeSocietyPool, dueDate: '2026-06-10'),
+            charges),
         RecordReceiptIssue.poolAmountMissing,
       );
       expect(
-        validateRecordReceipt(const RecordReceiptInput(dueDate: '2026-06-10', amount: '2500', chargeId: 'june'), charges),
+        validateRecordReceipt(
+            const RecordReceiptInput(
+                dueDate: '2026-06-10', amount: '2500', chargeId: 'june'),
+            charges),
         RecordReceiptIssue.noFlatsSelected,
       );
     });
 
     test('flats only without charge aborts silently like web', () {
       expect(
-        validateRecordReceipt(const RecordReceiptInput(dueDate: '2026-06-10', selectedFlats: ['101']), charges),
+        validateRecordReceipt(
+            const RecordReceiptInput(
+                dueDate: '2026-06-10', selectedFlats: ['101']),
+            charges),
         RecordReceiptIssue.silentAbort,
       );
     });
@@ -44,14 +61,22 @@ void main() {
     test('billing date must match the month in the receipt type title', () {
       expect(
         validateRecordReceipt(
-          const RecordReceiptInput(dueDate: '2026-07-10', selectedFlats: ['101'], amount: '2500', chargeId: 'june'),
+          const RecordReceiptInput(
+              dueDate: '2026-07-10',
+              selectedFlats: ['101'],
+              amount: '2500',
+              chargeId: 'june'),
           charges,
         ),
         RecordReceiptIssue.chargeMonthMismatch,
       );
       expect(
         validateRecordReceipt(
-          const RecordReceiptInput(dueDate: '2026-06-10', selectedFlats: ['101'], amount: '2500', chargeId: 'june'),
+          const RecordReceiptInput(
+              dueDate: '2026-06-10',
+              selectedFlats: ['101'],
+              amount: '2500',
+              chargeId: 'june'),
           charges,
         ),
         isNull,
@@ -61,7 +86,10 @@ void main() {
     test('outsider modes validate name, amount and charge', () {
       expect(
         validateRecordReceipt(
-          const RecordReceiptInput(recordMode: kModeOutsiderOnly, dueDate: '2026-06-10', selectedFlats: ['101']),
+          const RecordReceiptInput(
+              recordMode: kModeOutsiderOnly,
+              dueDate: '2026-06-10',
+              selectedFlats: ['101']),
           charges,
         ),
         RecordReceiptIssue.outsiderNameMissing,
@@ -132,7 +160,8 @@ void main() {
       expect(plan.maintenancePayments.single['payment_status'], 'pending');
     });
 
-    test('outsider only split total equally into current month maintenance', () {
+    test('outsider only split total equally into current month maintenance',
+        () {
       final plan = build(const RecordReceiptInput(
         recordMode: kModeOutsiderOnly,
         allocationStyle: kAllocSplitTotal,
@@ -144,7 +173,8 @@ void main() {
       )).plan!;
       expect(plan.totalAmount, 600);
       expect(plan.allocations.map((a) => a.amount).toList(), [300, 300]);
-      expect(plan.maintenancePayments.map((m) => m['amount']).toList(), [300, 300]);
+      expect(plan.maintenancePayments.map((m) => m['amount']).toList(),
+          [300, 300]);
       expect(plan.entryTitle, 'Outsider: Vendor');
       expect(plan.counterparty?.name, 'Vendor');
       expect(plan.entry['charge_id'], 'june');
@@ -179,7 +209,8 @@ void main() {
       )).plan!;
       expect(plan.totalAmount, 6000);
       expect(plan.allocations.map((a) => a.amount).toList(), [3000, 3000]);
-      expect(plan.maintenancePayments.map((m) => m['amount']).toList(), [3000, 3000]);
+      expect(plan.maintenancePayments.map((m) => m['amount']).toList(),
+          [3000, 3000]);
       expect(plan.entryTitle, 'June Monthly Maintenance + outsider (Sponsor)');
     });
 
@@ -201,7 +232,8 @@ void main() {
     });
 
     test('invalid billing date fails the entry month check', () {
-      final r = build(const RecordReceiptInput(dueDate: '', selectedFlats: ['101'], amount: '1', chargeId: 'june'));
+      final r = build(const RecordReceiptInput(
+          dueDate: '', selectedFlats: ['101'], amount: '1', chargeId: 'june'));
       expect(r.issue, RecordReceiptIssue.entryMonthMismatch);
     });
   });

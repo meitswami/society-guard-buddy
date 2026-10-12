@@ -15,7 +15,11 @@ import 'fin_kit.dart';
 
 /// Web `UnpaidFlatGridTable`.
 class UnpaidFlatGridTable extends StatelessWidget {
-  const UnpaidFlatGridTable({super.key, required this.rows, required this.emptyMessage, this.showChargeColumn = true});
+  const UnpaidFlatGridTable(
+      {super.key,
+      required this.rows,
+      required this.emptyMessage,
+      this.showChargeColumn = true});
 
   final List<UnpaidFlatGridRow> rows;
   final String emptyMessage;
@@ -29,8 +33,14 @@ class UnpaidFlatGridTable extends StatelessWidget {
     final hasDue = showChargeColumn && rows.any((r) => r.dueAmount != null);
     Widget pill(String label, Color c, {bool muted = false}) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(color: muted ? t.muted : AppTokens.tint(c, 0.18), borderRadius: BorderRadius.circular(99)),
-          child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: muted ? t.mutedForeground : c)),
+          decoration: BoxDecoration(
+              color: muted ? t.muted : AppTokens.tint(c, 0.18),
+              borderRadius: BorderRadius.circular(99)),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: muted ? t.mutedForeground : c)),
         );
     final cols = [
       const FinCol('#', width: 34),
@@ -38,7 +48,8 @@ class UnpaidFlatGridTable extends StatelessWidget {
       FinCol(context.tr('Resident', 'निवासी'), width: 130),
       FinCol(context.tr('Occupancy', 'अधिभोग'), width: 76),
       if (showChargeColumn) FinCol(context.tr('Charge', 'शुल्क'), width: 130),
-      if (hasDue) FinCol(context.tr('Due amount', 'देय राशि'), width: 84, right: true),
+      if (hasDue)
+        FinCol(context.tr('Due amount', 'देय राशि'), width: 84, right: true),
       FinCol(context.tr('Status', 'स्थिति'), width: 76),
     ];
     return FinTable(
@@ -48,15 +59,32 @@ class UnpaidFlatGridTable extends StatelessWidget {
           [
             finCell(context, '${i + 1}', color: t.mutedForeground),
             finCell(context, rows[i].flatNumber, mono: true, bold: true),
-            finCell(context, rows[i].primaryName.isEmpty ? context.tr('Primary member not found', 'मुख्य सदस्य नहीं मिला') : rows[i].primaryName),
+            finCell(
+                context,
+                rows[i].primaryName.isEmpty
+                    ? context.tr(
+                        'Primary member not found', 'मुख्य सदस्य नहीं मिला')
+                    : rows[i].primaryName),
             rows[i].isOccupied == true
                 ? pill(context.tr('Occupied', 'आबाद'), t.success)
-                : pill(context.tr('Vacant', 'खाली'), t.mutedForeground, muted: true),
-            if (showChargeColumn) finCell(context, rows[i].chargeTitle ?? '—', color: t.mutedForeground),
-            if (hasDue) finCell(context, rows[i].dueAmount != null ? inrLocale(rows[i].dueAmount!) : '—', mono: true, bold: true),
+                : pill(context.tr('Vacant', 'खाली'), t.mutedForeground,
+                    muted: true),
+            if (showChargeColumn)
+              finCell(context, rows[i].chargeTitle ?? '—',
+                  color: t.mutedForeground),
+            if (hasDue)
+              finCell(
+                  context,
+                  rows[i].dueAmount != null
+                      ? inrLocale(rows[i].dueAmount!)
+                      : '—',
+                  mono: true,
+                  bold: true),
             switch (rows[i].pendingPayment) {
               'pending' => pill(context.tr('Pending', 'लंबित'), t.warning),
-              'rejected' => pill(context.tr('Rejected', 'अस्वीकृत'), t.mutedForeground, muted: true),
+              'rejected' => pill(
+                  context.tr('Rejected', 'अस्वीकृत'), t.mutedForeground,
+                  muted: true),
               _ => pill(context.fin('fin.status.unpaid'), t.destructive),
             },
           ],
@@ -67,14 +95,16 @@ class UnpaidFlatGridTable extends StatelessWidget {
           context,
           rows.length == 1
               ? context.tr('1 unpaid flat', '1 अदत्त फ्लैट')
-              : context.tr('${rows.length} unpaid flats', '${rows.length} अदत्त फ्लैट'),
+              : context.tr(
+                  '${rows.length} unpaid flats', '${rows.length} अदत्त फ्लैट'),
           bold: true,
           maxLines: 1,
         ),
         finCell(context, ''),
         finCell(context, ''),
         if (showChargeColumn) finCell(context, ''),
-        if (hasDue) finCell(context, inrLocale(totalDue), mono: true, bold: true),
+        if (hasDue)
+          finCell(context, inrLocale(totalDue), mono: true, bold: true),
         finCell(context, ''),
       ],
     );
@@ -83,7 +113,12 @@ class UnpaidFlatGridTable extends StatelessWidget {
 
 /// Web `FlatMultiSelect`: search + "All visible / Clear visible" + tile grid.
 class FlatMultiSelect extends StatefulWidget {
-  const FlatMultiSelect({super.key, required this.flats, required this.selected, required this.onChanged, this.label});
+  const FlatMultiSelect(
+      {super.key,
+      required this.flats,
+      required this.selected,
+      required this.onChanged,
+      this.label});
 
   final List<FlatOption> flats;
   final List<String> selected;
@@ -104,38 +139,53 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
     final filtered = s.isEmpty
         ? widget.flats
         : widget.flats
-            .where((f) => f.flatNumber.toLowerCase().contains(s) || (f.subtitle ?? '').toLowerCase().contains(s))
+            .where((f) =>
+                f.flatNumber.toLowerCase().contains(s) ||
+                (f.subtitle ?? '').toLowerCase().contains(s))
             .toList();
     final sel = widget.selected.toSet();
     void toggle(String num) {
-      widget.onChanged(sel.contains(num) ? widget.selected.where((x) => x != num).toList() : [...widget.selected, num]);
+      widget.onChanged(sel.contains(num)
+          ? widget.selected.where((x) => x != num).toList()
+          : [...widget.selected, num]);
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Expanded(
-              child: Text(
-                '${widget.label ?? context.tr('Flats', 'फ्लैट')} (${context.tr('${widget.selected.length} selected', '${widget.selected.length} चयनित')})',
-                style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500),
-              ),
+            Text(
+              '${widget.label ?? context.tr('Flats', 'फ्लैट')} (${context.tr('${widget.selected.length} selected', '${widget.selected.length} चयनित')})',
+              style: AppText.caption(context)
+                  .copyWith(fontWeight: FontWeight.w500),
             ),
             if (filtered.isNotEmpty) ...[
               InkWell(
-                onTap: () => widget.onChanged({...widget.selected, ...filtered.map((f) => f.flatNumber)}.toList()),
+                onTap: () => widget.onChanged({
+                  ...widget.selected,
+                  ...filtered.map((f) => f.flatNumber)
+                }.toList()),
                 child: Text(context.tr('All visible', 'सभी दिखने वाले'),
-                    style: TextStyle(fontSize: 11, color: t.primary, decoration: TextDecoration.underline)),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: t.primary,
+                        decoration: TextDecoration.underline)),
               ),
-              Text(' · ', style: AppText.tiny(context)),
               InkWell(
                 onTap: () {
                   final nums = filtered.map((f) => f.flatNumber).toSet();
-                  widget.onChanged(widget.selected.where((x) => !nums.contains(x)).toList());
+                  widget.onChanged(
+                      widget.selected.where((x) => !nums.contains(x)).toList());
                 },
                 child: Text(context.tr('Clear visible', 'दिखने वाले हटाएँ'),
-                    style: TextStyle(fontSize: 11, color: t.mutedForeground, decoration: TextDecoration.underline)),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: t.mutedForeground,
+                        decoration: TextDecoration.underline)),
               ),
             ],
           ],
@@ -145,7 +195,8 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
           onChanged: (v) => setState(() => _q = v),
           style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
-            hintText: context.tr('Search flat or resident…', 'फ्लैट या निवासी खोजें…'),
+            hintText: context.tr(
+                'Search flat or resident…', 'फ्लैट या निवासी खोजें…'),
             prefixIcon: Icon(Icons.search, size: 18, color: t.mutedForeground),
             isDense: true,
           ),
@@ -156,7 +207,10 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
           child: filtered.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(context.tr('No flats match your search.', 'खोज से कोई फ्लैट नहीं मिला।'), style: AppText.caption(context)),
+                  child: Text(
+                      context.tr('No flats match your search.',
+                          'खोज से कोई फ्लैट नहीं मिला।'),
+                      style: AppText.caption(context)),
                 )
               : GridView.builder(
                   shrinkWrap: true,
@@ -185,14 +239,24 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(f.flatNumber,
-                                  style: AppText.mono(context, size: 12, weight: FontWeight.w600, color: on ? t.primaryForeground : t.foreground)),
+                                  style: AppText.mono(context,
+                                      size: 12,
+                                      weight: FontWeight.w600,
+                                      color: on
+                                          ? t.primaryForeground
+                                          : t.foreground)),
                               if (f.subtitle != null)
                                 Text(
                                   f.subtitle!,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 9, height: 1.15, color: on ? t.primaryForeground : t.mutedForeground),
+                                  style: TextStyle(
+                                      fontSize: 9,
+                                      height: 1.15,
+                                      color: on
+                                          ? t.primaryForeground
+                                          : t.mutedForeground),
                                 ),
                             ],
                           ),
@@ -238,9 +302,13 @@ class RecordingDateBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  FinMicroLabel(context.tr('Recording date', 'दर्ज करने की तिथि'), padding: EdgeInsets.zero),
+                  FinMicroLabel(
+                      context.tr('Recording date', 'दर्ज करने की तिथि'),
+                      padding: EdgeInsets.zero),
                   Text(isoDateToDisplay(todayRecordingDate()),
-                      style: AppText.bodyMedium(context).copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
+                      style: AppText.bodyMedium(context).copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()])),
                 ],
               ),
             ),
@@ -254,7 +322,12 @@ class RecordingDateBanner extends StatelessWidget {
 
 /// One layer of the head-wise drill-down sheet (web `TransactionHeadModalLayer`).
 class FinReportLayer {
-  const FinReportLayer({required this.title, this.subtitle, this.total, required this.rows, this.drillable = false});
+  const FinReportLayer(
+      {required this.title,
+      this.subtitle,
+      this.total,
+      required this.rows,
+      this.drillable = false});
 
   final String title;
   final String? subtitle;
@@ -274,12 +347,14 @@ Future<void> showFinReportSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => _FinReportSheet(initial: initial, societyName: societyName, onDrill: onDrill),
+    builder: (_) => _FinReportSheet(
+        initial: initial, societyName: societyName, onDrill: onDrill),
   );
 }
 
 class _FinReportSheet extends StatefulWidget {
-  const _FinReportSheet({required this.initial, required this.societyName, this.onDrill});
+  const _FinReportSheet(
+      {required this.initial, required this.societyName, this.onDrill});
 
   final FinReportLayer initial;
   final String societyName;
@@ -304,14 +379,20 @@ class _FinReportSheetState extends State<_FinReportSheet> {
     final q = _search.trim().toLowerCase();
     if (q.isEmpty) return rows;
     return rows.where((r) {
-      final hay = [r.label, r.sublabel ?? '', r.date ?? '', r.status ?? '', r.extra ?? '', r.amount != null ? numToText(r.amount!) : '']
-          .join(' ')
-          .toLowerCase();
+      final hay = [
+        r.label,
+        r.sublabel ?? '',
+        r.date ?? '',
+        r.status ?? '',
+        r.extra ?? '',
+        r.amount != null ? numToText(r.amount!) : ''
+      ].join(' ').toLowerCase();
       return hay.contains(q);
     }).toList();
   }
 
-  static String numToText(double v) => v == v.roundToDouble() ? v.round().toString() : v.toString();
+  static String numToText(double v) =>
+      v == v.roundToDouble() ? v.round().toString() : v.toString();
 
   void _push(FinReportLayer l) => setState(() {
         _stack.add(l);
@@ -325,14 +406,17 @@ class _FinReportSheetState extends State<_FinReportSheet> {
     final layer = _stack.last;
     final rows = _filter(layer.rows);
     final withAmounts = rows.where((r) => r.amount != null).toList();
-    final amountRows = withAmounts.map((r) => AmountRow(amount: r.amount, dateIso: r.dateIso, date: r.date));
+    final amountRows = withAmounts.map(
+        (r) => AmountRow(amount: r.amount, dateIso: r.dateIso, date: r.date));
     final txTotal = sumAmountRows(amountRows);
     final monthly = monthlyAmountTotals(amountRows);
     final canDrill = layer.drillable && widget.onDrill != null;
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+      constraints:
+          BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
       child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -342,20 +426,34 @@ class _FinReportSheetState extends State<_FinReportSheet> {
               child: Row(
                 children: [
                   if (_stack.length > 1)
-                    IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => setState(() => _stack.removeLast())),
+                    IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: () => setState(() => _stack.removeLast())),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(layer.title, style: AppText.sectionTitle(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(layer.title,
+                            style: AppText.sectionTitle(context),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                         if ((layer.subtitle ?? '').isNotEmpty)
-                          Text(layer.subtitle!, style: AppText.tiny(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(layer.subtitle!,
+                              style: AppText.tiny(context),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
                   if (layer.total != null)
-                    Text(inrLocale(layer.total!), style: AppText.mono(context, size: 13, weight: FontWeight.w700, color: t.primary)),
-                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                    Text(inrLocale(layer.total!),
+                        style: AppText.mono(context,
+                            size: 13,
+                            weight: FontWeight.w700,
+                            color: t.primary)),
+                  IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context)),
                 ],
               ),
             ),
@@ -368,41 +466,54 @@ class _FinReportSheetState extends State<_FinReportSheet> {
                   style: const TextStyle(fontSize: 13),
                   decoration: InputDecoration(
                     isDense: true,
-                    prefixIcon: Icon(Icons.search, size: 18, color: t.mutedForeground),
-                    hintText: context.tr('Search in this list…', 'इस सूची में खोजें…'),
+                    prefixIcon:
+                        Icon(Icons.search, size: 18, color: t.mutedForeground),
+                    hintText: context.tr(
+                        'Search in this list…', 'इस सूची में खोजें…'),
                   ),
                 ),
               ),
             if (_search.trim().isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(context.tr('${rows.length} of ${layer.rows.length} match', '${layer.rows.length} में से ${rows.length} मिले'),
+                child: Text(
+                    context.tr('${rows.length} of ${layer.rows.length} match',
+                        '${layer.rows.length} में से ${rows.length} मिले'),
                     style: AppText.tiny(context)),
               ),
             Divider(height: 1, color: t.border),
             Flexible(
               child: layer.rows.isEmpty
-                  ? EmptyView(message: context.tr('No data available', 'कोई डेटा उपलब्ध नहीं'))
+                  ? EmptyView(
+                      message: context.tr(
+                          'No data available', 'कोई डेटा उपलब्ध नहीं'))
                   : rows.isEmpty
-                      ? EmptyView(message: context.tr('No matches for your search', 'खोज से कुछ नहीं मिला'))
+                      ? EmptyView(
+                          message: context.tr('No matches for your search',
+                              'खोज से कुछ नहीं मिला'))
                       : ListView.separated(
                           shrinkWrap: true,
                           padding: const EdgeInsets.all(12),
                           itemCount: rows.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 4),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 4),
                           itemBuilder: (ctx, i) {
                             final r = rows[i];
                             return Material(
                               color: AppTokens.tint(t.card, 0.6),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(AppTokens.radiusSm),
-                                side: BorderSide(color: AppTokens.tint(t.border, 0.6)),
+                                borderRadius:
+                                    BorderRadius.circular(AppTokens.radiusSm),
+                                side: BorderSide(
+                                    color: AppTokens.tint(t.border, 0.6)),
                               ),
                               child: InkWell(
-                                borderRadius: BorderRadius.circular(AppTokens.radiusSm),
+                                borderRadius:
+                                    BorderRadius.circular(AppTokens.radiusSm),
                                 onTap: canDrill
                                     ? () {
-                                        final next = widget.onDrill!(context, r);
+                                        final next =
+                                            widget.onDrill!(context, r);
                                         if (next != null) _push(next);
                                       }
                                     : null,
@@ -412,26 +523,45 @@ class _FinReportSheetState extends State<_FinReportSheet> {
                                     children: [
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Text(r.label, style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
-                                            if ((r.sublabel ?? '').isNotEmpty) Text(r.sublabel!, style: AppText.tiny(context)),
-                                            if ((r.date ?? '').isNotEmpty) Text(r.date!, style: AppText.tiny(context)),
+                                            Text(r.label,
+                                                style:
+                                                    AppText.bodyMedium(context)
+                                                        .copyWith(
+                                                            fontSize: 12)),
+                                            if ((r.sublabel ?? '').isNotEmpty)
+                                              Text(r.sublabel!,
+                                                  style: AppText.tiny(context)),
+                                            if ((r.date ?? '').isNotEmpty)
+                                              Text(r.date!,
+                                                  style: AppText.tiny(context)),
                                           ],
                                         ),
                                       ),
                                       Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
                                         children: [
                                           if (r.amount != null)
                                             Text(inrSigned(r.amount!),
                                                 style: AppText.mono(context,
-                                                    size: 12, weight: FontWeight.w700, color: r.amount! < 0 ? t.destructive : null)),
-                                          if ((r.status ?? '').isNotEmpty) FinStatusPill(status: r.status!),
-                                          if ((r.extra ?? '').isNotEmpty) Text(r.extra!, style: AppText.tiny(context)),
+                                                    size: 12,
+                                                    weight: FontWeight.w700,
+                                                    color: r.amount! < 0
+                                                        ? t.destructive
+                                                        : null)),
+                                          if ((r.status ?? '').isNotEmpty)
+                                            FinStatusPill(status: r.status!),
+                                          if ((r.extra ?? '').isNotEmpty)
+                                            Text(r.extra!,
+                                                style: AppText.tiny(context)),
                                         ],
                                       ),
-                                      if (canDrill) Icon(Icons.chevron_right, size: 16, color: t.mutedForeground),
+                                      if (canDrill)
+                                        Icon(Icons.chevron_right,
+                                            size: 16, color: t.mutedForeground),
                                     ],
                                   ),
                                 ),
@@ -462,9 +592,11 @@ class _FinReportSheetState extends State<_FinReportSheet> {
                           await ExportKit.sharePdf(
                             bytes,
                             reportDetailPdfFilename(layer.title),
-                            text: [widget.societyName, layer.title, layer.subtitle]
-                                .where((v) => (v ?? '').isNotEmpty)
-                                .join(' — '),
+                            text: [
+                              widget.societyName,
+                              layer.title,
+                              layer.subtitle
+                            ].where((v) => (v ?? '').isNotEmpty).join(' — '),
                           );
                         },
                       ),
@@ -476,13 +608,21 @@ class _FinReportSheetState extends State<_FinReportSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          FinMicroLabel(context.tr('Monthly totals', 'मासिक योग')),
+                          FinMicroLabel(
+                              context.tr('Monthly totals', 'मासिक योग')),
                           for (final m in monthly)
                             Row(
                               children: [
-                                Expanded(child: Text('${m.label} (${m.count})', style: AppText.caption(context))),
+                                Expanded(
+                                    child: Text('${m.label} (${m.count})',
+                                        style: AppText.caption(context))),
                                 Text(inrSigned(m.total),
-                                    style: AppText.mono(context, size: 11, weight: FontWeight.w600, color: m.total < 0 ? t.destructive : null)),
+                                    style: AppText.mono(context,
+                                        size: 11,
+                                        weight: FontWeight.w600,
+                                        color: m.total < 0
+                                            ? t.destructive
+                                            : null)),
                               ],
                             ),
                         ],
@@ -493,14 +633,20 @@ class _FinReportSheetState extends State<_FinReportSheet> {
                       padding: const EdgeInsets.only(top: 8),
                       child: Text.rich(
                         TextSpan(children: [
-                          TextSpan(text: '${context.tr('Transaction total', 'लेन-देन कुल')}: '),
+                          TextSpan(
+                              text:
+                                  '${context.tr('Transaction total', 'लेन-देन कुल')}: '),
                           TextSpan(
                             text: inrSigned(txTotal),
-                            style: AppText.mono(context, size: 12, weight: FontWeight.w700, color: txTotal < 0 ? t.destructive : t.primary),
+                            style: AppText.mono(context,
+                                size: 12,
+                                weight: FontWeight.w700,
+                                color: txTotal < 0 ? t.destructive : t.primary),
                           ),
                         ]),
                         textAlign: TextAlign.center,
-                        style: AppText.bodyMedium(context).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: AppText.bodyMedium(context).copyWith(
+                            fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
                   Padding(

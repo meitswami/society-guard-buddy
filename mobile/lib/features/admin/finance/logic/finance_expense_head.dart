@@ -25,7 +25,11 @@ final RegExp _genericEventGroup = RegExp(
 );
 
 String? joinNoteLines(List<String?> parts) {
-  final lines = parts.map((p) => p?.trim()).whereType<String>().where((p) => p.isNotEmpty).toList();
+  final lines = parts
+      .map((p) => p?.trim())
+      .whereType<String>()
+      .where((p) => p.isNotEmpty)
+      .toList();
   return lines.isEmpty ? null : lines.join('\n');
 }
 
@@ -40,14 +44,22 @@ String inferMajorHeadFromGroupName(String name) {
   if (_has(r'fixed deposit|\bfd\b', n)) return 'FIXED DEPOSIT';
   if (_has(r'^bank\b|bank account', n)) return 'BANK';
   if (_has(r'^cash\b|petty cash', n)) return 'CASH';
-  if (_has(r'legal|professional|audit|advocate|lawyer', n)) return 'LEGAL & PROFESSIONAL FEES';
-  if (_has(r'fixed asset|furniture|chair|equipment|machine|softner|softener|installation|asset', n)) {
+  if (_has(r'legal|professional|audit|advocate|lawyer', n)) {
+    return 'LEGAL & PROFESSIONAL FEES';
+  }
+  if (_has(
+      r'fixed asset|furniture|chair|equipment|machine|softner|softener|installation|asset',
+      n)) {
     return 'FIXED ASSETS';
   }
-  if (_has(r'salary|wage|security|guard|sweeper|cleaning|garden|housekeeping|house keeping|labour|labor', n)) {
+  if (_has(
+      r'salary|wage|security|guard|sweeper|cleaning|garden|housekeeping|house keeping|labour|labor',
+      n)) {
     return 'SALARY & WAGES';
   }
-  if (_has(r'electric|water|wifi|cctv|dg set|diesel|printing|maintenance|repair|insurance|lift|amc|utility', n)) {
+  if (_has(
+      r'electric|water|wifi|cctv|dg set|diesel|printing|maintenance|repair|insurance|lift|amc|utility',
+      n)) {
     return 'OPERATION & MAINTENANCE';
   }
   return 'MISCELLANEOUS';
@@ -56,11 +68,16 @@ String inferMajorHeadFromGroupName(String name) {
 /// Stored major head when valid, else inferred from the name.
 String resolveGroupMajorHead(String name, String? majorHead) {
   final stored = majorHead?.trim();
-  if (stored != null && stored.isNotEmpty && kSocietyPaymentMajorHeads.contains(stored)) return stored;
+  if (stored != null &&
+      stored.isNotEmpty &&
+      kSocietyPaymentMajorHeads.contains(stored)) {
+    return stored;
+  }
   return inferMajorHeadFromGroupName(name);
 }
 
-String resolveGroupMajorHeadOf(PaymentExpenseGroup g) => resolveGroupMajorHead(g.name, g.majorHead);
+String resolveGroupMajorHeadOf(PaymentExpenseGroup g) =>
+    resolveGroupMajorHead(g.name, g.majorHead);
 
 bool groupMatchesPaymentHeadSearch(PaymentExpenseGroup group, String query) {
   final q = query.trim().toLowerCase();
@@ -72,8 +89,11 @@ bool groupMatchesPaymentHeadSearch(PaymentExpenseGroup group, String query) {
 }
 
 /// Groups bucketed by major head (each bucket sorted by name).
-Map<String, List<PaymentExpenseGroup>> paymentGroupsByMajorHead(List<PaymentExpenseGroup> groups) {
-  final map = <String, List<PaymentExpenseGroup>>{for (final h in kSocietyPaymentMajorHeads) h: []};
+Map<String, List<PaymentExpenseGroup>> paymentGroupsByMajorHead(
+    List<PaymentExpenseGroup> groups) {
+  final map = <String, List<PaymentExpenseGroup>>{
+    for (final h in kSocietyPaymentMajorHeads) h: []
+  };
   for (final g in groups) {
     map[resolveGroupMajorHeadOf(g)]!.add(g);
   }
@@ -102,15 +122,22 @@ Map<String, List<PaymentExpenseGroup>> paymentGroupsByMajorHead(List<PaymentExpe
     final detailNote = line.isNotEmpty ? 'Item: $line' : null;
     return (ledgerTitle: ledgerTitle, detailNote: detailNote);
   }
-  final head = group.isNotEmpty ? group : (line.isNotEmpty ? line : 'Society payment');
-  final detailNote = line.isNotEmpty && line.toLowerCase() != head.toLowerCase() ? 'Detail: $line' : null;
+  final head =
+      group.isNotEmpty ? group : (line.isNotEmpty ? line : 'Society payment');
+  final detailNote = line.isNotEmpty && line.toLowerCase() != head.toLowerCase()
+      ? 'Detail: $line'
+      : null;
   return (ledgerTitle: head, detailNote: detailNote);
 }
 
-final RegExp _eventFoodPrefix = RegExp(r'^event food\s*[—–-]', caseSensitive: false);
-final RegExp _eventContributionPrefix = RegExp(r'^event contribution\s*[—–-]', caseSensitive: false);
-final RegExp _headContributionPrefix = RegExp(r'^head contribution\s*[—–-]', caseSensitive: false);
-final RegExp _headAdjustmentPrefix = RegExp(r'^head adjustment\s*[—–-]', caseSensitive: false);
+final RegExp _eventFoodPrefix =
+    RegExp(r'^event food\s*[—–-]', caseSensitive: false);
+final RegExp _eventContributionPrefix =
+    RegExp(r'^event contribution\s*[—–-]', caseSensitive: false);
+final RegExp _headContributionPrefix =
+    RegExp(r'^head contribution\s*[—–-]', caseSensitive: false);
+final RegExp _headAdjustmentPrefix =
+    RegExp(r'^head adjustment\s*[—–-]', caseSensitive: false);
 
 /// Head for period report / totals — not the raw ledger title.
 String financeExpenseHeadFromLedgerTitle(String? rawTitle) {
@@ -121,7 +148,9 @@ String financeExpenseHeadFromLedgerTitle(String? rawTitle) {
   if (bracket != null) {
     final group = bracket.group(1)!.trim();
     final rest = bracket.group(2)!.trim();
-    if (_genericEventGroup.hasMatch(group)) return rest.isNotEmpty ? rest : group;
+    if (_genericEventGroup.hasMatch(group)) {
+      return rest.isNotEmpty ? rest : group;
+    }
     return group;
   }
   return t;
@@ -139,20 +168,24 @@ String financeReceiptHeadFromLedgerEntry(
     if (fromCharge != null && fromCharge.isNotEmpty) return fromCharge;
   }
   if (destination == 'corpus') return 'SOCIETY CORPUS FUND';
-  if (destination == 'current_month_maintenance') return 'OPERATION & MAINTENANCE';
+  if (destination == 'current_month_maintenance') {
+    return 'OPERATION & MAINTENANCE';
+  }
   final t = (title ?? '').trim();
   if (t.isNotEmpty) return inferMajorHeadFromGroupName(t);
   return kUncategorizedHead;
 }
 
-String financeReceiptHeadForPayment(String? chargeId, [Map<String, String>? chargeMajorHeadById]) {
+String financeReceiptHeadForPayment(String? chargeId,
+    [Map<String, String>? chargeMajorHeadById]) {
   if (chargeId != null && chargeId.isNotEmpty) {
     return chargeMajorHeadById?[chargeId] ?? kUncategorizedHead;
   }
   return kUncategorizedHead;
 }
 
-String financeExpenseHeadFromLedgerEntry(String? rawTitle, [String? expenseCategory]) {
+String financeExpenseHeadFromLedgerEntry(String? rawTitle,
+    [String? expenseCategory]) {
   if (expenseCategory == 'food') {
     final parsed = financeExpenseHeadFromLedgerTitle(rawTitle);
     if (_eventFoodPrefix.hasMatch(parsed)) return parsed;
@@ -165,18 +198,24 @@ String financeExpenseHeadFromLedgerEntry(String? rawTitle, [String? expenseCateg
 /// Event / catering bills — reconciled in Events & food, not Finance → Transactions.
 bool isEventFoodExpenseCategory(String? category) => category == 'food';
 
-bool isEventFoodLedgerTitle(String? title) => _eventFoodPrefix.hasMatch((title ?? '').trim());
+bool isEventFoodLedgerTitle(String? title) =>
+    _eventFoodPrefix.hasMatch((title ?? '').trim());
 
-bool isEventContributionLedgerTitle(String? title) => _eventContributionPrefix.hasMatch((title ?? '').trim());
+bool isEventContributionLedgerTitle(String? title) =>
+    _eventContributionPrefix.hasMatch((title ?? '').trim());
 
 bool isHeadScopedLedgerTitle(String? title) {
   final t = (title ?? '').trim();
-  return _headContributionPrefix.hasMatch(t) || _headAdjustmentPrefix.hasMatch(t);
+  return _headContributionPrefix.hasMatch(t) ||
+      _headAdjustmentPrefix.hasMatch(t);
 }
 
-bool isEventFoodLedgerEntry(String? expenseId, String? title, Map<String, String> expenseCategoryById) {
+bool isEventFoodLedgerEntry(
+    String? expenseId, String? title, Map<String, String> expenseCategoryById) {
   if (expenseId != null && expenseId.isNotEmpty) {
     return isEventFoodExpenseCategory(expenseCategoryById[expenseId]);
   }
-  return isEventFoodLedgerTitle(title) || isEventContributionLedgerTitle(title) || isHeadScopedLedgerTitle(title);
+  return isEventFoodLedgerTitle(title) ||
+      isEventContributionLedgerTitle(title) ||
+      isHeadScopedLedgerTitle(title);
 }

@@ -12,7 +12,8 @@ import '../../../../core/export/export_kit.dart';
 import '../../../../core/supabase/db.dart';
 
 const double kPdfMarginMm = 19.05;
-const String kLetterheadNotConfiguredWarning = 'Official society letterhead has not been configured.';
+const String kLetterheadNotConfiguredWarning =
+    'Official society letterhead has not been configured.';
 
 const PdfColor _headerRule = PdfColor.fromInt(0xFF374178);
 const PdfColor _footerRule = PdfColor.fromInt(0xFF787D87);
@@ -43,7 +44,8 @@ class FinLetterhead {
   });
 
   /// Society name only (web passes a string letterhead → auto header with name).
-  factory FinLetterhead.nameOnly(String name) => FinLetterhead(name: name.trim().isEmpty ? 'Society' : name.trim());
+  factory FinLetterhead.nameOnly(String name) =>
+      FinLetterhead(name: name.trim().isEmpty ? 'Society' : name.trim());
 
   final String name;
   final String? societyId;
@@ -64,22 +66,33 @@ class FinLetterhead {
   final String? contactEmail;
 
   String get brandMode {
-    if (letterheadMode == 'image' || letterheadMode == 'stationery' || letterheadMode == 'auto') return letterheadMode;
+    if (letterheadMode == 'image' ||
+        letterheadMode == 'stationery' ||
+        letterheadMode == 'auto') {
+      return letterheadMode;
+    }
     return hasAsset ? 'image' : 'auto';
   }
 
   String get addressLine {
-    final cityState = [city, state].where((v) => (v ?? '').trim().isNotEmpty).join(', ');
-    return [address, cityState, pincode].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
+    final cityState =
+        [city, state].where((v) => (v ?? '').trim().isNotEmpty).join(', ');
+    return [address, cityState, pincode]
+        .map((p) => (p ?? '').trim())
+        .where((p) => p.isNotEmpty)
+        .join(' · ');
   }
 
-  String get contactLine =>
-      [contactPhone, contactEmail].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
+  String get contactLine => [contactPhone, contactEmail]
+      .map((p) => (p ?? '').trim())
+      .where((p) => p.isNotEmpty)
+      .join(' · ');
 }
 
 /// Web `LetterheadReportContext`.
 class FinLetterheadContext {
-  const FinLetterheadContext({required this.letterhead, required this.mode, this.warning});
+  const FinLetterheadContext(
+      {required this.letterhead, required this.mode, this.warning});
 
   final FinLetterhead? letterhead;
 
@@ -106,7 +119,9 @@ Future<Uint8List?> _download(String? url) async {
     final res = await req.close();
     if (res.statusCode != 200) return null;
     final ct = res.headers.contentType?.mimeType ?? '';
-    if (ct == 'application/pdf' || url.toLowerCase().contains('.pdf')) return null; // raster only
+    if (ct == 'application/pdf' || url.toLowerCase().contains('.pdf')) {
+      return null; // raster only
+    }
     final builder = BytesBuilder(copy: false);
     await for (final chunk in res) {
       builder.add(chunk);
@@ -124,31 +139,47 @@ Future<FinLetterhead?> fetchSocietyLetterhead(String societyId) async {
   if (!dbReady || societyId.isEmpty) return null;
   Map<String, dynamic>? row;
   try {
-    row = await db.from('societies').select(_fullSelect).eq('id', societyId).maybeSingle();
+    row = await db
+        .from('societies')
+        .select(_fullSelect)
+        .eq('id', societyId)
+        .maybeSingle();
   } catch (_) {
     try {
-      row = await db.from('societies').select(_fallbackSelect).eq('id', societyId).maybeSingle();
+      row = await db
+          .from('societies')
+          .select(_fallbackSelect)
+          .eq('id', societyId)
+          .maybeSingle();
     } catch (_) {
       return null;
     }
   }
   if (row == null) return null;
-  if (row['id'] != null && row['id'].toString() != societyId) return null; // multi-society guard
+  if (row['id'] != null && row['id'].toString() != societyId) {
+    return null; // multi-society guard
+  }
   String? letterheadUrl = row['letterhead_url']?.toString();
   final storagePath = row['letterhead_storage_path']?.toString();
-  if ((letterheadUrl == null || letterheadUrl.isEmpty) && storagePath != null && storagePath.isNotEmpty) {
+  if ((letterheadUrl == null || letterheadUrl.isEmpty) &&
+      storagePath != null &&
+      storagePath.isNotEmpty) {
     try {
-      letterheadUrl = await db.storage.from('society-documents').createSignedUrl(storagePath, 3600);
+      letterheadUrl = await db.storage
+          .from('society-documents')
+          .createSignedUrl(storagePath, 3600);
     } catch (_) {
       letterheadUrl = null;
     }
   }
-  final results = await Future.wait([_download(row['logo_url']?.toString()), _download(letterheadUrl)]);
+  final results = await Future.wait(
+      [_download(row['logo_url']?.toString()), _download(letterheadUrl)]);
   final bottom = _num(row['letterhead_bottom_mm'], 18);
   final top = _num(row['letterhead_top_mm'], 40);
   final left = _num(row['letterhead_left_mm'], kPdfMarginMm);
   final right = _num(row['letterhead_right_mm'], kPdfMarginMm);
-  final hasAsset = (row['letterhead_url']?.toString() ?? '').isNotEmpty || (storagePath ?? '').isNotEmpty;
+  final hasAsset = (row['letterhead_url']?.toString() ?? '').isNotEmpty ||
+      (storagePath ?? '').isNotEmpty;
   return FinLetterhead(
     name: (row['name'] ?? 'Society').toString(),
     societyId: societyId,
@@ -160,7 +191,9 @@ Future<FinLetterhead?> fetchSocietyLetterhead(String societyId) async {
     bottomMm: bottom > 0 ? (bottom < 16 ? 16 : bottom) : 18,
     leftMm: left > 0 ? left : kPdfMarginMm,
     rightMm: right > 0 ? right : kPdfMarginMm,
-    defaultReportFormat: row['default_report_format']?.toString() == 'plain' ? 'plain' : 'letterhead',
+    defaultReportFormat: row['default_report_format']?.toString() == 'plain'
+        ? 'plain'
+        : 'letterhead',
     address: row['address']?.toString(),
     city: row['city']?.toString(),
     state: row['state']?.toString(),
@@ -171,14 +204,23 @@ Future<FinLetterhead?> fetchSocietyLetterhead(String societyId) async {
 }
 
 /// Web `resolveLetterheadReportContext` (never falls back to another society).
-Future<FinLetterheadContext> resolveLetterheadContext(String societyId, {String? preferredMode}) async {
+Future<FinLetterheadContext> resolveLetterheadContext(String societyId,
+    {String? preferredMode}) async {
   final lh = await fetchSocietyLetterhead(societyId);
   if (lh == null) {
-    return const FinLetterheadContext(letterhead: null, mode: 'plain', warning: kLetterheadNotConfiguredWarning);
+    return const FinLetterheadContext(
+        letterhead: null,
+        mode: 'plain',
+        warning: kLetterheadNotConfiguredWarning);
   }
   final requested = preferredMode ?? lh.defaultReportFormat;
-  if (requested == 'letterhead' && !lh.hasAsset && lh.letterheadMode != 'stationery') {
-    return FinLetterheadContext(letterhead: lh, mode: 'plain', warning: kLetterheadNotConfiguredWarning);
+  if (requested == 'letterhead' &&
+      !lh.hasAsset &&
+      lh.letterheadMode != 'stationery') {
+    return FinLetterheadContext(
+        letterhead: lh,
+        mode: 'plain',
+        warning: kLetterheadNotConfiguredWarning);
   }
   return FinLetterheadContext(letterhead: lh, mode: requested);
 }
@@ -199,12 +241,15 @@ _Layout _measure(FinLetterhead lh, String mode) {
   final top = lh.topMm > left ? lh.topMm : left;
   final bottom = lh.bottomMm > 14 ? lh.bottomMm : 14.0;
   final brand = lh.brandMode;
-  if (brand == 'stationery' || (brand == 'image' && lh.hasAsset)) return _Layout(left, right, top, bottom);
+  if (brand == 'stationery' || (brand == 'image' && lh.hasAsset)) {
+    return _Layout(left, right, top, bottom);
+  }
   final hasLogo = lh.logoBytes != null;
   var y = left + 9.5;
   if (lh.addressLine.isNotEmpty) y += 3.6;
   if (lh.contactLine.isNotEmpty) y += 3.6;
-  final ruleY = [y + 2.5, left + (hasLogo ? 14 : 6) + 2, top - 8].reduce((a, b) => a > b ? a : b);
+  final ruleY = [y + 2.5, left + (hasLogo ? 14 : 6) + 2, top - 8]
+      .reduce((a, b) => a > b ? a : b);
   final contentTop = [ruleY + 6, top, left].reduce((a, b) => a > b ? a : b);
   return _Layout(left, right, contentTop, bottom);
 }
@@ -216,7 +261,8 @@ Future<pw.PageTheme> financePageTheme({
   bool landscape = false,
 }) async {
   final theme = await ExportKit.pdfTheme();
-  final format = landscape ? PdfPageFormat.letter.landscape : PdfPageFormat.letter;
+  final format =
+      landscape ? PdfPageFormat.letter.landscape : PdfPageFormat.letter;
   final lay = _measure(letterhead, mode);
   final pageW = format.width / PdfPageFormat.mm;
   final pageH = format.height / PdfPageFormat.mm;
@@ -224,22 +270,28 @@ Future<pw.PageTheme> financePageTheme({
   final brand = letterhead.brandMode;
   final plain = mode == 'plain';
   final stationery = !plain && brand == 'stationery';
-  final fullPage = !plain && brand == 'image' && letterhead.hasAsset && letterhead.letterheadBytes != null;
+  final fullPage = !plain &&
+      brand == 'image' &&
+      letterhead.hasAsset &&
+      letterhead.letterheadBytes != null;
   // Auto digital band when there is no full-page stationery (also when the image could not be loaded).
   final autoBand = !plain && !stationery && !fullPage;
 
   pw.Widget pageNo(pw.Context ctx, {double size = 8}) =>
-      pw.Text('${ctx.pageNumber}/${ctx.pagesCount}', style: pw.TextStyle(fontSize: size, color: _metaColor));
+      pw.Text('${ctx.pageNumber}/${ctx.pagesCount}',
+          style: pw.TextStyle(fontSize: size, color: _metaColor));
 
   return pw.PageTheme(
     pageFormat: format,
     theme: theme,
-    margin: pw.EdgeInsets.fromLTRB(mm(lay.left), mm(lay.contentTop), mm(lay.right), mm(lay.bottom)),
+    margin: pw.EdgeInsets.fromLTRB(
+        mm(lay.left), mm(lay.contentTop), mm(lay.right), mm(lay.bottom)),
     buildBackground: (ctx) {
       final children = <pw.Widget>[];
       if (fullPage) {
         children.add(pw.Positioned.fill(
-          child: pw.Image(pw.MemoryImage(letterhead.letterheadBytes!), fit: pw.BoxFit.fill),
+          child: pw.Image(pw.MemoryImage(letterhead.letterheadBytes!),
+              fit: pw.BoxFit.fill),
         ));
       } else if (autoBand) {
         // Auto digital header band.
@@ -253,7 +305,11 @@ Future<pw.PageTheme> financePageTheme({
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 if (logo != null) ...[
-                  pw.SizedBox(width: mm(14), height: mm(14), child: pw.Image(pw.MemoryImage(logo), fit: pw.BoxFit.contain)),
+                  pw.SizedBox(
+                      width: mm(14),
+                      height: mm(14),
+                      child: pw.Image(pw.MemoryImage(logo),
+                          fit: pw.BoxFit.contain)),
                   pw.SizedBox(width: mm(3.5)),
                 ],
                 pw.Expanded(
@@ -261,11 +317,18 @@ Future<pw.PageTheme> financePageTheme({
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(letterhead.name,
-                          style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: _nameColor)),
+                          style: pw.TextStyle(
+                              fontSize: 15,
+                              fontWeight: pw.FontWeight.bold,
+                              color: _nameColor)),
                       if (letterhead.addressLine.isNotEmpty)
-                        pw.Text(letterhead.addressLine, style: const pw.TextStyle(fontSize: 8, color: _metaColor)),
+                        pw.Text(letterhead.addressLine,
+                            style: const pw.TextStyle(
+                                fontSize: 8, color: _metaColor)),
                       if (letterhead.contactLine.isNotEmpty)
-                        pw.Text(letterhead.contactLine, style: const pw.TextStyle(fontSize: 8, color: _metaColor)),
+                        pw.Text(letterhead.contactLine,
+                            style: const pw.TextStyle(
+                                fontSize: 8, color: _metaColor)),
                     ],
                   ),
                 ),
@@ -276,13 +339,19 @@ Future<pw.PageTheme> financePageTheme({
         children.add(pw.Positioned(
           left: mm(lay.left),
           top: mm(lay.contentTop - 6),
-          child: pw.Container(width: mm(pageW - lay.left - lay.right), height: 0.85 * PdfPageFormat.mm, color: _headerRule),
+          child: pw.Container(
+              width: mm(pageW - lay.left - lay.right),
+              height: 0.85 * PdfPageFormat.mm,
+              color: _headerRule),
         ));
         // Footer band: rule + society name + page n/N.
         children.add(pw.Positioned(
           left: mm(lay.left),
           top: mm(contentBottom),
-          child: pw.Container(width: mm(pageW - lay.left - lay.right), height: 0.7 * PdfPageFormat.mm, color: _footerRule),
+          child: pw.Container(
+              width: mm(pageW - lay.left - lay.right),
+              height: 0.7 * PdfPageFormat.mm,
+              color: _footerRule),
         ));
         children.add(pw.Positioned(
           left: mm(lay.left),
@@ -292,7 +361,11 @@ Future<pw.PageTheme> financePageTheme({
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(letterhead.name, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _nameColor)),
+                pw.Text(letterhead.name,
+                    style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                        color: _nameColor)),
                 pageNo(ctx, size: 9),
               ],
             ),
@@ -302,14 +375,18 @@ Future<pw.PageTheme> financePageTheme({
       if (fullPage || stationery) {
         children.add(pw.Positioned(
           right: mm(lay.right),
-          top: mm((contentBottom + 2.5) > pageH - 9 ? pageH - 9 : contentBottom + 2.5),
+          top: mm((contentBottom + 2.5) > pageH - 9
+              ? pageH - 9
+              : contentBottom + 2.5),
           child: pageNo(ctx),
         ));
       }
       if (plain) {
-        children.add(pw.Positioned(right: mm(lay.right), top: mm(pageH - 11), child: pageNo(ctx)));
+        children.add(pw.Positioned(
+            right: mm(lay.right), top: mm(pageH - 11), child: pageNo(ctx)));
       }
-      return pw.FullPage(ignoreMargins: true, child: pw.Stack(children: children));
+      return pw.FullPage(
+          ignoreMargins: true, child: pw.Stack(children: children));
     },
   );
 }
@@ -328,12 +405,15 @@ pw.Widget reportHeaderBlock({
     if ((date ?? '').trim().isNotEmpty) ('Date', date!.trim()),
     if ((society ?? '').trim().isNotEmpty) ('Society', society!.trim()),
     if ((period ?? '').trim().isNotEmpty) ('Period', period!.trim()),
-    if ((generatedBy ?? '').trim().isNotEmpty) ('Generated By', generatedBy!.trim()),
+    if ((generatedBy ?? '').trim().isNotEmpty)
+      ('Generated By', generatedBy!.trim()),
   ];
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.start,
     children: [
-      pw.Text(title, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: _nameColor)),
+      pw.Text(title,
+          style: pw.TextStyle(
+              fontSize: 13, fontWeight: pw.FontWeight.bold, color: _nameColor)),
       pw.SizedBox(height: mm(2)),
       for (final r in rows)
         pw.Padding(
@@ -343,9 +423,16 @@ pw.Widget reportHeaderBlock({
             children: [
               pw.SizedBox(
                 width: mm(28),
-                child: pw.Text('${r.$1}:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _metaColor)),
+                child: pw.Text('${r.$1}:',
+                    style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                        color: _metaColor)),
               ),
-              pw.Expanded(child: pw.Text(r.$2, style: const pw.TextStyle(fontSize: 9, color: _metaColor))),
+              pw.Expanded(
+                  child: pw.Text(r.$2,
+                      style:
+                          const pw.TextStyle(fontSize: 9, color: _metaColor))),
             ],
           ),
         ),
@@ -359,7 +446,8 @@ pw.Widget signatureBlock() {
   pw.Widget sig(String label) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: _nameColor)),
+          pw.Text(label,
+              style: const pw.TextStyle(fontSize: 9, color: _nameColor)),
           pw.SizedBox(height: mm(9)),
           pw.Container(width: mm(48), height: 0.6, color: _footerRule),
         ],
@@ -369,9 +457,14 @@ pw.Widget signatureBlock() {
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
-        pw.Row(children: [pw.Expanded(child: sig('Prepared By')), pw.Expanded(child: sig('Verified By'))]),
+        pw.Row(children: [
+          pw.Expanded(child: sig('Prepared By')),
+          pw.Expanded(child: sig('Verified By'))
+        ]),
         pw.SizedBox(height: mm(10)),
-        pw.Align(alignment: pw.Alignment.centerRight, child: sig('Authorized Signatory')),
+        pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: sig('Authorized Signatory')),
       ],
     ),
   );

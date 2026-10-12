@@ -33,7 +33,8 @@ class TransactionExportRow {
   final String status;
   final String notes;
 
-  AmountRow get amountRow => AmountRow(amount: amount, dateIso: dateIso, date: date);
+  AmountRow get amountRow =>
+      AmountRow(amount: amount, dateIso: dateIso, date: date);
 }
 
 const List<String> kTransactionHeaders = [
@@ -92,7 +93,8 @@ class ReceiptLineItem {
   String get createdAt => payment?.createdAt ?? entry?.createdAt ?? '';
 
   /// Selection key (`mp-<id>` / `ledger-<id>`).
-  String get key => payment != null ? 'mp-${payment!.id}' : 'ledger-${entry!.id}';
+  String get key =>
+      payment != null ? 'mp-${payment!.id}' : 'ledger-${entry!.id}';
 }
 
 List<TransactionExportRow> buildTransactionExportRows({
@@ -110,7 +112,8 @@ List<TransactionExportRow> buildTransactionExportRows({
         dateIso: p.createdAt,
         type: 'Maintenance receipt',
         flat: p.flatNumber,
-        description: (title == null || title.isEmpty) ? 'Unknown charge' : title,
+        description:
+            (title == null || title.isEmpty) ? 'Unknown charge' : title,
         counterparty: p.residentName ?? '',
         method: p.paymentMethod.toUpperCase(),
         transactionId: p.transactionId ?? '',
@@ -120,7 +123,8 @@ List<TransactionExportRow> buildTransactionExportRows({
       ));
     } else if (e != null) {
       final flats = e.allocations.map((a) => a.flatNumber).join(', ');
-      final description = (e.title ?? e.recordMode ?? 'Ledger entry').replaceAll('_', ' ');
+      final description =
+          (e.title ?? e.recordMode ?? 'Ledger entry').replaceAll('_', ' ');
       rows.add(TransactionExportRow(
         date: fmtDateLocal(e.createdAt),
         dateIso: e.createdAt,

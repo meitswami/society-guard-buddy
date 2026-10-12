@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kutumbika_mobile/core/i18n/i18n.dart';
 import 'package:kutumbika_mobile/core/prefs/app_prefs.dart';
 import 'package:kutumbika_mobile/core/theme/kutumbika_theme.dart';
+import 'package:kutumbika_mobile/core/ui/ui.dart' show AppButton;
 import 'package:kutumbika_mobile/features/admin/core/admin_module.dart';
 import 'package:kutumbika_mobile/features/admin/finance/admin_finance_module.dart';
 import 'package:kutumbika_mobile/features/admin/finance/data/finance_repository.dart';
@@ -21,18 +22,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _FakeRepo implements FinanceRepository {
   final calls = <String>[];
 
-  static final _core = FinanceCoreData(
+  static const _core = FinanceCoreData(
     societyName: 'Test Society',
-    flats: const [
-      SocietyFlatRow(id: 'f1', flatNumber: '101', ownerName: 'Owner', isOccupied: true),
-      SocietyFlatRow(id: 'f2', flatNumber: '102', ownerName: 'Owner 2', isOccupied: true),
+    flats: [
+      SocietyFlatRow(
+          id: 'f1', flatNumber: '101', ownerName: 'Owner', isOccupied: true),
+      SocietyFlatRow(
+          id: 'f2', flatNumber: '102', ownerName: 'Owner 2', isOccupied: true),
     ],
-    charges: const [
-      FinanceCharge(id: 'ch-1', title: 'July 2026 Maintenance', amount: 500, frequency: 'monthly'),
-      FinanceCharge(id: 'ch-2', title: 'Lift AMC', amount: 1200, frequency: 'yearly', expenseGroupId: 'g1'),
+    charges: [
+      FinanceCharge(
+          id: 'ch-1',
+          title: 'Monthly Maintenance',
+          amount: 500,
+          frequency: 'monthly'),
+      FinanceCharge(
+          id: 'ch-2',
+          title: 'Lift AMC',
+          amount: 1200,
+          frequency: 'yearly',
+          expenseGroupId: 'g1'),
     ],
-    paymentExpenseGroups: const [PaymentExpenseGroup(id: 'g1', name: 'Lift AMC', majorHead: 'OPERATION & MAINTENANCE')],
-    payments: const [
+    paymentExpenseGroups: [
+      PaymentExpenseGroup(
+          id: 'g1', name: 'Lift AMC', majorHead: 'OPERATION & MAINTENANCE')
+    ],
+    payments: [
       FinancePayment(
         id: 'p1',
         chargeId: 'ch-1',
@@ -53,7 +68,7 @@ class _FakeRepo implements FinanceRepository {
         createdAt: '2026-07-05T10:00:00Z',
       ),
     ],
-    ledgerEntries: const [
+    ledgerEntries: [
       // Web render test: ledger row missing record_mode / destination.
       FinanceLedgerRow(
         id: 'fe-1',
@@ -74,26 +89,42 @@ class _FakeRepo implements FinanceRepository {
         createdAt: '2026-07-02T10:00:00Z',
       ),
     ],
-    expenseCategoryById: const {'e1': 'payment'},
+    expenseCategoryById: {'e1': 'payment'},
   );
 
   @override
-  Future<FinanceCoreData> fetchCore(String societyId, String adminName) async => _core;
+  Future<FinanceCoreData> fetchCore(String societyId, String adminName) async =>
+      _core;
   @override
-  Future<FinanceEventReference> fetchEventReference(String societyId) async => const FinanceEventReference(
-        contributions: [EventContribRefRow(id: 'c1', flatNumber: '101', amount: 300, eventTitle: 'Diwali')],
-        foodExpenses: [EventFoodRefRow(id: 'x1', title: 'Snacks', totalAmount: 900, expenseDate: '2026-07-03')],
+  Future<FinanceEventReference> fetchEventReference(String societyId) async =>
+      const FinanceEventReference(
+        contributions: [
+          EventContribRefRow(
+              id: 'c1', flatNumber: '101', amount: 300, eventTitle: 'Diwali')
+        ],
+        foodExpenses: [
+          EventFoodRefRow(
+              id: 'x1',
+              title: 'Snacks',
+              totalAmount: 900,
+              expenseDate: '2026-07-03')
+        ],
       );
   @override
-  Future<FinanceFlatReportData> fetchFlatReport(String societyId) async => const FinanceFlatReportData();
+  Future<FinanceFlatReportData> fetchFlatReport(String societyId) async =>
+      const FinanceFlatReportData();
   @override
-  Future<List<OpeningBalanceAnchor>> fetchOpeningAnchors(String societyId) async => const [];
+  Future<List<OpeningBalanceAnchor>> fetchOpeningAnchors(
+          String societyId) async =>
+      const [];
   @override
-  Future<void> saveOpeningAnchor(String societyId, OpeningBalanceAnchor anchor) async {}
+  Future<void> saveOpeningAnchor(
+      String societyId, OpeningBalanceAnchor anchor) async {}
   @override
   Future<void> deleteOpeningAnchor(String id) async {}
   @override
-  Future<List<ReserveTransfer>> fetchReserveTransfers(String societyId) async => const [];
+  Future<List<ReserveTransfer>> fetchReserveTransfers(String societyId) async =>
+      const [];
   @override
   Future<void> insertReserveTransfer({
     required String societyId,
@@ -104,9 +135,12 @@ class _FakeRepo implements FinanceRepository {
     required String adminName,
   }) async {}
   @override
-  Future<HeadFundData> fetchHeadFundData(String societyId) async => const HeadFundData(
+  Future<HeadFundData> fetchHeadFundData(String societyId) async =>
+      const HeadFundData(
         groups: [HeadFundGroup(id: 'g1', name: 'Lift AMC')],
-        charges: [HeadFundCharge(id: 'ch-2', title: 'Lift AMC', expenseGroupId: 'g1')],
+        charges: [
+          HeadFundCharge(id: 'ch-2', title: 'Lift AMC', expenseGroupId: 'g1')
+        ],
         expenses: [
           HeadFundExpense(
             id: 'e1',
@@ -149,9 +183,12 @@ class _FakeRepo implements FinanceRepository {
   @override
   Future<void> deleteExpenseGroup(String societyId, String groupId) async {}
   @override
-  Future<void> insertCharge(String societyId, String adminName, ChargeInput input) async => calls.add('insertCharge:${input.title}');
+  Future<void> insertCharge(
+          String societyId, String adminName, ChargeInput input) async =>
+      calls.add('insertCharge:${input.title}');
   @override
-  Future<void> updateCharge(String societyId, String chargeId, ChargeInput input) async {}
+  Future<void> updateCharge(
+      String societyId, String chargeId, ChargeInput input) async {}
   @override
   Future<void> deleteCharge(String societyId, String chargeId) async {}
   @override
@@ -165,25 +202,36 @@ class _FakeRepo implements FinanceRepository {
   @override
   Future<String> persistFinanceRecord(RecordReceiptPlan plan) async => 'fe-new';
   @override
-  Future<void> updatePaymentStatus(String paymentId, String status, String adminName, [String? reason]) async {}
+  Future<void> updatePaymentStatus(
+      String paymentId, String status, String adminName,
+      [String? reason]) async {}
   @override
-  Future<void> updatePayment(String paymentId, Map<String, dynamic> payload) async {}
+  Future<void> updatePayment(
+      String paymentId, Map<String, dynamic> payload) async {}
   @override
-  Future<void> deletePaymentRow({required String id, required String flatNumber, String? financeEntryId}) async {}
+  Future<void> deletePaymentRow(
+      {required String id,
+      required String flatNumber,
+      String? financeEntryId}) async {}
   @override
   Future<void> updateLedgerStatus(String entryId, String status) async {}
   @override
-  Future<void> updateLedger(String entryId, Map<String, dynamic> payload) async {}
+  Future<void> updateLedger(
+      String entryId, Map<String, dynamic> payload) async {}
   @override
   Future<void> deleteLedger(String entryId) async {}
   @override
-  Future<void> sendMaintenanceReminders(String societyId, String adminName, List<String> flatNumbers) async {}
+  Future<void> sendMaintenanceReminders(
+      String societyId, String adminName, List<String> flatNumbers) async {}
   @override
-  Future<void> upsertReminderSettings(String societyId, FinanceReminderSettings s) async {}
+  Future<void> upsertReminderSettings(
+      String societyId, FinanceReminderSettings s) async {}
   @override
   Future<int> invokeReminderTest(String societyId) async => 0;
   @override
-  Future<MonthlyBillIssueResult> invokeIssueMonthlyBill(String societyId) async => const MonthlyBillIssueResult(issued: 0);
+  Future<MonthlyBillIssueResult> invokeIssueMonthlyBill(
+          String societyId) async =>
+      const MonthlyBillIssueResult(issued: 0);
   @override
   Future<void> notifyPaymentDecision({
     required String societyId,
@@ -213,28 +261,37 @@ class _FakeRepo implements FinanceRepository {
   }) async =>
       const [];
   @override
-  Future<String?> uploadMaintenanceReceipt(Uint8List bytes, String fileName, {String? contentType}) async => null;
+  Future<String?> uploadMaintenanceReceipt(Uint8List bytes, String fileName,
+          {String? contentType}) async =>
+      null;
 }
 
 AdminModuleContext _ctx({String? subTab, String? query}) => AdminModuleContext(
       session: const SessionAdmin(
         societyId: 's1',
         societyName: 'Test Society',
-        admin: AdminUser(id: 'a1', name: 'Admin', adminId: 'A1', societyId: 's1', permissions: AdminPanelPermissions.full),
+        admin: AdminUser(
+            id: 'a1',
+            name: 'Admin',
+            adminId: 'A1',
+            societyId: 's1',
+            permissions: AdminPanelPermissions.full),
       ),
       goTo: (tab, {query, subTab}) {},
       subTab: subTab,
       initialQuery: query,
     );
 
-Future<void> _pump(WidgetTester tester, AdminModuleContext ctx, _FakeRepo repo) async {
+Future<void> _pump(WidgetTester tester, AdminModuleContext ctx, _FakeRepo repo,
+    {AppLang lang = AppLang.en}) async {
   tester.view.physicalSize = const Size(1080, 2400);
   tester.view.devicePixelRatio = 2.7;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(ProviderScope(
     child: MaterialApp(
       theme: KutumbikaTheme.light(),
-      builder: (context, child) => I18nScope(translator: const Translator(AppLang.en), child: child!),
+      builder: (context, child) =>
+          I18nScope(translator: Translator(lang), child: child!),
       home: Scaffold(body: FinanceManagerView(ctx: ctx, repository: repo)),
     ),
   ));
@@ -253,24 +310,28 @@ void main() {
     expect(find.textContaining('2 receipt types'), findsOneWidget);
   });
 
-  testWidgets('renders Record receipt panel when opened via sub-tab', (tester) async {
+  testWidgets('renders Record receipt panel when opened via sub-tab',
+      (tester) async {
     await _pump(tester, _ctx(subTab: 'payments'), _FakeRepo());
     expect(find.text('RECORDING STYLE'), findsOneWidget);
   });
 
-  testWidgets('renders Transactions with ledger rows missing record_mode', (tester) async {
+  testWidgets('renders Transactions with ledger rows missing record_mode',
+      (tester) async {
     await _pump(tester, _ctx(subTab: 'receipts'), _FakeRepo());
     expect(find.text('Pool receipt'), findsOneWidget);
     expect(find.text('Flat 101'), findsWidgets);
   });
 
-  testWidgets('initial search query opens Transactions filtered', (tester) async {
+  testWidgets('initial search query opens Transactions filtered',
+      (tester) async {
     await _pump(tester, _ctx(query: '102'), _FakeRepo());
     expect(find.text('Flat 102'), findsWidgets);
     expect(find.text('Pool receipt'), findsNothing);
   });
 
-  testWidgets('renders payment types, record payment and totals', (tester) async {
+  testWidgets('renders payment types, record payment and totals',
+      (tester) async {
     for (final sub in ['create_payment', 'record_payment', 'totals']) {
       await _pump(tester, _ctx(subTab: sub), _FakeRepo());
       expect(tester.takeException(), isNull);
@@ -280,8 +341,79 @@ void main() {
 
   testWidgets('reminders panel toggles open', (tester) async {
     await _pump(tester, _ctx(), _FakeRepo());
+    await tester.ensureVisible(find.text('Reminders'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Reminders'));
     await tester.pumpAndSettle();
     expect(find.text('Due reminders'), findsOneWidget);
   });
+
+  testWidgets('every sub-tab renders in Hindi without overflow',
+      (tester) async {
+    for (final sub in [
+      'maintenance',
+      'create_payment',
+      'payments',
+      'record_payment',
+      'receipts',
+      'totals'
+    ]) {
+      await _pump(tester, _ctx(subTab: sub), _FakeRepo(), lang: AppLang.hi);
+      expect(tester.takeException(), isNull, reason: sub);
+    }
+  });
+
+  testWidgets('record receipt saves a flats-only entry', (tester) async {
+    final repo = _RecordingRepo();
+    await _pump(tester, _ctx(subTab: 'payments'), repo);
+    await tester.tap(find.text('101').first);
+    await tester.pumpAndSettle();
+    final save = find.widgetWithText(AppButton, 'Record receipt');
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(repo.plans, hasLength(1));
+    expect(repo.plans.single.entry['record_mode'], 'flats_only');
+    expect(repo.plans.single.maintenancePayments.single['flat_number'], '101');
+  });
+
+  testWidgets('payment detail, edit sheet and head drill-down open',
+      (tester) async {
+    await _pump(tester, _ctx(subTab: 'receipts'), _FakeRepo());
+    await tester.ensureVisible(find.text('Flat 102').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flat 102').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Payment details'), findsOneWidget);
+    expect(find.text('Download letterhead receipt'), findsOneWidget);
+    await tester.tap(find.text('Close').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Edit').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining(RegExp('Edit (payment|ledger entry)')),
+        findsOneWidget);
+    await tester.tap(find.text('Cancel').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('OPERATION & MAINTENANCE').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OPERATION & MAINTENANCE').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Tap a row for entry detail'), findsOneWidget);
+    await tester.tap(find.text('Flat 101').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Receipt detail'), findsOneWidget);
+  });
+}
+
+class _RecordingRepo extends _FakeRepo {
+  final plans = <RecordReceiptPlan>[];
+
+  @override
+  Future<String> persistFinanceRecord(RecordReceiptPlan plan) async {
+    plans.add(plan);
+    return 'fe-x';
+  }
 }

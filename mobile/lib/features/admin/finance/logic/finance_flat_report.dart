@@ -112,7 +112,9 @@ List<FlatReportRow> buildFlatReportRows({
     if (e.destination == 'separate_entry') continue;
     final ledgerDate = ledgerTransactionDate(e);
     if (ledgerDate.isEmpty || !isInRange(ledgerDate)) continue;
-    if (e.recordMode == 'flats_only' && countedFinanceEntryIds.contains(e.id)) continue;
+    if (e.recordMode == 'flats_only' && countedFinanceEntryIds.contains(e.id)) {
+      continue;
+    }
     for (final alloc in e.allocations) {
       final flatNum = alloc.flatNumber;
       if (flatNum.isEmpty || flatNum == 'SOCIETY') continue;
@@ -163,7 +165,10 @@ List<FlatReportRow> buildFlatReportRows({
     row.details.sort((a, b) => b.date.compareTo(a.date));
   }
 
-  var rows = sortFlatsByNumber<FlatReportRow>(flatMap.values, (r) => r.flatNumber);
-  if (selectedFlat != 'all') rows = rows.where((r) => r.flatNumber == selectedFlat).toList();
+  var rows =
+      sortFlatsByNumber<FlatReportRow>(flatMap.values, (r) => r.flatNumber);
+  if (selectedFlat != 'all') {
+    rows = rows.where((r) => r.flatNumber == selectedFlat).toList();
+  }
   return rows;
 }

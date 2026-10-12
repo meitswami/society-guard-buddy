@@ -178,7 +178,7 @@ class _CommitteePageState extends State<CommitteePage> {
               children: [
                 Icon(Icons.groups_outlined, size: 12, color: t.mutedForeground),
                 const SizedBox(width: 4),
-                Text(context.tr('REPRESENTATIVE FOR THIS POST', 'इस पद के प्रतिनिधि'), style: AppText.tiny(context)),
+                Flexible(child: Text(context.tr('REPRESENTATIVE FOR THIS POST', 'इस पद के प्रतिनिधि'), style: AppText.tiny(context))),
               ],
             ),
             const SizedBox(height: 4),
@@ -199,7 +199,7 @@ class _CommitteePageState extends State<CommitteePage> {
               children: [
                 Icon(Icons.groups_outlined, size: 12, color: t.mutedForeground),
                 const SizedBox(width: 4),
-                Text(context.tr('REPRESENTATIVE CONTACT', 'प्रतिनिधि संपर्क'), style: AppText.tiny(context)),
+                Flexible(child: Text(context.tr('REPRESENTATIVE CONTACT', 'प्रतिनिधि संपर्क'), style: AppText.tiny(context))),
               ],
             ),
             const SizedBox(height: 8),

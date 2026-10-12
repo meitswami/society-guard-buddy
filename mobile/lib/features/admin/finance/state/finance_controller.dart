@@ -9,7 +9,14 @@ import '../logic/finance_derived.dart';
 import '../logic/finance_models.dart';
 
 /// Web `FinanceSubTab`.
-enum FinanceSubTab { maintenance, createPayment, payments, recordPayment, receipts, totals }
+enum FinanceSubTab {
+  maintenance,
+  createPayment,
+  payments,
+  recordPayment,
+  receipts,
+  totals
+}
 
 FinanceSubTab? financeSubTabFromWire(String? v) => switch (v) {
       'maintenance' => FinanceSubTab.maintenance,
@@ -22,7 +29,8 @@ FinanceSubTab? financeSubTabFromWire(String? v) => switch (v) {
     };
 
 class FinanceController extends ChangeNotifier {
-  FinanceController({required this.repo, required this.societyId, required this.adminName});
+  FinanceController(
+      {required this.repo, required this.societyId, required this.adminName});
 
   final FinanceRepository repo;
   final String societyId;

@@ -12,10 +12,12 @@ String ledgerTransactionDate(FinanceLedgerRow e) => ledgerTransactionDateOf(
     );
 
 /// `yyyy-MM` of the ledger transaction date.
-String ledgerMonthValue(FinanceLedgerRow e) => billingMonthFromDate(ledgerTransactionDate(e));
+String ledgerMonthValue(FinanceLedgerRow e) =>
+    billingMonthFromDate(ledgerTransactionDate(e));
 
 /// `MM/yyyy` of the ledger transaction date.
-String ledgerMonthDisplay(FinanceLedgerRow e) => isoMonthToDisplay(ledgerMonthValue(e));
+String ledgerMonthDisplay(FinanceLedgerRow e) =>
+    isoMonthToDisplay(ledgerMonthValue(e));
 
 /// Human-readable ledger enum (record_mode, destination, …) — safe when the DB value is null.
 String formatLedgerFieldLabel(String? value, [String fallback = '—']) {
@@ -24,7 +26,8 @@ String formatLedgerFieldLabel(String? value, [String fallback = '—']) {
 }
 
 /// `MM/yyyy` of the payment billing date (or [unknownLabel]).
-String paymentMonthLabel(FinancePayment p, {String unknownLabel = 'Unknown month'}) {
+String paymentMonthLabel(FinancePayment p,
+    {String unknownLabel = 'Unknown month'}) {
   final raw = paymentBillingDate(p.dueDate);
   if (raw.isEmpty) return unknownLabel;
   return isoMonthToDisplay(billingMonthFromDate(raw));
@@ -46,12 +49,15 @@ String eventContribRefLabel(EventContribRefRow c) {
     return 'Receipt (no flat)';
   }
   final parts = ['Flat $flat'];
-  if (c.residentName != null && c.residentName!.isNotEmpty) parts.add(c.residentName!);
+  if (c.residentName != null && c.residentName!.isNotEmpty) {
+    parts.add(c.residentName!);
+  }
   if (c.splitMode == 'headcount') parts.add('headcount');
   return parts.join(' · ');
 }
 
-bool isGroupExpenseLedgerEntry(FinanceLedgerRow e) => e.expenseId != null && e.expenseId!.isNotEmpty;
+bool isGroupExpenseLedgerEntry(FinanceLedgerRow e) =>
+    e.expenseId != null && e.expenseId!.isNotEmpty;
 
 /// Receipt still sitting in the society pool (not split across flats yet).
 bool isLedgerInSocietyPool(FinanceLedgerRow e) {
@@ -59,12 +65,18 @@ bool isLedgerInSocietyPool(FinanceLedgerRow e) {
   if (e.distributedAt != null && e.distributedAt!.isNotEmpty) return false;
   final allocCount = e.allocations.length;
   if (e.recordMode == 'society_pool') return allocCount == 0;
-  return e.allocationStyle == 'none' && allocCount == 0 && e.aggregateFlatCount == 0;
+  return e.allocationStyle == 'none' &&
+      allocCount == 0 &&
+      e.aggregateFlatCount == 0;
 }
 
 /// Head-wise summary row (web `TransactionHeadSummaryRow`).
 class TransactionHeadSummaryRow {
-  TransactionHeadSummaryRow({required this.head, this.total = 0, this.entries = 0, ChannelTotals? byChannel})
+  TransactionHeadSummaryRow(
+      {required this.head,
+      this.total = 0,
+      this.entries = 0,
+      ChannelTotals? byChannel})
       : byChannel = byChannel ?? ChannelTotals();
 
   final String head;
@@ -80,14 +92,16 @@ void addTransactionHeadRow(
   String? paymentMethod,
 ) {
   final label = head.trim().isEmpty ? 'Uncategorized' : head.trim();
-  final cur = map.putIfAbsent(label, () => TransactionHeadSummaryRow(head: label));
+  final cur =
+      map.putIfAbsent(label, () => TransactionHeadSummaryRow(head: label));
   final amt = amount.isNaN ? 0.0 : amount;
   cur.total += amt;
   cur.entries += 1;
   addToChannel(cur.byChannel, paymentMethod, amt);
 }
 
-List<TransactionHeadSummaryRow> transactionHeadSummaryRows(Map<String, TransactionHeadSummaryRow> map) {
+List<TransactionHeadSummaryRow> transactionHeadSummaryRows(
+    Map<String, TransactionHeadSummaryRow> map) {
   final rows = [...map.values];
   rows.sort((a, b) {
     final byTotal = b.total.compareTo(a.total);

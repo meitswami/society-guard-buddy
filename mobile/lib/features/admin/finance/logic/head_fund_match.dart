@@ -1,8 +1,11 @@
 // Port of `src/lib/headFundMatch.ts` (Record payment → Head fund reconciliation).
 
 /// Normalise expense-head names for fuzzy matching (Water Softner / Softener / Installation).
-String normalizeHeadToken(String s) =>
-    s.toLowerCase().replaceAll('softener', 'softner').replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+String normalizeHeadToken(String s) => s
+    .toLowerCase()
+    .replaceAll('softener', 'softner')
+    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+    .trim();
 
 bool headNamesMatch(String a, String b) {
   final na = normalizeHeadToken(a);
@@ -15,16 +18,21 @@ bool headNamesMatch(String a, String b) {
   return wa.any(wb.contains);
 }
 
-bool expenseMatchesHead(String headName, {String? title, String? vendorOrService, String? groupName}) {
-  final blob = [title, vendorOrService, groupName].where((v) => v != null && v.isNotEmpty).join(' ');
+bool expenseMatchesHead(String headName,
+    {String? title, String? vendorOrService, String? groupName}) {
+  final blob = [title, vendorOrService, groupName]
+      .where((v) => v != null && v.isNotEmpty)
+      .join(' ');
   return headNamesMatch(headName, blob);
 }
 
 bool isHeadContributionLedgerTitle(String? title) =>
-    RegExp(r'^head contribution\s*[—–-]', caseSensitive: false).hasMatch((title ?? '').trim());
+    RegExp(r'^head contribution\s*[—–-]', caseSensitive: false)
+        .hasMatch((title ?? '').trim());
 
 bool isHeadAdjustmentLedgerTitle(String? title) =>
-    RegExp(r'^head adjustment\s*[—–-]', caseSensitive: false).hasMatch((title ?? '').trim());
+    RegExp(r'^head adjustment\s*[—–-]', caseSensitive: false)
+        .hasMatch((title ?? '').trim());
 
 /// `head_fund_adjustments.source_type` values → English label (web) / Hindi label.
 const Map<String, String> kHeadAdjustmentSourceLabels = {

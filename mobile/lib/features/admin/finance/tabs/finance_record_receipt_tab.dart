@@ -22,24 +22,36 @@ import '../widgets/fin_kit.dart';
 import '../widgets/finance_widgets.dart';
 
 const _methods = ['cash', 'upi', 'razorpay', 'bank_transfer'];
-const _modes = [kModeSocietyPool, kModeFlatsOnly, kModeFlatsPlusOutsider, kModeOutsiderOnly];
+const _modes = [
+  kModeSocietyPool,
+  kModeFlatsOnly,
+  kModeFlatsPlusOutsider,
+  kModeOutsiderOnly
+];
 
 /// Grouped "receipt type" options (`<optgroup>` per major head): null entries are headings.
-List<({String? id, String label})> groupedChargeOptions(FinanceController c, String placeholder) {
+List<({String? id, String label})> groupedChargeOptions(
+    FinanceController c, String placeholder) {
   final byMajor = c.derived.chargesByMajorHead;
   return [
     (id: '', label: placeholder),
     for (final major in [...kSocietyPaymentMajorHeads, kUncategorizedHead])
       if ((byMajor[major] ?? const []).isNotEmpty) ...[
         (id: null, label: major),
-        for (final ch in byMajor[major]!) (id: ch.id, label: '${ch.title} — ₹${localeNumber(ch.amount)}'),
+        for (final ch in byMajor[major]!)
+          (id: ch.id, label: '${ch.title} — ₹${localeNumber(ch.amount)}'),
       ],
   ];
 }
 
 /// Dropdown with major-head group headings (web `renderGroupedChargeOptions`).
 class GroupedChargeDropdown extends StatelessWidget {
-  const GroupedChargeDropdown({super.key, required this.c, required this.value, required this.onChanged, required this.placeholder});
+  const GroupedChargeDropdown(
+      {super.key,
+      required this.c,
+      required this.value,
+      required this.onChanged,
+      required this.placeholder});
 
   final FinanceController c;
   final String value;
@@ -67,7 +79,11 @@ class GroupedChargeDropdown extends StatelessWidget {
                   value: '__h__$i',
                   enabled: false,
                   child: Text(opts[i].label,
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.mutedForeground, letterSpacing: 0.4)),
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: t.mutedForeground,
+                          letterSpacing: 0.4)),
                 )
               : DropdownMenuItem<String>(
                   value: opts[i].id,
@@ -82,13 +98,15 @@ class GroupedChargeDropdown extends StatelessWidget {
 }
 
 class FinanceRecordReceiptTab extends StatefulWidget {
-  const FinanceRecordReceiptTab({super.key, required this.c, required this.form});
+  const FinanceRecordReceiptTab(
+      {super.key, required this.c, required this.form});
 
   final FinanceController c;
   final RecordReceiptFormModel form;
 
   @override
-  State<FinanceRecordReceiptTab> createState() => _FinanceRecordReceiptTabState();
+  State<FinanceRecordReceiptTab> createState() =>
+      _FinanceRecordReceiptTabState();
 }
 
 class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
@@ -104,19 +122,29 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
 
   /// Web effect: when the form opens without a receipt type, pick this month's maintenance.
   void _autoSelectCharge() {
-    if (!mounted || !f.showPaymentForm || f.chargeId.isNotEmpty || c.data.charges.isEmpty) return;
+    if (!mounted ||
+        !f.showPaymentForm ||
+        f.chargeId.isNotEmpty ||
+        c.data.charges.isEmpty) {
+      return;
+    }
     final preferred = c.derived.preferredRecordCharge;
     if (preferred == null) return;
-    final isCurrent = isMonthlyMaintenanceCharge(preferred) && isCurrentMonthChargeTitle(preferred.title);
+    final isCurrent = isMonthlyMaintenanceCharge(preferred) &&
+        isCurrentMonthChargeTitle(preferred.title);
     f
-      ..autoSelectedChargeHint = isCurrent ? 'Auto-selected ${preferred.title}' : ''
+      ..autoSelectedChargeHint =
+          isCurrent ? 'Auto-selected ${preferred.title}' : ''
       ..chargeId = preferred.id
       ..amount.text = numToInput(preferred.amount)
       ..changed();
   }
 
   List<FinancePayment> _conflictsPreview() {
-    if (f.chargeId.isEmpty || (f.recordMode != kModeFlatsOnly && f.recordMode != kModeFlatsPlusOutsider) || f.selectedFlats.isEmpty) {
+    if (f.chargeId.isEmpty ||
+        (f.recordMode != kModeFlatsOnly &&
+            f.recordMode != kModeFlatsPlusOutsider) ||
+        f.selectedFlats.isEmpty) {
       return const [];
     }
     if (f.dueDate.isEmpty) return const [];
@@ -125,39 +153,61 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
       return findMonthlyMaintenanceMonthConflicts(
         c.data.payments,
         monthly,
-        [for (final fl in f.selectedFlats) (flatNumber: fl, dueDate: f.dueDate)],
+        [
+          for (final fl in f.selectedFlats) (flatNumber: fl, dueDate: f.dueDate)
+        ],
       );
     }
     return findReceiptHeadConflicts(c.data.payments, [
       for (final fl in f.selectedFlats)
-        ReceiptHeadRecordingTarget(flatNumber: fl, dueDate: f.dueDate, chargeId: f.chargeId, paymentMethod: f.paymentMethod),
+        ReceiptHeadRecordingTarget(
+            flatNumber: fl,
+            dueDate: f.dueDate,
+            chargeId: f.chargeId,
+            paymentMethod: f.paymentMethod),
     ]);
   }
 
-  String _issueMessage(RecordReceiptIssue issue, {String? chargeTitle, String? badDate, String? entryMonth}) => switch (issue) {
-        RecordReceiptIssue.poolAmountMissing =>
-          context.tr('Enter the total receipt amount for the society pool', 'सोसाइटी पूल के लिए कुल रसीद राशि दर्ज करें'),
-        RecordReceiptIssue.noFlatsSelected => context.tr('Select at least one flat', 'कम से कम एक फ्लैट चुनें'),
-        RecordReceiptIssue.silentAbort => context.tr('Select a receipt type and enter the amount', 'रसीद प्रकार चुनें और राशि दर्ज करें'),
-        RecordReceiptIssue.outsiderNameMissing => context.tr('Enter outsider / payer name', 'बाहरी / भुगतानकर्ता का नाम दर्ज करें'),
-        RecordReceiptIssue.outsiderAmountMissing => context.tr('Enter outsider amount', 'बाहरी राशि दर्ज करें'),
+  String _issueMessage(RecordReceiptIssue issue,
+          {String? chargeTitle, String? badDate, String? entryMonth}) =>
+      switch (issue) {
+        RecordReceiptIssue.poolAmountMissing => context.tr(
+            'Enter the total receipt amount for the society pool',
+            'सोसाइटी पूल के लिए कुल रसीद राशि दर्ज करें'),
+        RecordReceiptIssue.noFlatsSelected =>
+          context.tr('Select at least one flat', 'कम से कम एक फ्लैट चुनें'),
+        RecordReceiptIssue.silentAbort => context.tr(
+            'Select a receipt type and enter the amount',
+            'रसीद प्रकार चुनें और राशि दर्ज करें'),
+        RecordReceiptIssue.outsiderNameMissing => context.tr(
+            'Enter outsider / payer name',
+            'बाहरी / भुगतानकर्ता का नाम दर्ज करें'),
+        RecordReceiptIssue.outsiderAmountMissing =>
+          context.tr('Enter outsider amount', 'बाहरी राशि दर्ज करें'),
         RecordReceiptIssue.outsiderChargeMissing => context.tr(
-            'Select a receipt type when adjusting current month maintenance', 'चालू माह रखरखाव समायोजित करते समय रसीद प्रकार चुनें'),
+            'Select a receipt type when adjusting current month maintenance',
+            'चालू माह रखरखाव समायोजित करते समय रसीद प्रकार चुनें'),
         RecordReceiptIssue.chargeAndAmountMissing => context.tr(
-            'Select receipt type and enter maintenance amount per flat', 'रसीद प्रकार चुनें और प्रति फ्लैट रखरखाव राशि दर्ज करें'),
-        RecordReceiptIssue.outsiderNameAndAmountMissing =>
-          context.tr('Enter outsider name and outsider amount', 'बाहरी नाम और बाहरी राशि दर्ज करें'),
+            'Select receipt type and enter maintenance amount per flat',
+            'रसीद प्रकार चुनें और प्रति फ्लैट रखरखाव राशि दर्ज करें'),
+        RecordReceiptIssue.outsiderNameAndAmountMissing => context.tr(
+            'Enter outsider name and outsider amount',
+            'बाहरी नाम और बाहरी राशि दर्ज करें'),
         RecordReceiptIssue.chargeMonthMismatch => context.tr(
             'Billing date must fall in the month named by the receipt type ("$chargeTitle"). Change the billing date or select the matching month\'s receipt type.',
             'बिलिंग तिथि रसीद प्रकार ("$chargeTitle") में लिखे माह में होनी चाहिए। बिलिंग तिथि बदलें या उसी माह का रसीद प्रकार चुनें।'),
         RecordReceiptIssue.entryMonthMismatch => badDate == null
-            ? context.tr('Billing date must fall within the entry month shown below.', 'बिलिंग तिथि नीचे दिखाए प्रविष्टि माह में होनी चाहिए।')
-            : context.tr('Each flat billing date must be in ${isoMonthToDisplay(entryMonth)}. Check: ${isoDateToDisplay(badDate)}',
+            ? context.tr(
+                'Billing date must fall within the entry month shown below.',
+                'बिलिंग तिथि नीचे दिखाए प्रविष्टि माह में होनी चाहिए।')
+            : context.tr(
+                'Each flat billing date must be in ${isoMonthToDisplay(entryMonth)}. Check: ${isoDateToDisplay(badDate)}',
                 'हर फ्लैट की बिलिंग तिथि ${isoMonthToDisplay(entryMonth)} में होनी चाहिए। जाँचें: ${isoDateToDisplay(badDate)}'),
       };
 
-  void _err(String msg, {bool long = false}) =>
-      AppFeedback.toast(context, msg, tone: BadgeTone.alert, duration: long ? const Duration(seconds: 8) : null);
+  void _err(String msg, {bool long = false}) => AppFeedback.toast(context, msg,
+      tone: BadgeTone.alert,
+      duration: long ? const Duration(seconds: 8) : null);
 
   Future<void> _pickFile(String source) async {
     try {
@@ -170,7 +220,13 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
         final pf = res?.files.firstOrNull;
         if (pf == null || pf.bytes == null) return;
         final ext = (pf.extension ?? '').toLowerCase();
-        f.file = (bytes: pf.bytes!, name: pf.name, mime: ext == 'pdf' ? 'application/pdf' : 'image/${ext == 'jpg' ? 'jpeg' : ext}');
+        f.file = (
+          bytes: pf.bytes!,
+          name: pf.name,
+          mime: ext == 'pdf'
+              ? 'application/pdf'
+              : 'image/${ext == 'jpg' ? 'jpeg' : ext}'
+        );
       } else {
         final x = await ImagePicker().pickImage(
           source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
@@ -178,7 +234,11 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
           maxWidth: 2000,
         );
         if (x == null) return;
-        f.file = (bytes: await x.readAsBytes(), name: x.name, mime: x.mimeType ?? 'image/jpeg');
+        f.file = (
+          bytes: await x.readAsBytes(),
+          name: x.name,
+          mime: x.mimeType ?? 'image/jpeg'
+        );
       }
       f.changed();
     } catch (e) {
@@ -191,8 +251,10 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
     final d = c.data;
     final issue = validateRecordReceipt(input, d.charges);
     if (issue != null) {
-      final title = d.charges.where((ch) => ch.id == input.chargeId).firstOrNull?.title;
-      _err(_issueMessage(issue, chargeTitle: title), long: issue == RecordReceiptIssue.chargeMonthMismatch);
+      final title =
+          d.charges.where((ch) => ch.id == input.chargeId).firstOrNull?.title;
+      _err(_issueMessage(issue, chargeTitle: title),
+          long: issue == RecordReceiptIssue.chargeMonthMismatch);
       return;
     }
     setState(() => f.saving = true);
@@ -201,17 +263,27 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
         final conflicts = await c.repo.queryReceiptHeadConflicts(
           chargeId: input.chargeId,
           paymentMethod: input.paymentMethod,
-          targets: [for (final fl in input.selectedFlats) (flatNumber: fl, dueDate: input.dueDate)],
-          monthlyMaintenanceChargeIds: c.derived.monthlyMaintenanceChargeIds.toList(),
+          targets: [
+            for (final fl in input.selectedFlats)
+              (flatNumber: fl, dueDate: input.dueDate)
+          ],
+          monthlyMaintenanceChargeIds:
+              c.derived.monthlyMaintenanceChargeIds.toList(),
         );
         if (!mounted) return;
         if (conflicts.isNotEmpty) {
-          final head = d.charges.where((ch) => ch.id == input.chargeId).firstOrNull?.title ?? context.t('finance.receiptHead');
+          final head = d.charges
+                  .where((ch) => ch.id == input.chargeId)
+                  .firstOrNull
+                  ?.title ??
+              context.t('finance.receiptHead');
           final flats = {for (final p in conflicts) p.flatNumber}.join(', ');
           _err(
             context.t('finance.receiptAlreadyRecordedDetail', {
               'flat': flats,
-              'month': input.dueDate.length >= 7 ? input.dueDate.substring(0, 7) : input.dueDate,
+              'month': input.dueDate.length >= 7
+                  ? input.dueDate.substring(0, 7)
+                  : input.dueDate,
               'head': head,
             }),
             long: true,
@@ -221,18 +293,26 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
       }
 
       if (!mounted) return;
-      String? screenshotUrl = f.screenshotUrl.text.trim().isEmpty ? null : f.screenshotUrl.text.trim();
+      String? screenshotUrl = f.screenshotUrl.text.trim().isEmpty
+          ? null
+          : f.screenshotUrl.text.trim();
       final file = f.file;
       if (file != null) {
         if (file.bytes.length > 8 * 1024 * 1024) {
-          _err(context.tr('Receipt file must be 8MB or smaller', 'रसीद फ़ाइल 8MB या छोटी होनी चाहिए'));
+          _err(context.tr('Receipt file must be 8MB or smaller',
+              'रसीद फ़ाइल 8MB या छोटी होनी चाहिए'));
           return;
         }
         setState(() => f.uploading = true);
-        final url = await c.repo.uploadMaintenanceReceipt(Uint8List.fromList(file.bytes), file.name, contentType: file.mime);
+        final url = await c.repo.uploadMaintenanceReceipt(
+            Uint8List.fromList(file.bytes), file.name,
+            contentType: file.mime);
         if (mounted) setState(() => f.uploading = false);
         if (url == null) {
-          if (mounted) _err(context.tr('Could not upload receipt', 'रसीद अपलोड नहीं हो सकी'));
+          if (mounted) {
+            _err(context.tr(
+                'Could not upload receipt', 'रसीद अपलोड नहीं हो सकी'));
+          }
           return;
         }
         screenshotUrl = url;
@@ -251,21 +331,27 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
       final plan = built.plan;
       if (plan == null) {
         if (mounted) {
-          _err(_issueMessage(built.issue!, badDate: built.badDate, entryMonth: billingMonthFromDate(input.dueDate)));
+          _err(_issueMessage(built.issue!,
+              badDate: built.badDate,
+              entryMonth: billingMonthFromDate(input.dueDate)));
         }
         return;
       }
       try {
         await c.repo.persistFinanceRecord(plan);
       } catch (e) {
-        if (mounted) _err(financeErrorMessage(e, 'Could not save finance entry'));
+        if (mounted) {
+          _err(financeErrorMessage(e, 'Could not save finance entry'));
+        }
         await c.invalidateAll();
         return;
       }
       await c.invalidateAll();
 
       final mode = input.recordMode;
-      final audience = mode == kModeFlatsOnly && f.notifyAudience == 'all' ? 'selected_flats' : f.notifyAudience;
+      final audience = mode == kModeFlatsOnly && f.notifyAudience == 'all'
+          ? 'selected_flats'
+          : f.notifyAudience;
       final allFlatCount = d.flats.length;
       f
         ..reset()
@@ -280,10 +366,13 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
           mode == kModeSocietyPool
               ? '${inrLocale(plan.totalAmount)} is in the society pool until you distribute it equally to flats.'
               : 'Flats in this record: ${input.selectedFlats.join(', ')}. Total ${inrLocale(plan.totalAmount)}.',
-          if (audience == 'all') 'This update was shared with all $allFlatCount society flat(s).',
-          if (input.transactionId.trim().isNotEmpty) 'Reference: ${input.transactionId.trim()}.',
+          if (audience == 'all')
+            'This update was shared with all $allFlatCount society flat(s).',
+          if (input.transactionId.trim().isNotEmpty)
+            'Reference: ${input.transactionId.trim()}.',
           if (input.notes.trim().isNotEmpty) input.notes.trim(),
-          if (screenshotUrl != null) 'Open the notification to view the attached receipt (if available).',
+          if (screenshotUrl != null)
+            'Open the notification to view the attached receipt (if available).',
         ];
         notified = await c.repo.notifyResidentsOfRecord(
           societyId: c.societyId,
@@ -296,7 +385,8 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
           billUrl: screenshotUrl,
         );
         if (!notified && mounted) {
-          _err(context.tr('Payment saved, but notifying residents failed. You can send a manual notice from Notifications.',
+          _err(context.tr(
+              'Payment saved, but notifying residents failed. You can send a manual notice from Notifications.',
               'भुगतान सहेजा गया, पर निवासियों को सूचना नहीं जा सकी। सूचनाएँ खंड से मैन्युअल सूचना भेजें।'));
         }
       }
@@ -304,8 +394,15 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
       final n = plan.recordedCount;
       AppFeedback.toast(
         context,
-        (n > 1 ? context.tr('Recorded $n flat lines', '$n फ्लैट पंक्तियाँ दर्ज हुईं') : context.tr('Finance entry recorded', 'वित्त प्रविष्टि दर्ज हुई')) +
-            (notified ? context.tr(' · Residents notified', ' · निवासियों को सूचित किया') : ''),
+        (n > 1
+                ? context.tr(
+                    'Recorded $n flat lines', '$n फ्लैट पंक्तियाँ दर्ज हुईं')
+                : context.tr(
+                    'Finance entry recorded', 'वित्त प्रविष्टि दर्ज हुई')) +
+            (notified
+                ? context.tr(
+                    ' · Residents notified', ' · निवासियों को सूचित किया')
+                : ''),
         tone: BadgeTone.success,
       );
       c.bumpHeadReconciliation();
@@ -325,19 +422,30 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
     return ListenableBuilder(
       listenable: Listenable.merge([f, c]),
       builder: (context, _) {
-        if (f.showPaymentForm && f.chargeId.isEmpty && c.data.charges.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _autoSelectCharge());
+        if (f.showPaymentForm &&
+            f.chargeId.isEmpty &&
+            c.data.charges.isNotEmpty) {
+          WidgetsBinding.instance
+              .addPostFrameCallback((_) => _autoSelectCharge());
         }
         final d = c.data;
         final pool = f.recordMode == kModeSocietyPool;
-        final outsider = f.recordMode == kModeOutsiderOnly || f.recordMode == kModeFlatsPlusOutsider;
-        final scopeFlats = f.allocationIncludeVacant ? d.flats : d.flats.where((x) => x.occupied).toList();
+        final outsider = f.recordMode == kModeOutsiderOnly ||
+            f.recordMode == kModeFlatsPlusOutsider;
+        final scopeFlats = f.allocationIncludeVacant
+            ? d.flats
+            : d.flats.where((x) => x.occupied).toList();
         final conflicts = _conflictsPreview();
         final showCharge = pool ||
             f.recordMode == kModeFlatsOnly ||
             f.recordMode == kModeFlatsPlusOutsider ||
-            (f.recordMode == kModeOutsiderOnly && f.destination == kDestCurrentMonth);
-        final destinations = [kDestCurrentMonth, kDestCorpus, if (!pool) kDestSeparate];
+            (f.recordMode == kModeOutsiderOnly &&
+                f.destination == kDestCurrentMonth);
+        final destinations = [
+          kDestCurrentMonth,
+          kDestCorpus,
+          if (!pool) kDestSeparate
+        ];
         const gap = SizedBox(height: 12);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -347,15 +455,20 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SectionTitle(context.fin('fin.tab.payments'), icon: Icons.upload_outlined, iconColor: t.foreground),
-                  FinMicroLabel(context.tr('Recording style', 'दर्ज करने का तरीका')),
+                  SectionTitle(context.fin('fin.tab.payments'),
+                      icon: Icons.upload_outlined, iconColor: t.foreground),
+                  FinMicroLabel(
+                      context.tr('Recording style', 'दर्ज करने का तरीका')),
                   AppDropdown<String>(
                     items: _modes,
                     value: f.recordMode,
                     labelOf: (m) => context.fin('fin.mode.$m'),
                     onChanged: (v) {
                       f.recordMode = v ?? kModeFlatsOnly;
-                      if (f.recordMode == kModeFlatsOnly && f.notifyAudience == 'all') f.notifyAudience = 'none';
+                      if (f.recordMode == kModeFlatsOnly &&
+                          f.notifyAudience == 'all') {
+                        f.notifyAudience = 'none';
+                      }
                       f.changed();
                     },
                   ),
@@ -363,7 +476,8 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                       ? context.tr(
                           'Receipt stays in the society pool. Open it under Transactions and use “Distribute equally to all flats” when ready.',
                           'रसीद सोसाइटी पूल में रहेगी। तैयार होने पर लेन-देन में खोलकर “सभी फ्लैटों में बराबर बाँटें” दबाएँ।')
-                      : context.tr('Amount is allocated to the flats you select below at record time.',
+                      : context.tr(
+                          'Amount is allocated to the flats you select below at record time.',
                           'राशि दर्ज करते समय नीचे चुने गए फ्लैटों में आवंटित होगी।')),
                   gap,
                   FinDateField(
@@ -381,10 +495,13 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                     gap,
                     FinMicroLabel(pool
                         ? context.tr('Ledger destination', 'खाता गंतव्य')
-                        : context.tr('Destination (outsider / ledger)', 'गंतव्य (बाहरी / खाता)')),
+                        : context.tr('Destination (outsider / ledger)',
+                            'गंतव्य (बाहरी / खाता)')),
                     AppDropdown<String>(
                       items: destinations,
-                      value: destinations.contains(f.destination) ? f.destination : kDestCurrentMonth,
+                      value: destinations.contains(f.destination)
+                          ? f.destination
+                          : kDestCurrentMonth,
                       labelOf: (v) => context.fin('fin.dest.$v'),
                       onChanged: (v) => f
                         ..destination = v ?? kDestCurrentMonth
@@ -398,36 +515,54 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(context.tr('Society pool receipt', 'सोसाइटी पूल रसीद'), style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
+                          Text(
+                              context.tr(
+                                  'Society pool receipt', 'सोसाइटी पूल रसीद'),
+                              style: AppText.bodyMedium(context)
+                                  .copyWith(fontSize: 12)),
                           const SizedBox(height: 8),
                           AppTextField(
                             controller: f.amount,
-                            hint: context.tr('Total amount received (₹)', 'प्राप्त कुल राशि (₹)'),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            hint: context.tr('Total amount received (₹)',
+                                'प्राप्त कुल राशि (₹)'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             inputFormatters: kAmountFormatters,
                           ),
                           const SizedBox(height: 8),
                           AppTextField(
                             controller: f.outsiderName,
-                            hint: context.tr('Payer name (flat owner, outsider, vendor — optional)', 'भुगतानकर्ता (फ्लैट मालिक, बाहरी, विक्रेता — वैकल्पिक)'),
+                            hint: context.tr(
+                                'Payer name (flat owner, outsider, vendor — optional)',
+                                'भुगतानकर्ता (फ्लैट मालिक, बाहरी, विक्रेता — वैकल्पिक)'),
                           ),
                           const SizedBox(height: 8),
-                          AppTextField(controller: f.outsiderRelation, hint: context.tr('Reference / relation (optional)', 'संदर्भ / संबंध (वैकल्पिक)')),
+                          AppTextField(
+                              controller: f.outsiderRelation,
+                              hint: context.tr(
+                                  'Reference / relation (optional)',
+                                  'संदर्भ / संबंध (वैकल्पिक)')),
                           const SizedBox(height: 8),
-                          AppTextField(controller: f.entryTitle, hint: context.tr('Title override (optional)', 'शीर्षक बदलें (वैकल्पिक)')),
+                          AppTextField(
+                              controller: f.entryTitle,
+                              hint: context.tr('Title override (optional)',
+                                  'शीर्षक बदलें (वैकल्पिक)')),
                         ],
                       ),
                     ),
                   ],
                   if (!pool) ...[
                     gap,
-                    FieldLabel(context.tr('Flat allocation scope', 'फ्लैट आवंटन दायरा')),
+                    FieldLabel(context.tr(
+                        'Flat allocation scope', 'फ्लैट आवंटन दायरा')),
                     AppDropdown<bool>(
                       items: const [false, true],
                       value: f.allocationIncludeVacant,
                       labelOf: (v) => v
-                          ? context.tr('Include vacant flats', 'खाली फ्लैट भी शामिल करें')
-                          : context.tr('Occupied / sold flats only', 'केवल आबाद / बिके फ्लैट'),
+                          ? context.tr('Include vacant flats',
+                              'खाली फ्लैट भी शामिल करें')
+                          : context.tr('Occupied / sold flats only',
+                              'केवल आबाद / बिके फ्लैट'),
                       onChanged: (v) => f
                         ..allocationIncludeVacant = v ?? false
                         ..changed(),
@@ -439,19 +574,37 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(context.tr('Outsider / payer', 'बाहरी / भुगतानकर्ता'), style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
+                          Text(
+                              context.tr(
+                                  'Outsider / payer', 'बाहरी / भुगतानकर्ता'),
+                              style: AppText.bodyMedium(context)
+                                  .copyWith(fontSize: 12)),
                           const SizedBox(height: 8),
-                          AppTextField(controller: f.outsiderName, hint: context.tr('Name (vendor, guest sponsor, etc.)', 'नाम (विक्रेता, अतिथि प्रायोजक आदि)')),
+                          AppTextField(
+                              controller: f.outsiderName,
+                              hint: context.tr(
+                                  'Name (vendor, guest sponsor, etc.)',
+                                  'नाम (विक्रेता, अतिथि प्रायोजक आदि)')),
                           const SizedBox(height: 8),
-                          AppTextField(controller: f.outsiderRelation, hint: context.tr('Relation or reference (optional)', 'संबंध या संदर्भ (वैकल्पिक)')),
+                          AppTextField(
+                              controller: f.outsiderRelation,
+                              hint: context.tr(
+                                  'Relation or reference (optional)',
+                                  'संबंध या संदर्भ (वैकल्पिक)')),
                           const SizedBox(height: 8),
-                          AppTextField(controller: f.entryTitle, hint: context.tr('Entry title override (optional)', 'प्रविष्टि शीर्षक बदलें (वैकल्पिक)')),
+                          AppTextField(
+                              controller: f.entryTitle,
+                              hint: context.tr(
+                                  'Entry title override (optional)',
+                                  'प्रविष्टि शीर्षक बदलें (वैकल्पिक)')),
                           const SizedBox(height: 8),
-                          FinMicroLabel(context.tr('Outsider amount split', 'बाहरी राशि विभाजन')),
+                          FinMicroLabel(context.tr(
+                              'Outsider amount split', 'बाहरी राशि विभाजन')),
                           FinRadioRow<String>(
                             value: kAllocSamePerFlat,
                             group: f.allocationStyle,
-                            label: context.tr('Same amount per selected flat', 'हर चयनित फ्लैट पर समान राशि'),
+                            label: context.tr('Same amount per selected flat',
+                                'हर चयनित फ्लैट पर समान राशि'),
                             onChanged: (v) => f
                               ..allocationStyle = v
                               ..changed(),
@@ -459,7 +612,9 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                           FinRadioRow<String>(
                             value: kAllocSplitTotal,
                             group: f.allocationStyle,
-                            label: context.tr('One total split equally across selected flats', 'एक कुल राशि चयनित फ्लैटों में बराबर बाँटें'),
+                            label: context.tr(
+                                'One total split equally across selected flats',
+                                'एक कुल राशि चयनित फ्लैटों में बराबर बाँटें'),
                             onChanged: (v) => f
                               ..allocationStyle = v
                               ..changed(),
@@ -468,9 +623,12 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                           AppTextField(
                             controller: f.outsiderAmount,
                             hint: f.allocationStyle == kAllocSamePerFlat
-                                ? context.tr('₹ per flat (outsider portion)', '₹ प्रति फ्लैट (बाहरी हिस्सा)')
-                                : context.tr('₹ total (outsider pool)', '₹ कुल (बाहरी पूल)'),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                ? context.tr('₹ per flat (outsider portion)',
+                                    '₹ प्रति फ्लैट (बाहरी हिस्सा)')
+                                : context.tr('₹ total (outsider pool)',
+                                    '₹ कुल (बाहरी पूल)'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             inputFormatters: kAmountFormatters,
                           ),
                         ],
@@ -479,7 +637,10 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                   ],
                   if (f.autoSelectedChargeHint.isNotEmpty)
                     FinHint(
-                      context.tr(f.autoSelectedChargeHint, f.autoSelectedChargeHint.replaceFirst('Auto-selected', 'स्वतः चुना:')),
+                      context.tr(
+                          f.autoSelectedChargeHint,
+                          f.autoSelectedChargeHint
+                              .replaceFirst('Auto-selected', 'स्वतः चुना:')),
                       padding: const EdgeInsets.only(top: 8),
                     ),
                   if (showCharge) ...[
@@ -487,13 +648,17 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                     GroupedChargeDropdown(
                       c: c,
                       value: f.chargeId,
-                      placeholder: context.tr('Select Receipt Type', 'रसीद प्रकार चुनें'),
+                      placeholder: context.tr(
+                          'Select Receipt Type', 'रसीद प्रकार चुनें'),
                       onChanged: (id) {
-                        final ch = d.charges.where((x) => x.id == id).firstOrNull;
+                        final ch =
+                            d.charges.where((x) => x.id == id).firstOrNull;
                         f
                           ..autoSelectedChargeHint = ''
                           ..chargeId = id;
-                        if (ch != null && ch.amount != 0) f.amount.text = numToInput(ch.amount);
+                        if (ch != null && ch.amount != 0) {
+                          f.amount.text = numToInput(ch.amount);
+                        }
                         f.changed();
                       },
                     ),
@@ -501,9 +666,11 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                   if (!pool) ...[
                     gap,
                     FlatMultiSelect(
-                      flats: flatOptionsWithPrimaryLabel(scopeFlats, d.primaryByFlatId),
+                      flats: flatOptionsWithPrimaryLabel(
+                          scopeFlats, d.primaryByFlatId),
                       selected: f.selectedFlats,
-                      label: context.tr('Flats (multi-select)', 'फ्लैट (बहु-चयन)'),
+                      label:
+                          context.tr('Flats (multi-select)', 'फ्लैट (बहु-चयन)'),
                       onChanged: (nums) => f
                         ..selectedFlats = nums
                         ..changed(),
@@ -511,24 +678,31 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                   ],
                   if (pool) ...[
                     gap,
-                    FieldLabel(context.tr('Distribution scope (when splitting later)', 'वितरण दायरा (बाद में बाँटते समय)')),
+                    FieldLabel(context.tr(
+                        'Distribution scope (when splitting later)',
+                        'वितरण दायरा (बाद में बाँटते समय)')),
                     AppDropdown<bool>(
                       items: const [false, true],
                       value: f.allocationIncludeVacant,
                       labelOf: (v) => v
-                          ? context.tr('Include vacant flats in equal split', 'बराबर बँटवारे में खाली फ्लैट भी')
-                          : context.tr('Occupied / sold flats only', 'केवल आबाद / बिके फ्लैट'),
+                          ? context.tr('Include vacant flats in equal split',
+                              'बराबर बँटवारे में खाली फ्लैट भी')
+                          : context.tr('Occupied / sold flats only',
+                              'केवल आबाद / बिके फ्लैट'),
                       onChanged: (v) => f
                         ..allocationIncludeVacant = v ?? false
                         ..changed(),
                     ),
                   ],
-                  if (f.recordMode == kModeFlatsOnly || f.recordMode == kModeFlatsPlusOutsider) ...[
+                  if (f.recordMode == kModeFlatsOnly ||
+                      f.recordMode == kModeFlatsPlusOutsider) ...[
                     gap,
                     AppTextField(
                       controller: f.amount,
-                      hint: context.tr('Maintenance amount (₹ per flat)', 'रखरखाव राशि (₹ प्रति फ्लैट)'),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      hint: context.tr('Maintenance amount (₹ per flat)',
+                          'रखरखाव राशि (₹ प्रति फ्लैट)'),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: kAmountFormatters,
                     ),
                   ],
@@ -545,24 +719,36 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                   AppTextField(
                     controller: f.transactionId,
                     caps: false,
-                    hint: context.tr('Transaction / reference ID (optional)', 'लेन-देन / संदर्भ आईडी (वैकल्पिक)'),
+                    hint: context.tr('Transaction / reference ID (optional)',
+                        'लेन-देन / संदर्भ आईडी (वैकल्पिक)'),
                   ),
                   gap,
                   AppTextField(
                     controller: f.screenshotUrl,
                     caps: false,
                     keyboardType: TextInputType.url,
-                    hint: context.tr('Screenshot URL (paste link, optional)', 'स्क्रीनशॉट URL (लिंक चिपकाएँ, वैकल्पिक)'),
+                    hint: context.tr('Screenshot URL (paste link, optional)',
+                        'स्क्रीनशॉट URL (लिंक चिपकाएँ, वैकल्पिक)'),
                   ),
                   gap,
-                  FinMicroLabel(context.tr('Or upload receipt / bill', 'या रसीद / बिल अपलोड करें')),
+                  FinMicroLabel(context.tr(
+                      'Or upload receipt / bill', 'या रसीद / बिल अपलोड करें')),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      FinMiniButton(label: context.tr('Camera', 'कैमरा'), icon: Icons.photo_camera_outlined, onTap: () => _pickFile('camera')),
-                      FinMiniButton(label: context.tr('Gallery', 'गैलरी'), icon: Icons.photo_library_outlined, onTap: () => _pickFile('gallery')),
-                      FinMiniButton(label: context.tr('File / PDF', 'फ़ाइल / PDF'), icon: Icons.attach_file, onTap: () => _pickFile('pdf')),
+                      FinMiniButton(
+                          label: context.tr('Camera', 'कैमरा'),
+                          icon: Icons.photo_camera_outlined,
+                          onTap: () => _pickFile('camera')),
+                      FinMiniButton(
+                          label: context.tr('Gallery', 'गैलरी'),
+                          icon: Icons.photo_library_outlined,
+                          onTap: () => _pickFile('gallery')),
+                      FinMiniButton(
+                          label: context.tr('File / PDF', 'फ़ाइल / PDF'),
+                          icon: Icons.attach_file,
+                          onTap: () => _pickFile('pdf')),
                     ],
                   ),
                   if (f.file != null)
@@ -570,14 +756,18 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                       padding: const EdgeInsets.only(top: 6),
                       child: Row(
                         children: [
-                          Icon(Icons.insert_drive_file_outlined, size: 14, color: t.mutedForeground),
+                          Icon(Icons.insert_drive_file_outlined,
+                              size: 14, color: t.mutedForeground),
                           const SizedBox(width: 4),
                           Expanded(
-                            child: Text('${f.file!.name} (${(f.file!.bytes.length / 1024).toStringAsFixed(0)} KB)',
-                                style: AppText.caption(context), overflow: TextOverflow.ellipsis),
+                            child: Text(
+                                '${f.file!.name} (${(f.file!.bytes.length / 1024).toStringAsFixed(0)} KB)',
+                                style: AppText.caption(context),
+                                overflow: TextOverflow.ellipsis),
                           ),
                           IconButton(
-                            icon: Icon(Icons.close, size: 16, color: t.mutedForeground),
+                            icon: Icon(Icons.close,
+                                size: 16, color: t.mutedForeground),
                             onPressed: () => f
                               ..file = null
                               ..changed(),
@@ -586,13 +776,21 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                       ),
                     ),
                   gap,
-                  AppTextField(controller: f.notes, maxLines: 3, minLines: 2, hint: context.tr('Notes', 'टिप्पणी')),
+                  AppTextField(
+                      controller: f.notes,
+                      maxLines: 3,
+                      minLines: 2,
+                      hint: context.tr('Notes', 'टिप्पणी')),
                   gap,
                   FinTintBox(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(context.tr('Notify residents', 'निवासियों को सूचित करें'), style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
+                        Text(
+                            context.tr(
+                                'Notify residents', 'निवासियों को सूचित करें'),
+                            style: AppText.bodyMedium(context)
+                                .copyWith(fontSize: 12)),
                         FinHint(context.tr(
                           'After saving, send an in-app notification (and push, if configured) so flats know a committee payment or receipt was posted—e.g. society electricity, guard salary, or maintenance collected in cash/UPI.',
                           'सहेजने के बाद ऐप सूचना (और पुश, यदि सेट हो) भेजें ताकि फ्लैटों को समिति भुगतान या रसीद की जानकारी मिले — जैसे सोसाइटी बिजली, गार्ड वेतन या नकद/UPI में लिया रखरखाव।',
@@ -609,7 +807,8 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                         FinRadioRow<String>(
                           value: 'selected_flats',
                           group: f.notifyAudience,
-                          label: context.tr('Flats in this payment only (${f.selectedFlats.length} selected above)',
+                          label: context.tr(
+                              'Flats in this payment only (${f.selectedFlats.length} selected above)',
                               'केवल इस भुगतान के फ्लैट (ऊपर ${f.selectedFlats.length} चयनित)'),
                           onChanged: (v) => f
                             ..notifyAudience = v
@@ -619,7 +818,8 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                           FinRadioRow<String>(
                             value: 'all',
                             group: f.notifyAudience,
-                            label: context.tr('All society flats (${d.flats.length}) — for transparency (e.g. common-area bills)',
+                            label: context.tr(
+                                'All society flats (${d.flats.length}) — for transparency (e.g. common-area bills)',
                                 'सोसाइटी के सभी फ्लैट (${d.flats.length}) — पारदर्शिता हेतु (जैसे साझा क्षेत्र बिल)'),
                             onChanged: (v) => f
                               ..notifyAudience = v
@@ -637,11 +837,16 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.warning_amber_rounded, size: 15, color: t.destructive),
+                              Icon(Icons.warning_amber_rounded,
+                                  size: 15, color: t.destructive),
                               const SizedBox(width: 6),
                               Expanded(
-                                child: Text(context.t('finance.receiptAlreadyRecorded'),
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.destructive)),
+                                child: Text(
+                                    context.t('finance.receiptAlreadyRecorded'),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: t.destructive)),
                               ),
                             ],
                           ),
@@ -653,7 +858,8 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                           for (final p in conflicts)
                             Text(
                               '${context.tr('Flat', 'फ्लैट')} ${p.flatNumber} · ₹${localeNumber(p.amount)} · ${p.paymentMethod} · ${p.paymentStatus}',
-                              style: AppText.tiny(context).copyWith(color: t.foreground),
+                              style: AppText.tiny(context)
+                                  .copyWith(color: t.foreground),
                             ),
                         ],
                       ),
@@ -661,9 +867,12 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
                   ],
                   gap,
                   AppButton(
-                    label: f.uploading ? context.tr('Uploading…', 'अपलोड हो रहा है…') : context.fin('fin.tab.payments'),
+                    label: f.uploading
+                        ? context.tr('Uploading…', 'अपलोड हो रहा है…')
+                        : context.fin('fin.tab.payments'),
                     loading: f.saving,
-                    onPressed: f.uploading || conflicts.isNotEmpty ? null : _record,
+                    onPressed:
+                        f.uploading || conflicts.isNotEmpty ? null : _record,
                   ),
                 ],
               ),

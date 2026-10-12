@@ -83,30 +83,46 @@ enum RecordReceiptIssue {
 }
 
 /// Sync checks done before the duplicate-receipt query and the receipt upload.
-RecordReceiptIssue? validateRecordReceipt(RecordReceiptInput f, List<FinanceCharge> charges) {
+RecordReceiptIssue? validateRecordReceipt(
+    RecordReceiptInput f, List<FinanceCharge> charges) {
   final mode = f.recordMode;
   final n = f.selectedFlats.length;
   if (mode == kModeSocietyPool) {
     final a = jsNumber(f.amount);
-    if (f.amount.isEmpty || a.isNaN || a <= 0) return RecordReceiptIssue.poolAmountMissing;
+    if (f.amount.isEmpty || a.isNaN || a <= 0) {
+      return RecordReceiptIssue.poolAmountMissing;
+    }
   } else if (n == 0) {
     return RecordReceiptIssue.noFlatsSelected;
   }
   if (mode == kModeFlatsOnly) {
-    if (f.amount.isEmpty || f.chargeId.isEmpty) return RecordReceiptIssue.silentAbort;
+    if (f.amount.isEmpty || f.chargeId.isEmpty) {
+      return RecordReceiptIssue.silentAbort;
+    }
   }
   if (mode == kModeOutsiderOnly) {
-    if (f.outsiderName.trim().isEmpty) return RecordReceiptIssue.outsiderNameMissing;
-    if (f.outsiderAmount.isEmpty) return RecordReceiptIssue.outsiderAmountMissing;
-    if (f.destination == kDestCurrentMonth && f.chargeId.isEmpty) return RecordReceiptIssue.outsiderChargeMissing;
+    if (f.outsiderName.trim().isEmpty) {
+      return RecordReceiptIssue.outsiderNameMissing;
+    }
+    if (f.outsiderAmount.isEmpty) {
+      return RecordReceiptIssue.outsiderAmountMissing;
+    }
+    if (f.destination == kDestCurrentMonth && f.chargeId.isEmpty) {
+      return RecordReceiptIssue.outsiderChargeMissing;
+    }
   }
   if (mode == kModeFlatsPlusOutsider) {
-    if (f.chargeId.isEmpty || f.amount.isEmpty) return RecordReceiptIssue.chargeAndAmountMissing;
-    if (f.outsiderName.trim().isEmpty || f.outsiderAmount.isEmpty) return RecordReceiptIssue.outsiderNameAndAmountMissing;
+    if (f.chargeId.isEmpty || f.amount.isEmpty) {
+      return RecordReceiptIssue.chargeAndAmountMissing;
+    }
+    if (f.outsiderName.trim().isEmpty || f.outsiderAmount.isEmpty) {
+      return RecordReceiptIssue.outsiderNameAndAmountMissing;
+    }
   }
   if (needsReceiptHeadConflictCheck(f)) {
     final charge = _chargeById(charges, f.chargeId);
-    if (charge != null && !chargeTitleMatchesBillingMonth(charge.title, f.dueDate)) {
+    if (charge != null &&
+        !chargeTitleMatchesBillingMonth(charge.title, f.dueDate)) {
       return RecordReceiptIssue.chargeMonthMismatch;
     }
   }
@@ -115,7 +131,8 @@ RecordReceiptIssue? validateRecordReceipt(RecordReceiptInput f, List<FinanceChar
 
 /// Flats only / flats + outsider with a receipt type and flats → duplicate-month guard applies.
 bool needsReceiptHeadConflictCheck(RecordReceiptInput f) =>
-    (f.recordMode == kModeFlatsOnly || f.recordMode == kModeFlatsPlusOutsider) &&
+    (f.recordMode == kModeFlatsOnly ||
+        f.recordMode == kModeFlatsPlusOutsider) &&
     f.chargeId.isNotEmpty &&
     f.selectedFlats.isNotEmpty;
 
@@ -127,7 +144,8 @@ FinanceCharge? _chargeById(List<FinanceCharge> charges, String id) {
 }
 
 class AllocationInsert {
-  const AllocationInsert({required this.flatNumber, required this.flatId, required this.amount});
+  const AllocationInsert(
+      {required this.flatNumber, required this.flatId, required this.amount});
 
   final String flatNumber;
   final String? flatId;
@@ -169,7 +187,8 @@ class RecordReceiptBuild {
   const RecordReceiptBuild.ok(RecordReceiptPlan this.plan)
       : issue = null,
         badDate = null;
-  const RecordReceiptBuild.fail(RecordReceiptIssue this.issue, [this.badDate]) : plan = null;
+  const RecordReceiptBuild.fail(RecordReceiptIssue this.issue, [this.badDate])
+      : plan = null;
 
   final RecordReceiptPlan? plan;
   final RecordReceiptIssue? issue;
@@ -205,21 +224,30 @@ RecordReceiptBuild buildRecordReceiptPlan({
     return null;
   }
 
-  final poolFlats = [for (final fn in f.selectedFlats) (flatNumber: fn, flatId: flatByNumber(fn)?.id)];
+  final poolFlats = [
+    for (final fn in f.selectedFlats)
+      (flatNumber: fn, flatId: flatByNumber(fn)?.id)
+  ];
 
   var allocationStyle = 'none';
   var totalAmount = 0.0;
   final allocations = <AllocationInsert>[];
   final mpRows = <Map<String, dynamic>>[];
 
-  Map<String, dynamic> buildMpRow(String flatNumber, double amount, String? flatId) => {
+  Map<String, dynamic> buildMpRow(
+          String flatNumber, double amount, String? flatId) =>
+      {
         'charge_id': f.chargeId,
         'flat_id': flatId,
         'flat_number': flatNumber,
-        'resident_name': residentLabelForFlatRow(flatId, flatByNumber(flatNumber)?.ownerName, primaryByFlatId),
+        'resident_name': residentLabelForFlatRow(
+            flatId, flatByNumber(flatNumber)?.ownerName, primaryByFlatId),
         'amount': amount,
         'payment_method': f.paymentMethod,
-        'payment_status': (f.paymentMethod == 'cash' || f.paymentMethod == 'upi') ? 'verified' : 'pending',
+        'payment_status':
+            (f.paymentMethod == 'cash' || f.paymentMethod == 'upi')
+                ? 'verified'
+                : 'pending',
         'payment_date': nowIso,
         'due_date': f.dueDate,
         'recording_date': recordingDate,
@@ -244,7 +272,8 @@ RecordReceiptBuild buildRecordReceiptPlan({
     allocationStyle = n > 1 ? kAllocSamePerFlat : 'none';
     totalAmount = perFlat * n;
     for (final pf in poolFlats) {
-      allocations.add(AllocationInsert(flatNumber: pf.flatNumber, flatId: pf.flatId, amount: perFlat));
+      allocations.add(AllocationInsert(
+          flatNumber: pf.flatNumber, flatId: pf.flatId, amount: perFlat));
       mpRows.add(buildMpRow(pf.flatNumber, perFlat, pf.flatId));
     }
   }
@@ -256,8 +285,11 @@ RecordReceiptBuild buildRecordReceiptPlan({
     final perFlat = samePerFlat ? raw : raw / n;
     totalAmount = samePerFlat ? raw * n : raw;
     for (final pf in poolFlats) {
-      allocations.add(AllocationInsert(flatNumber: pf.flatNumber, flatId: pf.flatId, amount: perFlat));
-      if (f.destination == kDestCurrentMonth) mpRows.add(buildMpRow(pf.flatNumber, perFlat, pf.flatId));
+      allocations.add(AllocationInsert(
+          flatNumber: pf.flatNumber, flatId: pf.flatId, amount: perFlat));
+      if (f.destination == kDestCurrentMonth) {
+        mpRows.add(buildMpRow(pf.flatNumber, perFlat, pf.flatId));
+      }
     }
   }
 
@@ -270,15 +302,20 @@ RecordReceiptBuild buildRecordReceiptPlan({
     final outsiderTotal = samePerFlat ? rawOut * n : rawOut;
     totalAmount = mAmt * n + outsiderTotal;
     for (final pf in poolFlats) {
-      allocations.add(AllocationInsert(flatNumber: pf.flatNumber, flatId: pf.flatId, amount: mAmt + outsiderPerFlat));
-      final mpAmt = f.destination == kDestCurrentMonth ? mAmt + outsiderPerFlat : mAmt;
+      allocations.add(AllocationInsert(
+          flatNumber: pf.flatNumber,
+          flatId: pf.flatId,
+          amount: mAmt + outsiderPerFlat));
+      final mpAmt =
+          f.destination == kDestCurrentMonth ? mAmt + outsiderPerFlat : mAmt;
       mpRows.add(buildMpRow(pf.flatNumber, mpAmt, pf.flatId));
     }
   }
 
   final outsider = f.outsiderName.trim();
-  final needsCounterparty =
-      mode == kModeOutsiderOnly || mode == kModeFlatsPlusOutsider || (mode == kModeSocietyPool && outsider.isNotEmpty);
+  final needsCounterparty = mode == kModeOutsiderOnly ||
+      mode == kModeFlatsPlusOutsider ||
+      (mode == kModeSocietyPool && outsider.isNotEmpty);
   final titleOverride = f.entryTitle.trim();
   final String entryTitle;
   if (mode == kModeSocietyPool) {
@@ -290,15 +327,20 @@ RecordReceiptBuild buildRecordReceiptPlan({
                 ? chargeTitle
                 : 'Society pool receipt';
   } else if (mode == kModeOutsiderOnly) {
-    entryTitle = titleOverride.isNotEmpty ? titleOverride : 'Outsider: $outsider';
+    entryTitle =
+        titleOverride.isNotEmpty ? titleOverride : 'Outsider: $outsider';
   } else if (mode == kModeFlatsPlusOutsider) {
-    entryTitle = titleOverride.isNotEmpty ? titleOverride : '$chargeTitle + outsider ($outsider)';
+    entryTitle = titleOverride.isNotEmpty
+        ? titleOverride
+        : '$chargeTitle + outsider ($outsider)';
   } else {
     entryTitle = chargeTitle;
   }
 
   final String? chargeIdForEntry =
-      mode == kModeOutsiderOnly && f.destination != kDestCurrentMonth ? null : (f.chargeId.isEmpty ? null : f.chargeId);
+      mode == kModeOutsiderOnly && f.destination != kDestCurrentMonth
+          ? null
+          : (f.chargeId.isEmpty ? null : f.chargeId);
   final destForEntry = mode == kModeFlatsOnly
       ? kDestCurrentMonth
       : (mode == kModeSocietyPool && f.destination == kDestSeparate)
@@ -307,13 +349,19 @@ RecordReceiptBuild buildRecordReceiptPlan({
   final aggregateFlatCount = mode == kModeSocietyPool ? 0 : n;
 
   final billingDates = [
-    for (final r in mpRows) ((r['due_date'] as String?) ?? '').isEmpty ? primaryBillingDate : r['due_date'] as String,
+    for (final r in mpRows)
+      ((r['due_date'] as String?) ?? '').isEmpty
+          ? primaryBillingDate
+          : r['due_date'] as String,
   ];
   for (final d in billingDates) {
-    if (!isBillingDateInEntryMonth(d, entryMonth)) return RecordReceiptBuild.fail(RecordReceiptIssue.entryMonthMismatch, d);
+    if (!isBillingDateInEntryMonth(d, entryMonth)) {
+      return RecordReceiptBuild.fail(RecordReceiptIssue.entryMonthMismatch, d);
+    }
   }
-  final transactionDate =
-      billingDates.isEmpty ? primaryBillingDate : billingDates.reduce((a, b) => a.compareTo(b) < 0 ? a : b);
+  final transactionDate = billingDates.isEmpty
+      ? primaryBillingDate
+      : billingDates.reduce((a, b) => a.compareTo(b) < 0 ? a : b);
 
   final entry = <String, dynamic>{
     'society_id': societyId,
@@ -338,13 +386,16 @@ RecordReceiptBuild buildRecordReceiptPlan({
   final relation = f.outsiderRelation.trim();
   return RecordReceiptBuild.ok(RecordReceiptPlan(
     entry: entry,
-    counterparty: needsCounterparty ? (name: outsider, relation: relation.isEmpty ? null : relation) : null,
+    counterparty: needsCounterparty
+        ? (name: outsider, relation: relation.isEmpty ? null : relation)
+        : null,
     allocations: allocations,
     maintenancePayments: mpRows,
     totalAmount: totalAmount,
     entryTitle: entryTitle,
     entryMonth: entryMonth,
-    recordedCount: mode == kModeSocietyPool ? 1 : (mpRows.isNotEmpty ? mpRows.length : n),
+    recordedCount:
+        mode == kModeSocietyPool ? 1 : (mpRows.isNotEmpty ? mpRows.length : n),
   ));
 }
 
@@ -356,7 +407,8 @@ List<double> distributePoolAmounts(double total, int flatCount) {
   var allocated = 0.0;
   for (var i = 0; i < flatCount; i++) {
     final isLast = i == flatCount - 1;
-    final amount = isLast ? double.parse((total - allocated).toStringAsFixed(2)) : perFlat;
+    final amount =
+        isLast ? double.parse((total - allocated).toStringAsFixed(2)) : perFlat;
     allocated += amount;
     out.add(amount);
   }

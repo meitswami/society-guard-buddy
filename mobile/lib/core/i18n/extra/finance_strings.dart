@@ -23,12 +23,18 @@ const Map<String, Map<String, String>> kFinanceStrings = {
   'fin.method.bank_transfer': {'en': 'Bank transfer', 'hi': 'बैंक ट्रांसफ़र'},
   'fin.method.cheque': {'en': 'Cheque', 'hi': 'चेक'},
   'fin.method.other': {'en': 'Other', 'hi': 'अन्य'},
-  'fin.mode.society_pool': {'en': 'Society pool (distribute to flats later)', 'hi': 'सोसाइटी पूल (बाद में फ्लैटों में बाँटें)'},
+  'fin.mode.society_pool': {
+    'en': 'Society pool (distribute to flats later)',
+    'hi': 'सोसाइटी पूल (बाद में फ्लैटों में बाँटें)'
+  },
   'fin.mode.flats_only': {
     'en': 'Direct to selected flats (default — per-flat amount)',
     'hi': 'चयनित फ्लैटों में सीधे (डिफ़ॉल्ट — प्रति फ्लैट राशि)',
   },
-  'fin.mode.flats_plus_outsider': {'en': 'Selected flats + outsider share', 'hi': 'चयनित फ्लैट + बाहरी हिस्सा'},
+  'fin.mode.flats_plus_outsider': {
+    'en': 'Selected flats + outsider share',
+    'hi': 'चयनित फ्लैट + बाहरी हिस्सा'
+  },
   'fin.mode.outsider_only': {
     'en': 'Outsider only (split across selected flats now)',
     'hi': 'केवल बाहरी (अभी चयनित फ्लैटों में बाँटें)',
@@ -37,7 +43,10 @@ const Map<String, Map<String, String>> kFinanceStrings = {
     'en': 'Current month maintenance / collections',
     'hi': 'चालू माह रखरखाव / संग्रह',
   },
-  'fin.dest.corpus': {'en': 'Corpus / sinking fund', 'hi': 'कॉर्पस / सिंकिंग निधि'},
+  'fin.dest.corpus': {
+    'en': 'Corpus / sinking fund',
+    'hi': 'कॉर्पस / सिंकिंग निधि'
+  },
   'fin.dest.separate_entry': {
     'en': 'Separate ledger entry (expense-style, no flat posting)',
     'hi': 'अलग खाता प्रविष्टि (व्यय जैसी, फ्लैट पर पोस्ट नहीं)',
@@ -60,11 +69,23 @@ const Map<String, Map<String, String>> kFinanceStrings = {
   'fin.other': {'en': 'Other', 'hi': 'अन्य'},
   'fin.total': {'en': 'Total', 'hi': 'कुल'},
   'fin.entries': {'en': 'Entries', 'hi': 'प्रविष्टियाँ'},
-  'fin.billingDate': {'en': 'Billing / transaction date', 'hi': 'बिलिंग / लेन-देन तिथि'},
-  'fin.majorHead': {'en': 'Major head (category)', 'hi': 'मुख्य शीर्ष (श्रेणी)'},
+  'fin.billingDate': {
+    'en': 'Billing / transaction date',
+    'hi': 'बिलिंग / लेन-देन तिथि'
+  },
+  'fin.majorHead': {
+    'en': 'Major head (category)',
+    'hi': 'मुख्य शीर्ष (श्रेणी)'
+  },
   'fin.unknownCharge': {'en': 'Unknown charge', 'hi': 'अज्ञात शुल्क'},
   'fin.exportStatement': {'en': 'Export statement', 'hi': 'विवरण निर्यात करें'},
-  'fin.shareWhatsApp': {'en': 'Share on WhatsApp', 'hi': 'व्हाट्सऐप पर साझा करें'},
-  'fin.distribute': {'en': 'Distribute equally to all flats', 'hi': 'सभी फ्लैटों में बराबर बाँटें'},
+  'fin.shareWhatsApp': {
+    'en': 'Share on WhatsApp',
+    'hi': 'व्हाट्सऐप पर साझा करें'
+  },
+  'fin.distribute': {
+    'en': 'Distribute equally to all flats',
+    'hi': 'सभी फ्लैटों में बराबर बाँटें'
+  },
   'fin.distributing': {'en': 'Distributing…', 'hi': 'बाँटा जा रहा है…'},
 };
