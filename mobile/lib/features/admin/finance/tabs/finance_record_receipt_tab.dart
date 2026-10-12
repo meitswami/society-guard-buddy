@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/ui/ui.dart';
 import '../data/finance_repository.dart';
+import '../logic/finance_charge_helpers.dart';
 import '../logic/finance_dates.dart';
 import '../logic/finance_expense_head.dart';
 import '../logic/finance_format.dart';
@@ -106,25 +107,12 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
     if (!mounted || !f.showPaymentForm || f.chargeId.isNotEmpty || c.data.charges.isEmpty) return;
     final preferred = c.derived.preferredRecordCharge;
     if (preferred == null) return;
-    final isCurrent = c.derived.monthlyMaintenanceChargeIds.contains(preferred.id) &&
-        preferred == c.data.charges.firstWhere(
-          (ch) => c.derived.monthlyMaintenanceChargeIds.contains(ch.id) && _isCurrent(ch),
-          orElse: () => const FinanceCharge(id: '', title: ''),
-        );
+    final isCurrent = isMonthlyMaintenanceCharge(preferred) && isCurrentMonthChargeTitle(preferred.title);
     f
       ..autoSelectedChargeHint = isCurrent ? 'Auto-selected ${preferred.title}' : ''
       ..chargeId = preferred.id
       ..amount.text = numToInput(preferred.amount)
       ..changed();
-  }
-
-  bool _isCurrent(FinanceCharge ch) {
-    final now = DateTime.now();
-    final lower = ch.title.toLowerCase();
-    final mm = now.month.toString().padLeft(2, '0');
-    return lower.contains(englishMonthName(now.month).toLowerCase()) ||
-        lower.contains('$mm/${now.year}') ||
-        lower.contains('$mm-${now.year}');
   }
 
   List<FinancePayment> _conflictsPreview() {
