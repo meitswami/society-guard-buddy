@@ -204,10 +204,10 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
           targets: [for (final fl in input.selectedFlats) (flatNumber: fl, dueDate: input.dueDate)],
           monthlyMaintenanceChargeIds: c.derived.monthlyMaintenanceChargeIds.toList(),
         );
+        if (!mounted) return;
         if (conflicts.isNotEmpty) {
           final head = d.charges.where((ch) => ch.id == input.chargeId).firstOrNull?.title ?? context.t('finance.receiptHead');
           final flats = {for (final p in conflicts) p.flatNumber}.join(', ');
-          if (!mounted) return;
           _err(
             context.t('finance.receiptAlreadyRecordedDetail', {
               'flat': flats,
@@ -220,6 +220,7 @@ class _FinanceRecordReceiptTabState extends State<FinanceRecordReceiptTab> {
         }
       }
 
+      if (!mounted) return;
       String? screenshotUrl = f.screenshotUrl.text.trim().isEmpty ? null : f.screenshotUrl.text.trim();
       final file = f.file;
       if (file != null) {
