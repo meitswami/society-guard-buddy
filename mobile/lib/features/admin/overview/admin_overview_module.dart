@@ -4,6 +4,7 @@ import '../../../core/ui/ui.dart';
 import '../core/admin_module.dart';
 import '../core/admin_navigation.dart';
 import 'admin_overview_service.dart';
+import '../../governance/widgets/election_results_banner.dart';
 
 /// Admin home — port of the `default:` branch of `AdminDashboard.tsx` `renderContent`.
 class AdminOverviewModule extends StatefulWidget {
@@ -89,6 +90,7 @@ class _AdminOverviewModuleState extends State<AdminOverviewModule> {
         else
           const SizedBox(height: 2),
         const SizedBox(height: 8),
+        ElectionResultsBanner(societyId: widget.ctx.societyId),
         DescriptiveStatCard(
           title: 'Meetings held',
           description:
