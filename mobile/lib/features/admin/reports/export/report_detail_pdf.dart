@@ -30,9 +30,10 @@ Future<Uint8List> buildReportDetailPdf({
   }
   pdf.add(SocietyPdf.text('Generated: ${fmtDateTimeFull(DateTime.now())}',
       size: 9, color: LetterheadColors.grey80, gapAfterMm: 3));
-  if (totalAmount != null)
+  if (totalAmount != null) {
     pdf.add(SocietyPdf.text('Total: ${moneyInr(totalAmount)}',
         size: 10, gapAfterMm: 3));
+  }
 
   final withAmounts = rows.where((r) => r.amount != null).toList();
   final transactionTotal = sumAmountRows(withAmounts.map((r) => r.amount));

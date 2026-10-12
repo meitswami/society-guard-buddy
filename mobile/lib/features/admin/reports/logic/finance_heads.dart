@@ -33,8 +33,9 @@ String inferMajorHeadFromGroupName(String? name) {
   if (_t(r'fixed deposit|\bfd\b', n)) return 'FIXED DEPOSIT';
   if (_t(r'^bank\b|bank account', n)) return 'BANK';
   if (_t(r'^cash\b|petty cash', n)) return 'CASH';
-  if (_t(r'legal|professional|audit|advocate|lawyer', n))
+  if (_t(r'legal|professional|audit|advocate|lawyer', n)) {
     return 'LEGAL & PROFESSIONAL FEES';
+  }
   if (_t(
       r'fixed asset|furniture|chair|equipment|machine|softner|softener|installation|asset',
       n)) {
@@ -56,8 +57,9 @@ String inferMajorHeadFromGroupName(String? name) {
 /// Stored `major_head` when valid, else inferred from the group name.
 String resolveGroupMajorHead({required String name, String? majorHead}) {
   final stored = majorHead?.trim();
-  if (stored != null && kSocietyPaymentMajorHeads.contains(stored))
+  if (stored != null && kSocietyPaymentMajorHeads.contains(stored)) {
     return stored;
+  }
   return inferMajorHeadFromGroupName(name);
 }
 
@@ -74,8 +76,9 @@ String financeExpenseHeadFromLedgerTitle(String? rawTitle) {
   if (bracket != null) {
     final group = bracket.group(1)!.trim();
     final rest = bracket.group(2)!.trim();
-    if (_genericEventGroup.hasMatch(group))
+    if (_genericEventGroup.hasMatch(group)) {
       return rest.isNotEmpty ? rest : group;
+    }
     return group;
   }
   return t;
@@ -93,8 +96,9 @@ String financeReceiptHeadFromLedgerEntry({
     if (fromCharge != null && fromCharge.isNotEmpty) return fromCharge;
   }
   if (destination == 'corpus') return 'SOCIETY CORPUS FUND';
-  if (destination == 'current_month_maintenance')
+  if (destination == 'current_month_maintenance') {
     return 'OPERATION & MAINTENANCE';
+  }
   final tt = (title ?? '').trim();
   if (tt.isNotEmpty) return inferMajorHeadFromGroupName(tt);
   return 'Uncategorized';

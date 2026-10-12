@@ -169,9 +169,10 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
         _loadedMonth = ym;
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.t('mobile.loadFailed'),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted && ym == _reportMonth) setState(() => _monthLoading = false);
     }
@@ -310,10 +311,11 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
       try {
         await _engineExporter?.call(format);
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           AppFeedback.toast(
               context, '${context.tr('Export failed', 'निर्यात विफल')}: $e',
               tone: BadgeTone.alert);
+        }
       }
       return;
     }
@@ -321,9 +323,10 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
       if (format == ExportFormat.pdf) {
         final c = await resolveLetterheadReportContext(ctx.societyId);
         if (!mounted) return;
-        if (c?.warning != null)
+        if (c?.warning != null) {
           AppFeedback.toast(context, letterheadWarningText(context),
               tone: BadgeTone.warning);
+        }
         final bytes =
             await _buildPdf(c?.mode ?? ReportPdfMode.letterhead, c?.letterhead);
         if (!mounted) return;
@@ -334,10 +337,11 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
       final file = await buildMonthlyReportFile(format, _exportContext());
       await shareExportFile(file.bytes, file.filename, format);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(
             context, '${context.tr('Export failed', 'निर्यात विफल')}: $e',
             tone: BadgeTone.alert);
+      }
     }
   }
 

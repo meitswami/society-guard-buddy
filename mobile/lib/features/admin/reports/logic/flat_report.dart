@@ -168,8 +168,9 @@ List<FlatReportRow> buildFlatReportRows({
     if (e.destination == 'separate_entry') continue;
     final ledgerDate = e.ledgerDate;
     if (ledgerDate.isEmpty || !isInRange(ledgerDate)) continue;
-    if (e.recordMode == 'flats_only' && countedFinanceEntryIds.contains(e.id))
+    if (e.recordMode == 'flats_only' && countedFinanceEntryIds.contains(e.id)) {
       continue;
+    }
     for (final alloc in e.allocations) {
       final flatNum = alloc.flatNumber;
       if (flatNum.isEmpty || flatNum == 'SOCIETY') continue;

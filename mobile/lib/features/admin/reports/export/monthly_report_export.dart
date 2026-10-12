@@ -346,8 +346,9 @@ Future<Uint8List> buildMonthlyReportPdf(ReportExportContext ctx) {
   ));
   for (final sheet in _sheetsForTab(ctx)) {
     pdf.add(SocietyPdf.text(sheet.name, size: 12, gapAfterMm: 2.5));
-    if (sheet.rows.isEmpty)
+    if (sheet.rows.isEmpty) {
       pdf.add(SocietyPdf.text('(No data)', size: 8, gapAfterMm: 1));
+    }
     for (final row in sheet.rows) {
       final parts = <String>[];
       for (var i = 0; i < row.length; i++) {
@@ -367,8 +368,9 @@ Future<Uint8List> buildMonthlyReportPdf(ReportExportContext ctx) {
     }
     pdf.gap(4);
   }
-  if (ctx.includeSignatures && ctx.tab == MonthlyReportTab.financial)
+  if (ctx.includeSignatures && ctx.tab == MonthlyReportTab.financial) {
     pdf.signatures();
+  }
   return pdf.save();
 }
 

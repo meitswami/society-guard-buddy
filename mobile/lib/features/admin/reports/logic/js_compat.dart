@@ -36,8 +36,9 @@ int? jsDateMs(Object? value) {
     return DateTime.utc(y, mo).millisecondsSinceEpoch;
   }
   m = _yearOnly.firstMatch(s);
-  if (m != null)
+  if (m != null) {
     return DateTime.utc(int.parse(m.group(1)!)).millisecondsSinceEpoch;
+  }
   return DateTime.tryParse(s)?.millisecondsSinceEpoch;
 }
 
@@ -132,8 +133,9 @@ int _charClass(int c) {
   if (c >= 0x30 && c <= 0x39) return 2;
   final ch = String.fromCharCode(c);
   if (ch.toLowerCase() != ch.toUpperCase()) return 3; // cased letters
-  if (c >= 0x0900)
+  if (c >= 0x0900) {
     return 3; // Devanagari & other scripts sort after Latin symbols
+  }
   return 1;
 }
 

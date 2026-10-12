@@ -142,8 +142,9 @@ abstract final class ReportsRepository {
     for (final row in rowsOf(wave2[0])) {
       final fid = row['flat_id']?.toString();
       final name = row['name']?.toString().trim() ?? '';
-      if (fid != null && fid.isNotEmpty && name.isNotEmpty)
+      if (fid != null && fid.isNotEmpty && name.isNotEmpty) {
         primaryByFlatId[fid] = name;
+      }
     }
     final payments =
         rowsOf(wave2[1]).map(FinancePeriodPayment.fromJson).toList();
@@ -188,8 +189,9 @@ abstract final class ReportsRepository {
     String periodFrom,
     String periodTo,
   ) async {
-    if (!dbReady || societyId.isEmpty || periodFrom.compareTo(periodTo) > 0)
+    if (!dbReady || societyId.isEmpty || periodFrom.compareTo(periodTo) > 0) {
       return ReportModuleAggregations.empty;
+    }
     final from = '${periodFrom}T00:00:00';
     final to = '${periodTo}T23:59:59';
 
@@ -428,8 +430,9 @@ abstract final class ReportsRepository {
 
   static Future<SocietyNotificationSound> societyNotificationSound(
       String societyId) async {
-    if (societyId.isEmpty)
+    if (societyId.isEmpty) {
       return const SocietyNotificationSound(soundKey: 'digital');
+    }
     try {
       final data = await db
           .from('societies')
@@ -437,9 +440,10 @@ abstract final class ReportsRepository {
           .eq('id', societyId)
           .maybeSingle();
       final url = data?['admin_push_sound_url']?.toString().trim() ?? '';
-      if (url.isNotEmpty)
+      if (url.isNotEmpty) {
         return SocietyNotificationSound(
             soundKey: 'custom', soundCustomUrl: url);
+      }
     } catch (_) {}
     return const SocietyNotificationSound(soundKey: 'digital');
   }

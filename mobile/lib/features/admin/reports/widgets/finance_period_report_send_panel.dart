@@ -105,9 +105,10 @@ class _FinancePeriodReportSendPanelState
         _anchors = results[1] as List<FinanceOpeningBalanceAnchor>;
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.t('mobile.loadFailed'),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -142,8 +143,9 @@ class _FinancePeriodReportSendPanelState
       widget.flatNumbers ?? [for (final f in _data.flats) f.flatNumber];
 
   String get _adminName {
-    if (widget.adminName != null && widget.adminName!.isNotEmpty)
+    if (widget.adminName != null && widget.adminName!.isNotEmpty) {
       return widget.adminName!;
+    }
     final s = ref.read(sessionProvider).value;
     return s is SessionAdmin ? s.admin.name : 'Admin';
   }
@@ -238,10 +240,11 @@ class _FinancePeriodReportSendPanelState
           tone: BadgeTone.success);
       await _reloadBatch();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(
             context, '${context.tr('Recall failed', 'वापस लेना विफल')}: $e',
             tone: BadgeTone.alert);
+      }
     }
   }
 

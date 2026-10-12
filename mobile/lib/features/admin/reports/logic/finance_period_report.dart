@@ -542,8 +542,10 @@ ChannelTotals _computeChannelNetBetween(
   for (final e in ledgerEntries) {
     if (!e.isVerified) continue;
     final ledgerDate = e.ledgerDate;
-    if (ledgerDate.isEmpty || !dateInInclusiveRange(ledgerDate, fromYmd, toYmd))
+    if (ledgerDate.isEmpty ||
+        !dateInInclusiveRange(ledgerDate, fromYmd, toYmd)) {
       continue;
+    }
     final ch = normalizePaymentChannel(e.paymentMethod);
     if (e.isExpense) {
       expense.add(ch, e.totalAmount);
@@ -684,7 +686,9 @@ FinancePeriodReportResult computeFinancePeriodReport({
     if (!e.isVerified) continue;
     final ledgerDate = e.ledgerDate;
     if (ledgerDate.isEmpty ||
-        !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
+        !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) {
+      continue;
+    }
     final amt = e.totalAmount;
     final ch = normalizePaymentChannel(e.paymentMethod);
     if (e.isExpense) {

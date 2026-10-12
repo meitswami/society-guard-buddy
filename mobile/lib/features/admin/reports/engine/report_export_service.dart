@@ -15,8 +15,9 @@ String formatExportCell(ReportColumnDef? col, Object? value) {
     final n = jsNumber(value);
     return n.isFinite ? moneyInr(n) : jsString(value);
   }
-  if (col.format == ReportColumnFormat.date && value is String)
+  if (col.format == ReportColumnFormat.date && value is String) {
     return value.length > 10 ? value.substring(0, 10) : value;
+  }
   if (col.format == ReportColumnFormat.datetime && value is String) {
     final s = value.replaceFirst('T', ' ');
     return s.length > 19 ? s.substring(0, 19) : s;
@@ -33,8 +34,9 @@ String formatReportCell(ReportColumnDef col, Object? value) {
     if (!n.isFinite) return jsString(value);
     return col.format == ReportColumnFormat.money ? moneyInr(n) : toLocaleIn(n);
   }
-  if (col.format == ReportColumnFormat.date && value is String)
+  if (col.format == ReportColumnFormat.date && value is String) {
     return value.length > 10 ? value.substring(0, 10) : value;
+  }
   if (col.format == ReportColumnFormat.datetime && value is String) {
     final s = value.replaceFirst('T', ' ');
     return s.length > 19 ? s.substring(0, 19) : s;

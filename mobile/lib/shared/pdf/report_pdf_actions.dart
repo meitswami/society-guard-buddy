@@ -143,24 +143,27 @@ class _ReportPdfActionsButtonState extends State<ReportPdfActionsButton> {
             tone: BadgeTone.alert);
         return;
       }
-      if (ctx.warning != null)
+      if (ctx.warning != null) {
         AppFeedback.toast(context, letterheadWarningText(context),
             tone: BadgeTone.warning);
+      }
       final bytes = await widget.buildPdf(ctx.mode, ctx.letterhead);
       if (!mounted) return;
       if (preview) {
         await SocietyPdfOutput.preview(context, bytes, widget.filename);
       } else {
         await SocietyPdfOutput.download(bytes, widget.filename);
-        if (mounted)
+        if (mounted) {
           AppFeedback.toast(context, context.tr('PDF ready', 'PDF तैयार'),
               tone: BadgeTone.success);
+        }
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(
             context, '${context.tr('PDF failed', 'PDF विफल')}: $e',
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -326,10 +329,11 @@ class _SharePdfWhatsAppButtonState extends State<SharePdfWhatsAppButton> {
       await SocietyPdfOutput.shareWhatsApp(bytes, widget.filename,
           message: widget.message);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(
             context, context.tr('Could not share PDF', 'PDF साझा नहीं हो सका'),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

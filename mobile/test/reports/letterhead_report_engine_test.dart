@@ -70,7 +70,7 @@ void main() {
     });
 
     test('auto band places content below the header rule', () {
-      final lh = SocietyLetterhead(
+      final lh = const SocietyLetterhead(
           name: 'Gamma',
           letterheadMode: LetterheadMode.auto,
           address: 'Plot 4',
@@ -138,7 +138,7 @@ void main() {
     });
 
     test('society row normalisation', () {
-      final lh = SocietyLetterhead.fromSocietyRow({
+      final lh = SocietyLetterhead.fromSocietyRow(const {
         'id': 'x',
         'name': 'Delta',
         'letterhead_mode': null,

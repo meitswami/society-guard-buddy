@@ -217,7 +217,9 @@ List<StatementEntry> buildPeriodStatementEntries({
     if (!e.isVerified) continue;
     final ledgerDate = e.ledgerDate;
     if (ledgerDate.isEmpty ||
-        !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
+        !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) {
+      continue;
+    }
     final ch = normalizePaymentChannel(e.paymentMethod);
     final isCorpus = e.destination == 'corpus';
     final method = (e.paymentMethod == null || e.paymentMethod!.isEmpty)
@@ -273,8 +275,9 @@ List<StatementEntry> buildPeriodStatementEntries({
   }
 
   for (final r in reserveTransfers) {
-    if (!dateInInclusiveRange(_reserveTransferDate(r), periodFrom, periodTo))
+    if (!dateInInclusiveRange(_reserveTransferDate(r), periodFrom, periodTo)) {
       continue;
+    }
     entries.add(_reserveToStatement(r));
   }
 
@@ -564,8 +567,9 @@ List<StatementEntry> filterStatementEntriesForDrill(
           .toList(),
     );
   }
-  if (kind == CashFlowDrillKind.corpus)
+  if (kind == CashFlowDrillKind.corpus) {
     return entries.where((e) => e.type == StatementEntryType.corpus).toList();
+  }
   if (kind == CashFlowDrillKind.expenseHead &&
       drillKey != null &&
       drillKey.isNotEmpty) {
@@ -574,8 +578,9 @@ List<StatementEntry> filterStatementEntriesForDrill(
             e.type == StatementEntryType.expense && e.expenseHead == drillKey)
         .toList();
   }
-  if (kind == CashFlowDrillKind.reserve)
+  if (kind == CashFlowDrillKind.reserve) {
     return entries.where((e) => e.type == StatementEntryType.reserve).toList();
+  }
   return entries;
 }
 

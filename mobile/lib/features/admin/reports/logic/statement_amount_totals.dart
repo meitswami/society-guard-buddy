@@ -53,8 +53,9 @@ String? _monthKeyFromRow(AmountRow row) {
   final date = row.date;
   if (date != null && date.isNotEmpty) {
     final trimmed = date.trim();
-    if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(trimmed))
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(trimmed)) {
       return trimmed.substring(0, 7);
+    }
     final s = trimmed.length > 10 ? trimmed.substring(0, 10) : trimmed;
     final m = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(s);
     if (m != null) {
@@ -62,8 +63,9 @@ String? _monthKeyFromRow(AmountRow row) {
           mo = int.parse(m.group(2)!),
           y = int.parse(m.group(3)!);
       final dt = DateTime(y, mo, d);
-      if (dt.year == y && dt.month == mo && dt.day == d)
+      if (dt.year == y && dt.month == mo && dt.day == d) {
         return '$y-${pad2(mo)}';
+      }
     }
   }
   return null;

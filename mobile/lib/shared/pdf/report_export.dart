@@ -71,8 +71,9 @@ CellValue? _cell(Object? v) {
   if (v == null) return null;
   if (v is int) return IntCellValue(v);
   if (v is num) {
-    if (v == v.truncateToDouble() && v.abs() < 1e15)
+    if (v == v.truncateToDouble() && v.abs() < 1e15) {
       return IntCellValue(v.toInt());
+    }
     return DoubleCellValue(v.toDouble());
   }
   if (v is bool) return BoolCellValue(v);
@@ -87,8 +88,9 @@ Uint8List rowsToXlsxBytes(List<ExportSheet> sheets) {
   final names = [for (final s in sheets) _sheetName(s.name, used)];
   for (var i = 0; i < sheets.length; i++) {
     final name = names[i];
-    if (i == 0 && defaultSheet != null && defaultSheet != name)
+    if (i == 0 && defaultSheet != null && defaultSheet != name) {
       book.rename(defaultSheet, name);
+    }
     final sheet = book[name];
     sheet.appendRow([for (final h in sheets[i].headers) TextCellValue(h)]);
     for (final r in sheets[i].rows) {

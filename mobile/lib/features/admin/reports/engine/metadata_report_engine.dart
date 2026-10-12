@@ -139,8 +139,9 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
     _textFilterTimer?.cancel();
     _saveName.dispose();
     final cb = widget.onExportReady;
-    if (cb != null)
+    if (cb != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => cb(null));
+    }
     super.dispose();
   }
 
@@ -210,7 +211,9 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
   Future<void> _run() async {
     if (widget.societyId.isEmpty ||
         _reportId.isEmpty ||
-        _selectedColumns.isEmpty) return;
+        _selectedColumns.isEmpty) {
+      return;
+    }
     final token = ++_runToken;
     setState(() {
       _loading = true;
@@ -277,8 +280,9 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
   void _toggleColumn(String key) {
     setState(() {
       if (_selectedColumns.contains(key)) {
-        if (_selectedColumns.length > 1)
+        if (_selectedColumns.length > 1) {
           _selectedColumns = _selectedColumns.where((k) => k != key).toList();
+        }
       } else {
         _selectedColumns = [..._selectedColumns, key];
       }
@@ -303,15 +307,17 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
       );
       _saveName.clear();
       await _refreshSaved();
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context,
             context.tr('Report definition saved', 'प्रतिवेदन परिभाषा सहेजी गई'),
             tone: BadgeTone.success);
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(
             context, '${context.tr('Save failed', 'सहेजना विफल')}: $e',
             tone: BadgeTone.alert);
+      }
     }
   }
 

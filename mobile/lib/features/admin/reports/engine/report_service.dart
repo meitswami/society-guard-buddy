@@ -43,13 +43,15 @@ class MetadataLoader {
       throw StateError(
           'Report "${def.id}" must define societyColumn or societyVia');
     }
-    if (def.columns.isEmpty)
+    if (def.columns.isEmpty) {
       throw StateError('Report "${def.id}" has no columns');
+    }
     final keys = <String>{};
     for (final c in def.columns) {
-      if (!keys.add(c.key))
+      if (!keys.add(c.key)) {
         throw StateError(
             'Report "${def.id}" has duplicate column key: ${c.key}');
+      }
     }
   }
 
@@ -100,9 +102,10 @@ class DynamicQueryBuilder {
   PostgrestFilterBuilder<T> applySocietyScope<T>(
       PostgrestFilterBuilder<T> q, ReportDefinition def, String societyId) {
     if (def.societyColumn != null) return q.eq(def.societyColumn!, societyId);
-    if (def.societyViaRelation != null)
+    if (def.societyViaRelation != null) {
       return q.eq(
           '${def.societyViaRelation}.${def.societyViaColumn}', societyId);
+    }
     throw StateError('Report "${def.id}" has no society scope');
   }
 
@@ -133,10 +136,12 @@ class DynamicQueryBuilder {
       final range =
           DateRangeValue.fromJson(raw is DateRangeValue ? raw.toJson() : raw);
       var out = q;
-      if (range?.from != null)
+      if (range?.from != null) {
         out = out.gte(f.field, dateBound(range!.from!, start: true));
-      if (range?.to != null)
+      }
+      if (range?.to != null) {
         out = out.lte(f.field, dateBound(range!.to!, start: false));
+      }
       return out;
     }
     final op = f.operator ?? ReportFilterOperator.eq;
@@ -251,8 +256,9 @@ class SavedReportRepository {
         .from('saved_report_definitions')
         .select('*')
         .eq('society_id', societyId);
-    if (reportId != null && reportId.isNotEmpty)
+    if (reportId != null && reportId.isNotEmpty) {
       q = q.eq('report_id', reportId);
+    }
     final data = await q.order('updated_at', ascending: false);
     return rowsOf(data).map(SavedReportDefinition.fromJson).toList();
   }
@@ -387,8 +393,9 @@ List<Map<String, Object?>> groupRows(List<Map<String, Object?>> rows,
 
 List<ReportColumnDef> resolveColumns(
     ReportDefinition def, List<String>? requested) {
-  if (requested == null || requested.isEmpty)
+  if (requested == null || requested.isEmpty) {
     return def.columns.where((c) => c.defaultVisible != false).toList();
+  }
   final byKey = {for (final c in def.columns) c.key: c};
   return [
     for (final k in requested)
@@ -416,8 +423,9 @@ class ReportService {
 
   Future<ReportResult> run(ReportRequest request) async {
     final def = loader.require(request.reportId);
-    if (!request.permissions(def.permission))
+    if (!request.permissions(def.permission)) {
       throw StateError('Permission denied for report: ${def.id}');
+    }
     if (request.societyId.isEmpty) throw StateError('societyId is required');
 
     final columns = resolveColumns(def, request.columns);
@@ -430,8 +438,9 @@ class ReportService {
       columnKeys: keys,
     );
     final search = request.search?.trim() ?? '';
-    if (search.isNotEmpty)
+    if (search.isNotEmpty) {
       rows = rows.where((r) => _matchesSearch(r, columns, search)).toList();
+    }
 
     final groupBy = (request.groupBy?.isNotEmpty ?? false)
         ? request.groupBy!
