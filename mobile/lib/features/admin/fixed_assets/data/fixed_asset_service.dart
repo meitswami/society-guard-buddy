@@ -2,7 +2,8 @@ import '../../../../core/supabase/db.dart';
 import '../logic/fixed_asset_types.dart';
 
 class ExpenseGroupOption {
-  const ExpenseGroupOption({required this.id, required this.name, this.majorHead, this.description});
+  const ExpenseGroupOption(
+      {required this.id, required this.name, this.majorHead, this.description});
 
   final String id;
   final String name;
@@ -16,19 +17,30 @@ class FixedAssetService {
 
   Future<List<FixedAsset>> fetchFixedAssets(String societyId) async {
     if (!dbReady) return const [];
-    final data = await db.from('fixed_assets').select('*').eq('society_id', societyId).order('sub_head').order('asset_name');
+    final data = await db
+        .from('fixed_assets')
+        .select('*')
+        .eq('society_id', societyId)
+        .order('sub_head')
+        .order('asset_name');
     return rowsOf(data).map(FixedAsset.fromJson).toList();
   }
 
   /// Inserts the standard templates that are not in the register yet; returns how many were added.
-  Future<int> seedStandardAssetTemplates(String societyId, String createdBy) async {
+  Future<int> seedStandardAssetTemplates(
+      String societyId, String createdBy) async {
     if (!dbReady) return 0;
     final existing = rowsOf(
-      await db.from('fixed_assets').select('template_key').eq('society_id', societyId).not('template_key', 'is', null),
+      await db
+          .from('fixed_assets')
+          .select('template_key')
+          .eq('society_id', societyId)
+          .not('template_key', 'is', null),
     );
     final keys = {
       for (final r in existing)
-        if ((r['template_key'] ?? '').toString().isNotEmpty) r['template_key'].toString(),
+        if ((r['template_key'] ?? '').toString().isNotEmpty)
+          r['template_key'].toString(),
     };
     final rows = templateSeedRows(societyId, createdBy, keys);
     if (rows.isEmpty) return 0;
@@ -36,7 +48,8 @@ class FixedAssetService {
     return rows.length;
   }
 
-  Future<FixedAsset> createFixedAsset(String societyId, Map<String, Object?> input, String createdBy) async {
+  Future<FixedAsset> createFixedAsset(
+      String societyId, Map<String, Object?> input, String createdBy) async {
     final row = await db
         .from('fixed_assets')
         .insert({
@@ -52,16 +65,28 @@ class FixedAssetService {
     return FixedAsset.fromJson(row);
   }
 
-  Future<FixedAsset> updateFixedAsset(String societyId, String id, Map<String, Object?> input) async {
-    final row = await db.from('fixed_assets').update(input).eq('id', id).eq('society_id', societyId).select().single();
+  Future<FixedAsset> updateFixedAsset(
+      String societyId, String id, Map<String, Object?> input) async {
+    final row = await db
+        .from('fixed_assets')
+        .update(input)
+        .eq('id', id)
+        .eq('society_id', societyId)
+        .select()
+        .single();
     return FixedAsset.fromJson(row);
   }
 
   Future<void> deleteFixedAsset(String societyId, String id) async {
-    await db.from('fixed_assets').delete().eq('id', id).eq('society_id', societyId);
+    await db
+        .from('fixed_assets')
+        .delete()
+        .eq('id', id)
+        .eq('society_id', societyId);
   }
 
-  Future<List<ExpenseGroupOption>> fetchExpenseGroupsForFixedAssets(String societyId) async {
+  Future<List<ExpenseGroupOption>> fetchExpenseGroupsForFixedAssets(
+      String societyId) async {
     if (!dbReady) return const [];
     final data = await db
         .from('expense_groups')
@@ -71,7 +96,9 @@ class FixedAssetService {
         .order('name');
     return [
       for (final g in rowsOf(data))
-        if (isFixedAssetExpenseGroup(name: (g['name'] ?? '').toString(), majorHead: g['major_head']?.toString()))
+        if (isFixedAssetExpenseGroup(
+            name: (g['name'] ?? '').toString(),
+            majorHead: g['major_head']?.toString()))
           ExpenseGroupOption(
             id: (g['id'] ?? '').toString(),
             name: (g['name'] ?? '').toString(),
@@ -83,7 +110,11 @@ class FixedAssetService {
 
   Future<String?> societyName(String societyId) async {
     if (!dbReady) return null;
-    final row = await db.from('societies').select('name').eq('id', societyId).maybeSingle();
+    final row = await db
+        .from('societies')
+        .select('name')
+        .eq('id', societyId)
+        .maybeSingle();
     final n = row?['name']?.toString();
     return (n == null || n.isEmpty) ? null : n;
   }

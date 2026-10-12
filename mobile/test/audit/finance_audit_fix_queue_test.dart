@@ -100,11 +100,15 @@ void main() {
       expect(dates, [...dates]..sort());
       expect(queue[0].sortDate, '2024-02-01');
       expect(queue[0].entryId, 'fe-1');
-      expect(queue.firstWhere((q) => q.entryId == 'p-new').action, AuditFixAction.delete);
-      expect(queue.firstWhere((q) => q.entryId == 'p-old').action, AuditFixAction.review);
+      expect(queue.firstWhere((q) => q.entryId == 'p-new').action,
+          AuditFixAction.delete);
+      expect(queue.firstWhere((q) => q.entryId == 'p-old').action,
+          AuditFixAction.review);
     });
 
-    test('deduplicates the same entry across recording mismatch and orphan lists', () {
+    test(
+        'deduplicates the same entry across recording mismatch and orphan lists',
+        () {
       final orphaned = [pay(id: 'same-id', dueDate: '2023-06-01')];
       const recordingMismatchMonths = [
         RecordingMismatchMonth(
@@ -136,7 +140,9 @@ void main() {
       expect(queue.where((q) => q.entryId == 'same-id'), hasLength(1));
     });
 
-    test('critical items come before warnings on the same date; channel culprits are reviews', () {
+    test(
+        'critical items come before warnings on the same date; channel culprits are reviews',
+        () {
       final txns = buildChannelTransactions(
         [pay(id: 'r1', dueDate: '2024-05-01', amount: 100)],
         const [

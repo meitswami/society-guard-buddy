@@ -9,7 +9,11 @@ String _l(bool hi, String en, String hindi) => hi ? hindi : en;
 bool _truthy(String? s) => s != null && s.isNotEmpty;
 
 class AuditChargeRow {
-  const AuditChargeRow({required this.id, required this.title, required this.amount, required this.frequency});
+  const AuditChargeRow(
+      {required this.id,
+      required this.title,
+      required this.amount,
+      required this.frequency});
 
   final String id;
   final String title;
@@ -27,7 +31,8 @@ class AuditChargeRow {
 }
 
 class AuditFlatRow {
-  const AuditFlatRow({required this.id, required this.flatNumber, required this.isOccupied});
+  const AuditFlatRow(
+      {required this.id, required this.flatNumber, required this.isOccupied});
 
   final String id;
   final String flatNumber;
@@ -42,7 +47,13 @@ class AuditFlatRow {
 
 enum FindingSeverity { critical, warning, info, pass }
 
-enum FindingKind { duplicatePayments, ledgerOvercount, recordingMismatch, orphanedPayments, generic }
+enum FindingKind {
+  duplicatePayments,
+  ledgerOvercount,
+  recordingMismatch,
+  orphanedPayments,
+  generic
+}
 
 class AuditFinding {
   const AuditFinding({
@@ -75,7 +86,11 @@ class AuditFinding {
 }
 
 class AuditSummary {
-  const AuditSummary({required this.critical, required this.warning, required this.info, required this.pass});
+  const AuditSummary(
+      {required this.critical,
+      required this.warning,
+      required this.info,
+      required this.pass});
 
   final int critical;
   final int warning;
@@ -84,7 +99,11 @@ class AuditSummary {
 }
 
 class IntegrityAuditInput {
-  const IntegrityAuditInput({required this.charges, required this.payments, required this.ledger, required this.flats});
+  const IntegrityAuditInput(
+      {required this.charges,
+      required this.payments,
+      required this.ledger,
+      required this.flats});
 
   final List<AuditChargeRow> charges;
   final List<AuditPaymentRow> payments;
@@ -93,7 +112,11 @@ class IntegrityAuditInput {
 }
 
 class IntegrityAuditResult {
-  const IntegrityAuditResult({required this.ranAt, required this.findings, required this.fixQueue, required this.summary});
+  const IntegrityAuditResult(
+      {required this.ranAt,
+      required this.findings,
+      required this.fixQueue,
+      required this.summary});
 
   final DateTime ranAt;
   final List<AuditFinding> findings;
@@ -144,8 +167,10 @@ class _Builder {
       title: _l(hi, 'Audit Engine Error', 'ऑडिट इंजन त्रुटि'),
       description: msg.isNotEmpty
           ? msg
-          : _l(hi, 'An unexpected error occurred while running the audit.', 'ऑडिट चलाते समय अनपेक्षित त्रुटि हुई।'),
-      reason: _l(hi, 'Database connectivity issue or missing table.', 'डेटाबेस कनेक्शन समस्या या तालिका उपलब्ध नहीं।'),
+          : _l(hi, 'An unexpected error occurred while running the audit.',
+              'ऑडिट चलाते समय अनपेक्षित त्रुटि हुई।'),
+      reason: _l(hi, 'Database connectivity issue or missing table.',
+          'डेटाबेस कनेक्शन समस्या या तालिका उपलब्ध नहीं।'),
       rectification: _l(
         hi,
         'Check your internet connection and try again. If the issue persists, contact support.',
@@ -163,13 +188,19 @@ AuditSummary _summaryOf(List<AuditFinding> f) => AuditSummary(
     );
 
 /// Result when loading the data failed (web `catch` branch).
-IntegrityAuditResult integrityAuditError(Object err, {DateTime? now, bool hi = false}) {
+IntegrityAuditResult integrityAuditError(Object err,
+    {DateTime? now, bool hi = false}) {
   final b = _Builder(hi)..error(err);
-  return IntegrityAuditResult(ranAt: now ?? DateTime.now(), findings: b.findings, fixQueue: const [], summary: _summaryOf(b.findings));
+  return IntegrityAuditResult(
+      ranAt: now ?? DateTime.now(),
+      findings: b.findings,
+      fixQueue: const [],
+      summary: _summaryOf(b.findings));
 }
 
 /// Runs every self-audit rule on the loaded rows.
-IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime? now, bool hi = false}) {
+IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input,
+    {DateTime? now, bool hi = false}) {
   final ranAt = now ?? DateTime.now();
   final b = _Builder(hi);
 
@@ -188,13 +219,25 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
     final chargeMap = {for (final c in charges) c.id: c};
     final allPayments = input.payments;
     final allLedger = input.ledger;
-    final monthlyChargeIds = [for (final c in charges) if (c.isMonthly) c.id];
+    final monthlyChargeIds = [
+      for (final c in charges)
+        if (c.isMonthly) c.id
+    ];
     final chargeTitleById = {for (final c in charges) c.id: c.title};
-    final verifiedPayments = allPayments.where((p) => p.paymentStatus == 'verified').toList();
+    final verifiedPayments =
+        allPayments.where((p) => p.paymentStatus == 'verified').toList();
 
     /* ─── 2. Negative cash / bank balance ─── */
-    final receipt = {PaymentChannel.cash: 0.0, PaymentChannel.bank: 0.0, PaymentChannel.other: 0.0};
-    final expense = {PaymentChannel.cash: 0.0, PaymentChannel.bank: 0.0, PaymentChannel.other: 0.0};
+    final receipt = {
+      PaymentChannel.cash: 0.0,
+      PaymentChannel.bank: 0.0,
+      PaymentChannel.other: 0.0
+    };
+    final expense = {
+      PaymentChannel.cash: 0.0,
+      PaymentChannel.bank: 0.0,
+      PaymentChannel.other: 0.0
+    };
     final linkedFeIds = <String>{};
     for (final p in verifiedPayments) {
       final ch = normalizePaymentChannel(p.paymentMethod);
@@ -209,10 +252,14 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
         receipt[ch] = receipt[ch]! + e.totalAmount;
       }
     }
-    final cashBalance = receipt[PaymentChannel.cash]! - expense[PaymentChannel.cash]!;
-    final bankBalance = receipt[PaymentChannel.bank]! - expense[PaymentChannel.bank]!;
+    final cashBalance =
+        receipt[PaymentChannel.cash]! - expense[PaymentChannel.cash]!;
+    final bankBalance =
+        receipt[PaymentChannel.bank]! - expense[PaymentChannel.bank]!;
 
-    final channelTxns = buildChannelTransactions(verifiedPayments, allLedger, linkedFeIds, hi: hi);
+    final channelTxns = buildChannelTransactions(
+        verifiedPayments, allLedger, linkedFeIds,
+        hi: hi);
     cashTrace = traceChannelBalanceDeficit(channelTxns, PaymentChannel.cash);
     bankTrace = traceChannelBalanceDeficit(channelTxns, PaymentChannel.bank);
 
@@ -225,19 +272,29 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
         final faultDate = trace?.firstNegativeDate;
         final faultMonth = trace?.firstNegativeMonth;
         final monthPart = faultMonth != null ? ' (${m(faultMonth)})' : '';
-        final period = faultDate == null ? '' : (faultMonth != null ? m(faultMonth) : jsSlice(faultDate, 0, 7));
+        final period = faultDate == null
+            ? ''
+            : (faultMonth != null ? m(faultMonth) : jsSlice(faultDate, 0, 7));
         final String faultDesc;
         if (faultDate != null) {
           faultDesc = isCash
-              ? _l(hi, 'Negative cash first appears on ${fmtIsoDateToDisplay(faultDate)}$monthPart.',
+              ? _l(
+                  hi,
+                  'Negative cash first appears on ${fmtIsoDateToDisplay(faultDate)}$monthPart.',
                   'ऋणात्मक नकद पहली बार ${fmtIsoDateToDisplay(faultDate)}$monthPart को दिखा।')
-              : _l(hi, 'Negative bank balance first appears on ${fmtIsoDateToDisplay(faultDate)}$monthPart.',
+              : _l(
+                  hi,
+                  'Negative bank balance first appears on ${fmtIsoDateToDisplay(faultDate)}$monthPart.',
                   'ऋणात्मक बैंक शेष पहली बार ${fmtIsoDateToDisplay(faultDate)}$monthPart को दिखा।');
         } else {
           faultDesc = isCash
-              ? _l(hi, 'Cash outflow exceeds cash inflow across all recorded dates.',
+              ? _l(
+                  hi,
+                  'Cash outflow exceeds cash inflow across all recorded dates.',
                   'सभी दर्ज तिथियों में नकद बहिर्वाह नकद अंतर्वाह से अधिक है।')
-              : _l(hi, 'Bank outflow exceeds bank inflow across all recorded dates.',
+              : _l(
+                  hi,
+                  'Bank outflow exceeds bank inflow across all recorded dates.',
                   'सभी दर्ज तिथियों में बैंक बहिर्वाह बैंक अंतर्वाह से अधिक है।');
         }
         final String rectification;
@@ -269,12 +326,18 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
         b.add(
           severity: FindingSeverity.critical,
           title: isCash
-              ? _l(hi, 'Negative Cash Balance: ${inr(balance.abs())}', 'ऋणात्मक नकद शेष: ${inr(balance.abs())}')
-              : _l(hi, 'Negative Bank Balance: ${inr(balance.abs())}', 'ऋणात्मक बैंक शेष: ${inr(balance.abs())}'),
+              ? _l(hi, 'Negative Cash Balance: ${inr(balance.abs())}',
+                  'ऋणात्मक नकद शेष: ${inr(balance.abs())}')
+              : _l(hi, 'Negative Bank Balance: ${inr(balance.abs())}',
+                  'ऋणात्मक बैंक शेष: ${inr(balance.abs())}'),
           description: isCash
-              ? _l(hi, '$faultDesc Cash outflow (${inr(outflow)}) exceeds cash inflow (${inr(inflow)}).',
+              ? _l(
+                  hi,
+                  '$faultDesc Cash outflow (${inr(outflow)}) exceeds cash inflow (${inr(inflow)}).',
                   '$faultDesc नकद बहिर्वाह (${inr(outflow)}) नकद अंतर्वाह (${inr(inflow)}) से अधिक है।')
-              : _l(hi, '$faultDesc Bank outflow (${inr(outflow)}) exceeds bank inflow (${inr(inflow)}).',
+              : _l(
+                  hi,
+                  '$faultDesc Bank outflow (${inr(outflow)}) exceeds bank inflow (${inr(inflow)}).',
                   '$faultDesc बैंक बहिर्वाह (${inr(outflow)}) बैंक अंतर्वाह (${inr(inflow)}) से अधिक है।'),
           reason: isCash
               ? _l(
@@ -287,34 +350,57 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
                   'Usually caused by a bank/UPI expense on the fault date without a matching bank receipt, or a receipt incorrectly tagged as cash.',
                   'आमतौर पर गड़बड़ी की तिथि पर बिना मेल खाती बैंक रसीद के बैंक/UPI खर्च, या गलती से नकद टैग की गई रसीद के कारण होता है।',
                 ),
-          faultTrace: trace != null ? formatChannelBalanceFaultTrace(trace, hi: hi) : null,
+          faultTrace: trace != null
+              ? formatChannelBalanceFaultTrace(trace, hi: hi)
+              : null,
           rectification: rectification,
           data: isCash
-              ? {'cashReceipts': inflow, 'cashExpenses': outflow, 'deficit': balance, 'faultDate': faultDate, 'faultMonth': faultMonth}
-              : {'bankReceipts': inflow, 'bankExpenses': outflow, 'deficit': balance, 'faultDate': faultDate, 'faultMonth': faultMonth},
+              ? {
+                  'cashReceipts': inflow,
+                  'cashExpenses': outflow,
+                  'deficit': balance,
+                  'faultDate': faultDate,
+                  'faultMonth': faultMonth
+                }
+              : {
+                  'bankReceipts': inflow,
+                  'bankExpenses': outflow,
+                  'deficit': balance,
+                  'faultDate': faultDate,
+                  'faultMonth': faultMonth
+                },
           channelTrace: trace,
         );
       } else {
         b.add(
           severity: FindingSeverity.pass,
           title: isCash
-              ? _l(hi, 'Cash Balance OK: ${inr(balance)}', 'नकद शेष ठीक: ${inr(balance)}')
-              : _l(hi, 'Bank Balance OK: ${inr(balance)}', 'बैंक शेष ठीक: ${inr(balance)}'),
+              ? _l(hi, 'Cash Balance OK: ${inr(balance)}',
+                  'नकद शेष ठीक: ${inr(balance)}')
+              : _l(hi, 'Bank Balance OK: ${inr(balance)}',
+                  'बैंक शेष ठीक: ${inr(balance)}'),
           description: isCash
-              ? _l(hi, 'Cash inflow covers all cash outflow.', 'नकद अंतर्वाह सभी नकद बहिर्वाह को पूरा करता है।')
-              : _l(hi, 'Bank inflow covers all bank outflow.', 'बैंक अंतर्वाह सभी बैंक बहिर्वाह को पूरा करता है।'),
+              ? _l(hi, 'Cash inflow covers all cash outflow.',
+                  'नकद अंतर्वाह सभी नकद बहिर्वाह को पूरा करता है।')
+              : _l(hi, 'Bank inflow covers all bank outflow.',
+                  'बैंक अंतर्वाह सभी बैंक बहिर्वाह को पूरा करता है।'),
         );
       }
     }
 
     /* ─── 3. Duplicate payments (monthly charges, across charges) ─── */
-    duplicateGroups = findDuplicatePaymentGroups(allPayments, chargeTitleById, chargeIds: monthlyChargeIds, groupAcrossCharges: true);
+    duplicateGroups = findDuplicatePaymentGroups(allPayments, chargeTitleById,
+        chargeIds: monthlyChargeIds, groupAcrossCharges: true);
     if (duplicateGroups.isNotEmpty) {
       final uniqueMonths = <String>[];
       for (final g in duplicateGroups) {
         if (!uniqueMonths.contains(g.month)) uniqueMonths.add(g.month);
       }
-      final monthSummary = (List<String>.of(uniqueMonths)..sort()).reversed.take(5).map(m).join(', ');
+      final monthSummary = (List<String>.of(uniqueMonths)..sort())
+          .reversed
+          .take(5)
+          .map(m)
+          .join(', ');
       final sampleGroups = duplicateGroups.take(4).map((g) {
         return hi
             ? '  • ${m(g.month)}: फ्लैट ${g.flatNumber}, ${g.chargeTitle} (${g.paymentMethod}) — ${g.count} पंक्तियाँ, ${inr(g.totalAmount)}'
@@ -324,7 +410,8 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
       b.add(
         severity: FindingSeverity.critical,
         kind: FindingKind.duplicatePayments,
-        title: _l(hi, '$n Duplicate Payment Group${n > 1 ? 's' : ''} Found', '$n डुप्लिकेट भुगतान समूह मिले'),
+        title: _l(hi, '$n Duplicate Payment Group${n > 1 ? 's' : ''} Found',
+            '$n डुप्लिकेट भुगतान समूह मिले'),
         description: _l(
           hi,
           'Duplicate rows in month(s): $monthSummary. Same flat + billing month has multiple monthly maintenance receipts (any charge / cash / UPI).',
@@ -348,8 +435,11 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
     } else {
       b.add(
         severity: FindingSeverity.pass,
-        title: _l(hi, 'No Duplicate Payment Rows', 'कोई डुप्लिकेट भुगतान पंक्ति नहीं'),
-        description: _l(hi, 'Each flat has at most one monthly maintenance payment per billing month.',
+        title: _l(hi, 'No Duplicate Payment Rows',
+            'कोई डुप्लिकेट भुगतान पंक्ति नहीं'),
+        description: _l(
+            hi,
+            'Each flat has at most one monthly maintenance payment per billing month.',
             'हर फ्लैट का प्रति बिलिंग माह अधिकतम एक मासिक रखरखाव भुगतान है।'),
       );
     }
@@ -357,22 +447,28 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
     /* ─── 4. Recording vs reporting discrepancy ─── */
     final mpTotal = verifiedPayments.fold(0.0, (s, p) => s + p.amount);
     final feFlatsOnlyTotal = allLedger
-        .where((e) => e.recordMode == 'flats_only' && e.paymentStatus == 'verified')
+        .where((e) =>
+            e.recordMode == 'flats_only' && e.paymentStatus == 'verified')
         .fold(0.0, (s, e) => s + e.totalAmount);
     final discrepancy = (mpTotal - feFlatsOnlyTotal).abs();
-    recordingMismatchMonths = analyzeRecordingMismatchByMonth(verifiedPayments, allLedger, hi: hi);
+    recordingMismatchMonths =
+        analyzeRecordingMismatchByMonth(verifiedPayments, allLedger, hi: hi);
     if (discrepancy > 1) {
       final earliest = recordingMismatchMonths.isEmpty
           ? null
-          : stableSorted(recordingMismatchMonths, (a, b) => jsLocaleCompare(a.month, b.month)).first.month;
+          : stableSorted(recordingMismatchMonths,
+              (a, b) => jsLocaleCompare(a.month, b.month)).first.month;
       final monthHint = earliest == null
           ? ''
-          : _l(hi, 'Mismatch traceable from ${m(earliest)} onward.', 'असंगति ${m(earliest)} से आगे ट्रेस की जा सकती है।');
-      final trace = formatRecordingMismatchFaultTrace(recordingMismatchMonths, hi: hi);
+          : _l(hi, 'Mismatch traceable from ${m(earliest)} onward.',
+              'असंगति ${m(earliest)} से आगे ट्रेस की जा सकती है।');
+      final trace =
+          formatRecordingMismatchFaultTrace(recordingMismatchMonths, hi: hi);
       b.add(
         severity: FindingSeverity.warning,
         kind: FindingKind.recordingMismatch,
-        title: _l(hi, 'Recording vs Ledger Discrepancy: ${inr(discrepancy)}', 'दर्ज बनाम लेजर असंगति: ${inr(discrepancy)}'),
+        title: _l(hi, 'Recording vs Ledger Discrepancy: ${inr(discrepancy)}',
+            'दर्ज बनाम लेजर असंगति: ${inr(discrepancy)}'),
         description: _l(
           hi,
           'Sum of verified maintenance_payments (${inr(mpTotal)}) does not match sum of finance_entries[flats_only] (${inr(feFlatsOnlyTotal)}). $monthHint',
@@ -400,37 +496,51 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
     } else {
       b.add(
         severity: FindingSeverity.pass,
-        title: _l(hi, 'Recording & Reporting Figures Match', 'दर्ज और रिपोर्ट के आँकड़े मेल खाते हैं'),
-        description: _l(hi, 'Maintenance payments total matches finance ledger entries total.',
+        title: _l(hi, 'Recording & Reporting Figures Match',
+            'दर्ज और रिपोर्ट के आँकड़े मेल खाते हैं'),
+        description: _l(
+            hi,
+            'Maintenance payments total matches finance ledger entries total.',
             'रखरखाव भुगतान का योग वित्त लेजर प्रविष्टियों के योग से मेल खाता है।'),
       );
     }
 
     /* ─── 5. Period report ledger double-count ─── */
-    ledgerOvercountIssues = analyzeLedgerOvercountByMonth(verifiedPayments, allLedger);
+    ledgerOvercountIssues =
+        analyzeLedgerOvercountByMonth(verifiedPayments, allLedger);
     if (ledgerOvercountIssues.isNotEmpty) {
-      final totalExcess = ledgerOvercountIssues.fold(0.0, (s, x) => s + x.excess);
-      final orphanCount = ledgerOvercountIssues.fold(0, (s, x) => s + x.unlinkedLedger.length);
-      final earliest = stableSorted(ledgerOvercountIssues, (a, b) => jsLocaleCompare(a.month, b.month)).first.month;
+      final totalExcess =
+          ledgerOvercountIssues.fold(0.0, (s, x) => s + x.excess);
+      final orphanCount =
+          ledgerOvercountIssues.fold(0, (s, x) => s + x.unlinkedLedger.length);
+      final earliest = stableSorted(ledgerOvercountIssues,
+          (a, b) => jsLocaleCompare(a.month, b.month)).first.month;
       final lines = ledgerOvercountIssues.take(6).map((issue) {
         final orphanLines = issue.unlinkedLedger.take(2).map((e) {
           final t = _truthy(e.title) ? e.title! : _l(hi, 'Entry', 'प्रविष्टि');
-          return hi ? '${e.ledgerDate} बिना लिंक "$t" ${inr(e.totalAmount)}' : '${e.ledgerDate} orphan "$t" ${inr(e.totalAmount)}';
+          return hi
+              ? '${e.ledgerDate} बिना लिंक "$t" ${inr(e.totalAmount)}'
+              : '${e.ledgerDate} orphan "$t" ${inr(e.totalAmount)}';
         }).join('; ');
         final boundaryLines = issue.dateBoundary.take(2).map((x) {
           return hi
               ? 'फ्लैट ${x.payment.flatNumber}: भुगतान माह ${m(x.paymentMonth)} बनाम लेजर ${m(x.entryMonth)}'
               : 'Flat ${x.payment.flatNumber}: payment month ${m(x.paymentMonth)} vs ledger ${m(x.entryMonth)}';
         }).join('; ');
-        final parts = [orphanLines, boundaryLines].where((s) => s.isNotEmpty).join(' | ');
+        final parts =
+            [orphanLines, boundaryLines].where((s) => s.isNotEmpty).join(' | ');
         return '  • ${m(issue.month)} (+${inr(issue.excess)})${parts.isNotEmpty ? ': $parts' : ''}';
       }).toList();
-      final monthsList = ledgerOvercountIssues.map((x) => '${m(x.month)} (+${inr(x.excess)})').join(', ');
+      final monthsList = ledgerOvercountIssues
+          .map((x) => '${m(x.month)} (+${inr(x.excess)})')
+          .join(', ');
       final n = ledgerOvercountIssues.length;
       b.add(
         severity: FindingSeverity.critical,
         kind: FindingKind.ledgerOvercount,
-        title: _l(hi, 'Ledger Double-Count in Reports: ${inr(totalExcess)} across $n month(s)',
+        title: _l(
+            hi,
+            'Ledger Double-Count in Reports: ${inr(totalExcess)} across $n month(s)',
             'रिपोर्ट में लेजर दोहरी गिनती: ${inr(totalExcess)}, $n माह में'),
         description: _l(
           hi,
@@ -443,8 +553,10 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
           'बिना जुड़े maintenance_payments के एक अतिरिक्त वित्त लेजर रसीद मौजूद है (या भुगतान/लेजर के माह मेल नहीं खाते)। इससे अवधि रिपोर्ट बढ़ जाती है पर यह "डुप्लिकेट भुगतान पंक्तियाँ" में नहीं दिखता — हो सकता है प्रति फ्लैट केवल एक ही भुगतान हो।',
         ),
         faultTrace: [
-          _l(hi, 'Earliest affected month: ${m(earliest)}', 'सबसे पहला प्रभावित माह: ${m(earliest)}'),
-          if (lines.isNotEmpty) '${_l(hi, 'Month → entry trail:', 'माह → प्रविष्टि क्रम:')}\n${lines.join('\n')}',
+          _l(hi, 'Earliest affected month: ${m(earliest)}',
+              'सबसे पहला प्रभावित माह: ${m(earliest)}'),
+          if (lines.isNotEmpty)
+            '${_l(hi, 'Month → entry trail:', 'माह → प्रविष्टि क्रम:')}\n${lines.join('\n')}',
         ].join('\n\n'),
         rectification: _l(
           hi,
@@ -454,7 +566,12 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
         data: {
           'months': [
             for (final x in ledgerOvercountIssues)
-              {'month': x.month, 'excess': x.excess, 'unlinkedCount': x.unlinkedLedger.length, 'boundaryCount': x.dateBoundary.length},
+              {
+                'month': x.month,
+                'excess': x.excess,
+                'unlinkedCount': x.unlinkedLedger.length,
+                'boundaryCount': x.dateBoundary.length
+              },
           ],
         },
         ledgerIssues: ledgerOvercountIssues,
@@ -462,30 +579,47 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
     } else {
       b.add(
         severity: FindingSeverity.pass,
-        title: _l(hi, 'Period Report Totals Verified', 'अवधि रिपोर्ट योग सत्यापित'),
-        description: _l(hi, 'No ledger double-count in monthly period reports.', 'मासिक अवधि रिपोर्ट में कोई लेजर दोहरी गिनती नहीं।'),
+        title: _l(
+            hi, 'Period Report Totals Verified', 'अवधि रिपोर्ट योग सत्यापित'),
+        description: _l(hi, 'No ledger double-count in monthly period reports.',
+            'मासिक अवधि रिपोर्ट में कोई लेजर दोहरी गिनती नहीं।'),
       );
     }
 
     /* ─── 6. Orphaned payments (no finance_entry_id) ─── */
-    orphanedPayments = verifiedPayments.where((p) => !p.hasFinanceEntry).toList();
+    orphanedPayments =
+        verifiedPayments.where((p) => !p.hasFinanceEntry).toList();
     if (orphanedPayments.isNotEmpty) {
       final orphanTotal = orphanedPayments.fold(0.0, (s, p) => s + p.amount);
       final byMonth = <String, List<AuditPaymentRow>>{};
       for (final p in orphanedPayments) {
-        final d = _truthy(p.dueDate) ? p.dueDate! : (_truthy(p.paymentDate) ? p.paymentDate! : p.createdAt);
+        final d = _truthy(p.dueDate)
+            ? p.dueDate!
+            : (_truthy(p.paymentDate) ? p.paymentDate! : p.createdAt);
         final key = d.isNotEmpty ? (ymOf(d) ?? 'unknown') : 'unknown';
         byMonth.putIfAbsent(key, () => []).add(p);
       }
-      final sortedEntries = stableSorted(byMonth.entries, (MapEntry<String, List<AuditPaymentRow>> a, MapEntry<String, List<AuditPaymentRow>> b) => jsLocaleCompare(a.key, b.key));
+      final sortedEntries = stableSorted(
+          byMonth.entries,
+          (MapEntry<String, List<AuditPaymentRow>> a,
+                  MapEntry<String, List<AuditPaymentRow>> b) =>
+              jsLocaleCompare(a.key, b.key));
       final monthLines = sortedEntries.take(6).map((entry) {
         final rows = entry.value;
         final total = rows.fold(0.0, (s, p) => s + p.amount);
         final samples = rows.take(2).map((p) {
-          final date = _truthy(p.dueDate) ? p.dueDate! : (_truthy(p.paymentDate) ? p.paymentDate! : _l(hi, 'no date', 'कोई तिथि नहीं'));
-          return hi ? '$date फ्लैट ${p.flatNumber} ${inr(p.amount)}' : '$date Flat ${p.flatNumber} ${inr(p.amount)}';
+          final date = _truthy(p.dueDate)
+              ? p.dueDate!
+              : (_truthy(p.paymentDate)
+                  ? p.paymentDate!
+                  : _l(hi, 'no date', 'कोई तिथि नहीं'));
+          return hi
+              ? '$date फ्लैट ${p.flatNumber} ${inr(p.amount)}'
+              : '$date Flat ${p.flatNumber} ${inr(p.amount)}';
         }).join('; ');
-        final label = entry.key == 'unknown' ? _l(hi, 'Unknown month', 'अज्ञात माह') : m(entry.key);
+        final label = entry.key == 'unknown'
+            ? _l(hi, 'Unknown month', 'अज्ञात माह')
+            : m(entry.key);
         return hi
             ? '  • $label: ${rows.length} बिना लिंक, ${inr(total)} — $samples'
             : '  • $label: ${rows.length} orphan(s), ${inr(total)} — $samples';
@@ -496,18 +630,27 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
       b.add(
         severity: FindingSeverity.warning,
         kind: FindingKind.orphanedPayments,
-        title: _l(hi, '$n Orphaned Payment${n > 1 ? 's' : ''} (${inr(orphanTotal)})', '$n बिना लिंक भुगतान (${inr(orphanTotal)})'),
+        title: _l(
+            hi,
+            '$n Orphaned Payment${n > 1 ? 's' : ''} (${inr(orphanTotal)})',
+            '$n बिना लिंक भुगतान (${inr(orphanTotal)})'),
         description: earliestOrphan != null
-            ? _l(hi, 'These verified payments have no linked finance_entry record. Earliest: ${m(earliestOrphan)}.',
+            ? _l(
+                hi,
+                'These verified payments have no linked finance_entry record. Earliest: ${m(earliestOrphan)}.',
                 'इन सत्यापित भुगतानों का कोई जुड़ा finance_entry रिकॉर्ड नहीं है। सबसे पुराना: ${m(earliestOrphan)}।')
-            : _l(hi, 'These verified payments have no linked finance_entry record.',
+            : _l(
+                hi,
+                'These verified payments have no linked finance_entry record.',
                 'इन सत्यापित भुगतानों का कोई जुड़ा finance_entry रिकॉर्ड नहीं है।'),
         reason: _l(
           hi,
           'Likely recorded before the ledger system was introduced, or the finance_entry was deleted while the payment remained.',
           'संभवतः लेजर प्रणाली शुरू होने से पहले दर्ज किए गए, या भुगतान रहते हुए finance_entry हटा दी गई।',
         ),
-        faultTrace: monthLines.isNotEmpty ? '${_l(hi, 'Orphans by month:', 'माहवार बिना लिंक भुगतान:')}\n$monthLines' : null,
+        faultTrace: monthLines.isNotEmpty
+            ? '${_l(hi, 'Orphans by month:', 'माहवार बिना लिंक भुगतान:')}\n$monthLines'
+            : null,
         rectification: _l(
           hi,
           'Start with the earliest month in the trace. Finance → Payments: re-record with ledger, or delete orphan payment rows if they are mistakes.',
@@ -517,22 +660,34 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
           'count': n,
           'total': orphanTotal,
           'samples': [
-            for (final p in orphanedPayments.take(8)) {'id': jsSlice(p.id, 0, 8), 'flat': p.flatNumber, 'amount': p.amount, 'due': p.dueDate},
+            for (final p in orphanedPayments.take(8))
+              {
+                'id': jsSlice(p.id, 0, 8),
+                'flat': p.flatNumber,
+                'amount': p.amount,
+                'due': p.dueDate
+              },
           ],
         },
       );
     } else {
       b.add(
         severity: FindingSeverity.pass,
-        title: _l(hi, 'All Payments Linked to Ledger', 'सभी भुगतान लेजर से जुड़े हैं'),
-        description: _l(hi, 'Every verified payment has a corresponding finance_entry.', 'हर सत्यापित भुगतान की एक संबंधित finance_entry है।'),
+        title: _l(hi, 'All Payments Linked to Ledger',
+            'सभी भुगतान लेजर से जुड़े हैं'),
+        description: _l(
+            hi,
+            'Every verified payment has a corresponding finance_entry.',
+            'हर सत्यापित भुगतान की एक संबंधित finance_entry है।'),
       );
     }
 
     /* ─── 7. Finance entries with wrong flat count ─── */
     final linkedCount = <String, int>{};
     for (final p in allPayments) {
-      if (p.hasFinanceEntry) linkedCount[p.financeEntryId!] = (linkedCount[p.financeEntryId!] ?? 0) + 1;
+      if (p.hasFinanceEntry)
+        linkedCount[p.financeEntryId!] =
+            (linkedCount[p.financeEntryId!] ?? 0) + 1;
     }
     final mismatchIds = <String>[];
     for (final e in allLedger) {
@@ -546,12 +701,19 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
       final n = mismatchIds.length;
       b.add(
         severity: FindingSeverity.warning,
-        title: _l(hi, '$n Ledger Entries with Flat Count Mismatch', 'फ्लैट संख्या असंगति वाली $n लेजर प्रविष्टियाँ'),
-        description: _l(hi, 'The aggregate_flat_count on these finance_entries does not match the actual number of linked payments.',
+        title: _l(hi, '$n Ledger Entries with Flat Count Mismatch',
+            'फ्लैट संख्या असंगति वाली $n लेजर प्रविष्टियाँ'),
+        description: _l(
+            hi,
+            'The aggregate_flat_count on these finance_entries does not match the actual number of linked payments.',
             'इन finance_entries की aggregate_flat_count जुड़े भुगतानों की वास्तविक संख्या से मेल नहीं खाती।'),
-        reason: _l(hi, 'A payment was deleted or added after the finance_entry was created without updating the entry metadata.',
+        reason: _l(
+            hi,
+            'A payment was deleted or added after the finance_entry was created without updating the entry metadata.',
             'finance_entry बनने के बाद कोई भुगतान हटाया या जोड़ा गया और प्रविष्टि का मेटाडेटा अपडेट नहीं हुआ।'),
-        rectification: _l(hi, 'Review these entries in Finance → Receipts tab. The totals may be incorrect. Delete and re-record if needed.',
+        rectification: _l(
+            hi,
+            'Review these entries in Finance → Receipts tab. The totals may be incorrect. Delete and re-record if needed.',
             'इन प्रविष्टियों को वित्त → रसीदें टैब में जाँचें। योग गलत हो सकते हैं। ज़रूरत हो तो हटाकर फिर से दर्ज करें।'),
         data: {'entryIds': mismatchIds.take(5).toList()},
       );
@@ -569,11 +731,19 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
       final n = amountMismatchCount;
       b.add(
         severity: FindingSeverity.info,
-        title: _l(hi, '$n Payment${n > 1 ? 's' : ''} with Non-Standard Amount', 'गैर-मानक राशि वाले $n भुगतान'),
-        description: _l(hi, 'Some payments have a different amount than the charge definition.', 'कुछ भुगतानों की राशि शुल्क परिभाषा से अलग है।'),
-        reason: _l(hi, 'Could be partial payments, penalty additions, discounts, or data entry errors.',
+        title: _l(hi, '$n Payment${n > 1 ? 's' : ''} with Non-Standard Amount',
+            'गैर-मानक राशि वाले $n भुगतान'),
+        description: _l(
+            hi,
+            'Some payments have a different amount than the charge definition.',
+            'कुछ भुगतानों की राशि शुल्क परिभाषा से अलग है।'),
+        reason: _l(
+            hi,
+            'Could be partial payments, penalty additions, discounts, or data entry errors.',
             'आंशिक भुगतान, जुर्माना जोड़, छूट, या डेटा प्रविष्टि की गलतियाँ हो सकती हैं।'),
-        rectification: _l(hi, 'Review in Finance → Payments tab. Filter by charge type and compare amounts. Correct any that are clearly wrong.',
+        rectification: _l(
+            hi,
+            'Review in Finance → Payments tab. Filter by charge type and compare amounts. Correct any that are clearly wrong.',
             'वित्त → भुगतान टैब में जाँचें। शुल्क प्रकार से छानें और राशियों की तुलना करें। जो स्पष्ट रूप से गलत हों उन्हें सुधारें।'),
         data: {'count': n},
       );
@@ -590,12 +760,19 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
       final n = oldPending.length;
       b.add(
         severity: FindingSeverity.warning,
-        title: _l(hi, '$n Payment${n > 1 ? 's' : ''} Pending > 7 Days', '$n भुगतान 7 दिन से अधिक लंबित'),
-        description: _l(hi, 'These payments have been in "pending" status for over a week without verification.',
+        title: _l(hi, '$n Payment${n > 1 ? 's' : ''} Pending > 7 Days',
+            '$n भुगतान 7 दिन से अधिक लंबित'),
+        description: _l(
+            hi,
+            'These payments have been in "pending" status for over a week without verification.',
             'ये भुगतान बिना सत्यापन के एक सप्ताह से अधिक समय से "pending" स्थिति में हैं।'),
-        reason: _l(hi, 'Admin may have missed verifying them, or they were submitted by residents and never reviewed.',
+        reason: _l(
+            hi,
+            'Admin may have missed verifying them, or they were submitted by residents and never reviewed.',
             'हो सकता है एडमिन इन्हें सत्यापित करना भूल गए, या निवासियों ने जमा किए और कभी समीक्षा नहीं हुई।'),
-        rectification: _l(hi, 'Go to Finance → Payments tab, filter by "Pending" status, and verify or reject each one.',
+        rectification: _l(
+            hi,
+            'Go to Finance → Payments tab, filter by "Pending" status, and verify or reject each one.',
             'वित्त → भुगतान टैब में जाएँ, "Pending" स्थिति से छानें, और हर एक को सत्यापित या अस्वीकार करें।'),
         data: {'count': n},
       );
@@ -605,22 +782,41 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
     final currentMonth = ymOfDate(ranAt);
     final paidFlats = <String>{};
     for (final p in verifiedPayments) {
-      final d = _truthy(p.dueDate) ? p.dueDate! : (_truthy(p.paymentDate) ? p.paymentDate! : p.createdAt);
+      final d = _truthy(p.dueDate)
+          ? p.dueDate!
+          : (_truthy(p.paymentDate) ? p.paymentDate! : p.createdAt);
       if (d.isNotEmpty && ymOf(d) == currentMonth) paidFlats.add(p.flatNumber);
     }
-    final unpaid = input.flats.where((f) => f.isOccupied != false && !paidFlats.contains(f.flatNumber)).toList();
+    final unpaid = input.flats
+        .where(
+            (f) => f.isOccupied != false && !paidFlats.contains(f.flatNumber))
+        .toList();
     if (unpaid.isNotEmpty && monthlyCharges.isNotEmpty) {
       final n = unpaid.length;
-      final list = '${unpaid.take(10).map((f) => f.flatNumber).join(', ')}${n > 10 ? '…' : ''}';
+      final list =
+          '${unpaid.take(10).map((f) => f.flatNumber).join(', ')}${n > 10 ? '…' : ''}';
       b.add(
         severity: FindingSeverity.info,
-        title: _l(hi, '$n Flat${n > 1 ? 's' : ''} Unpaid This Month (${m(currentMonth)})', 'इस माह $n फ्लैट अदत्त (${m(currentMonth)})'),
-        description: _l(hi, 'Occupied flats without a verified payment for ${m(currentMonth)}: $list',
+        title: _l(
+            hi,
+            '$n Flat${n > 1 ? 's' : ''} Unpaid This Month (${m(currentMonth)})',
+            'इस माह $n फ्लैट अदत्त (${m(currentMonth)})'),
+        description: _l(
+            hi,
+            'Occupied flats without a verified payment for ${m(currentMonth)}: $list',
             '${m(currentMonth)} के लिए बिना सत्यापित भुगतान वाले भरे हुए फ्लैट: $list'),
-        reason: _l(hi, 'Either payment not yet recorded, or resident has not paid.', 'या तो भुगतान अभी दर्ज नहीं हुआ, या निवासी ने भुगतान नहीं किया।'),
-        rectification: _l(hi, 'Send reminders from Finance → Reminders tab, or record payments if already received.',
+        reason: _l(
+            hi,
+            'Either payment not yet recorded, or resident has not paid.',
+            'या तो भुगतान अभी दर्ज नहीं हुआ, या निवासी ने भुगतान नहीं किया।'),
+        rectification: _l(
+            hi,
+            'Send reminders from Finance → Reminders tab, or record payments if already received.',
             'वित्त → रिमाइंडर टैब से रिमाइंडर भेजें, या यदि भुगतान मिल चुका है तो दर्ज करें।'),
-        data: {'count': n, 'flats': [for (final f in unpaid.take(20)) f.flatNumber]},
+        data: {
+          'count': n,
+          'flats': [for (final f in unpaid.take(20)) f.flatNumber]
+        },
       );
     }
   } catch (err) {
@@ -639,5 +835,9 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input, {DateTime?
     hi: hi,
   );
 
-  return IntegrityAuditResult(ranAt: ranAt, findings: b.findings, fixQueue: fixQueue, summary: _summaryOf(b.findings));
+  return IntegrityAuditResult(
+      ranAt: ranAt,
+      findings: b.findings,
+      fixQueue: fixQueue,
+      summary: _summaryOf(b.findings));
 }

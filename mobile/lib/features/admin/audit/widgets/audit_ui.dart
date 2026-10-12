@@ -31,7 +31,13 @@ Color toneColor(BuildContext c, Tone tone) {
 
 /// `card-section border-x/40 bg-x/5`.
 class ToneCard extends StatelessWidget {
-  const ToneCard({super.key, required this.tone, required this.child, this.padding = const EdgeInsets.all(12), this.onTap, this.faded = false});
+  const ToneCard(
+      {super.key,
+      required this.tone,
+      required this.child,
+      this.padding = const EdgeInsets.all(12),
+      this.onTap,
+      this.faded = false});
 
   final Tone tone;
   final Widget child;
@@ -55,7 +61,12 @@ class ToneCard extends StatelessWidget {
 
 /// `bg-background border border-border rounded-lg p-3` inner row box.
 class InnerBox extends StatelessWidget {
-  const InnerBox({super.key, required this.child, this.borderColor, this.padding = const EdgeInsets.all(12), this.color});
+  const InnerBox(
+      {super.key,
+      required this.child,
+      this.borderColor,
+      this.padding = const EdgeInsets.all(12),
+      this.color});
 
   final Widget child;
   final Color? borderColor;
@@ -80,7 +91,14 @@ class InnerBox extends StatelessWidget {
 
 /// Panel heading: 32px tinted icon square + `text-sm font-semibold` title + 10px subtitle.
 class PanelHeader extends StatelessWidget {
-  const PanelHeader({super.key, required this.icon, required this.title, this.subtitle, this.tone = Tone.primary, this.trailing, this.titleColor});
+  const PanelHeader(
+      {super.key,
+      required this.icon,
+      required this.title,
+      this.subtitle,
+      this.tone = Tone.primary,
+      this.trailing,
+      this.titleColor});
 
   final IconData icon;
   final String title;
@@ -98,7 +116,9 @@ class PanelHeader extends StatelessWidget {
         Container(
           width: 32,
           height: 32,
-          decoration: BoxDecoration(color: AppTokens.tint(c, 0.1), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+          decoration: BoxDecoration(
+              color: AppTokens.tint(c, 0.1),
+              borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
           child: Icon(icon, size: 16, color: c),
         ),
         const SizedBox(width: 8),
@@ -106,8 +126,11 @@ class PanelHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: AppText.sectionTitle(context).copyWith(color: titleColor)),
-              if (subtitle != null && subtitle!.isNotEmpty) Text(subtitle!, style: AppText.tiny(context)),
+              Text(title,
+                  style: AppText.sectionTitle(context)
+                      .copyWith(color: titleColor)),
+              if (subtitle != null && subtitle!.isNotEmpty)
+                Text(subtitle!, style: AppText.tiny(context)),
             ],
           ),
         ),
@@ -117,11 +140,26 @@ class PanelHeader extends StatelessWidget {
   }
 }
 
-enum SmallBtnStyle { primary, outline, destructive, success, warning, secondary }
+enum SmallBtnStyle {
+  primary,
+  outline,
+  destructive,
+  success,
+  warning,
+  secondary
+}
 
 /// `text-[10px]/text-xs px-2 py-1.5 rounded-lg` action buttons.
 class SmallButton extends StatelessWidget {
-  const SmallButton({super.key, required this.label, required this.onPressed, this.icon, this.style = SmallBtnStyle.outline, this.busy = false, this.expand = false, this.fontSize = 11});
+  const SmallButton(
+      {super.key,
+      required this.label,
+      required this.onPressed,
+      this.icon,
+      this.style = SmallBtnStyle.outline,
+      this.busy = false,
+      this.expand = false,
+      this.fontSize = 11});
 
   final String label;
   final VoidCallback? onPressed;
@@ -137,7 +175,11 @@ class SmallButton extends StatelessWidget {
     final (Color bg, Color fg, Color? border) = switch (style) {
       SmallBtnStyle.primary => (t.primary, t.primaryForeground, null),
       SmallBtnStyle.outline => (Colors.transparent, t.foreground, t.border),
-      SmallBtnStyle.destructive => (AppTokens.tint(t.destructive, 0.1), t.destructive, null),
+      SmallBtnStyle.destructive => (
+          AppTokens.tint(t.destructive, 0.1),
+          t.destructive,
+          null
+        ),
       SmallBtnStyle.success => (t.success, t.successForeground, null),
       SmallBtnStyle.warning => (t.warning, t.warningForeground, null),
       SmallBtnStyle.secondary => (t.secondary, t.secondaryForeground, null),
@@ -161,14 +203,21 @@ class SmallButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (busy)
-                  SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.6, color: fg))
+                  SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 1.6, color: fg))
                 else if (icon != null)
                   Icon(icon, size: 13, color: fg),
                 if (busy || icon != null) const SizedBox(width: 5),
                 Flexible(
                   child: Text(label,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w500, color: fg)),
+                      style: TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w500,
+                          color: fg)),
                 ),
               ],
             ),
@@ -181,7 +230,13 @@ class SmallButton extends StatelessWidget {
 
 /// Square icon action (`p-2 rounded-lg`).
 class SquareIconButton extends StatelessWidget {
-  const SquareIconButton({super.key, required this.icon, required this.onPressed, this.tone, this.tooltip, this.busy = false});
+  const SquareIconButton(
+      {super.key,
+      required this.icon,
+      required this.onPressed,
+      this.tone,
+      this.tooltip,
+      this.busy = false});
 
   final IconData icon;
   final VoidCallback? onPressed;
@@ -203,7 +258,10 @@ class SquareIconButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: busy
-              ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.6, color: c))
+              ? SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 1.6, color: c))
               : Icon(icon, size: 15, color: c),
         ),
       ),
@@ -214,7 +272,13 @@ class SquareIconButton extends StatelessWidget {
 
 /// `text-[10px] px-1.5 py-0.5 rounded(-full)` chip.
 class TinyChip extends StatelessWidget {
-  const TinyChip(this.label, {super.key, this.tone = Tone.neutral, this.mono = false, this.icon, this.pill = true, this.bold = false});
+  const TinyChip(this.label,
+      {super.key,
+      this.tone = Tone.neutral,
+      this.mono = false,
+      this.icon,
+      this.pill = true,
+      this.bold = false});
 
   final String label;
   final Tone tone;
@@ -230,14 +294,21 @@ class TinyChip extends StatelessWidget {
     final bg = tone == Tone.neutral ? t.muted : AppTokens.tint(c, 0.12);
     final style = mono
         ? AppText.mono(context, size: 10, color: c)
-        : TextStyle(fontSize: 10, fontWeight: bold ? FontWeight.w700 : FontWeight.w500, color: c);
+        : TextStyle(
+            fontSize: 10,
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+            color: c);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(pill ? 999 : 4)),
+      decoration: BoxDecoration(
+          color: bg, borderRadius: BorderRadius.circular(pill ? 999 : 4)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[Icon(icon, size: 10, color: c), const SizedBox(width: 3)],
+          if (icon != null) ...[
+            Icon(icon, size: 10, color: c),
+            const SizedBox(width: 3)
+          ],
           Text(label, style: style),
         ],
       ),
@@ -247,7 +318,8 @@ class TinyChip extends StatelessWidget {
 
 /// `bg-muted/50 rounded-lg p-2 text-[10px] font-mono` key/value block.
 class RawDataBox extends StatelessWidget {
-  const RawDataBox({super.key, required this.data, this.indent, this.maxHeight});
+  const RawDataBox(
+      {super.key, required this.data, this.indent, this.maxHeight});
 
   final Map<String, Object?> data;
   final String? indent;
@@ -262,8 +334,13 @@ class RawDataBox extends StatelessWidget {
         for (final e in data.entries)
           Text.rich(
             TextSpan(children: [
-              TextSpan(text: '${e.key}: ', style: AppText.mono(context, size: 10, color: t.mutedForeground)),
-              TextSpan(text: jsRawValue(e.value, indent: indent), style: AppText.mono(context, size: 10)),
+              TextSpan(
+                  text: '${e.key}: ',
+                  style: AppText.mono(context,
+                      size: 10, color: t.mutedForeground)),
+              TextSpan(
+                  text: jsRawValue(e.value, indent: indent),
+                  style: AppText.mono(context, size: 10)),
             ]),
           ),
       ],
@@ -272,10 +349,14 @@ class RawDataBox extends StatelessWidget {
       width: double.infinity,
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: AppTokens.tint(t.muted, 0.5), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+      decoration: BoxDecoration(
+          color: AppTokens.tint(t.muted, 0.5),
+          borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
       child: maxHeight == null
           ? content
-          : ConstrainedBox(constraints: BoxConstraints(maxHeight: maxHeight!), child: SingleChildScrollView(child: content)),
+          : ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight!),
+              child: SingleChildScrollView(child: content)),
     );
   }
 }
@@ -293,10 +374,17 @@ class TinyLabel extends StatelessWidget {
     final c = color ?? context.tokens.mutedForeground;
     return Row(
       children: [
-        if (icon != null) ...[Icon(icon, size: 12, color: c), const SizedBox(width: 4)],
+        if (icon != null) ...[
+          Icon(icon, size: 12, color: c),
+          const SizedBox(width: 4)
+        ],
         Flexible(
           child: Text(text.toUpperCase(),
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.8, color: c)),
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                  color: c)),
         ),
       ],
     );
@@ -305,7 +393,15 @@ class TinyLabel extends StatelessWidget {
 
 /// Compact text input used inside panels (`input-field text-sm`).
 class PanelInput extends StatelessWidget {
-  const PanelInput({super.key, required this.controller, this.hint, this.keyboardType, this.mono = false, this.onChanged, this.prefixIcon, this.maxLength});
+  const PanelInput(
+      {super.key,
+      required this.controller,
+      this.hint,
+      this.keyboardType,
+      this.mono = false,
+      this.onChanged,
+      this.prefixIcon,
+      this.maxLength});
 
   final TextEditingController controller;
   final String? hint;

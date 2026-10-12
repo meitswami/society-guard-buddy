@@ -10,7 +10,8 @@ import 'audit_ui.dart';
 
 /// Port of `FinanceIntegrityAudit.tsx` — internal finance self-audit with a chronological fix queue.
 class FinanceIntegrityAudit extends StatefulWidget {
-  const FinanceIntegrityAudit({super.key, required this.societyId, this.onOpenAlarms});
+  const FinanceIntegrityAudit(
+      {super.key, required this.societyId, this.onOpenAlarms});
 
   final String societyId;
 
@@ -50,13 +51,15 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
     });
   }
 
-  void _markDone(AuditFixQueueItem item) => setState(() => _resolved.add(item.queueKey));
+  void _markDone(AuditFixQueueItem item) =>
+      setState(() => _resolved.add(item.queueKey));
 
   Future<void> _queueDelete(AuditFixQueueItem item) async {
     final ok = await AppFeedback.confirm(
       context,
       title: context.tr('Delete this entry?', 'यह प्रविष्टि हटाएँ?'),
-      message: '${item.title} — ${jsInr(item.amount)} ${context.tr('on', 'तिथि')} ${fmtIsoDateToDisplay(item.sortDate)}. ${item.actionHint}',
+      message:
+          '${item.title} — ${jsInr(item.amount)} ${context.tr('on', 'तिथि')} ${fmtIsoDateToDisplay(item.sortDate)}. ${item.actionHint}',
       confirmLabel: context.t('common.delete'),
       cancelLabel: context.t('common.cancel'),
       destructive: true,
@@ -65,7 +68,8 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
     final hi = context.isHi;
     setState(() => _busyKey = item.queueKey);
     final res = item.entryKind == FixEntryKind.payment
-        ? await _service.deleteMaintenancePayment(item.entryId, item.financeEntryId)
+        ? await _service.deleteMaintenancePayment(
+            item.entryId, item.financeEntryId)
         : await _service.deleteOrphanLedgerEntry(item.entryId, hi: hi);
     if (!mounted) return;
     setState(() => _busyKey = null);
@@ -73,7 +77,10 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
       AppFeedback.toast(context, res.error ?? '', tone: BadgeTone.alert);
       return;
     }
-    AppFeedback.toast(context, context.tr('Entry deleted — re-run audit when done with this batch', 'प्रविष्टि हटाई गई — यह बैच पूरा होने पर ऑडिट फिर चलाएँ'),
+    AppFeedback.toast(
+        context,
+        context.tr('Entry deleted — re-run audit when done with this batch',
+            'प्रविष्टि हटाई गई — यह बैच पूरा होने पर ऑडिट फिर चलाएँ'),
         tone: BadgeTone.success);
     _markDone(item);
   }
@@ -89,12 +96,16 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
       AppFeedback.toast(context, res.error ?? '', tone: BadgeTone.alert);
       return;
     }
-    AppFeedback.toast(context, context.tr('Payment aligned to ${fmtIsoMonthToDisplay(target)}', 'भुगतान ${fmtIsoMonthToDisplay(target)} से मिलाया गया'),
+    AppFeedback.toast(
+        context,
+        context.tr('Payment aligned to ${fmtIsoMonthToDisplay(target)}',
+            'भुगतान ${fmtIsoMonthToDisplay(target)} से मिलाया गया'),
         tone: BadgeTone.success);
     _markDone(item);
   }
 
-  Future<void> _queueAlignLedger(AuditFixQueueItem item, String paymentMonth) async {
+  Future<void> _queueAlignLedger(
+      AuditFixQueueItem item, String paymentMonth) async {
     final related = item.relatedEntryId;
     if (related == null) return;
     setState(() => _busyKey = item.queueKey);
@@ -105,7 +116,10 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
       AppFeedback.toast(context, res.error ?? '', tone: BadgeTone.alert);
       return;
     }
-    AppFeedback.toast(context, context.tr('Ledger aligned to ${fmtIsoMonthToDisplay(paymentMonth)}', 'लेजर ${fmtIsoMonthToDisplay(paymentMonth)} से मिलाया गया'),
+    AppFeedback.toast(
+        context,
+        context.tr('Ledger aligned to ${fmtIsoMonthToDisplay(paymentMonth)}',
+            'लेजर ${fmtIsoMonthToDisplay(paymentMonth)} से मिलाया गया'),
         tone: BadgeTone.success);
     _markDone(item);
   }
@@ -120,10 +134,13 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
         PanelHeader(
           icon: Icons.verified_user_outlined,
           title: context.tr('Internal Finance Audit', 'आंतरिक वित्त ऑडिट'),
-          subtitle: context.tr('Checks for negative balances, discrepancies, duplicates & data bugs',
+          subtitle: context.tr(
+              'Checks for negative balances, discrepancies, duplicates & data bugs',
               'ऋणात्मक शेष, असंगतियाँ, डुप्लिकेट और डेटा त्रुटियों की जाँच'),
           trailing: SmallButton(
-            label: _running ? context.tr('Running…', 'चल रहा है…') : context.tr('Run Self-Audit', 'स्व-ऑडिट चलाएँ'),
+            label: _running
+                ? context.tr('Running…', 'चल रहा है…')
+                : context.tr('Run Self-Audit', 'स्व-ऑडिट चलाएँ'),
             icon: Icons.play_arrow_rounded,
             style: SmallBtnStyle.primary,
             busy: _running,
@@ -136,7 +153,8 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
         if (result == null && !_running)
           CardSection(
             child: Column(children: [
-              Icon(Icons.verified_user_outlined, size: 32, color: AppTokens.tint(t.mutedForeground, 0.4)),
+              Icon(Icons.verified_user_outlined,
+                  size: 32, color: AppTokens.tint(t.mutedForeground, 0.4)),
               const SizedBox(height: 8),
               Text(
                 context.tr(
@@ -154,7 +172,9 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
 
   List<Widget> _results(IntegrityAuditResult r) {
     final t = context.tokens;
-    Widget stat(String title, String hiTitle, String desc, String hiDesc, String how, String hiHow, int v, Color c) => DescriptiveStatCard(
+    Widget stat(String title, String hiTitle, String desc, String hiDesc,
+            String how, String hiHow, int v, Color c) =>
+        DescriptiveStatCard(
           compact: true,
           title: context.tr(title, hiTitle),
           caption: context.tr(title, hiTitle),
@@ -164,24 +184,53 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
           valueColor: c,
           borderColor: AppTokens.tint(c, 0.3),
         );
-    final pass = r.findings.where((f) => f.severity == FindingSeverity.pass).toList();
-    final issues = r.findings.where((f) => f.severity != FindingSeverity.pass).toList();
+    final pass =
+        r.findings.where((f) => f.severity == FindingSeverity.pass).toList();
+    final issues =
+        r.findings.where((f) => f.severity != FindingSeverity.pass).toList();
     return [
       StatGrid(columns: 4, spacing: 8, children: [
-        stat('Critical', 'गंभीर', 'Checks that indicate data integrity risk or broken links between payments and ledger.',
-            'जाँचें जो डेटा अखंडता जोखिम या भुगतान और लेजर के बीच टूटे लिंक दर्शाती हैं।', 'Count of self-audit findings with severity critical.',
-            'गंभीर स्तर वाले स्व-ऑडिट निष्कर्षों की संख्या।', r.summary.critical, t.destructive),
-        stat('Warnings', 'चेतावनी', 'Possible duplicates or mismatches that should be reviewed by the treasurer.',
-            'संभावित डुप्लिकेट या असंगतियाँ जिनकी कोषाध्यक्ष को समीक्षा करनी चाहिए।', 'Count of findings with severity warning.',
-            'चेतावनी स्तर वाले निष्कर्षों की संख्या।', r.summary.warning, t.warning),
-        stat('Info', 'सूचना', 'Informational notices that do not block reporting but help reconciliation.',
-            'सूचनात्मक संदेश जो रिपोर्टिंग नहीं रोकते पर मिलान में मदद करते हैं।', 'Count of findings with severity info.',
-            'सूचना स्तर वाले निष्कर्षों की संख्या।', r.summary.info, t.accent),
-        stat('Passed', 'सफल', 'Rules that completed with no issues detected.', 'नियम जो बिना किसी समस्या के पूरे हुए।',
-            'Count of findings with severity pass.', 'सफल निष्कर्षों की संख्या।', r.summary.pass, t.success),
+        stat(
+            'Critical',
+            'गंभीर',
+            'Checks that indicate data integrity risk or broken links between payments and ledger.',
+            'जाँचें जो डेटा अखंडता जोखिम या भुगतान और लेजर के बीच टूटे लिंक दर्शाती हैं।',
+            'Count of self-audit findings with severity critical.',
+            'गंभीर स्तर वाले स्व-ऑडिट निष्कर्षों की संख्या।',
+            r.summary.critical,
+            t.destructive),
+        stat(
+            'Warnings',
+            'चेतावनी',
+            'Possible duplicates or mismatches that should be reviewed by the treasurer.',
+            'संभावित डुप्लिकेट या असंगतियाँ जिनकी कोषाध्यक्ष को समीक्षा करनी चाहिए।',
+            'Count of findings with severity warning.',
+            'चेतावनी स्तर वाले निष्कर्षों की संख्या।',
+            r.summary.warning,
+            t.warning),
+        stat(
+            'Info',
+            'सूचना',
+            'Informational notices that do not block reporting but help reconciliation.',
+            'सूचनात्मक संदेश जो रिपोर्टिंग नहीं रोकते पर मिलान में मदद करते हैं।',
+            'Count of findings with severity info.',
+            'सूचना स्तर वाले निष्कर्षों की संख्या।',
+            r.summary.info,
+            t.accent),
+        stat(
+            'Passed',
+            'सफल',
+            'Rules that completed with no issues detected.',
+            'नियम जो बिना किसी समस्या के पूरे हुए।',
+            'Count of findings with severity pass.',
+            'सफल निष्कर्षों की संख्या।',
+            r.summary.pass,
+            t.success),
       ]),
       const SizedBox(height: 8),
-      Text('${context.tr('Audit ran at', 'ऑडिट चलाया गया')} ${DateFormat('dd MMM yyyy, hh:mm a').format(r.ranAt)}', style: AppText.tiny(context)),
+      Text(
+          '${context.tr('Audit ran at', 'ऑडिट चलाया गया')} ${DateFormat('dd MMM yyyy, hh:mm a').format(r.ranAt)}',
+          style: AppText.tiny(context)),
       const SizedBox(height: 12),
       if (r.fixQueue.isNotEmpty) ...[_fixQueue(r), const SizedBox(height: 12)],
       for (final f in issues) ...[_findingCard(f), const SizedBox(height: 12)],
@@ -195,8 +244,13 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
                 Icon(Icons.check_circle_outline, size: 16, color: t.success),
                 const SizedBox(width: 8),
                 Text(
-                  context.isHi ? '${pass.length} जाँचें सफल' : '${pass.length} check${pass.length > 1 ? 's' : ''} passed',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.success),
+                  context.isHi
+                      ? '${pass.length} जाँचें सफल'
+                      : '${pass.length} check${pass.length > 1 ? 's' : ''} passed',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: t.success),
                 ),
               ]),
               const SizedBox(height: 8),
@@ -204,9 +258,11 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(children: [
-                    Icon(Icons.check_circle_outline, size: 10, color: t.success),
+                    Icon(Icons.check_circle_outline,
+                        size: 10, color: t.success),
                     const SizedBox(width: 4),
-                    Expanded(child: Text(f.title, style: AppText.tiny(context))),
+                    Expanded(
+                        child: Text(f.title, style: AppText.tiny(context))),
                   ]),
                 ),
             ],
@@ -226,19 +282,28 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
             Icon(Icons.format_list_numbered, size: 16, color: t.primary),
             const SizedBox(width: 8),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(context.tr('Entries to inspect (earliest first)', 'जाँचने योग्य प्रविष्टियाँ (पुरानी पहले)'), style: AppText.sectionTitle(context)),
-                const SizedBox(height: 2),
-                Text(
-                  context.tr('Fix one entry at a time from the oldest discrepancy through today, then re-run the audit.',
-                      'सबसे पुरानी असंगति से आज तक एक-एक प्रविष्टि सुधारें, फिर ऑडिट दोबारा चलाएँ।'),
-                  style: AppText.tiny(context),
-                ),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                        context.tr('Entries to inspect (earliest first)',
+                            'जाँचने योग्य प्रविष्टियाँ (पुरानी पहले)'),
+                        style: AppText.sectionTitle(context)),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.tr(
+                          'Fix one entry at a time from the oldest discrepancy through today, then re-run the audit.',
+                          'सबसे पुरानी असंगति से आज तक एक-एक प्रविष्टि सुधारें, फिर ऑडिट दोबारा चलाएँ।'),
+                      style: AppText.tiny(context),
+                    ),
+                  ]),
             ),
           ]),
           const SizedBox(height: 12),
-          for (var i = 0; i < r.fixQueue.length; i++) ...[_queueItem(r.fixQueue[i], i), const SizedBox(height: 8)],
+          for (var i = 0; i < r.fixQueue.length; i++) ...[
+            _queueItem(r.fixQueue[i], i),
+            const SizedBox(height: 8)
+          ],
           if (_resolved.isNotEmpty)
             SmallButton(
               label: context.isHi
@@ -265,34 +330,51 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
             : AppTokens.tint(t.warning, 0.3);
     final box = InnerBox(
       borderColor: border,
-      color: done ? Color.alphaBlend(AppTokens.tint(t.success, 0.05), t.card) : t.background,
+      color: done
+          ? Color.alphaBlend(AppTokens.tint(t.success, 0.05), t.card)
+          : t.background,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TinyChip(done ? '✓' : '${idx + 1}', tone: done ? Tone.success : Tone.primary, pill: false, bold: true),
+          TinyChip(done ? '✓' : '${idx + 1}',
+              tone: done ? Tone.success : Tone.primary,
+              pill: false,
+              bold: true),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  Text(item.issueLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  TinyChip(fmtIsoDateToDisplay(item.sortDate), pill: false),
-                  TinyChip(fmtIsoMonthToDisplay(item.month), pill: false),
-                ]),
+                Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(item.issueLabel,
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600)),
+                      TinyChip(fmtIsoDateToDisplay(item.sortDate), pill: false),
+                      TinyChip(fmtIsoMonthToDisplay(item.month), pill: false),
+                    ]),
                 const SizedBox(height: 4),
                 Text(item.title, style: AppText.bodyMedium(context)),
-                Text(jsInr(item.amount), style: AppText.mono(context, size: 12)),
+                Text(jsInr(item.amount),
+                    style: AppText.mono(context, size: 12)),
                 const SizedBox(height: 4),
                 Text(item.detail, style: AppText.tiny(context)),
                 const SizedBox(height: 4),
-                Text.rich(TextSpan(style: TextStyle(fontSize: 10, color: t.foreground), children: [
-                  TextSpan(text: '${context.tr('Action', 'कार्रवाई')}: ', style: const TextStyle(fontWeight: FontWeight.w600)),
-                  TextSpan(text: item.actionHint),
-                ])),
+                Text.rich(TextSpan(
+                    style: TextStyle(fontSize: 10, color: t.foreground),
+                    children: [
+                      TextSpan(
+                          text: '${context.tr('Action', 'कार्रवाई')}: ',
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      TextSpan(text: item.actionHint),
+                    ])),
                 Text(
                   '${item.entryKind == FixEntryKind.payment ? context.tr('Payment', 'भुगतान') : context.tr('Ledger', 'लेजर')} ID: ${jsSlice(item.entryId, 0, 8)}…',
-                  style: AppText.mono(context, size: 9, color: AppTokens.tint(t.mutedForeground, 0.7)),
+                  style: AppText.mono(context,
+                      size: 9, color: AppTokens.tint(t.mutedForeground, 0.7)),
                 ),
                 if (!done) ...[
                   const SizedBox(height: 8),
@@ -306,7 +388,8 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
                         fontSize: 10,
                         onPressed: () => _queueDelete(item),
                       ),
-                    if (item.action == AuditFixAction.alignPaymentMonth && item.alignTargetMonth != null) ...[
+                    if (item.action == AuditFixAction.alignPaymentMonth &&
+                        item.alignTargetMonth != null) ...[
                       SmallButton(
                         label: context.isHi
                             ? 'भुगतान ${fmtIsoMonthToDisplay(item.alignTargetMonth)} पर करें'
@@ -317,7 +400,9 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
                         onPressed: () => _queueAlignPayment(item),
                       ),
                       SmallButton(
-                        label: context.isHi ? 'लेजर ${fmtIsoMonthToDisplay(item.month)} पर करें' : 'Set ledger to ${fmtIsoMonthToDisplay(item.month)}',
+                        label: context.isHi
+                            ? 'लेजर ${fmtIsoMonthToDisplay(item.month)} पर करें'
+                            : 'Set ledger to ${fmtIsoMonthToDisplay(item.month)}',
                         icon: Icons.calendar_month_outlined,
                         busy: busy,
                         fontSize: 10,
@@ -326,7 +411,8 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
                     ],
                     if (item.action == AuditFixAction.review)
                       SmallButton(
-                        label: context.tr('Review in Finance', 'वित्त में समीक्षा करें'),
+                        label: context.tr(
+                            'Review in Finance', 'वित्त में समीक्षा करें'),
                         icon: Icons.edit_outlined,
                         fontSize: 10,
                         onPressed: widget.onOpenAlarms,
@@ -362,11 +448,13 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
             Icon(icon, size: 16, color: toneColor(context, tone)),
             const SizedBox(width: 8),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(f.title, style: AppText.sectionTitle(context)),
-                const SizedBox(height: 2),
-                Text(f.description, style: AppText.caption(context)),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(f.title, style: AppText.sectionTitle(context)),
+                    const SizedBox(height: 2),
+                    Text(f.description, style: AppText.caption(context)),
+                  ]),
             ),
           ]),
           if (expanded) ...[
@@ -374,9 +462,11 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
             Divider(height: 1, color: t.border),
             const SizedBox(height: 12),
             if (f.reason.isNotEmpty) ...[
-              TinyLabel(context.tr('Why This Happens', 'ऐसा क्यों होता है'), icon: Icons.trending_down),
+              TinyLabel(context.tr('Why This Happens', 'ऐसा क्यों होता है'),
+                  icon: Icons.trending_down),
               const SizedBox(height: 4),
-              Text(f.reason, style: TextStyle(fontSize: 12, color: t.foreground)),
+              Text(f.reason,
+                  style: TextStyle(fontSize: 12, color: t.foreground)),
               const SizedBox(height: 8),
             ],
             if ((f.faultTrace ?? '').isNotEmpty) ...[
@@ -388,24 +478,34 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
                   border: Border.all(color: AppTokens.tint(t.primary, 0.3)),
                   borderRadius: BorderRadius.circular(AppTokens.radiusSm),
                 ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  TinyLabel(context.tr('Trace to Fault', 'गड़बड़ी तक ट्रेस'), icon: Icons.place_outlined, color: t.primary),
-                  const SizedBox(height: 4),
-                  Text(f.faultTrace!, style: AppText.mono(context, size: 11)),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TinyLabel(
+                          context.tr('Trace to Fault', 'गड़बड़ी तक ट्रेस'),
+                          icon: Icons.place_outlined,
+                          color: t.primary),
+                      const SizedBox(height: 4),
+                      Text(f.faultTrace!,
+                          style: AppText.mono(context, size: 11)),
+                    ]),
               ),
               const SizedBox(height: 8),
             ],
             if (f.rectification.isNotEmpty) ...[
-              TinyLabel(context.tr('How to Rectify', 'कैसे सुधारें'), icon: Icons.arrow_forward),
+              TinyLabel(context.tr('How to Rectify', 'कैसे सुधारें'),
+                  icon: Icons.arrow_forward),
               const SizedBox(height: 4),
-              Text(f.rectification, style: TextStyle(fontSize: 12, color: t.foreground)),
-              if (f.kind == FindingKind.ledgerOvercount || f.kind == FindingKind.duplicatePayments) ...[
+              Text(f.rectification,
+                  style: TextStyle(fontSize: 12, color: t.foreground)),
+              if (f.kind == FindingKind.ledgerOvercount ||
+                  f.kind == FindingKind.duplicatePayments) ...[
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: SmallButton(
-                    label: context.tr('Open fix panel above', 'ऊपर सुधार पैनल खोलें'),
+                    label: context.tr(
+                        'Open fix panel above', 'ऊपर सुधार पैनल खोलें'),
                     style: SmallBtnStyle.primary,
                     fontSize: 12,
                     onPressed: widget.onOpenAlarms,
@@ -414,7 +514,8 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
               ],
               const SizedBox(height: 8),
             ],
-            if (f.kind == FindingKind.ledgerOvercount && ledgerIssues.isNotEmpty) ...[
+            if (f.kind == FindingKind.ledgerOvercount &&
+                ledgerIssues.isNotEmpty) ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(8),
@@ -423,27 +524,34 @@ class _FinanceIntegrityAuditState extends State<FinanceIntegrityAudit> {
                   border: Border.all(color: AppTokens.tint(t.warning, 0.3)),
                   borderRadius: BorderRadius.circular(AppTokens.radiusSm),
                 ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  TinyLabel(context.tr('Affected months (oldest first)', 'प्रभावित माह (पुराने पहले)')),
-                  const SizedBox(height: 6),
-                  for (final issue in stableSorted(ledgerIssues, (LedgerOvercountMonth a, LedgerOvercountMonth b) => jsLocaleCompare(a.month, b.month))) ...[
-                    Text(
-                      context.isHi
-                          ? '${fmtIsoMonthToDisplay(issue.month)} — ${jsInr(issue.excess)} अतिरिक्त'
-                          : '${fmtIsoMonthToDisplay(issue.month)} — ${jsInr(issue.excess)} extra',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                    for (final e in issue.unlinkedLedger.take(4))
-                      Padding(
-                        padding: const EdgeInsets.only(left: 12, top: 2),
-                        child: Text(
-                          '• ${context.tr('Orphan ledger', 'बिना लिंक लेजर')}: ${(e.title ?? '').isNotEmpty ? e.title : context.tr('Entry', 'प्रविष्टि')} · ${jsInr(e.totalAmount)}',
-                          style: AppText.tiny(context),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TinyLabel(context.tr('Affected months (oldest first)',
+                          'प्रभावित माह (पुराने पहले)')),
+                      const SizedBox(height: 6),
+                      for (final issue in stableSorted(
+                          ledgerIssues,
+                          (LedgerOvercountMonth a, LedgerOvercountMonth b) =>
+                              jsLocaleCompare(a.month, b.month))) ...[
+                        Text(
+                          context.isHi
+                              ? '${fmtIsoMonthToDisplay(issue.month)} — ${jsInr(issue.excess)} अतिरिक्त'
+                              : '${fmtIsoMonthToDisplay(issue.month)} — ${jsInr(issue.excess)} extra',
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w500),
                         ),
-                      ),
-                    const SizedBox(height: 6),
-                  ],
-                ]),
+                        for (final e in issue.unlinkedLedger.take(4))
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, top: 2),
+                            child: Text(
+                              '• ${context.tr('Orphan ledger', 'बिना लिंक लेजर')}: ${(e.title ?? '').isNotEmpty ? e.title : context.tr('Entry', 'प्रविष्टि')} · ${jsInr(e.totalAmount)}',
+                              style: AppText.tiny(context),
+                            ),
+                          ),
+                        const SizedBox(height: 6),
+                      ],
+                    ]),
               ),
               const SizedBox(height: 8),
             ],

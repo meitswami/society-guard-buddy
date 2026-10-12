@@ -10,7 +10,12 @@ import '../logic/fixed_asset_types.dart';
 
 /// Web `DateInput`: type dd/MM/yyyy or pick from the calendar; emits `yyyy-MM-dd` ('' when cleared).
 class AssetDateField extends StatefulWidget {
-  const AssetDateField({super.key, required this.label, required this.value, required this.onChanged, this.small = false});
+  const AssetDateField(
+      {super.key,
+      required this.label,
+      required this.value,
+      required this.onChanged,
+      this.small = false});
 
   final String label;
   final String value;
@@ -22,7 +27,8 @@ class AssetDateField extends StatefulWidget {
 }
 
 class _AssetDateFieldState extends State<AssetDateField> {
-  late final TextEditingController _ctrl = TextEditingController(text: fmtIsoDateToDisplay(widget.value));
+  late final TextEditingController _ctrl =
+      TextEditingController(text: fmtIsoDateToDisplay(widget.value));
   final _focus = FocusNode();
 
   @override
@@ -45,7 +51,8 @@ class _AssetDateFieldState extends State<AssetDateField> {
   @override
   void didUpdateWidget(covariant AssetDateField old) {
     super.didUpdateWidget(old);
-    if (!_focus.hasFocus && old.value != widget.value) _ctrl.text = fmtIsoDateToDisplay(widget.value);
+    if (!_focus.hasFocus && old.value != widget.value)
+      _ctrl.text = fmtIsoDateToDisplay(widget.value);
   }
 
   @override
@@ -57,7 +64,11 @@ class _AssetDateFieldState extends State<AssetDateField> {
 
   Future<void> _pick() async {
     final initial = DateTime.tryParse(widget.value) ?? DateTime.now();
-    final d = await showDatePicker(context: context, initialDate: initial, firstDate: DateTime(1980), lastDate: DateTime(2100));
+    final d = await showDatePicker(
+        context: context,
+        initialDate: initial,
+        firstDate: DateTime(1980),
+        lastDate: DateTime(2100));
     if (d == null) return;
     final iso = Fmt.isoDate(d);
     _ctrl.text = fmtIsoDateToDisplay(iso);
@@ -71,14 +82,20 @@ class _AssetDateFieldState extends State<AssetDateField> {
       mainAxisSize: MainAxisSize.min,
       children: [
         widget.small
-            ? Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(widget.label, style: AppText.tiny(context)))
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(widget.label, style: AppText.tiny(context)))
             : FieldLabel(widget.label),
         TextField(
           controller: _ctrl,
           focusNode: _focus,
           keyboardType: TextInputType.datetime,
-          style: TextStyle(fontSize: widget.small ? 12 : 14, color: context.tokens.foreground),
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9/]'))],
+          style: TextStyle(
+              fontSize: widget.small ? 12 : 14,
+              color: context.tokens.foreground),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9/]'))
+          ],
           onChanged: (v) {
             final iso = Fmt.displayToIso(v);
             if (iso != null && v.length >= 8) widget.onChanged(iso);
@@ -86,7 +103,9 @@ class _AssetDateFieldState extends State<AssetDateField> {
           decoration: InputDecoration(
             hintText: 'dd/mm/yyyy',
             isDense: widget.small,
-            suffixIcon: IconButton(icon: const Icon(Icons.calendar_month_outlined, size: 18), onPressed: _pick),
+            suffixIcon: IconButton(
+                icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                onPressed: _pick),
           ),
         ),
       ],
@@ -96,7 +115,11 @@ class _AssetDateFieldState extends State<AssetDateField> {
 
 /// Port of `FixedAssetForm.tsx` (dialog → full-screen page). Pops `true` after a successful save.
 class FixedAssetFormPage extends StatefulWidget {
-  const FixedAssetFormPage({super.key, this.asset, required this.expenseGroups, required this.onSave});
+  const FixedAssetFormPage(
+      {super.key,
+      this.asset,
+      required this.expenseGroups,
+      required this.onSave});
 
   final FixedAsset? asset;
   final List<ExpenseGroupOption> expenseGroups;
@@ -166,7 +189,21 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
 
   @override
   void dispose() {
-    for (final c in [_name, _desc, _subHead, _bill, _vendor, _vendorContact, _tag, _serial, _location, _wMonths, _aMonths, _amcVendor, _notes]) {
+    for (final c in [
+      _name,
+      _desc,
+      _subHead,
+      _bill,
+      _vendor,
+      _vendorContact,
+      _tag,
+      _serial,
+      _location,
+      _wMonths,
+      _aMonths,
+      _amcVendor,
+      _notes
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -174,11 +211,14 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
 
   int? _months(TextEditingController c) => int.tryParse(c.text.trim());
 
-  void _recalcWarranty() => setState(() => _wEnd = computeEndDateFromMonths(_wStart, _months(_wMonths)) ?? _wEnd);
+  void _recalcWarranty() => setState(() =>
+      _wEnd = computeEndDateFromMonths(_wStart, _months(_wMonths)) ?? _wEnd);
 
-  void _recalcAmc() => setState(() => _aEnd = computeEndDateFromMonths(_aStart, _months(_aMonths)) ?? _aEnd);
+  void _recalcAmc() => setState(() =>
+      _aEnd = computeEndDateFromMonths(_aStart, _months(_aMonths)) ?? _aEnd);
 
-  String? _trimOrNull(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
+  String? _trimOrNull(TextEditingController c) =>
+      c.text.trim().isEmpty ? null : c.text.trim();
 
   Future<void> _submit() async {
     if (_name.text.trim().isEmpty) return;
@@ -187,7 +227,8 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
       'description': _trimOrNull(_desc),
       'major_head': _majorHead,
       'sub_head': _trimOrNull(_subHead),
-      if (widget.asset != null || _groupId != null) 'expense_group_id': _groupId,
+      if (widget.asset != null || _groupId != null)
+        'expense_group_id': _groupId,
       'source_type': _source,
       'status': _isFinance && _status == 'placeholder' ? 'active' : _status,
       'acquisition_date': _acq.isEmpty ? null : _acq,
@@ -214,14 +255,21 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
     } catch (e) {
       if (mounted) {
         final msg = auditErrText(e);
-        AppFeedback.toast(context, msg.isEmpty ? context.tr('Could not save asset', 'संपत्ति सहेजी नहीं जा सकी') : msg, tone: BadgeTone.alert);
+        AppFeedback.toast(
+            context,
+            msg.isEmpty
+                ? context.tr(
+                    'Could not save asset', 'संपत्ति सहेजी नहीं जा सकी')
+                : msg,
+            tone: BadgeTone.alert);
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  Widget _row(Widget a, Widget b) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _row(Widget a, Widget b) =>
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: a),
         const SizedBox(width: 8),
         Expanded(child: b),
@@ -232,12 +280,16 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
     final t = context.tokens;
     final hi = context.isHi;
     final groupIds = ['', ...widget.expenseGroups.map((g) => g.id)];
-    if (_groupId != null && !groupIds.contains(_groupId)) groupIds.add(_groupId!);
+    if (_groupId != null && !groupIds.contains(_groupId))
+      groupIds.add(_groupId!);
     const gap = SizedBox(height: 12);
     final numFmt = [FilteringTextInputFormatter.digitsOnly];
     return Scaffold(
       backgroundColor: t.background,
-      appBar: AppBar(title: Text(widget.asset != null ? context.tr('Edit fixed asset', 'स्थिर संपत्ति संपादित करें') : context.tr('Add fixed asset', 'स्थिर संपत्ति जोड़ें'))),
+      appBar: AppBar(
+          title: Text(widget.asset != null
+              ? context.tr('Edit fixed asset', 'स्थिर संपत्ति संपादित करें')
+              : context.tr('Add fixed asset', 'स्थिर संपत्ति जोड़ें'))),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -260,24 +312,44 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
                   ),
                   gap,
                 ],
-                AppTextField(label: context.tr('Asset name', 'संपत्ति का नाम'), required: true, controller: _name),
+                AppTextField(
+                    label: context.tr('Asset name', 'संपत्ति का नाम'),
+                    required: true,
+                    controller: _name),
                 gap,
-                AppTextField(label: context.tr('Description', 'विवरण'), controller: _desc, maxLines: 3, minLines: 2),
+                AppTextField(
+                    label: context.tr('Description', 'विवरण'),
+                    controller: _desc,
+                    maxLines: 3,
+                    minLines: 2),
                 gap,
                 _row(
-                  AppTextField(label: context.tr('Major head', 'मुख्य शीर्ष'), initialValue: _majorHead, readOnly: true, enabled: false),
-                  AppTextField(label: context.tr('Sub-head', 'उप-शीर्ष'), controller: _subHead),
+                  AppTextField(
+                      label: context.tr('Major head', 'मुख्य शीर्ष'),
+                      initialValue: _majorHead,
+                      readOnly: true,
+                      enabled: false),
+                  AppTextField(
+                      label: context.tr('Sub-head', 'उप-शीर्ष'),
+                      controller: _subHead),
                 ),
                 gap,
                 AppDropdown<String>(
-                  label: context.tr('Finance expense group (optional)', 'वित्त खर्च समूह (वैकल्पिक)'),
+                  label: context.tr('Finance expense group (optional)',
+                      'वित्त खर्च समूह (वैकल्पिक)'),
                   items: groupIds,
                   value: _groupId ?? '',
                   labelOf: (id) => id.isEmpty
                       ? context.tr('— Select sub-head —', '— उप-शीर्ष चुनें —')
-                      : (widget.expenseGroups.where((g) => g.id == id).firstOrNull?.name ?? id),
+                      : (widget.expenseGroups
+                              .where((g) => g.id == id)
+                              .firstOrNull
+                              ?.name ??
+                          id),
                   onChanged: (id) {
-                    final g = widget.expenseGroups.where((x) => x.id == id).firstOrNull;
+                    final g = widget.expenseGroups
+                        .where((x) => x.id == id)
+                        .firstOrNull;
                     setState(() {
                       _groupId = (id == null || id.isEmpty) ? null : id;
                       if (g != null) _subHead.text = g.name;
@@ -291,7 +363,9 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
                     items: {...fixedAssetSourceTypes, _source}.toList(),
                     value: _source,
                     labelOf: (s) => fixedAssetSourceLabel(s, hi: hi),
-                    onChanged: _isFinance ? null : (v) => setState(() => _source = v ?? _source),
+                    onChanged: _isFinance
+                        ? null
+                        : (v) => setState(() => _source = v ?? _source),
                   ),
                   AppDropdown<String>(
                     label: context.tr('Status', 'स्थिति'),
@@ -304,7 +378,8 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
                 gap,
                 _row(
                   AssetDateField(
-                    label: context.tr('Acquisition / creation date', 'प्राप्ति / निर्माण तिथि'),
+                    label: context.tr('Acquisition / creation date',
+                        'प्राप्ति / निर्माण तिथि'),
                     value: _acq,
                     onChanged: (v) => setState(() => _acq = v),
                   ),
@@ -312,52 +387,96 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
                     label: context.tr('Bill value (₹)', 'बिल मूल्य (₹)'),
                     controller: _bill,
                     enabled: !_isFinance,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                    ],
                   ),
                 ),
                 gap,
                 _row(
-                  AppTextField(label: context.tr('Vendor', 'विक्रेता'), controller: _vendor),
-                  AppTextField(label: context.tr('Vendor contact', 'विक्रेता संपर्क'), controller: _vendorContact, caps: false),
+                  AppTextField(
+                      label: context.tr('Vendor', 'विक्रेता'),
+                      controller: _vendor),
+                  AppTextField(
+                      label: context.tr('Vendor contact', 'विक्रेता संपर्क'),
+                      controller: _vendorContact,
+                      caps: false),
                 ),
                 gap,
                 _row(
-                  AppTextField(label: context.tr('Asset tag / ID', 'संपत्ति टैग / ID'), controller: _tag),
-                  AppTextField(label: context.tr('Serial number', 'सीरियल नंबर'), controller: _serial),
+                  AppTextField(
+                      label: context.tr('Asset tag / ID', 'संपत्ति टैग / ID'),
+                      controller: _tag),
+                  AppTextField(
+                      label: context.tr('Serial number', 'सीरियल नंबर'),
+                      controller: _serial),
                 ),
                 gap,
-                AppTextField(label: context.tr('Location', 'स्थान'), controller: _location, hint: context.tr('e.g. Basement pump room', 'जैसे बेसमेंट पंप रूम')),
+                AppTextField(
+                    label: context.tr('Location', 'स्थान'),
+                    controller: _location,
+                    hint: context.tr(
+                        'e.g. Basement pump room', 'जैसे बेसमेंट पंप रूम')),
                 const SizedBox(height: 16),
                 Divider(height: 1, color: t.border),
                 const SizedBox(height: 12),
-                Text(context.tr('Warranty', 'वारंटी'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(context.tr('Warranty', 'वारंटी'),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 _triple(
-                  AssetDateField(small: true, label: context.tr('Start', 'आरंभ'), value: _wStart, onChanged: (v) {
-                    _wStart = v;
-                    _recalcWarranty();
-                  }),
+                  AssetDateField(
+                      small: true,
+                      label: context.tr('Start', 'आरंभ'),
+                      value: _wStart,
+                      onChanged: (v) {
+                        _wStart = v;
+                        _recalcWarranty();
+                      }),
                   _monthsField(_wMonths, numFmt, _recalcWarranty),
-                  AssetDateField(small: true, label: context.tr('End', 'समाप्ति'), value: _wEnd, onChanged: (v) => setState(() => _wEnd = v)),
+                  AssetDateField(
+                      small: true,
+                      label: context.tr('End', 'समाप्ति'),
+                      value: _wEnd,
+                      onChanged: (v) => setState(() => _wEnd = v)),
                 ),
                 const SizedBox(height: 16),
                 Divider(height: 1, color: t.border),
                 const SizedBox(height: 12),
-                Text(context.tr('AMC (Annual Maintenance Contract)', 'AMC (वार्षिक रखरखाव अनुबंध)'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                    context.tr('AMC (Annual Maintenance Contract)',
+                        'AMC (वार्षिक रखरखाव अनुबंध)'),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 _triple(
-                  AssetDateField(small: true, label: context.tr('Start', 'आरंभ'), value: _aStart, onChanged: (v) {
-                    _aStart = v;
-                    _recalcAmc();
-                  }),
+                  AssetDateField(
+                      small: true,
+                      label: context.tr('Start', 'आरंभ'),
+                      value: _aStart,
+                      onChanged: (v) {
+                        _aStart = v;
+                        _recalcAmc();
+                      }),
                   _monthsField(_aMonths, numFmt, _recalcAmc),
-                  AssetDateField(small: true, label: context.tr('End', 'समाप्ति'), value: _aEnd, onChanged: (v) => setState(() => _aEnd = v)),
+                  AssetDateField(
+                      small: true,
+                      label: context.tr('End', 'समाप्ति'),
+                      value: _aEnd,
+                      onChanged: (v) => setState(() => _aEnd = v)),
                 ),
                 const SizedBox(height: 8),
-                AppTextField(label: context.tr('AMC vendor', 'AMC विक्रेता'), controller: _amcVendor),
+                AppTextField(
+                    label: context.tr('AMC vendor', 'AMC विक्रेता'),
+                    controller: _amcVendor),
                 gap,
-                AppTextField(label: context.tr('Notes', 'टिप्पणी'), controller: _notes, maxLines: 3, minLines: 2),
+                AppTextField(
+                    label: context.tr('Notes', 'टिप्पणी'),
+                    controller: _notes,
+                    maxLines: 3,
+                    minLines: 2),
                 const SizedBox(height: 16),
                 AppButton(
                   label: _saving
@@ -376,7 +495,8 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
     );
   }
 
-  Widget _triple(Widget a, Widget b, Widget c) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _triple(Widget a, Widget b, Widget c) =>
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(flex: 5, child: a),
         const SizedBox(width: 6),
         Expanded(flex: 3, child: b),
@@ -384,11 +504,16 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
         Expanded(flex: 5, child: c),
       ]);
 
-  Widget _monthsField(TextEditingController c, List<TextInputFormatter> fmt, VoidCallback onChanged) => Column(
+  Widget _monthsField(TextEditingController c, List<TextInputFormatter> fmt,
+          VoidCallback onChanged) =>
+      Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(context.tr('Months', 'माह'), style: AppText.tiny(context))),
+          Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(context.tr('Months', 'माह'),
+                  style: AppText.tiny(context))),
           TextField(
             controller: c,
             keyboardType: TextInputType.number,

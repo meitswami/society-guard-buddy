@@ -54,37 +54,55 @@ class SocietyLetterhead {
   pw.ImageProvider? logo;
   pw.ImageProvider? letterheadImage;
 
-  factory SocietyLetterhead.nameOnly(String name) => SocietyLetterhead(name: name.trim().isEmpty ? 'Society' : name.trim());
+  factory SocietyLetterhead.nameOnly(String name) =>
+      SocietyLetterhead(name: name.trim().isEmpty ? 'Society' : name.trim());
 
   bool get hasOfficialAsset =>
-      letterheadImage != null || (letterheadUrl ?? '').isNotEmpty || (letterheadStoragePath ?? '').isNotEmpty;
+      letterheadImage != null ||
+      (letterheadUrl ?? '').isNotEmpty ||
+      (letterheadStoragePath ?? '').isNotEmpty;
 
   /// `modeOf`.
   String get brandMode {
-    if (letterheadMode == 'image' || letterheadMode == 'stationery' || letterheadMode == 'auto') return letterheadMode;
+    if (letterheadMode == 'image' ||
+        letterheadMode == 'stationery' ||
+        letterheadMode == 'auto') return letterheadMode;
     return hasOfficialAsset ? 'image' : 'auto';
   }
 
   double get _top => (topMm != null && topMm! > 0) ? topMm! : 40;
-  double get _bottom => (bottomMm != null && bottomMm! > 0) ? (bottomMm! < 16 ? 16 : bottomMm!) : 18;
+  double get _bottom => (bottomMm != null && bottomMm! > 0)
+      ? (bottomMm! < 16 ? 16 : bottomMm!)
+      : 18;
   double get left => (leftMm != null && leftMm! > 0) ? leftMm! : pdfMarginMm;
-  double get right => (rightMm != null && rightMm! > 0) ? rightMm! : pdfMarginMm;
+  double get right =>
+      (rightMm != null && rightMm! > 0) ? rightMm! : pdfMarginMm;
 
   String get addressLine {
-    final cityState = [city, state].where((p) => (p ?? '').trim().isNotEmpty).join(', ');
-    return [address, cityState, pincode].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
+    final cityState =
+        [city, state].where((p) => (p ?? '').trim().isNotEmpty).join(', ');
+    return [address, cityState, pincode]
+        .map((p) => (p ?? '').trim())
+        .where((p) => p.isNotEmpty)
+        .join(' · ');
   }
 
-  String get contactLine => [contactPhone, contactEmail].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
+  String get contactLine => [contactPhone, contactEmail]
+      .map((p) => (p ?? '').trim())
+      .where((p) => p.isNotEmpty)
+      .join(' · ');
 }
 
-double? _numOrNull(Object? v) => v == null ? null : double.tryParse(v.toString());
+double? _numOrNull(Object? v) =>
+    v == null ? null : double.tryParse(v.toString());
 
 Future<Uint8List?> _download(String? url) async {
-  if (url == null || url.trim().isEmpty || url.toLowerCase().contains('.pdf')) return null;
+  if (url == null || url.trim().isEmpty || url.toLowerCase().contains('.pdf'))
+    return null;
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
   try {
-    final req = await client.getUrl(Uri.parse(url)).timeout(const Duration(seconds: 8));
+    final req =
+        await client.getUrl(Uri.parse(url)).timeout(const Duration(seconds: 8));
     final res = await req.close().timeout(const Duration(seconds: 15));
     if (res.statusCode < 200 || res.statusCode >= 300) return null;
     final builder = BytesBuilder(copy: false);
@@ -101,7 +119,10 @@ Future<Uint8List?> _download(String? url) async {
 
 pw.ImageProvider? _image(Uint8List? bytes) {
   if (bytes == null || bytes.length < 4) return null;
-  final png = bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47;
+  final png = bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47;
   final jpg = bytes[0] == 0xFF && bytes[1] == 0xD8;
   if (!png && !jpg) return null;
   try {
@@ -116,10 +137,18 @@ Future<SocietyLetterhead?> fetchSocietyLetterhead(String? societyId) async {
   if (societyId == null || societyId.isEmpty || !dbReady) return null;
   Map<String, dynamic>? data;
   try {
-    data = await db.from('societies').select(_fullSelect).eq('id', societyId).maybeSingle();
+    data = await db
+        .from('societies')
+        .select(_fullSelect)
+        .eq('id', societyId)
+        .maybeSingle();
   } catch (_) {
     try {
-      data = await db.from('societies').select(_fallbackSelect).eq('id', societyId).maybeSingle();
+      data = await db
+          .from('societies')
+          .select(_fallbackSelect)
+          .eq('id', societyId)
+          .maybeSingle();
     } catch (_) {
       return null;
     }
@@ -136,7 +165,9 @@ Future<SocietyLetterhead?> fetchSocietyLetterhead(String? societyId) async {
     bottomMm: _numOrNull(data['letterhead_bottom_mm']) ?? 18,
     leftMm: _numOrNull(data['letterhead_left_mm']) ?? pdfMarginMm,
     rightMm: _numOrNull(data['letterhead_right_mm']) ?? pdfMarginMm,
-    defaultReportFormat: data['default_report_format']?.toString() == 'plain' ? 'plain' : 'letterhead',
+    defaultReportFormat: data['default_report_format']?.toString() == 'plain'
+        ? 'plain'
+        : 'letterhead',
     address: data['address']?.toString(),
     city: data['city']?.toString(),
     state: data['state']?.toString(),
@@ -147,7 +178,9 @@ Future<SocietyLetterhead?> fetchSocietyLetterhead(String? societyId) async {
   var url = lh.letterheadUrl;
   if ((url ?? '').isEmpty && (lh.letterheadStoragePath ?? '').isNotEmpty) {
     try {
-      url = await db.storage.from('society-documents').createSignedUrl(lh.letterheadStoragePath!, 3600);
+      url = await db.storage
+          .from('society-documents')
+          .createSignedUrl(lh.letterheadStoragePath!, 3600);
       lh.letterheadUrl = url;
     } catch (_) {}
   }
@@ -166,12 +199,16 @@ class LetterheadContext {
   final String mode;
 }
 
-Future<LetterheadContext?> resolveLetterheadReportContext(String? societyId) async {
+Future<LetterheadContext?> resolveLetterheadReportContext(
+    String? societyId) async {
   if (societyId == null || societyId.isEmpty) return null;
   final lh = await fetchSocietyLetterhead(societyId);
-  if (lh == null) return const LetterheadContext(letterhead: null, mode: 'plain');
+  if (lh == null)
+    return const LetterheadContext(letterhead: null, mode: 'plain');
   final requested = lh.defaultReportFormat;
-  if (requested == 'letterhead' && !lh.hasOfficialAsset && lh.letterheadMode != 'stationery') {
+  if (requested == 'letterhead' &&
+      !lh.hasOfficialAsset &&
+      lh.letterheadMode != 'stationery') {
     return LetterheadContext(letterhead: lh, mode: 'plain');
   }
   return LetterheadContext(letterhead: lh, mode: requested);
@@ -207,64 +244,108 @@ pw.PageTheme letterheadPageTheme({
       var y = left + 9.5;
       if (lh.addressLine.isNotEmpty) y += 3.6;
       if (lh.contactLine.isNotEmpty) y += 3.6;
-      final ruleY = [y + 2.5, left + (hasLogo ? 14 : 6) + 2, top - 8].reduce((a, b) => a > b ? a : b);
+      final ruleY = [y + 2.5, left + (hasLogo ? 14 : 6) + 2, top - 8]
+          .reduce((a, b) => a > b ? a : b);
       contentTop = [ruleY + 6, top, left].reduce((a, b) => a > b ? a : b);
     } else {
       contentTop = top;
     }
   }
 
-  pw.Widget at(double xMm, double yMm, pw.Widget child) => pw.Positioned(left: xMm * _mm, top: yMm * _mm, child: child);
+  pw.Widget at(double xMm, double yMm, pw.Widget child) =>
+      pw.Positioned(left: xMm * _mm, top: yMm * _mm, child: child);
   pw.Widget rule(double yMm, PdfColor color, double widthMm) => pw.Positioned(
         left: left * _mm,
         top: yMm * _mm,
-        child: pw.Container(width: (pageW - left - right) * _mm, height: widthMm * _mm, color: color),
+        child: pw.Container(
+            width: (pageW - left - right) * _mm,
+            height: widthMm * _mm,
+            color: color),
       );
-  pw.Widget pageNo(pw.Context ctx, double baselineMm, {double size = 8, PdfColor color = _metaColor}) => pw.Positioned(
+  pw.Widget pageNo(pw.Context ctx, double baselineMm,
+          {double size = 8, PdfColor color = _metaColor}) =>
+      pw.Positioned(
         right: right * _mm,
         top: (baselineMm - size * 0.3528 * 0.8) * _mm,
-        child: pw.Text('${ctx.pageNumber}/${ctx.pagesCount}', style: pw.TextStyle(fontSize: size, color: color)),
+        child: pw.Text('${ctx.pageNumber}/${ctx.pagesCount}',
+            style: pw.TextStyle(fontSize: size, color: color)),
       );
 
   return pw.PageTheme(
     pageFormat: format,
     theme: theme,
-    margin: pw.EdgeInsets.fromLTRB(left * _mm, contentTop * _mm, right * _mm, (pageH - contentBottom) * _mm),
+    margin: pw.EdgeInsets.fromLTRB(left * _mm, contentTop * _mm, right * _mm,
+        (pageH - contentBottom) * _mm),
     buildBackground: (ctx) {
       final children = <pw.Widget>[];
       if (plain) {
         children.add(pageNo(ctx, pageH - 8));
       } else if (useImage || stationery) {
         if (useImage) {
-          children.add(pw.Positioned.fill(child: pw.Image(lh.letterheadImage!, fit: pw.BoxFit.fill)));
+          children.add(pw.Positioned.fill(
+              child: pw.Image(lh.letterheadImage!, fit: pw.BoxFit.fill)));
         }
-        children.add(pageNo(ctx, (contentBottom + 5.2) < pageH - 6 ? contentBottom + 5.2 : pageH - 6));
+        children.add(pageNo(
+            ctx,
+            (contentBottom + 5.2) < pageH - 6
+                ? contentBottom + 5.2
+                : pageH - 6));
       } else {
         final margin = left;
         var textX = margin;
         if (lh.logo != null) {
-          children.add(at(margin, margin - 2, pw.SizedBox(width: 14 * _mm, height: 14 * _mm, child: pw.Image(lh.logo!, fit: pw.BoxFit.contain))));
+          children.add(at(
+              margin,
+              margin - 2,
+              pw.SizedBox(
+                  width: 14 * _mm,
+                  height: 14 * _mm,
+                  child: pw.Image(lh.logo!, fit: pw.BoxFit.contain))));
           textX = margin + 14 + 3.5;
         }
         final maxW = (pageW - textX - right) * _mm;
-        children.add(at(textX, margin + 4 - 15 * 0.3528 * 0.8,
-            pw.SizedBox(width: maxW, child: pw.Text(lh.name, style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: _nameColor)))));
+        children.add(at(
+            textX,
+            margin + 4 - 15 * 0.3528 * 0.8,
+            pw.SizedBox(
+                width: maxW,
+                child: pw.Text(lh.name,
+                    style: pw.TextStyle(
+                        fontSize: 15,
+                        fontWeight: pw.FontWeight.bold,
+                        color: _nameColor)))));
         var y = margin + 9.5;
         for (final line in [lh.addressLine, lh.contactLine]) {
           if (line.isEmpty) continue;
-          children.add(at(textX, y - 8 * 0.3528 * 0.8, pw.SizedBox(width: maxW, child: pw.Text(line, style: const pw.TextStyle(fontSize: 8, color: _metaColor)))));
+          children.add(at(
+              textX,
+              y - 8 * 0.3528 * 0.8,
+              pw.SizedBox(
+                  width: maxW,
+                  child: pw.Text(line,
+                      style: const pw.TextStyle(
+                          fontSize: 8, color: _metaColor)))));
           y += 3.6;
         }
-        final rawRule = [y + 2.5, margin + (lh.logo != null ? 14 : 6) + 2].reduce((a, b) => a > b ? a : b);
+        final rawRule = [y + 2.5, margin + (lh.logo != null ? 14 : 6) + 2]
+            .reduce((a, b) => a > b ? a : b);
         final ruleY = rawRule < contentTop - 3 ? rawRule : contentTop - 3;
         children.add(rule(ruleY, _headerRule, 0.85));
         children.add(rule(contentBottom, _footerRule, 0.7));
-        final footerY = (contentBottom + 5.2) < pageH - 6 ? contentBottom + 5.2 : pageH - 6;
-        children.add(at(left, footerY - 9 * 0.3528 * 0.8,
-            pw.Text(lh.name, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _nameColor))));
+        final footerY =
+            (contentBottom + 5.2) < pageH - 6 ? contentBottom + 5.2 : pageH - 6;
+        children.add(at(
+            left,
+            footerY - 9 * 0.3528 * 0.8,
+            pw.Text(lh.name,
+                style: pw.TextStyle(
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                    color: _nameColor))));
         children.add(pageNo(ctx, footerY, size: 9));
       }
-      return pw.FullPage(ignoreMargins: true, child: pw.Stack(children: children));
+      return pw.FullPage(
+          ignoreMargins: true, child: pw.Stack(children: children));
     },
   );
 }

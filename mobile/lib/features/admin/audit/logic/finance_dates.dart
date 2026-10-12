@@ -11,7 +11,9 @@ String paymentBillingDate(String? dueDate) => slice10(dueDate ?? '');
 DateTime? _strictYmd(String s) {
   final m = RegExp(r'^(\d{1,4})-(\d{1,2})-(\d{1,2})$').firstMatch(s);
   if (m == null) return null;
-  final y = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), d = int.parse(m.group(3)!);
+  final y = int.parse(m.group(1)!),
+      mo = int.parse(m.group(2)!),
+      d = int.parse(m.group(3)!);
   final dt = DateTime(y, mo, d);
   if (dt.year != y || dt.month != mo || dt.day != d) return null;
   return dt;
@@ -30,13 +32,16 @@ bool isBillingDateInEntryMonth(String billingYmd, String entryMonthYm) {
 }
 
 /// `transaction_date` → `${entry_month}-01` → `created_at` (first 10 chars).
-String ledgerTransactionDate({String? transactionDate, String? entryMonth, String? createdAt}) {
-  if (transactionDate != null && transactionDate.isNotEmpty) return slice10(transactionDate);
+String ledgerTransactionDate(
+    {String? transactionDate, String? entryMonth, String? createdAt}) {
+  if (transactionDate != null && transactionDate.isNotEmpty)
+    return slice10(transactionDate);
   if (entryMonth != null && entryMonth.isNotEmpty) return '$entryMonth-01';
   return slice10(createdAt ?? '');
 }
 
-String ledgerEntryMonthFromBilling(String billingYmd) => billingMonthFromDate(billingYmd);
+String ledgerEntryMonthFromBilling(String billingYmd) =>
+    billingMonthFromDate(billingYmd);
 
 /// `iso` falls inside `[fromYmd 00:00, toYmd 23:59:59.999]` (local time).
 bool dateInInclusiveRange(String iso, String fromYmd, String toYmd) {
@@ -44,8 +49,10 @@ bool dateInInclusiveRange(String iso, String fromYmd, String toYmd) {
   if (t == null) return false;
   final from = parseJsDate(fromYmd), to = parseJsDate(toYmd);
   if (from == null || to == null) return false;
-  final fromMs = DateTime(from.year, from.month, from.day).millisecondsSinceEpoch;
-  final toMs = DateTime(to.year, to.month, to.day, 23, 59, 59, 999).millisecondsSinceEpoch;
+  final fromMs =
+      DateTime(from.year, from.month, from.day).millisecondsSinceEpoch;
+  final toMs = DateTime(to.year, to.month, to.day, 23, 59, 59, 999)
+      .millisecondsSinceEpoch;
   return t >= fromMs && t <= toMs;
 }
 

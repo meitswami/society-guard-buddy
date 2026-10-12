@@ -16,7 +16,12 @@ AdminModuleContext _ctx() => AdminModuleContext(
       session: const SessionAdmin(
         societyId: 's1',
         societyName: 'Green Park',
-        admin: AdminUser(id: 'a1', name: 'Admin', adminId: 'ADM1', societyId: 's1', permissions: AdminPanelPermissions.full),
+        admin: AdminUser(
+            id: 'a1',
+            name: 'Admin',
+            adminId: 'ADM1',
+            societyId: 's1',
+            permissions: AdminPanelPermissions.full),
       ),
       goTo: (tab, {query, subTab}) {},
       initialQuery: 'ravi',
@@ -24,8 +29,11 @@ AdminModuleContext _ctx() => AdminModuleContext(
 
 Widget _host(Widget child, AppLang lang, {bool dark = false}) => ProviderScope(
       child: MaterialApp(
-        theme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light, extensions: [dark ? AppTokens.dark : AppTokens.light]),
-        home: I18nScope(translator: Translator(lang), child: Scaffold(body: child)),
+        theme: ThemeData(
+            brightness: dark ? Brightness.dark : Brightness.light,
+            extensions: [dark ? AppTokens.dark : AppTokens.light]),
+        home: I18nScope(
+            translator: Translator(lang), child: Scaffold(body: child)),
       ),
     );
 
@@ -37,21 +45,27 @@ void main() {
   });
 
   for (final lang in AppLang.values) {
-    testWidgets('audit module renders on a phone (${lang.name})', (tester) async {
+    testWidgets('audit module renders on a phone (${lang.name})',
+        (tester) async {
       tester.view.physicalSize = const Size(360 * 3, 800 * 3);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(_host(AdminAuditModule(ctx: _ctx()), lang, dark: lang == AppLang.hi));
+      await tester.pumpWidget(
+          _host(AdminAuditModule(ctx: _ctx()), lang, dark: lang == AppLang.hi));
       await tester.pumpAndSettle();
       expect(find.byType(AdminAuditModule), findsOneWidget);
       expect(tester.takeException(), isNull);
       // Expand a governance section and scroll through the page.
-      final principal = find.text(lang == AppLang.hi ? 'प्रधान (शासी निकाय)' : 'Principal');
+      final principal =
+          find.text(lang == AppLang.hi ? 'प्रधान (शासी निकाय)' : 'Principal');
       await tester.ensureVisible(principal);
       await tester.pumpAndSettle();
       await tester.tap(principal);
       await tester.pumpAndSettle();
-      expect(find.text(lang == AppLang.hi ? 'शासी प्राधिकरण' : 'Governing Authority'), findsOneWidget);
+      expect(
+          find.text(
+              lang == AppLang.hi ? 'शासी प्राधिकरण' : 'Governing Authority'),
+          findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -65,9 +79,11 @@ void main() {
       await tester.tap(find.text(lang == AppLang.hi ? 'रिपोर्ट' : 'Reports'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      await tester.tap(find.text(lang == AppLang.hi ? 'संपत्ति रजिस्टर' : 'Asset register'));
+      await tester.tap(
+          find.text(lang == AppLang.hi ? 'संपत्ति रजिस्टर' : 'Asset register'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text(lang == AppLang.hi ? 'पहली संपत्ति जोड़ें' : 'Add first asset'));
+      await tester.tap(find.text(
+          lang == AppLang.hi ? 'पहली संपत्ति जोड़ें' : 'Add first asset'));
       await tester.pumpAndSettle();
       expect(find.byType(TextField), findsWidgets);
       expect(tester.takeException(), isNull);

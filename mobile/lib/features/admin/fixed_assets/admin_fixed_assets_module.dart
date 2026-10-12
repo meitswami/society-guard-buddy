@@ -24,7 +24,8 @@ class AdminFixedAssetsModule extends StatefulWidget {
 
 class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
   final _service = const FixedAssetService();
-  late String _societyName = widget.ctx.societyName.isEmpty ? 'Society' : widget.ctx.societyName;
+  late String _societyName =
+      widget.ctx.societyName.isEmpty ? 'Society' : widget.ctx.societyName;
   _SubTab _tab = _SubTab.register;
   List<FixedAsset> _assets = const [];
   List<ExpenseGroupOption> _groups = const [];
@@ -61,7 +62,8 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
       final rows = await _service.fetchFixedAssets(_sid);
       if (mounted) setState(() => _assets = rows);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, auditErrText(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, auditErrText(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -75,7 +77,8 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
       return;
     }
     try {
-      final count = await _service.seedStandardAssetTemplates(_sid, widget.ctx.adminName);
+      final count =
+          await _service.seedStandardAssetTemplates(_sid, widget.ctx.adminName);
       _seeded = true;
       if (count > 0 && mounted) {
         AppFeedback.toast(
@@ -94,16 +97,26 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
   Future<void> _reloadTemplates() async {
     setState(() => _seeding = true);
     try {
-      final count = await _service.seedStandardAssetTemplates(_sid, widget.ctx.adminName);
+      final count =
+          await _service.seedStandardAssetTemplates(_sid, widget.ctx.adminName);
       if (!mounted) return;
       if (count > 0) {
-        AppFeedback.toast(context, context.isHi ? '$count मानक संपत्ति टेम्पलेट जोड़े गए' : 'Added $count standard asset templates', tone: BadgeTone.success);
+        AppFeedback.toast(
+            context,
+            context.isHi
+                ? '$count मानक संपत्ति टेम्पलेट जोड़े गए'
+                : 'Added $count standard asset templates',
+            tone: BadgeTone.success);
         await _load();
       } else {
-        AppFeedback.toast(context, context.tr('Standard templates already exist', 'मानक टेम्पलेट पहले से मौजूद हैं'));
+        AppFeedback.toast(
+            context,
+            context.tr('Standard templates already exist',
+                'मानक टेम्पलेट पहले से मौजूद हैं'));
       }
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, auditErrText(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, auditErrText(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _seeding = false);
     }
@@ -124,7 +137,8 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
     await _load();
   }
 
-  void _openFinance() => widget.ctx.goTo(AdminTab.finance, subTab: 'record_payment');
+  void _openFinance() =>
+      widget.ctx.goTo(AdminTab.finance, subTab: 'record_payment');
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +149,8 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
         PageHeader(
           icon: Icons.apartment_outlined,
           iconColor: t.accent,
-          title: context.tk('fixedAssets.title', 'Fixed Assets', 'स्थिर संपत्ति'),
+          title:
+              context.tk('fixedAssets.title', 'Fixed Assets', 'स्थिर संपत्ति'),
           subtitle: context.tk(
             'fixedAssets.subtitle',
             'Society asset register — builder handover, manual entry, and auto-sync from Finance payments.',
@@ -146,30 +161,46 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
         ToneCard(
           tone: Tone.primary,
           child: Text.rich(
-            TextSpan(style: TextStyle(fontSize: 12, height: 1.5, color: t.foreground), children: [
-              WidgetSpan(alignment: PlaceholderAlignment.middle, child: Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: Icon(Icons.auto_awesome_outlined, size: 14, color: t.primary),
-              )),
-              TextSpan(
-                text: context.tr(
-                  'Standard assets (garden, gym, DG, lift, fire fighting, boring, water softener, etc.) are pre-loaded as templates. Record purchases in ',
-                  'मानक संपत्तियाँ (बगीचा, जिम, DG, लिफ्ट, अग्निशमन, बोरिंग, वाटर सॉफ़्टनर आदि) टेम्पलेट के रूप में पहले से लोड हैं। खरीद दर्ज करें ',
-                ),
-              ),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.baseline,
-                baseline: TextBaseline.alphabetic,
-                child: GestureDetector(
-                  onTap: _openFinance,
-                  child: Text(context.tr('Finance → Record Payment', 'वित्त → भुगतान दर्ज करें'),
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.primary, decoration: TextDecoration.underline)),
-                ),
-              ),
-              TextSpan(text: context.tr(' under ', ' में ')),
-              const TextSpan(text: 'FIXED ASSETS', style: TextStyle(fontWeight: FontWeight.w500)),
-              TextSpan(text: context.tr(' to auto-add them here.', ' शीर्ष के अंतर्गत, ताकि वे यहाँ स्वतः जुड़ जाएँ।')),
-            ]),
+            TextSpan(
+                style:
+                    TextStyle(fontSize: 12, height: 1.5, color: t.foreground),
+                children: [
+                  WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Icon(Icons.auto_awesome_outlined,
+                            size: 14, color: t.primary),
+                      )),
+                  TextSpan(
+                    text: context.tr(
+                      'Standard assets (garden, gym, DG, lift, fire fighting, boring, water softener, etc.) are pre-loaded as templates. Record purchases in ',
+                      'मानक संपत्तियाँ (बगीचा, जिम, DG, लिफ्ट, अग्निशमन, बोरिंग, वाटर सॉफ़्टनर आदि) टेम्पलेट के रूप में पहले से लोड हैं। खरीद दर्ज करें ',
+                    ),
+                  ),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.baseline,
+                    baseline: TextBaseline.alphabetic,
+                    child: GestureDetector(
+                      onTap: _openFinance,
+                      child: Text(
+                          context.tr('Finance → Record Payment',
+                              'वित्त → भुगतान दर्ज करें'),
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: t.primary,
+                              decoration: TextDecoration.underline)),
+                    ),
+                  ),
+                  TextSpan(text: context.tr(' under ', ' में ')),
+                  const TextSpan(
+                      text: 'FIXED ASSETS',
+                      style: TextStyle(fontWeight: FontWeight.w500)),
+                  TextSpan(
+                      text: context.tr(' to auto-add them here.',
+                          ' शीर्ष के अंतर्गत, ताकि वे यहाँ स्वतः जुड़ जाएँ।')),
+                ]),
           ),
         ),
         const SizedBox(height: 16),
@@ -179,7 +210,8 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
           Align(
             alignment: Alignment.centerRight,
             child: SmallButton(
-              label: context.tr('Reload standard templates', 'मानक टेम्पलेट फिर लोड करें'),
+              label: context.tr(
+                  'Reload standard templates', 'मानक टेम्पलेट फिर लोड करें'),
               style: SmallBtnStyle.secondary,
               fontSize: 10,
               busy: _seeding,
@@ -198,7 +230,8 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
             initialQuery: widget.ctx.initialQuery,
           ),
         ] else
-          FixedAssetReports(societyId: _sid, societyName: _societyName, assets: _assets),
+          FixedAssetReports(
+              societyId: _sid, societyName: _societyName, assets: _assets),
       ],
     );
   }
@@ -217,13 +250,18 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
             onTap: () => setState(() => _tab = id),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(icon, size: 14, color: active ? t.foreground : t.mutedForeground),
+              child:
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(icon,
+                    size: 14, color: active ? t.foreground : t.mutedForeground),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(label,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: active ? t.foreground : t.mutedForeground)),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: active ? t.foreground : t.mutedForeground)),
                 ),
               ]),
             ),
@@ -234,9 +272,12 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
 
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: AppTokens.tint(t.muted, 0.4), borderRadius: BorderRadius.circular(AppTokens.radius)),
+      decoration: BoxDecoration(
+          color: AppTokens.tint(t.muted, 0.4),
+          borderRadius: BorderRadius.circular(AppTokens.radius)),
       child: Row(children: [
-        tab(_SubTab.register, Icons.assignment_outlined, context.tr('Asset register', 'संपत्ति रजिस्टर')),
+        tab(_SubTab.register, Icons.assignment_outlined,
+            context.tr('Asset register', 'संपत्ति रजिस्टर')),
         const SizedBox(width: 4),
         tab(_SubTab.reports, Icons.bar_chart, context.tr('Reports', 'रिपोर्ट')),
       ]),

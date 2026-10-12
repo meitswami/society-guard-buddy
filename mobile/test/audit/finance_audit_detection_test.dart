@@ -82,7 +82,9 @@ void main() {
       pay(id: '3', flat: 'B-1'),
       pay(id: '4', status: 'rejected'),
     ];
-    final groups = findDuplicatePaymentGroups(rows, {'c1': 'Maint', 'c2': 'Maint UPI'}, chargeIds: ['c1', 'c2'], groupAcrossCharges: true);
+    final groups = findDuplicatePaymentGroups(
+        rows, {'c1': 'Maint', 'c2': 'Maint UPI'},
+        chargeIds: ['c1', 'c2'], groupAcrossCharges: true);
     expect(groups, hasLength(1));
     expect(groups.single.chargeTitle, 'Maint + Maint UPI');
     expect(groups.single.paymentMethod, 'mixed');
@@ -92,24 +94,35 @@ void main() {
 
   test('findReceiptHeadLookupGroups includes single entries and filters', () {
     final rows = [pay(id: '1'), pay(id: '2', flat: 'B-1', due: '2026-04-01')];
-    final r = findReceiptHeadLookupGroups(rows, {'c1': 'Maint'}, const ReceiptHeadLookupFilter(flatNumber: 'a-101'));
+    final r = findReceiptHeadLookupGroups(rows, {'c1': 'Maint'},
+        const ReceiptHeadLookupFilter(flatNumber: 'a-101'));
     expect(r, hasLength(1));
     expect(r.single.count, 1);
-    final byMonth = findReceiptHeadLookupGroups(rows, {}, const ReceiptHeadLookupFilter(month: '2026-04'));
+    final byMonth = findReceiptHeadLookupGroups(
+        rows, {}, const ReceiptHeadLookupFilter(month: '2026-04'));
     expect(byMonth.single.flatNumber, 'B-1');
     expect(byMonth.single.chargeTitle, 'Unknown receipt head');
   });
 
   test('receipt head conflicts', () {
     final existing = [pay(id: '1'), pay(id: '2', chargeId: 'c2')];
-    final c = findReceiptHeadConflicts(existing, const [ReceiptHeadRecordingTarget(flatNumber: 'A-101', dueDate: '2026-03-20', chargeId: 'c1')]);
+    final c = findReceiptHeadConflicts(existing, const [
+      ReceiptHeadRecordingTarget(
+          flatNumber: 'A-101', dueDate: '2026-03-20', chargeId: 'c1')
+    ]);
     expect(c.map((p) => p.id), ['1']);
-    final m = findMonthlyMaintenanceMonthConflicts(existing, ['c1', 'c2'], [(flatNumber: 'A-101', dueDate: '2026-03-09')]);
+    final m = findMonthlyMaintenanceMonthConflicts(
+        existing, ['c1', 'c2'], [(flatNumber: 'A-101', dueDate: '2026-03-09')]);
     expect(m, hasLength(2));
   });
 
-  test('analyzeLedgerOvercountByMonth flags unlinked receipts and date boundary', () {
-    final payments = [pay(id: 'p1', fe: 'fe-linked'), pay(id: 'p2', due: '2026-04-01', fe: 'fe-boundary')];
+  test(
+      'analyzeLedgerOvercountByMonth flags unlinked receipts and date boundary',
+      () {
+    final payments = [
+      pay(id: 'p1', fe: 'fe-linked'),
+      pay(id: 'p2', due: '2026-04-01', fe: 'fe-boundary')
+    ];
     final ledger = [
       led(id: 'fe-linked'),
       led(id: 'fe-orphan', title: 'Extra', total: 500),
@@ -129,7 +142,10 @@ void main() {
   test('traceChannelBalanceDeficit finds the fault date', () {
     final txns = buildChannelTransactions(
       [pay(id: 'r1', due: '2026-03-01', amount: 1000)],
-      [led(id: 'e1', dest: 'separate_entry', month: '2026-03', total: 400), led(id: 'e2', dest: 'separate_entry', month: '2026-04', total: 800)],
+      [
+        led(id: 'e1', dest: 'separate_entry', month: '2026-03', total: 400),
+        led(id: 'e2', dest: 'separate_entry', month: '2026-04', total: 800)
+      ],
       <String>{},
     );
     final t = traceChannelBalanceDeficit(txns, PaymentChannel.cash)!;
@@ -137,7 +153,8 @@ void main() {
     expect(t.balanceBeforeFault, 600);
     expect(t.finalBalance, -200);
     expect(t.monthlyBreakdown.map((m) => m.closingBalance), [600, -200]);
-    expect(formatChannelBalanceFaultTrace(t), contains('Fault origin: 2026-04-01'));
+    expect(formatChannelBalanceFaultTrace(t),
+        contains('Fault origin: 2026-04-01'));
     expect(traceChannelBalanceDeficit(txns, PaymentChannel.bank), isNull);
   });
 
@@ -147,21 +164,32 @@ void main() {
       [led(id: 'fe1'), led(id: 'fe2', total: 3000, title: 'Bulk')],
     );
     expect(issues.single.difference, -2000);
-    expect(issues.single.sources.map((s) => s.kind), [MismatchSourceKind.orphanPayment, MismatchSourceKind.orphanLedger]);
-    expect(formatRecordingMismatchFaultTrace(issues), contains('ledger exceeds payments'));
+    expect(issues.single.sources.map((s) => s.kind),
+        [MismatchSourceKind.orphanPayment, MismatchSourceKind.orphanLedger]);
+    expect(formatRecordingMismatchFaultTrace(issues),
+        contains('ledger exceeds payments'));
   });
 
   test('computeIntegrityAudit end-to-end', () {
     final result = computeIntegrityAudit(
       IntegrityAuditInput(
-        charges: const [AuditChargeRow(id: 'c1', title: 'Maint', amount: 1000, frequency: 'Monthly')],
+        charges: const [
+          AuditChargeRow(
+              id: 'c1', title: 'Maint', amount: 1000, frequency: 'Monthly')
+        ],
         payments: [
           pay(id: 'p1', fe: 'fe1'),
           pay(id: 'p2', fe: 'fe1', amount: 1200),
           pay(id: 'p3', status: 'pending', createdAt: '2026-01-01T00:00:00Z'),
         ],
-        ledger: [led(id: 'fe1', total: 2200, flats: 3), led(id: 'x', dest: 'separate_entry', total: 5000)],
-        flats: const [AuditFlatRow(id: 'f1', flatNumber: 'A-101', isOccupied: true), AuditFlatRow(id: 'f2', flatNumber: 'B-1', isOccupied: null)],
+        ledger: [
+          led(id: 'fe1', total: 2200, flats: 3),
+          led(id: 'x', dest: 'separate_entry', total: 5000)
+        ],
+        flats: const [
+          AuditFlatRow(id: 'f1', flatNumber: 'A-101', isOccupied: true),
+          AuditFlatRow(id: 'f2', flatNumber: 'B-1', isOccupied: null)
+        ],
       ),
       now: DateTime(2026, 3, 20),
     );
@@ -178,7 +206,10 @@ void main() {
 
   test('computeManualTrace', () {
     final r = computeManualTrace(
-      charges: const [AuditChargeRow(id: 'c1', title: 'Maint', amount: 1000, frequency: 'monthly')],
+      charges: const [
+        AuditChargeRow(
+            id: 'c1', title: 'Maint', amount: 1000, frequency: 'monthly')
+      ],
       payments: [pay(id: 'p1', fe: 'fe1'), pay(id: 'p2')],
       ledger: [led(id: 'fe1'), led(id: 'orphan', total: 700, title: 'Extra')],
       month: '2026-03',
@@ -189,7 +220,13 @@ void main() {
     expect(r.difference, 700);
     expect(r.findings.first.title, '1 Unlinked Ledger Entry/Entries — ₹700');
     expect(r.findings.last.title, 'Discrepancy Breakdown: +₹700');
-    final clean = computeManualTrace(charges: const [], payments: const [], ledger: const [], month: '2026-03', expectedAmount: '', source: TraceSource.flatReport);
+    final clean = computeManualTrace(
+        charges: const [],
+        payments: const [],
+        ledger: const [],
+        month: '2026-03',
+        expectedAmount: '',
+        source: TraceSource.flatReport);
     expect(clean.expectedTotal, isNull);
     expect(clean.findings.single.title, 'No structural issues found');
   });

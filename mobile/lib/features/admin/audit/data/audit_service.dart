@@ -32,7 +32,8 @@ class AuditLog {
   final Map<String, dynamic> details;
   final String severity;
 
-  static Map<String, dynamic> _map(Object? v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
+  static Map<String, dynamic> _map(Object? v) =>
+      v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 
   factory AuditLog.fromJson(Map<String, dynamic> j) => AuditLog(
         id: (j['id'] ?? '').toString(),
@@ -57,14 +58,17 @@ class ChargeOption {
 
 /// Result of a remediation call (web `{ ok, error }`).
 class FixResult {
-  const FixResult.ok() : ok = true, error = null;
+  const FixResult.ok()
+      : ok = true,
+        error = null;
   const FixResult.fail(this.error) : ok = false;
   final bool ok;
   final String? error;
 }
 
 /// Readable error text (Supabase `error.message` like the web toast).
-String auditErrText(Object e) => e is PostgrestException ? e.message : e.toString();
+String auditErrText(Object e) =>
+    e is PostgrestException ? e.message : e.toString();
 
 String _errText(Object e) => auditErrText(e);
 
@@ -75,7 +79,8 @@ const _paymentCols =
 class AuditService {
   const AuditService();
 
-  Future<List<AuditLog>> fetchLogs(String societyId, {String filter = 'all'}) async {
+  Future<List<AuditLog>> fetchLogs(String societyId,
+      {String filter = 'all'}) async {
     if (!dbReady) return const [];
     var q = db.from('audit_logs').select('*').eq('society_id', societyId);
     if (filter != 'all') q = q.eq('event_type', filter);
@@ -84,12 +89,23 @@ class AuditService {
   }
 
   /// FinanceAuditAlarms: charges (ordered by title) + verified/pending payments.
-  Future<({List<ChargeOption> charges, List<AuditPaymentRow> payments})> fetchAlarmData(String societyId) async {
-    if (!dbReady) return (charges: const <ChargeOption>[], payments: const <AuditPaymentRow>[]);
-    final charges = rowsOf(await db.from('maintenance_charges').select('id, title').eq('society_id', societyId).order('title'))
-        .map((c) => ChargeOption((c['id'] ?? '').toString(), (c['title'] ?? '').toString()))
+  Future<({List<ChargeOption> charges, List<AuditPaymentRow> payments})>
+      fetchAlarmData(String societyId) async {
+    if (!dbReady)
+      return (
+        charges: const <ChargeOption>[],
+        payments: const <AuditPaymentRow>[]
+      );
+    final charges = rowsOf(await db
+            .from('maintenance_charges')
+            .select('id, title')
+            .eq('society_id', societyId)
+            .order('title'))
+        .map((c) => ChargeOption(
+            (c['id'] ?? '').toString(), (c['title'] ?? '').toString()))
         .toList();
-    if (charges.isEmpty) return (charges: charges, payments: const <AuditPaymentRow>[]);
+    if (charges.isEmpty)
+      return (charges: charges, payments: const <AuditPaymentRow>[]);
     final payments = rowsOf(await db
             .from('maintenance_payments')
             .select(_paymentCols)
@@ -101,23 +117,33 @@ class AuditService {
   }
 
   /// FinanceLedgerOvercountPanel inputs (verified payments + all ledger rows, no transaction_date — like web).
-  Future<({List<AuditPaymentRow> payments, List<AuditLedgerRow> ledger})> fetchOvercountData(String societyId) async {
-    if (!dbReady) return (payments: const <AuditPaymentRow>[], ledger: const <AuditLedgerRow>[]);
-    final chargeIds = rowsOf(await db.from('maintenance_charges').select('id').eq('society_id', societyId))
+  Future<({List<AuditPaymentRow> payments, List<AuditLedgerRow> ledger})>
+      fetchOvercountData(String societyId) async {
+    if (!dbReady)
+      return (
+        payments: const <AuditPaymentRow>[],
+        ledger: const <AuditLedgerRow>[]
+      );
+    final chargeIds = rowsOf(await db
+            .from('maintenance_charges')
+            .select('id')
+            .eq('society_id', societyId))
         .map((c) => (c['id'] ?? '').toString())
         .toList();
     final payments = chargeIds.isEmpty
         ? <AuditPaymentRow>[]
         : rowsOf(await db
                 .from('maintenance_payments')
-                .select('id, charge_id, flat_number, amount, payment_method, payment_status, due_date, payment_date, created_at, finance_entry_id')
+                .select(
+                    'id, charge_id, flat_number, amount, payment_method, payment_status, due_date, payment_date, created_at, finance_entry_id')
                 .inFilter('charge_id', chargeIds)
                 .eq('payment_status', 'verified'))
             .map(AuditPaymentRow.fromJson)
             .toList();
     final ledger = rowsOf(await db
             .from('finance_entries')
-            .select('id, record_mode, destination, total_amount, payment_method, payment_status, entry_month, created_at, title')
+            .select(
+                'id, record_mode, destination, total_amount, payment_method, payment_status, entry_month, created_at, title')
             .eq('society_id', societyId))
         .map(AuditLedgerRow.fromJson)
         .toList();
@@ -125,7 +151,10 @@ class AuditService {
   }
 
   Future<List<AuditChargeRow>> _charges(String societyId) async =>
-      rowsOf(await db.from('maintenance_charges').select('id, title, amount, frequency').eq('society_id', societyId))
+      rowsOf(await db
+              .from('maintenance_charges')
+              .select('id, title, amount, frequency')
+              .eq('society_id', societyId))
           .map(AuditChargeRow.fromJson)
           .toList();
 
@@ -137,38 +166,50 @@ class AuditService {
         ? <AuditPaymentRow>[]
         : rowsOf(await db
                 .from('maintenance_payments')
-                .select('id, charge_id, flat_number, amount, payment_method, payment_status, due_date, payment_date, created_at, finance_entry_id, transaction_id')
+                .select(
+                    'id, charge_id, flat_number, amount, payment_method, payment_status, due_date, payment_date, created_at, finance_entry_id, transaction_id')
                 .inFilter('charge_id', chargeIds))
             .map(AuditPaymentRow.fromJson)
             .toList();
     final ledger = rowsOf(await db
             .from('finance_entries')
-            .select('id, record_mode, destination, total_amount, payment_method, payment_status, entry_month, created_at, title, charge_id, aggregate_flat_count')
+            .select(
+                'id, record_mode, destination, total_amount, payment_method, payment_status, entry_month, created_at, title, charge_id, aggregate_flat_count')
             .eq('society_id', societyId))
         .map(AuditLedgerRow.fromJson)
         .toList();
-    final flats = rowsOf(await db.from('flats').select('id, flat_number, is_occupied').eq('society_id', societyId))
+    final flats = rowsOf(await db
+            .from('flats')
+            .select('id, flat_number, is_occupied')
+            .eq('society_id', societyId))
         .map(AuditFlatRow.fromJson)
         .toList();
-    return IntegrityAuditInput(charges: charges, payments: payments, ledger: ledger, flats: flats);
+    return IntegrityAuditInput(
+        charges: charges, payments: payments, ledger: ledger, flats: flats);
   }
 
   /// ManualAuditTracer `trace` loads.
-  Future<({List<AuditChargeRow> charges, List<AuditPaymentRow> payments, List<AuditLedgerRow> ledger})> fetchTraceInput(
-      String societyId) async {
+  Future<
+      ({
+        List<AuditChargeRow> charges,
+        List<AuditPaymentRow> payments,
+        List<AuditLedgerRow> ledger
+      })> fetchTraceInput(String societyId) async {
     final charges = await _charges(societyId);
     final chargeIds = charges.map((c) => c.id).toList();
     final payments = chargeIds.isEmpty
         ? <AuditPaymentRow>[]
         : rowsOf(await db
                 .from('maintenance_payments')
-                .select('id, charge_id, flat_number, amount, payment_method, payment_status, due_date, payment_date, created_at, finance_entry_id')
+                .select(
+                    'id, charge_id, flat_number, amount, payment_method, payment_status, due_date, payment_date, created_at, finance_entry_id')
                 .inFilter('charge_id', chargeIds))
             .map(AuditPaymentRow.fromJson)
             .toList();
     final ledger = rowsOf(await db
             .from('finance_entries')
-            .select('id, record_mode, destination, total_amount, payment_method, payment_status, entry_month, created_at, title, aggregate_flat_count')
+            .select(
+                'id, record_mode, destination, total_amount, payment_method, payment_status, entry_month, created_at, title, aggregate_flat_count')
             .eq('society_id', societyId))
         .map(AuditLedgerRow.fromJson)
         .toList();
@@ -177,7 +218,11 @@ class AuditService {
 
   /* ─── Remediation (financeAuditRemediation.ts) ─── */
 
-  Future<FixResult> updatePayment(String id, {required double amount, required String method, required String status, String? notes}) async {
+  Future<FixResult> updatePayment(String id,
+      {required double amount,
+      required String method,
+      required String status,
+      String? notes}) async {
     try {
       await db.from('maintenance_payments').update({
         'amount': amount,
@@ -192,13 +237,20 @@ class AuditService {
   }
 
   Future<void> _deleteLedgerRow(String entryId) async {
-    await db.from('finance_entry_allocations').delete().eq('finance_entry_id', entryId);
-    await db.from('finance_entry_counterparties').delete().eq('finance_entry_id', entryId);
+    await db
+        .from('finance_entry_allocations')
+        .delete()
+        .eq('finance_entry_id', entryId);
+    await db
+        .from('finance_entry_counterparties')
+        .delete()
+        .eq('finance_entry_id', entryId);
     await db.from('finance_entries').delete().eq('id', entryId);
   }
 
   /// Deletes the payment; removes its ledger entry (+ allocations / counterparties) when no payment remains linked.
-  Future<FixResult> deleteMaintenancePayment(String paymentId, String? financeEntryId) async {
+  Future<FixResult> deleteMaintenancePayment(
+      String paymentId, String? financeEntryId) async {
     try {
       await db.from('maintenance_payments').delete().eq('id', paymentId);
     } catch (e) {
@@ -206,7 +258,10 @@ class AuditService {
     }
     if (financeEntryId != null && financeEntryId.isNotEmpty) {
       try {
-        final remaining = rowsOf(await db.from('maintenance_payments').select('id').eq('finance_entry_id', financeEntryId));
+        final remaining = rowsOf(await db
+            .from('maintenance_payments')
+            .select('id')
+            .eq('finance_entry_id', financeEntryId));
         if (remaining.isEmpty) await _deleteLedgerRow(financeEntryId);
       } catch (_) {
         // Like the web, cleanup failures do not fail the delete. (A failed lookup skips cleanup for safety.)
@@ -215,16 +270,26 @@ class AuditService {
     return const FixResult.ok();
   }
 
-  Future<FixResult> deleteOrphanLedgerEntry(String entryId, {bool hi = false}) async {
+  Future<FixResult> deleteOrphanLedgerEntry(String entryId,
+      {bool hi = false}) async {
     try {
-      final linked = rowsOf(await db.from('maintenance_payments').select('id').eq('finance_entry_id', entryId));
+      final linked = rowsOf(await db
+          .from('maintenance_payments')
+          .select('id')
+          .eq('finance_entry_id', entryId));
       if (linked.isNotEmpty) {
         return FixResult.fail(hi
             ? 'इस लेजर प्रविष्टि से अभी भी भुगतान जुड़े हैं। पहले भुगतान हटाएँ या फिर से जोड़ें।'
             : 'This ledger entry still has linked payments. Remove or relink payments first.');
       }
-      await db.from('finance_entry_allocations').delete().eq('finance_entry_id', entryId);
-      await db.from('finance_entry_counterparties').delete().eq('finance_entry_id', entryId);
+      await db
+          .from('finance_entry_allocations')
+          .delete()
+          .eq('finance_entry_id', entryId);
+      await db
+          .from('finance_entry_counterparties')
+          .delete()
+          .eq('finance_entry_id', entryId);
     } catch (e) {
       return FixResult.fail(_errText(e));
     }
@@ -236,9 +301,12 @@ class AuditService {
     }
   }
 
-  Future<FixResult> alignPaymentDueToMonth(String paymentId, String yyyyMm) async {
+  Future<FixResult> alignPaymentDueToMonth(
+      String paymentId, String yyyyMm) async {
     try {
-      await db.from('maintenance_payments').update({'due_date': '$yyyyMm-01'}).eq('id', paymentId);
+      await db
+          .from('maintenance_payments')
+          .update({'due_date': '$yyyyMm-01'}).eq('id', paymentId);
       return const FixResult.ok();
     } catch (e) {
       return FixResult.fail(_errText(e));
@@ -247,7 +315,9 @@ class AuditService {
 
   Future<FixResult> alignLedgerEntryMonth(String entryId, String yyyyMm) async {
     try {
-      await db.from('finance_entries').update({'entry_month': yyyyMm}).eq('id', entryId);
+      await db
+          .from('finance_entries')
+          .update({'entry_month': yyyyMm}).eq('id', entryId);
       return const FixResult.ok();
     } catch (e) {
       return FixResult.fail(_errText(e));
@@ -264,7 +334,8 @@ class AuditService {
     final flatNumbers = targets.map((t) => t.flatNumber).toSet().toList();
     if (flatNumbers.isEmpty || chargeId.isEmpty) return const [];
     final isMonthly = monthlyMaintenanceChargeIds.contains(chargeId);
-    final chargeIds = isMonthly ? monthlyMaintenanceChargeIds.toSet().toList() : [chargeId];
+    final chargeIds =
+        isMonthly ? monthlyMaintenanceChargeIds.toSet().toList() : [chargeId];
     try {
       final rows = rowsOf(await db
               .from('maintenance_payments')
@@ -274,10 +345,15 @@ class AuditService {
               .inFilter('payment_status', ['verified', 'pending']))
           .map(AuditPaymentRow.fromJson)
           .toList();
-      if (isMonthly) return findMonthlyMaintenanceMonthConflicts(rows, chargeIds, targets);
+      if (isMonthly)
+        return findMonthlyMaintenanceMonthConflicts(rows, chargeIds, targets);
       return findReceiptHeadConflicts(rows, [
         for (final t in targets)
-          ReceiptHeadRecordingTarget(flatNumber: t.flatNumber, dueDate: t.dueDate, chargeId: chargeId, paymentMethod: paymentMethod),
+          ReceiptHeadRecordingTarget(
+              flatNumber: t.flatNumber,
+              dueDate: t.dueDate,
+              chargeId: chargeId,
+              paymentMethod: paymentMethod),
       ]);
     } catch (_) {
       return const [];

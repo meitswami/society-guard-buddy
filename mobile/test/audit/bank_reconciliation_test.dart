@@ -53,14 +53,16 @@ void main() {
     test('throws when date column is missing', () {
       expect(
         () => parseBankStatementCsv('amount,description\n100,test'),
-        throwsA(isA<BankCsvException>().having((e) => e.message, 'message', matches(RegExp('date column', caseSensitive: false)))),
+        throwsA(isA<BankCsvException>().having((e) => e.message, 'message',
+            matches(RegExp('date column', caseSensitive: false)))),
       );
     });
 
     test('throws when amount and debit/credit columns are missing', () {
       expect(
         () => parseBankStatementCsv('date,narration\n2026-04-01,test'),
-        throwsA(isA<BankCsvException>().having((e) => e.code, 'code', 'missing_amount')),
+        throwsA(isA<BankCsvException>()
+            .having((e) => e.code, 'code', 'missing_amount')),
       );
     });
 
@@ -91,7 +93,8 @@ void main() {
       expect(parseFlexibleDate('01-04-2026'), '2026-04-01');
       expect(parseFlexibleDate('01-Apr-2026'), '2026-04-01');
       expect(parseFlexibleDate('Apr 01, 2026'), '2026-04-01');
-      expect(parseFlexibleDate('01/04/26', DateTime(2026, 10, 12)), '2026-04-01');
+      expect(
+          parseFlexibleDate('01/04/26', DateTime(2026, 10, 12)), '2026-04-01');
       expect(parseFlexibleDate(''), isNull);
       expect(parseFlexibleDate('31/02/2026'), isNull);
     });
@@ -149,7 +152,12 @@ void main() {
         label: 'Expense — Vendor ABC repairs — ₹12,000',
         labelAmount: 12000,
       );
-      const debit = StatementLineForMatch(id: 'l2', lineDate: '2026-04-02', amount: -12000, description: 'NEFT Vendor ABC', reference: null);
+      const debit = StatementLineForMatch(
+          id: 'l2',
+          lineDate: '2026-04-02',
+          amount: -12000,
+          description: 'NEFT Vendor ABC',
+          reference: null);
       final r = computeMatchConfidence(debit, entry);
       expect(r.reasons, contains('Date within ±3 days'));
       expect(r.reasons, contains('Title in narration'));
@@ -160,13 +168,33 @@ void main() {
   group('suggestMatches', () {
     test('pairs one-to-one by best confidence', () {
       const lines = [
-        StatementLineForMatch(id: 'l1', lineDate: '2026-04-01', amount: 5000, description: 'A-101', reference: 'UTR1'),
-        StatementLineForMatch(id: 'l2', lineDate: '2026-04-02', amount: 3000, description: 'B-202', reference: 'UTR2'),
+        StatementLineForMatch(
+            id: 'l1',
+            lineDate: '2026-04-01',
+            amount: 5000,
+            description: 'A-101',
+            reference: 'UTR1'),
+        StatementLineForMatch(
+            id: 'l2',
+            lineDate: '2026-04-02',
+            amount: 3000,
+            description: 'B-202',
+            reference: 'UTR2'),
       ];
       final targets = buildReconcilableTargets(
         [
-          _payment(id: 'p1', flat: 'A-101', amount: 5000, due: '2026-04-01', txn: 'UTR1'),
-          _payment(id: 'p2', flat: 'B-202', amount: 3000, due: '2026-04-02', txn: 'UTR2'),
+          _payment(
+              id: 'p1',
+              flat: 'A-101',
+              amount: 5000,
+              due: '2026-04-01',
+              txn: 'UTR1'),
+          _payment(
+              id: 'p2',
+              flat: 'B-202',
+              amount: 3000,
+              due: '2026-04-02',
+              txn: 'UTR2'),
         ],
         const [],
         <String>{},
@@ -196,10 +224,25 @@ void main() {
     test('keeps only verified bank-channel rows not already matched', () {
       final targets = buildReconcilableTargets(
         [
-          _payment(id: 'cash', flat: 'A-1', amount: 100, due: '2026-04-01', method: 'cash'),
-          _payment(id: 'pending', flat: 'A-2', amount: 100, due: '2026-04-01', status: 'pending'),
+          _payment(
+              id: 'cash',
+              flat: 'A-1',
+              amount: 100,
+              due: '2026-04-01',
+              method: 'cash'),
+          _payment(
+              id: 'pending',
+              flat: 'A-2',
+              amount: 100,
+              due: '2026-04-01',
+              status: 'pending'),
           _payment(id: 'matched', flat: 'A-3', amount: 100, due: '2026-04-01'),
-          _payment(id: 'ok', flat: 'A-4', amount: 100, due: '2026-04-01', method: 'NEFT'),
+          _payment(
+              id: 'ok',
+              flat: 'A-4',
+              amount: 100,
+              due: '2026-04-01',
+              method: 'NEFT'),
         ],
         const [
           ReconLedgerInput(
@@ -227,12 +270,27 @@ void main() {
 
   group('filterTargetsToPeriod', () {
     const targets = <ReconcilableTarget>[
-      ReconcilablePayment(id: 'p1', amount: 1000, date: '2026-04-01', paymentMethod: 'upi', transactionId: null, flatNumber: 'A-101', label: 'in'),
-      ReconcilablePayment(id: 'p2', amount: 2000, date: '2026-06-01', paymentMethod: 'upi', transactionId: null, flatNumber: 'B-202', label: 'out'),
+      ReconcilablePayment(
+          id: 'p1',
+          amount: 1000,
+          date: '2026-04-01',
+          paymentMethod: 'upi',
+          transactionId: null,
+          flatNumber: 'A-101',
+          label: 'in'),
+      ReconcilablePayment(
+          id: 'p2',
+          amount: 2000,
+          date: '2026-06-01',
+          paymentMethod: 'upi',
+          transactionId: null,
+          flatNumber: 'B-202',
+          label: 'out'),
     ];
 
     test('keeps targets within period plus tolerance', () {
-      final filtered = filterTargetsToPeriod(targets, '2026-04-01', '2026-04-30', 3);
+      final filtered =
+          filterTargetsToPeriod(targets, '2026-04-01', '2026-04-30', 3);
       expect(filtered, hasLength(1));
       expect(filtered[0].id, 'p1');
     });
@@ -240,10 +298,20 @@ void main() {
 
   group('rankCandidatesForLine', () {
     test('returns amount-matching targets sorted by confidence', () {
-      const line = StatementLineForMatch(id: 'l1', lineDate: '2026-04-01', amount: 5000, description: 'A-101', reference: 'UTR1');
+      const line = StatementLineForMatch(
+          id: 'l1',
+          lineDate: '2026-04-01',
+          amount: 5000,
+          description: 'A-101',
+          reference: 'UTR1');
       final targets = buildReconcilableTargets(
         [
-          _payment(id: 'p1', flat: 'A-101', amount: 5000, due: '2026-04-01', txn: 'UTR1'),
+          _payment(
+              id: 'p1',
+              flat: 'A-101',
+              amount: 5000,
+              due: '2026-04-01',
+              txn: 'UTR1'),
           _payment(id: 'p2', flat: 'B-202', amount: 5000, due: '2026-04-05'),
         ],
         const [],
@@ -256,21 +324,30 @@ void main() {
     });
 
     test('skips used targets', () {
-      const line = StatementLineForMatch(id: 'l1', lineDate: '2026-04-01', amount: 5000);
+      const line =
+          StatementLineForMatch(id: 'l1', lineDate: '2026-04-01', amount: 5000);
       final targets = buildReconcilableTargets(
         [_payment(id: 'p1', flat: 'A-101', amount: 5000, due: '2026-04-01')],
         const [],
         <String>{},
         <String>{},
       );
-      expect(rankCandidatesForLine(line, targets, usedTargetKeys: {'maintenance_payment:p1'}), isEmpty);
+      expect(
+          rankCandidatesForLine(line, targets,
+              usedTargetKeys: {'maintenance_payment:p1'}),
+          isEmpty);
     });
   });
 
   group('computeReconciliationSummary', () {
     test('computes matched vs unmatched totals', () {
-      final lines = [(id: 'l1', amount: 5000.0), (id: 'l2', amount: -2000.0), (id: 'l3', amount: 1000.0)];
-      final summary = computeReconciliationSummary(lines, {'l1': 'confirmed', 'l2': 'suggested'});
+      final lines = [
+        (id: 'l1', amount: 5000.0),
+        (id: 'l2', amount: -2000.0),
+        (id: 'l3', amount: 1000.0)
+      ];
+      final summary = computeReconciliationSummary(
+          lines, {'l1': 'confirmed', 'l2': 'suggested'});
       expect(summary.statementCredits, 6000);
       expect(summary.statementDebits, 2000);
       expect(summary.matchedCredits, 5000);
@@ -294,18 +371,27 @@ void main() {
 
     test('exceptions CSV escapes quotes', () {
       final csv = bankReconExceptionsCsv([
-        (lineDate: '2026-04-01', amount: 5000.0, description: 'UPI "A-101"', reference: null, status: 'unmatched'),
+        (
+          lineDate: '2026-04-01',
+          amount: 5000.0,
+          description: 'UPI "A-101"',
+          reference: null,
+          status: 'unmatched'
+        ),
       ]);
-      expect(csv, 'date,amount,description,reference,status\n2026-04-01,5000,"UPI ""A-101""","",unmatched');
+      expect(csv,
+          'date,amount,description,reference,status\n2026-04-01,5000,"UPI ""A-101""","",unmatched');
     });
 
     test('reason labels translate to Hindi', () {
       expect(reconReasonLabel('Exact amount'), 'Exact amount');
-      expect(reconReasonLabel('Date within ±3 days', hi: true), 'तिथि ±3 दिन के भीतर');
+      expect(reconReasonLabel('Date within ±3 days', hi: true),
+          'तिथि ±3 दिन के भीतर');
     });
 
     test('template is the web template', () {
-      expect(bankReconCsvTemplate().split('\n').first, 'date,amount,description,reference');
+      expect(bankReconCsvTemplate().split('\n').first,
+          'date,amount,description,reference');
       expect(parseBankStatementCsv(bankReconCsvTemplate()), hasLength(2));
     });
   });

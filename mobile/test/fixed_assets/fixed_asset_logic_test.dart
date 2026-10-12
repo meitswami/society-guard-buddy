@@ -61,15 +61,25 @@ void main() {
       expect(isWarrantyExpired(a, now: now), isFalse);
       expect(isAmcExpired(a, now: now), isTrue);
       expect(isAmcExpiringSoon(a, now: now), isFalse);
-      expect(isWarrantyExpiringSoon(asset(warrantyEnd: '2027-02-01'), now: now), isFalse);
+      expect(isWarrantyExpiringSoon(asset(warrantyEnd: '2027-02-01'), now: now),
+          isFalse);
     });
   });
 
   test('computeFixedAssetReport', () {
     final s = computeFixedAssetReport([
       asset(id: '1', subHead: 'Lift', bill: 500000, warrantyEnd: '2026-11-01'),
-      asset(id: '2', subHead: 'Gym Equipment', bill: 200000, source: 'finance_transaction', status: 'under_repair'),
-      asset(id: '3', subHead: '  ', status: 'placeholder', source: 'builder_handover'),
+      asset(
+          id: '2',
+          subHead: 'Gym Equipment',
+          bill: 200000,
+          source: 'finance_transaction',
+          status: 'under_repair'),
+      asset(
+          id: '3',
+          subHead: '  ',
+          status: 'placeholder',
+          source: 'builder_handover'),
       asset(id: '4', subHead: 'Lift', bill: 99999, status: 'disposed'),
     ], now: now);
     expect(s.totalAssets, 4);
@@ -77,13 +87,21 @@ void main() {
     expect(s.placeholderCount, 1);
     expect(s.totalBillValue, 700000);
     expect(s.warrantyExpiringSoon, 1);
-    expect(s.bySubHead.map((r) => r.subHead), ['Lift', 'Gym Equipment', 'Uncategorized']);
+    expect(s.bySubHead.map((r) => r.subHead),
+        ['Lift', 'Gym Equipment', 'Uncategorized']);
     expect(s.bySource.first.source, 'Manual entry');
-    expect(s.bySource.map((r) => r.key), ['manual', 'finance_transaction', 'builder_handover']);
+    expect(s.bySource.map((r) => r.key),
+        ['manual', 'finance_transaction', 'builder_handover']);
   });
 
   test('register rows / headers match the web export', () {
-    final rows = fixedAssetRegisterRows([asset(bill: 1500.5, status: 'placeholder', source: 'builder_handover', warrantyEnd: '2027-01-31')]);
+    final rows = fixedAssetRegisterRows([
+      asset(
+          bill: 1500.5,
+          status: 'placeholder',
+          source: 'builder_handover',
+          warrantyEnd: '2027-01-31')
+    ]);
     expect(fixedAssetRegisterHeaders.length, 12);
     expect(rows.single[2], 'Not yet acquired');
     expect(rows.single[3], 'Builder handover');
@@ -98,7 +116,8 @@ void main() {
   });
 
   test('search + filters', () {
-    final a = asset(name: 'DG Set', subHead: 'DG Set', vendor: 'Kirloskar', tag: 'AST-9');
+    final a = asset(
+        name: 'DG Set', subHead: 'DG Set', vendor: 'Kirloskar', tag: 'AST-9');
     expect(fixedAssetMatches(a, query: 'kirlo'), isTrue);
     expect(fixedAssetMatches(a, query: 'ast-9'), isTrue);
     expect(fixedAssetMatches(a, query: 'lift'), isFalse);
@@ -113,15 +132,21 @@ void main() {
     expect(rows.first['status'], 'placeholder');
     expect(rows.first['source_type'], 'builder_handover');
     expect(rows.any((r) => r['template_key'] == 'dg_set'), isFalse);
-    final garden = rows.firstWhere((r) => r['template_key'] == 'garden_landscaping');
+    final garden =
+        rows.firstWhere((r) => r['template_key'] == 'garden_landscaping');
     expect(garden['amc_period_months'], isNull);
     expect(garden['warranty_period_months'], 12);
   });
 
   test('expense group filter', () {
     expect(isFixedAssetExpenseGroup(name: 'Lift repairs'), isTrue);
-    expect(isFixedAssetExpenseGroup(name: 'Electricity', majorHead: 'FIXED ASSETS'), isTrue);
-    expect(isFixedAssetExpenseGroup(name: 'Electricity', majorHead: 'UTILITIES'), isFalse);
+    expect(
+        isFixedAssetExpenseGroup(
+            name: 'Electricity', majorHead: 'FIXED ASSETS'),
+        isTrue);
+    expect(
+        isFixedAssetExpenseGroup(name: 'Electricity', majorHead: 'UTILITIES'),
+        isFalse);
   });
 
   test('moneyInr', () {
@@ -130,12 +155,30 @@ void main() {
   });
 
   testWidgets('PDF builds in plain and auto letterhead modes', (tester) async {
-    final assets = [asset(bill: 1000), asset(id: 'b', name: 'हिंदी नाम', bill: null)];
-    final plain = await tester.runAsync(() => buildFixedAssetPdf(societyName: 'Test', assets: assets, letterhead: null, pdfMode: 'plain', now: now));
+    final assets = [
+      asset(bill: 1000),
+      asset(id: 'b', name: 'हिंदी नाम', bill: null)
+    ];
+    final plain = await tester.runAsync(() => buildFixedAssetPdf(
+        societyName: 'Test',
+        assets: assets,
+        letterhead: null,
+        pdfMode: 'plain',
+        now: now));
     expect(plain, isNotNull);
     expect(plain!.length, greaterThan(1000));
-    final lh = SocietyLetterhead(name: 'Green Park', address: 'Sector 5', city: 'Pune', contactPhone: '9999999999', letterheadMode: 'auto');
-    final auto = await tester.runAsync(() => buildFixedAssetPdf(societyName: 'Green Park', assets: assets, letterhead: lh, pdfMode: 'letterhead', now: now));
+    final lh = SocietyLetterhead(
+        name: 'Green Park',
+        address: 'Sector 5',
+        city: 'Pune',
+        contactPhone: '9999999999',
+        letterheadMode: 'auto');
+    final auto = await tester.runAsync(() => buildFixedAssetPdf(
+        societyName: 'Green Park',
+        assets: assets,
+        letterhead: lh,
+        pdfMode: 'letterhead',
+        now: now));
     expect(auto!.length, greaterThan(1000));
   });
 }

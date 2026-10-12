@@ -13,7 +13,16 @@ import 'society_letterhead.dart';
 /// Port of `src/lib/fixedAssetReportExport.ts` (formats: pdf, excel, word, csv).
 enum ExportFormat { pdf, excel, word, csv }
 
-const _pdfHeaders = ['Asset', 'Sub-head', 'Status', 'Date', 'Value', 'Vendor', 'Warranty', 'AMC'];
+const _pdfHeaders = [
+  'Asset',
+  'Sub-head',
+  'Status',
+  'Date',
+  'Value',
+  'Vendor',
+  'Warranty',
+  'AMC'
+];
 const _pdfColWidthsMm = [38.0, 28.0, 22.0, 22.0, 22.0, 28.0, 22.0, 22.0];
 
 /// `moneyInr` (up to 2 decimals, Indian grouping).
@@ -41,14 +50,19 @@ List<List<String>> _pdfRows(List<FixedAsset> assets) => [
 /// `new Date().toLocaleDateString('en-IN')` → `d/M/yyyy`.
 String _stamp(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
-String _escapeHtml(String t) =>
-    t.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+String _escapeHtml(String t) => t
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 
-String _htmlTable(List<String> headers, List<List<String>> rows, Set<int> numericCols) {
+String _htmlTable(
+    List<String> headers, List<List<String>> rows, Set<int> numericCols) {
   final head = headers.map((h) => '<th>${_escapeHtml(h)}</th>').join();
   final body = rows
       .map((r) => '<tr>${[
-            for (var i = 0; i < r.length; i++) '<td${numericCols.contains(i) ? ' class="num"' : ''}>${_escapeHtml(r[i])}</td>',
+            for (var i = 0; i < r.length; i++)
+              '<td${numericCols.contains(i) ? ' class="num"' : ''}>${_escapeHtml(r[i])}</td>',
           ].join()}</tr>')
       .join();
   return '<table><thead><tr>$head</tr></thead><tbody>$body</tbody></table>';
@@ -70,13 +84,16 @@ String _wordHtml(String title, String bodyHtml) => '''<!DOCTYPE html>
 </style>
 </head><body>$bodyHtml</body></html>''';
 
-Uint8List _xlsx(List<({String name, List<String> headers, List<List<Object?>> rows})> sheets) {
+Uint8List _xlsx(
+    List<({String name, List<String> headers, List<List<Object?>> rows})>
+        sheets) {
   final book = Excel.createExcel();
   final defaultSheet = book.getDefaultSheet();
   for (var i = 0; i < sheets.length; i++) {
     final s = sheets[i];
     final name = s.name.length > 31 ? s.name.substring(0, 31) : s.name;
-    if (i == 0 && defaultSheet != null && defaultSheet != name) book.rename(defaultSheet, name);
+    if (i == 0 && defaultSheet != null && defaultSheet != name)
+      book.rename(defaultSheet, name);
     final sheet = book[name];
     sheet.appendRow([for (final h in s.headers) TextCellValue(h)]);
     for (final r in s.rows) {
@@ -111,23 +128,40 @@ Future<Uint8List> buildFixedAssetPdf({
   const mm = PdfPageFormat.mm;
   doc.addPage(
     pw.MultiPage(
-      pageTheme: letterheadPageTheme(lh: lh, mode: pdfMode, format: PdfPageFormat.letter.landscape, theme: theme),
+      pageTheme: letterheadPageTheme(
+          lh: lh,
+          mode: pdfMode,
+          format: PdfPageFormat.letter.landscape,
+          theme: theme),
       build: (_) => [
-        pw.Text('Fixed Assets Register', style: const pw.TextStyle(fontSize: 12)),
+        pw.Text('Fixed Assets Register',
+            style: const pw.TextStyle(fontSize: 12)),
         pw.SizedBox(height: 2 * mm),
-        pw.Text('Generated $stamp · Total: ${summary.totalAssets} assets · Value: ${moneyInr(summary.totalBillValue)}',
+        pw.Text(
+            'Generated $stamp · Total: ${summary.totalAssets} assets · Value: ${moneyInr(summary.totalBillValue)}',
             style: const pw.TextStyle(fontSize: 9)),
         pw.SizedBox(height: 5 * mm),
         pw.Table(
-          columnWidths: {for (var i = 0; i < _pdfColWidthsMm.length; i++) i: pw.FixedColumnWidth(_pdfColWidthsMm[i] * mm)},
+          columnWidths: {
+            for (var i = 0; i < _pdfColWidthsMm.length; i++)
+              i: pw.FixedColumnWidth(_pdfColWidthsMm[i] * mm)
+          },
           children: [
             pw.TableRow(children: [
               for (final h in _pdfHeaders)
-                pw.Padding(padding: const pw.EdgeInsets.only(bottom: 3), child: pw.Text(h, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold))),
+                pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 3),
+                    child: pw.Text(h,
+                        style: pw.TextStyle(
+                            fontSize: 7, fontWeight: pw.FontWeight.bold))),
             ]),
             for (final r in _pdfRows(assets))
               pw.TableRow(children: [
-                for (final c in r) pw.Padding(padding: const pw.EdgeInsets.only(bottom: 3, right: 4), child: pw.Text(c, style: const pw.TextStyle(fontSize: 7))),
+                for (final c in r)
+                  pw.Padding(
+                      padding: const pw.EdgeInsets.only(bottom: 3, right: 4),
+                      child:
+                          pw.Text(c, style: const pw.TextStyle(fontSize: 7))),
               ]),
           ],
         ),
@@ -148,11 +182,14 @@ Future<void> exportFixedAssetReport({
   final summary = computeFixedAssetReport(assets, now: now);
   final rows = fixedAssetRegisterRows(assets);
   final stamp = _stamp(now);
-  final baseName = 'fixed-assets-${societyName.replaceAll(RegExp(r'\s+'), '-').toLowerCase()}-$stamp';
+  final baseName =
+      'fixed-assets-${societyName.replaceAll(RegExp(r'\s+'), '-').toLowerCase()}-$stamp';
 
   switch (format) {
     case ExportFormat.csv:
-      await ExportKit.shareCsv(ExportKit.csvBytes(headers: fixedAssetRegisterHeaders, rows: rows), '$baseName.csv');
+      await ExportKit.shareCsv(
+          ExportKit.csvBytes(headers: fixedAssetRegisterHeaders, rows: rows),
+          '$baseName.csv');
     case ExportFormat.excel:
       final bytes = _xlsx([
         (name: 'Register', headers: fixedAssetRegisterHeaders, rows: rows),
@@ -171,7 +208,9 @@ Future<void> exportFixedAssetReport({
         (
           name: 'By sub-head',
           headers: const ['Sub-head', 'Count', 'Value'],
-          rows: [for (final r in summary.bySubHead) [r.subHead, r.count, r.value]],
+          rows: [
+            for (final r in summary.bySubHead) [r.subHead, r.count, r.value]
+          ],
         ),
       ]);
       await ExportKit.shareExcel(bytes, '$baseName.xlsx');
@@ -185,8 +224,14 @@ Future<void> exportFixedAssetReport({
     <h2>Asset register</h2>
     ${_htmlTable(fixedAssetRegisterHeaders, rows, {5})}
   ''';
-      final bytes = Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(_wordHtml('Fixed Assets — $societyName', html))]);
-      await ExportKit.shareBytes(bytes, '$baseName.doc', mimeType: 'application/msword');
+      final bytes = Uint8List.fromList([
+        0xEF,
+        0xBB,
+        0xBF,
+        ...utf8.encode(_wordHtml('Fixed Assets — $societyName', html))
+      ]);
+      await ExportKit.shareBytes(bytes, '$baseName.doc',
+          mimeType: 'application/msword');
     case ExportFormat.pdf:
       final ctx = await resolveLetterheadReportContext(societyId);
       final bytes = await buildFixedAssetPdf(

@@ -1,4 +1,5 @@
-import 'finance_audit_detection.dart' show normalizePaymentChannel, PaymentChannel;
+import 'finance_audit_detection.dart'
+    show normalizePaymentChannel, PaymentChannel;
 import 'finance_dates.dart';
 import 'js_compat.dart';
 
@@ -37,8 +38,9 @@ class BankStatementCsvRow {
 
 enum ReconTargetKind { maintenancePayment, financeEntry }
 
-String reconKindId(ReconTargetKind k) =>
-    k == ReconTargetKind.maintenancePayment ? 'maintenance_payment' : 'finance_entry';
+String reconKindId(ReconTargetKind k) => k == ReconTargetKind.maintenancePayment
+    ? 'maintenance_payment'
+    : 'finance_entry';
 
 /// A maintenance payment or ledger entry that a statement line can be linked to.
 sealed class ReconcilableTarget {
@@ -94,7 +96,8 @@ class ReconcilablePayment extends ReconcilableTarget {
   @override
   String displayLabel({bool hi = false}) {
     if (!hi) return label;
-    if (savedFallback) return label == 'Linked record' ? 'जुड़ा रिकॉर्ड' : label;
+    if (savedFallback)
+      return label == 'Linked record' ? 'जुड़ा रिकॉर्ड' : label;
     return 'फ्लैट $flatNumber — ${chargeTitle ?? 'रखरखाव'} — ${jsInr(amount)}';
   }
 }
@@ -127,7 +130,8 @@ class ReconcilableLedgerEntry extends ReconcilableTarget {
   @override
   String displayLabel({bool hi = false}) {
     if (!hi) return label;
-    if (savedFallback) return label == 'Linked record' ? 'जुड़ा रिकॉर्ड' : label;
+    if (savedFallback)
+      return label == 'Linked record' ? 'जुड़ा रिकॉर्ड' : label;
     return '${isExpense ? 'खर्च' : 'रसीद'} — ${title ?? 'लेजर'} — ${jsInr(labelAmount)}';
   }
 }
@@ -170,15 +174,54 @@ class SuggestedMatch {
   final List<String> reasons;
 }
 
-const List<String> _dateAliases = ['date', 'transaction date', 'txn date', 'value date', 'posting date', 'tran date'];
-const List<String> _amountAliases = ['amount', 'transaction amount', 'txn amount'];
-const List<String> _debitAliases = ['debit', 'withdrawal', 'dr', 'debit amount'];
-const List<String> _creditAliases = ['credit', 'deposit', 'cr', 'credit amount'];
-const List<String> _descAliases = ['description', 'narration', 'particulars', 'remarks', 'details'];
-const List<String> _refAliases = ['reference', 'ref', 'utr', 'upi ref', 'cheque no', 'transaction id', 'txn id', 'ref no'];
+const List<String> _dateAliases = [
+  'date',
+  'transaction date',
+  'txn date',
+  'value date',
+  'posting date',
+  'tran date'
+];
+const List<String> _amountAliases = [
+  'amount',
+  'transaction amount',
+  'txn amount'
+];
+const List<String> _debitAliases = [
+  'debit',
+  'withdrawal',
+  'dr',
+  'debit amount'
+];
+const List<String> _creditAliases = [
+  'credit',
+  'deposit',
+  'cr',
+  'credit amount'
+];
+const List<String> _descAliases = [
+  'description',
+  'narration',
+  'particulars',
+  'remarks',
+  'details'
+];
+const List<String> _refAliases = [
+  'reference',
+  'ref',
+  'utr',
+  'upi ref',
+  'cheque no',
+  'transaction id',
+  'txn id',
+  'ref no'
+];
 
-String _normalizeHeader(String h) =>
-    h.trim().toLowerCase().replaceAll(RegExp(r'[_-]+'), ' ').replaceAll(RegExp(r'\s+'), ' ');
+String _normalizeHeader(String h) => h
+    .trim()
+    .toLowerCase()
+    .replaceAll(RegExp(r'[_-]+'), ' ')
+    .replaceAll(RegExp(r'\s+'), ' ');
 
 int _findColumnIndex(List<String> headers, List<String> aliases) {
   final normalized = headers.map(_normalizeHeader).toList();
@@ -197,7 +240,9 @@ double? _jsNumberOrNull(String s) {
 }
 
 double? parseStatementAmount(String raw) {
-  final cleaned = raw.replaceAll(RegExp(r'[₹,\s]'), '').replaceFirstMapped(RegExp(r'\((.*)\)'), (m) => '-${m.group(1)}');
+  final cleaned = raw
+      .replaceAll(RegExp(r'[₹,\s]'), '')
+      .replaceFirstMapped(RegExp(r'\((.*)\)'), (m) => '-${m.group(1)}');
   if (cleaned.isEmpty) return null;
   return _jsNumberOrNull(cleaned);
 }
@@ -227,7 +272,20 @@ List<String> parseCsvLine(String line) {
   return cells;
 }
 
-const List<String> _monthsShort = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const List<String> _monthsShort = [
+  'jan',
+  'feb',
+  'mar',
+  'apr',
+  'may',
+  'jun',
+  'jul',
+  'aug',
+  'sep',
+  'oct',
+  'nov',
+  'dec'
+];
 const List<String> _monthsLong = [
   'january',
   'february',
@@ -279,17 +337,20 @@ String? parseFlexibleDate(String raw, [DateTime? now]) {
 
   m = RegExp(r'^(\d{1,4})-(\d{1,2})-(\d{1,2})$').firstMatch(s);
   if (m != null) {
-    final r = _ymd(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
+    final r = _ymd(
+        int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
     if (r != null) return r;
   }
   m = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(s);
   if (m != null) {
-    final r = _ymd(int.parse(m.group(3)!), int.parse(m.group(2)!), int.parse(m.group(1)!));
+    final r = _ymd(
+        int.parse(m.group(3)!), int.parse(m.group(2)!), int.parse(m.group(1)!));
     if (r != null) return r;
   }
   m = RegExp(r'^(\d{1,2})-(\d{1,2})-(\d{4})$').firstMatch(s);
   if (m != null) {
-    final r = _ymd(int.parse(m.group(3)!), int.parse(m.group(2)!), int.parse(m.group(1)!));
+    final r = _ymd(
+        int.parse(m.group(3)!), int.parse(m.group(2)!), int.parse(m.group(1)!));
     if (r != null) return r;
   }
   m = RegExp(r'^(\d{1,2})-([A-Za-z]{3})-(\d{4})$').firstMatch(s);
@@ -310,7 +371,8 @@ String? parseFlexibleDate(String raw, [DateTime? now]) {
   }
   m = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{2})$').firstMatch(s);
   if (m != null) {
-    final r = _ymd(_twoDigitYear(int.parse(m.group(3)!), now), int.parse(m.group(2)!), int.parse(m.group(1)!));
+    final r = _ymd(_twoDigitYear(int.parse(m.group(3)!), now),
+        int.parse(m.group(2)!), int.parse(m.group(1)!));
     if (r != null) return r;
   }
 
@@ -318,33 +380,47 @@ String? parseFlexibleDate(String raw, [DateTime? now]) {
   final iso = DateTime.tryParse(s);
   if (iso != null) return ymdOfDate(iso.isUtc ? iso.toLocal() : iso);
   m = RegExp(r'^(\d{4})[/.](\d{1,2})[/.](\d{1,2})$').firstMatch(s);
-  if (m != null) return _ymd(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
+  if (m != null)
+    return _ymd(
+        int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
   m = RegExp(r'^(\d{1,2})[.\-/ ](\d{1,2})[.\-/ ](\d{2}|\d{4})$').firstMatch(s);
   if (m != null) {
     final yRaw = m.group(3)!;
-    final y = yRaw.length == 2 ? _twoDigitYear(int.parse(yRaw), now) : int.parse(yRaw);
+    final y = yRaw.length == 2
+        ? _twoDigitYear(int.parse(yRaw), now)
+        : int.parse(yRaw);
     return _ymd(y, int.parse(m.group(2)!), int.parse(m.group(1)!));
   }
-  m = RegExp(r'^(\d{1,2})[\s\-/.]*([A-Za-z]{3,9})[\s\-/.,]*(\d{2}|\d{4})$').firstMatch(s);
+  m = RegExp(r'^(\d{1,2})[\s\-/.]*([A-Za-z]{3,9})[\s\-/.,]*(\d{2}|\d{4})$')
+      .firstMatch(s);
   if (m != null) {
     final mo = _monthFromName(m.group(2)!);
     final yRaw = m.group(3)!;
     if (mo != null) {
-      final y = yRaw.length == 2 ? _twoDigitYear(int.parse(yRaw), now) : int.parse(yRaw);
+      final y = yRaw.length == 2
+          ? _twoDigitYear(int.parse(yRaw), now)
+          : int.parse(yRaw);
       return _ymd(y, mo, int.parse(m.group(1)!));
     }
   }
-  m = RegExp(r'^([A-Za-z]{3,9})[\s\-/.]*(\d{1,2})(?:st|nd|rd|th)?[\s,]*(\d{4})$').firstMatch(s);
+  m = RegExp(
+          r'^([A-Za-z]{3,9})[\s\-/.]*(\d{1,2})(?:st|nd|rd|th)?[\s,]*(\d{4})$')
+      .firstMatch(s);
   if (m != null) {
     final mo = _monthFromName(m.group(1)!);
-    if (mo != null) return _ymd(int.parse(m.group(3)!), mo, int.parse(m.group(2)!));
+    if (mo != null)
+      return _ymd(int.parse(m.group(3)!), mo, int.parse(m.group(2)!));
   }
   return null;
 }
 
 /// Parse a bank CSV with flexible column headers.
 List<BankStatementCsvRow> parseBankStatementCsv(String text) {
-  final lines = text.split(RegExp(r'\r?\n')).map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+  final lines = text
+      .split(RegExp(r'\r?\n'))
+      .map((l) => l.trim())
+      .where((l) => l.isNotEmpty)
+      .toList();
   if (lines.length < 2) return const [];
 
   final headers = parseCsvLine(lines.first.replaceFirst('﻿', ''));
@@ -362,10 +438,12 @@ List<BankStatementCsvRow> parseBankStatementCsv(String text) {
     );
   }
   if (amountIdx < 0 && (debitIdx < 0 || creditIdx < 0)) {
-    throw const BankCsvException('missing_amount', 'CSV must include amount or debit/credit columns');
+    throw const BankCsvException(
+        'missing_amount', 'CSV must include amount or debit/credit columns');
   }
 
-  String cell(List<String> cells, int idx) => idx >= 0 && idx < cells.length ? cells[idx] : '';
+  String cell(List<String> cells, int idx) =>
+      idx >= 0 && idx < cells.length ? cells[idx] : '';
 
   final rows = <BankStatementCsvRow>[];
   for (var i = 1; i < lines.length; i++) {
@@ -405,7 +483,8 @@ List<BankStatementCsvRow> parseBankStatementCsv(String text) {
 String bankReconCsvTemplate() =>
     'date,amount,description,reference\n2026-04-01,5000.00,UPI/FLAT A-101 maint,UTR123456789\n2026-04-02,-12000.00,NEFT Vendor ABC,NEFT987654321\n';
 
-String _normalizeRef(String? s) => (s ?? '').replaceAll(RegExp(r'\s'), '').toLowerCase();
+String _normalizeRef(String? s) =>
+    (s ?? '').replaceAll(RegExp(r'\s'), '').toLowerCase();
 
 bool _refsOverlap(String? a, String? b) {
   final na = _normalizeRef(a), nb = _normalizeRef(b);
@@ -429,7 +508,9 @@ bool _signedAmountsMatch(double statementAmount, double targetAmount) =>
 DateTime? _ymdUtc(String s) {
   final m = RegExp(r'^(\d{1,4})-(\d{1,2})-(\d{1,2})$').firstMatch(slice10(s));
   if (m == null) return null;
-  final y = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), d = int.parse(m.group(3)!);
+  final y = int.parse(m.group(1)!),
+      mo = int.parse(m.group(2)!),
+      d = int.parse(m.group(3)!);
   final dt = DateTime.utc(y, mo, d);
   if (dt.year != y || dt.month != mo || dt.day != d) return null;
   return dt;
@@ -457,7 +538,8 @@ int _daysApart(String a, String b) {
   final dayDiff = _daysApart(line.lineDate, target.date);
   if (dayDiff <= dateToleranceDays) {
     confidence += dayDiff == 0 ? 0.25 : 0.15;
-    reasons.add(dayDiff == 0 ? 'Same date' : 'Date within ±$dateToleranceDays days');
+    reasons.add(
+        dayDiff == 0 ? 'Same date' : 'Date within ±$dateToleranceDays days');
   }
 
   final narration = '${line.description ?? ''} ${line.reference ?? ''}';
@@ -473,7 +555,11 @@ int _daysApart(String a, String b) {
         reasons.add('Flat number in narration');
       }
     case ReconcilableLedgerEntry(:final title):
-      if (title != null && title.isNotEmpty && narration.toLowerCase().contains(jsSlice(title.toLowerCase(), 0, 8))) {
+      if (title != null &&
+          title.isNotEmpty &&
+          narration
+              .toLowerCase()
+              .contains(jsSlice(title.toLowerCase(), 0, 8))) {
         confidence += 0.08;
         reasons.add('Title in narration');
       }
@@ -525,7 +611,9 @@ class ReconPaymentInput {
   final String? transactionId;
   final String? chargeTitle;
 
-  factory ReconPaymentInput.fromJson(Map<String, dynamic> j, {String? chargeTitle}) => ReconPaymentInput(
+  factory ReconPaymentInput.fromJson(Map<String, dynamic> j,
+          {String? chargeTitle}) =>
+      ReconPaymentInput(
         id: (j['id'] ?? '').toString(),
         flatNumber: (j['flat_number'] ?? '').toString(),
         amount: jsNumber(j['amount']),
@@ -589,7 +677,8 @@ List<ReconcilableTarget> buildReconcilableTargets(
   final targets = <ReconcilableTarget>[];
   for (final p in payments) {
     if (p.paymentStatus != 'verified') continue;
-    if (normalizePaymentChannel(p.paymentMethod) != PaymentChannel.bank) continue;
+    if (normalizePaymentChannel(p.paymentMethod) != PaymentChannel.bank)
+      continue;
     if (alreadyMatchedPaymentIds.contains(p.id)) continue;
     final billing = paymentBillingDate(p.dueDate);
     targets.add(ReconcilablePayment(
@@ -600,30 +689,37 @@ List<ReconcilableTarget> buildReconcilableTargets(
       transactionId: p.transactionId,
       flatNumber: p.flatNumber,
       chargeTitle: p.chargeTitle,
-      label: 'Flat ${p.flatNumber} — ${p.chargeTitle ?? 'Maintenance'} — ${jsInr(p.amount)}',
+      label:
+          'Flat ${p.flatNumber} — ${p.chargeTitle ?? 'Maintenance'} — ${jsInr(p.amount)}',
     ));
   }
   for (final e in ledgerEntries) {
     if (e.paymentStatus != 'verified') continue;
-    if (normalizePaymentChannel(e.paymentMethod) != PaymentChannel.bank) continue;
+    if (normalizePaymentChannel(e.paymentMethod) != PaymentChannel.bank)
+      continue;
     if (alreadyMatchedEntryIds.contains(e.id)) continue;
     final isExpense = e.destination == 'separate_entry';
     targets.add(ReconcilableLedgerEntry(
       id: e.id,
       amount: isExpense ? -e.totalAmount.abs() : e.totalAmount,
-      date: ledgerTransactionDate(transactionDate: e.transactionDate, entryMonth: e.entryMonth, createdAt: e.createdAt),
+      date: ledgerTransactionDate(
+          transactionDate: e.transactionDate,
+          entryMonth: e.entryMonth,
+          createdAt: e.createdAt),
       paymentMethod: e.paymentMethod,
       transactionId: e.transactionId,
       title: e.title,
       destination: e.destination,
       labelAmount: e.totalAmount,
-      label: '${isExpense ? 'Expense' : 'Receipt'} — ${e.title ?? 'Ledger'} — ${jsInr(e.totalAmount)}',
+      label:
+          '${isExpense ? 'Expense' : 'Receipt'} — ${e.title ?? 'Ledger'} — ${jsInr(e.totalAmount)}',
     ));
   }
   return targets;
 }
 
-String targetKey(ReconcilableTarget target) => '${reconKindId(target.kind)}:${target.id}';
+String targetKey(ReconcilableTarget target) =>
+    '${reconKindId(target.kind)}:${target.id}';
 
 SuggestedMatch suggestionFromTarget(
   StatementLineForMatch line,
@@ -656,7 +752,8 @@ List<SuggestedMatch> rankCandidatesForLine(
         .where((t) => !usedTargetKeys.contains(targetKey(t)))
         .map((t) => suggestionFromTarget(line, t, dateToleranceDays))
         .where((s) => s.matchConfidence > 0),
-    (SuggestedMatch a, SuggestedMatch b) => numDesc(a.matchConfidence, b.matchConfidence),
+    (SuggestedMatch a, SuggestedMatch b) =>
+        numDesc(a.matchConfidence, b.matchConfidence),
   );
   return ranked.take(limit).toList();
 }
@@ -711,7 +808,10 @@ List<SuggestedMatch> suggestMatches(
       used.add(targetKey(best.target));
     }
   }
-  return stableSorted(suggestions, (SuggestedMatch a, SuggestedMatch b) => numDesc(a.matchConfidence, b.matchConfidence));
+  return stableSorted(
+      suggestions,
+      (SuggestedMatch a, SuggestedMatch b) =>
+          numDesc(a.matchConfidence, b.matchConfidence));
 }
 
 class ReconciliationSummary {
@@ -781,7 +881,8 @@ ReconciliationSummary computeReconciliationSummary(
 }
 
 /// `lineStatus` from `BankReconciliation.tsx`: confirmed / rejected / suggested / unmatched.
-String reconLineStatus(String lineId, Map<String, String> matchStatusByLineId, Set<String> suggestedLineIds) {
+String reconLineStatus(String lineId, Map<String, String> matchStatusByLineId,
+    Set<String> suggestedLineIds) {
   final m = matchStatusByLineId[lineId];
   if (m == 'confirmed' || m == 'manual') return 'confirmed';
   if (m == 'rejected') return 'rejected';
@@ -790,10 +891,25 @@ String reconLineStatus(String lineId, Map<String, String> matchStatusByLineId, S
 }
 
 /// CSV text of non-confirmed lines (web `exportExceptions`).
-String bankReconExceptionsCsv(List<({String lineDate, double amount, String? description, String? reference, String status})> rows) {
+String bankReconExceptionsCsv(
+    List<
+            ({
+              String lineDate,
+              double amount,
+              String? description,
+              String? reference,
+              String status
+            })>
+        rows) {
   String esc(String s) => '"${s.replaceAll('"', '""')}"';
   final body = rows
-      .map((l) => [l.lineDate, jsNumStr(l.amount), esc(l.description ?? ''), esc(l.reference ?? ''), l.status].join(','))
+      .map((l) => [
+            l.lineDate,
+            jsNumStr(l.amount),
+            esc(l.description ?? ''),
+            esc(l.reference ?? ''),
+            l.status
+          ].join(','))
       .join('\n');
   return 'date,amount,description,reference,status\n$body';
 }

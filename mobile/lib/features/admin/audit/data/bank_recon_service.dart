@@ -36,7 +36,13 @@ class BankImportRow {
 }
 
 class BankLineRow {
-  const BankLineRow({required this.id, required this.importId, required this.lineDate, required this.amount, this.description, this.reference});
+  const BankLineRow(
+      {required this.id,
+      required this.importId,
+      required this.lineDate,
+      required this.amount,
+      this.description,
+      this.reference});
 
   final String id;
   final String importId;
@@ -45,8 +51,12 @@ class BankLineRow {
   final String? description;
   final String? reference;
 
-  StatementLineForMatch get forMatch =>
-      StatementLineForMatch(id: id, lineDate: lineDate, amount: amount, description: description, reference: reference);
+  StatementLineForMatch get forMatch => StatementLineForMatch(
+      id: id,
+      lineDate: lineDate,
+      amount: amount,
+      description: description,
+      reference: reference);
 
   factory BankLineRow.fromJson(Map<String, dynamic> j) => BankLineRow(
         id: (j['id'] ?? '').toString(),
@@ -82,8 +92,9 @@ class BankMatchRow {
   final String? notes;
 
   /// `maintenance_payment:<id>` or `finance_entry:<id>`.
-  String get targetKey =>
-      maintenancePaymentId != null ? 'maintenance_payment:$maintenancePaymentId' : 'finance_entry:$financeEntryId';
+  String get targetKey => maintenancePaymentId != null
+      ? 'maintenance_payment:$maintenancePaymentId'
+      : 'finance_entry:$financeEntryId';
 
   factory BankMatchRow.fromJson(Map<String, dynamic> j) => BankMatchRow(
         id: (j['id'] ?? '').toString(),
@@ -106,18 +117,32 @@ class BankReconService {
 
   Future<List<BankImportRow>> loadImports(String societyId) async {
     if (!dbReady) return const [];
-    final data =
-        await db.from('bank_statement_imports').select('*').eq('society_id', societyId).order('created_at', ascending: false);
+    final data = await db
+        .from('bank_statement_imports')
+        .select('*')
+        .eq('society_id', societyId)
+        .order('created_at', ascending: false);
     return rowsOf(data).map(BankImportRow.fromJson).toList();
   }
 
   Future<({String from, String to})> importPeriod(String importId) async {
-    final row = await db.from('bank_statement_imports').select('period_from, period_to').eq('id', importId).single();
-    return (from: (row['period_from'] ?? '').toString(), to: (row['period_to'] ?? '').toString());
+    final row = await db
+        .from('bank_statement_imports')
+        .select('period_from, period_to')
+        .eq('id', importId)
+        .single();
+    return (
+      from: (row['period_from'] ?? '').toString(),
+      to: (row['period_to'] ?? '').toString()
+    );
   }
 
   Future<List<BankLineRow>> loadLines(String importId) async {
-    final data = await db.from('bank_statement_lines').select(_lineCols).eq('import_id', importId).order('line_date');
+    final data = await db
+        .from('bank_statement_lines')
+        .select(_lineCols)
+        .eq('import_id', importId)
+        .order('line_date');
     return rowsOf(data).map(BankLineRow.fromJson).toList();
   }
 
@@ -125,15 +150,20 @@ class BankReconService {
   Future<List<BankMatchRow>> loadMatches(List<String> lineIds) async {
     final out = <BankMatchRow>[];
     for (var i = 0; i < lineIds.length; i += 80) {
-      final chunk = lineIds.sublist(i, i + 80 > lineIds.length ? lineIds.length : i + 80);
-      final data = await db.from('bank_reconciliation_matches').select('*').inFilter('statement_line_id', chunk);
+      final chunk =
+          lineIds.sublist(i, i + 80 > lineIds.length ? lineIds.length : i + 80);
+      final data = await db
+          .from('bank_reconciliation_matches')
+          .select('*')
+          .inFilter('statement_line_id', chunk);
       out.addAll(rowsOf(data).map(BankMatchRow.fromJson));
     }
     return out;
   }
 
   /// `fetchReconcilableData`: unmatched verified bank-channel payments + ledger rows in the period (± tolerance).
-  Future<List<ReconcilableTarget>> fetchTargets(String societyId, String periodFrom, String periodTo) async {
+  Future<List<ReconcilableTarget>> fetchTargets(
+      String societyId, String periodFrom, String periodTo) async {
     final confirmed = rowsOf(await db
         .from('bank_reconciliation_matches')
         .select('maintenance_payment_id, finance_entry_id')
@@ -141,28 +171,41 @@ class BankReconService {
         .inFilter('status', ['confirmed', 'manual']));
     final matchedPaymentIds = {
       for (final m in confirmed)
-        if (m['maintenance_payment_id'] != null) m['maintenance_payment_id'].toString(),
+        if (m['maintenance_payment_id'] != null)
+          m['maintenance_payment_id'].toString(),
     };
     final matchedEntryIds = {
       for (final m in confirmed)
         if (m['finance_entry_id'] != null) m['finance_entry_id'].toString(),
     };
 
-    final charges = rowsOf(await db.from('maintenance_charges').select('id, title').eq('society_id', societyId));
-    final titleById = {for (final c in charges) (c['id'] ?? '').toString(): (c['title'] ?? '').toString()};
+    final charges = rowsOf(await db
+        .from('maintenance_charges')
+        .select('id, title')
+        .eq('society_id', societyId));
+    final titleById = {
+      for (final c in charges)
+        (c['id'] ?? '').toString(): (c['title'] ?? '').toString()
+    };
     final payments = titleById.isEmpty
         ? <Map<String, dynamic>>[]
         : rowsOf(await db
             .from('maintenance_payments')
-            .select('id, flat_number, amount, payment_method, payment_status, due_date, payment_date, created_at, transaction_id, charge_id')
+            .select(
+                'id, flat_number, amount, payment_method, payment_status, due_date, payment_date, created_at, transaction_id, charge_id')
             .inFilter('charge_id', titleById.keys.toList()));
     final ledger = rowsOf(await db
         .from('finance_entries')
-        .select('id, total_amount, payment_method, payment_status, transaction_date, entry_month, created_at, transaction_id, title, destination')
+        .select(
+            'id, total_amount, payment_method, payment_status, transaction_date, entry_month, created_at, transaction_id, title, destination')
         .eq('society_id', societyId));
 
     final all = buildReconcilableTargets(
-      [for (final p in payments) ReconPaymentInput.fromJson(p, chargeTitle: titleById[(p['charge_id'] ?? '').toString()] ?? '')],
+      [
+        for (final p in payments)
+          ReconPaymentInput.fromJson(p,
+              chargeTitle: titleById[(p['charge_id'] ?? '').toString()] ?? '')
+      ],
       [for (final e in ledger) ReconLedgerInput.fromJson(e)],
       matchedPaymentIds,
       matchedEntryIds,
@@ -187,7 +230,8 @@ class BankReconService {
       'match_confidence': suggestion.matchConfidence,
       'status': status,
       'matched_by': confirmedLike ? adminName : null,
-      'matched_at': confirmedLike ? DateTime.now().toUtc().toIso8601String() : null,
+      'matched_at':
+          confirmedLike ? DateTime.now().toUtc().toIso8601String() : null,
     };
     final existing = await db
         .from('bank_reconciliation_matches')
@@ -196,10 +240,17 @@ class BankReconService {
         .limit(1)
         .maybeSingle();
     if (existing != null && existing['id'] != null) {
-      await db.from('bank_reconciliation_matches').update(payload).eq('id', existing['id'] as Object);
+      await db
+          .from('bank_reconciliation_matches')
+          .update(payload)
+          .eq('id', existing['id'] as Object);
       return;
     }
-    await db.from('bank_reconciliation_matches').insert(payload).select('id').single();
+    await db
+        .from('bank_reconciliation_matches')
+        .insert(payload)
+        .select('id')
+        .single();
   }
 
   Future<String> insertImport({
@@ -227,7 +278,8 @@ class BankReconService {
     return (row['id'] ?? '').toString();
   }
 
-  Future<List<BankLineRow>> insertLines(String importId, String societyId, List<BankStatementCsvRow> rows) async {
+  Future<List<BankLineRow>> insertLines(
+      String importId, String societyId, List<BankStatementCsvRow> rows) async {
     final payload = [
       for (final r in rows)
         {
@@ -240,7 +292,8 @@ class BankReconService {
           'raw_row': r.rawRow,
         },
     ];
-    final data = await db.from('bank_statement_lines').insert(payload).select(_lineCols);
+    final data =
+        await db.from('bank_statement_lines').insert(payload).select(_lineCols);
     return rowsOf(data).map(BankLineRow.fromJson).toList();
   }
 }

@@ -32,7 +32,9 @@ DateTime? parseJsDate(String? s) {
   if (v.isEmpty) return null;
   final m = _dateOnly.firstMatch(v);
   if (m != null) {
-    final y = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), d = int.parse(m.group(3)!);
+    final y = int.parse(m.group(1)!),
+        mo = int.parse(m.group(2)!),
+        d = int.parse(m.group(3)!);
     if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
     return DateTime(y, mo, d);
   }
@@ -105,7 +107,8 @@ Object? _jsonSafe(Object? v) {
     if (v == v.truncateToDouble() && v.abs() < 1e15) return v.toInt();
     return v;
   }
-  if (v is Map) return {for (final e in v.entries) e.key.toString(): _jsonSafe(e.value)};
+  if (v is Map)
+    return {for (final e in v.entries) e.key.toString(): _jsonSafe(e.value)};
   if (v is Iterable) return [for (final e in v) _jsonSafe(e)];
   if (v == null || v is num || v is String || v is bool) return v;
   return v.toString();
@@ -114,7 +117,9 @@ Object? _jsonSafe(Object? v) {
 /// `JSON.stringify(v)` / `JSON.stringify(v, null, indent)` with JS number formatting.
 String jsJson(Object? v, {String? indent}) {
   final safe = _jsonSafe(v);
-  return indent == null ? jsonEncode(safe) : JsonEncoder.withIndent(indent).convert(safe);
+  return indent == null
+      ? jsonEncode(safe)
+      : JsonEncoder.withIndent(indent).convert(safe);
 }
 
 /// `typeof v === 'object' ? JSON.stringify(v) : String(v)` — raw-data rows on the web.
@@ -187,7 +192,9 @@ String fmtIsoDateToDisplay(String? iso) {
   final s = slice10(iso);
   final m = _dateOnly.firstMatch(s);
   if (m == null) return iso;
-  final y = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), d = int.parse(m.group(3)!);
+  final y = int.parse(m.group(1)!),
+      mo = int.parse(m.group(2)!),
+      d = int.parse(m.group(3)!);
   final dt = DateTime(y, mo, d);
   if (dt.year != y || dt.month != mo || dt.day != d) return iso;
   return '${m.group(3)}/${m.group(2)}/${m.group(1)}';

@@ -15,9 +15,14 @@ abstract final class AuditLogger {
   static Future<String> _clientIp() async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
     try {
-      final req = await client.getUrl(Uri.parse('https://api.ipify.org?format=json')).timeout(const Duration(seconds: 3));
+      final req = await client
+          .getUrl(Uri.parse('https://api.ipify.org?format=json'))
+          .timeout(const Duration(seconds: 3));
       final res = await req.close().timeout(const Duration(seconds: 3));
-      final body = await res.transform(utf8.decoder).join().timeout(const Duration(seconds: 3));
+      final body = await res
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 3));
       final data = jsonDecode(body);
       if (data is Map && data['ip'] != null) return data['ip'].toString();
       return 'unknown';
@@ -35,7 +40,8 @@ abstract final class AuditLogger {
       final info = await PackageInfo.fromPlatform();
       version = '${info.version}+${info.buildNumber}';
     } catch (_) {}
-    _userAgent = 'Kutumbika/$version (${Platform.operatingSystem} ${Platform.operatingSystemVersion}; Flutter app)';
+    _userAgent =
+        'Kutumbika/$version (${Platform.operatingSystem} ${Platform.operatingSystemVersion}; Flutter app)';
     return _userAgent!;
   }
 

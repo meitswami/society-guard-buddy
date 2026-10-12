@@ -29,9 +29,11 @@ const List<String> _bankChannelKeys = [
 
 /// `normalizePaymentChannel` — cash / bank (UPI, NEFT, cheque …) / other.
 PaymentChannel normalizePaymentChannel(Object? method) {
-  final x = (method ?? 'cash').toString().toLowerCase().replaceAll(RegExp(r'\s'), '');
+  final x =
+      (method ?? 'cash').toString().toLowerCase().replaceAll(RegExp(r'\s'), '');
   if (x == 'cash') return PaymentChannel.cash;
-  if (_bankChannelKeys.any((k) => x == k || x.contains(k))) return PaymentChannel.bank;
+  if (_bankChannelKeys.any((k) => x == k || x.contains(k)))
+    return PaymentChannel.bank;
   return PaymentChannel.other;
 }
 
@@ -86,9 +88,15 @@ class AuditPaymentRow {
 
   bool get hasFinanceEntry => _truthy(financeEntryId);
 
-  bool get isVerifiedOrPending => paymentStatus == 'verified' || paymentStatus == 'pending';
+  bool get isVerifiedOrPending =>
+      paymentStatus == 'verified' || paymentStatus == 'pending';
 
-  AuditPaymentRow copyWith({double? amount, String? paymentMethod, String? paymentStatus, String? notes, String? dueDate}) =>
+  AuditPaymentRow copyWith(
+          {double? amount,
+          String? paymentMethod,
+          String? paymentStatus,
+          String? notes,
+          String? dueDate}) =>
       AuditPaymentRow(
         id: id,
         chargeId: chargeId,
@@ -147,13 +155,17 @@ class AuditLedgerRow {
         createdAt: (j['created_at'] ?? '').toString(),
         title: jsStrOrNull(j['title']),
         chargeId: jsStrOrNull(j['charge_id']),
-        aggregateFlatCount: j['aggregate_flat_count'] == null ? null : jsNumber(j['aggregate_flat_count']).round(),
+        aggregateFlatCount: j['aggregate_flat_count'] == null
+            ? null
+            : jsNumber(j['aggregate_flat_count']).round(),
         transactionDate: jsStrOrNull(j['transaction_date']),
       );
 
   /// `ledgerTransactionDate(e)`.
-  String get ledgerDate =>
-      ledgerTransactionDate(transactionDate: transactionDate, entryMonth: entryMonth, createdAt: createdAt);
+  String get ledgerDate => ledgerTransactionDate(
+      transactionDate: transactionDate,
+      entryMonth: entryMonth,
+      createdAt: createdAt);
 }
 
 class DuplicatePaymentGroup {
@@ -181,11 +193,14 @@ class DuplicatePaymentGroup {
 }
 
 String _channelOf(Iterable<AuditPaymentRow> rows) {
-  final channels = <PaymentChannel>{for (final r in rows) normalizePaymentChannel(r.paymentMethod)};
+  final channels = <PaymentChannel>{
+    for (final r in rows) normalizePaymentChannel(r.paymentMethod)
+  };
   return channels.length == 1 ? channels.first.name : 'mixed';
 }
 
-double _sumAmounts(Iterable<AuditPaymentRow> rows) => rows.fold(0.0, (s, r) => s + r.amount);
+double _sumAmounts(Iterable<AuditPaymentRow> rows) =>
+    rows.fold(0.0, (s, r) => s + r.amount);
 
 /* ─── Receipt head keys / conflicts ─── */
 
@@ -197,10 +212,15 @@ String paymentDuplicateGroupKey(AuditPaymentRow p) {
 }
 
 /// Same flat + billing month for any monthly-maintenance charge.
-String monthlyMaintenanceMonthKey(String flatNumber, String dueDateYmd) => '$flatNumber||${jsSlice(dueDateYmd, 0, 7)}';
+String monthlyMaintenanceMonthKey(String flatNumber, String dueDateYmd) =>
+    '$flatNumber||${jsSlice(dueDateYmd, 0, 7)}';
 
 class ReceiptHeadRecordingTarget {
-  const ReceiptHeadRecordingTarget({required this.flatNumber, required this.dueDate, required this.chargeId, this.paymentMethod});
+  const ReceiptHeadRecordingTarget(
+      {required this.flatNumber,
+      required this.dueDate,
+      required this.chargeId,
+      this.paymentMethod});
 
   final String flatNumber;
   final String dueDate;
@@ -209,13 +229,19 @@ class ReceiptHeadRecordingTarget {
 }
 
 /// Key used to block a new payment when the receipt head is already recorded.
-String receiptHeadKeyFromRecording(String flatNumber, String chargeId, String dueDate, [String? paymentMethod]) =>
+String receiptHeadKeyFromRecording(
+        String flatNumber, String chargeId, String dueDate,
+        [String? paymentMethod]) =>
     '$flatNumber||$chargeId||${jsSlice(dueDate, 0, 7)}';
 
 /// Verified / pending payments that already occupy the same receipt-head slot.
-List<AuditPaymentRow> findReceiptHeadConflicts(List<AuditPaymentRow> existingPayments, List<ReceiptHeadRecordingTarget> targets) {
+List<AuditPaymentRow> findReceiptHeadConflicts(
+    List<AuditPaymentRow> existingPayments,
+    List<ReceiptHeadRecordingTarget> targets) {
   final targetKeys = {
-    for (final t in targets) receiptHeadKeyFromRecording(t.flatNumber, t.chargeId, t.dueDate, t.paymentMethod),
+    for (final t in targets)
+      receiptHeadKeyFromRecording(
+          t.flatNumber, t.chargeId, t.dueDate, t.paymentMethod),
   };
   final seen = <String>{};
   final conflicts = <AuditPaymentRow>[];
@@ -238,7 +264,9 @@ List<AuditPaymentRow> findMonthlyMaintenanceMonthConflicts(
 ) {
   final monthlyIds = monthlyChargeIds.toSet();
   if (monthlyIds.isEmpty || targets.isEmpty) return const [];
-  final targetKeys = {for (final t in targets) monthlyMaintenanceMonthKey(t.flatNumber, t.dueDate)};
+  final targetKeys = {
+    for (final t in targets) monthlyMaintenanceMonthKey(t.flatNumber, t.dueDate)
+  };
   final seen = <String>{};
   final conflicts = <AuditPaymentRow>[];
   for (final p in existingPayments) {
@@ -321,7 +349,9 @@ List<DuplicatePaymentGroup> findDuplicatePaymentGroups(
     if (allowed != null && !allowed.contains(p.chargeId)) continue;
     final dateStr = p.billingDate;
     final month = dateStr.isNotEmpty ? (ymOf(dateStr) ?? 'unknown') : 'unknown';
-    final key = groupAcrossCharges ? '${p.flatNumber}||$month' : paymentDuplicateGroupKey(p);
+    final key = groupAcrossCharges
+        ? '${p.flatNumber}||$month'
+        : paymentDuplicateGroupKey(p);
     groups.putIfAbsent(key, () => []).add(p);
   }
 
@@ -388,7 +418,8 @@ class LedgerOvercountEntry {
   final String createdAt;
 
   /// `ledgerTransactionDate(e)` (these rows never carry `transaction_date`).
-  String get ledgerDate => ledgerTransactionDate(entryMonth: entryMonth, createdAt: createdAt);
+  String get ledgerDate =>
+      ledgerTransactionDate(entryMonth: entryMonth, createdAt: createdAt);
 }
 
 class DateBoundaryMismatch {
@@ -465,7 +496,8 @@ List<LedgerOvercountMonth> analyzeLedgerOvercountByMonth(
       final d = p.billingDate;
       if (d.isEmpty) continue;
       final t = jsTimeMs(d);
-      if (t != null && t >= bounds.fromMs && t <= bounds.toMs) reportTotal += p.amount;
+      if (t != null && t >= bounds.fromMs && t <= bounds.toMs)
+        reportTotal += p.amount;
     }
 
     final unlinked = <LedgerOvercountEntry>[];
@@ -501,8 +533,13 @@ List<LedgerOvercountMonth> analyzeLedgerOvercountByMonth(
       final pMonth = pDate.isNotEmpty ? (ymOf(pDate) ?? '') : '';
       final eMonth = _truthy(entry.entryMonth)
           ? entry.entryMonth!
-          : (_truthy(entry.transactionDate) ? (ymOf(entry.transactionDate) ?? '') : '');
-      if (pMonth.isNotEmpty && eMonth.isNotEmpty && pMonth != eMonth && (pMonth == month || eMonth == month)) {
+          : (_truthy(entry.transactionDate)
+              ? (ymOf(entry.transactionDate) ?? '')
+              : '');
+      if (pMonth.isNotEmpty &&
+          eMonth.isNotEmpty &&
+          pMonth != eMonth &&
+          (pMonth == month || eMonth == month)) {
         boundary.add(DateBoundaryMismatch(
           payment: p,
           paymentMonth: pMonth,
@@ -640,7 +677,8 @@ List<BalanceTransaction> buildChannelTransactions(
       channel: normalizePaymentChannel(p.paymentMethod),
       source: BalanceTxnSource.payment,
       id: p.id,
-      label: _l(hi, 'Flat ${p.flatNumber} maintenance receipt', 'फ्लैट ${p.flatNumber} रखरखाव रसीद'),
+      label: _l(hi, 'Flat ${p.flatNumber} maintenance receipt',
+          'फ्लैट ${p.flatNumber} रखरखाव रसीद'),
     ));
   }
   for (final e in allLedger) {
@@ -655,7 +693,9 @@ List<BalanceTransaction> buildChannelTransactions(
         channel: ch,
         source: BalanceTxnSource.ledger,
         id: e.id,
-        label: _truthy(e.title) ? e.title! : _l(hi, 'Expense entry', 'खर्च प्रविष्टि'),
+        label: _truthy(e.title)
+            ? e.title!
+            : _l(hi, 'Expense entry', 'खर्च प्रविष्टि'),
       ));
     } else if (!linkedFeIds.contains(e.id)) {
       txns.add(BalanceTransaction(
@@ -667,7 +707,8 @@ List<BalanceTransaction> buildChannelTransactions(
         id: e.id,
         label: _truthy(e.title)
             ? e.title!
-            : _l(hi, 'Ledger receipt (no linked payments)', 'लेजर रसीद (कोई जुड़ा भुगतान नहीं)'),
+            : _l(hi, 'Ledger receipt (no linked payments)',
+                'लेजर रसीद (कोई जुड़ा भुगतान नहीं)'),
       ));
     }
   }
@@ -675,8 +716,11 @@ List<BalanceTransaction> buildChannelTransactions(
 }
 
 /// Running balance per channel; finds the first date the balance turns negative.
-ChannelBalanceTrace? traceChannelBalanceDeficit(List<BalanceTransaction> transactions, PaymentChannel channel) {
-  final channelTxns = stableSorted(transactions.where((t) => t.channel == channel), (BalanceTransaction a, BalanceTransaction b) {
+ChannelBalanceTrace? traceChannelBalanceDeficit(
+    List<BalanceTransaction> transactions, PaymentChannel channel) {
+  final channelTxns =
+      stableSorted(transactions.where((t) => t.channel == channel),
+          (BalanceTransaction a, BalanceTransaction b) {
     final cmp = jsLocaleCompare(a.date, b.date);
     if (cmp != 0) return cmp;
     if (a.type == b.type) return 0;
@@ -791,7 +835,8 @@ class RecordingMismatchMonth {
   final List<RecordingMismatchSource> sources;
 }
 
-bool _isVerifiedFlatsOnly(AuditLedgerRow e) => e.recordMode == 'flats_only' && e.paymentStatus == 'verified';
+bool _isVerifiedFlatsOnly(AuditLedgerRow e) =>
+    e.recordMode == 'flats_only' && e.paymentStatus == 'verified';
 
 List<RecordingMismatchMonth> analyzeRecordingMismatchByMonth(
   List<AuditPaymentRow> verifiedPayments,
@@ -839,7 +884,8 @@ List<RecordingMismatchMonth> analyzeRecordingMismatchByMonth(
           kind: MismatchSourceKind.orphanPayment,
           id: p.id,
           date: paymentTransactionDate(p),
-          label: _l(hi, 'Flat ${p.flatNumber} — no ledger link', 'फ्लैट ${p.flatNumber} — कोई लेजर लिंक नहीं'),
+          label: _l(hi, 'Flat ${p.flatNumber} — no ledger link',
+              'फ्लैट ${p.flatNumber} — कोई लेजर लिंक नहीं'),
           amount: p.amount,
         ));
       }
@@ -853,7 +899,8 @@ List<RecordingMismatchMonth> analyzeRecordingMismatchByMonth(
           date: e.ledgerDate,
           label: _truthy(e.title)
               ? e.title!
-              : _l(hi, 'Ledger entry — no linked payments', 'लेजर प्रविष्टि — कोई जुड़ा भुगतान नहीं'),
+              : _l(hi, 'Ledger entry — no linked payments',
+                  'लेजर प्रविष्टि — कोई जुड़ा भुगतान नहीं'),
           amount: e.totalAmount,
         ));
       }
@@ -868,10 +915,12 @@ List<RecordingMismatchMonth> analyzeRecordingMismatchByMonth(
     ));
   }
 
-  return stableSorted(issues, (a, b) => numDesc(a.difference.abs(), b.difference.abs()));
+  return stableSorted(
+      issues, (a, b) => numDesc(a.difference.abs(), b.difference.abs()));
 }
 
-String formatChannelBalanceFaultTrace(ChannelBalanceTrace trace, {bool hi = false}) {
+String formatChannelBalanceFaultTrace(ChannelBalanceTrace trace,
+    {bool hi = false}) {
   final firstDate = trace.firstNegativeDate;
   if (firstDate == null) {
     return _l(
@@ -883,7 +932,9 @@ String formatChannelBalanceFaultTrace(ChannelBalanceTrace trace, {bool hi = fals
 
   final monthLabel = trace.firstNegativeMonth ?? jsSlice(firstDate, 0, 7);
   final culpritLines = trace.culprits.take(4).map((c) {
-    final kind = c.type == BalanceTxnType.expense ? _l(hi, 'Expense', 'खर्च') : _l(hi, 'Receipt', 'रसीद');
+    final kind = c.type == BalanceTxnType.expense
+        ? _l(hi, 'Expense', 'खर्च')
+        : _l(hi, 'Receipt', 'रसीद');
     return hi
         ? '  • ${c.date}: $kind "${c.label}" ${jsInr(c.amount)} → शेष ${jsInr(c.balanceAfter)}'
         : '  • ${c.date}: $kind "${c.label}" ${jsInr(c.amount)} → balance ${jsInr(c.balanceAfter)}';
@@ -902,14 +953,18 @@ String formatChannelBalanceFaultTrace(ChannelBalanceTrace trace, {bool hi = fals
     hi
         ? 'गड़बड़ी का आरंभ: $firstDate ($monthLabel) — इस तिथि से पहले शेष ${jsInr(trace.balanceBeforeFault)} था।'
         : 'Fault origin: $firstDate ($monthLabel) — balance was ${jsInr(trace.balanceBeforeFault)} before this date.',
-    if (culpritLines.isNotEmpty) '${_l(hi, 'Entries on fault date:', 'गड़बड़ी की तिथि की प्रविष्टियाँ:')}\n$culpritLines',
-    if (monthLines.isNotEmpty) '${_l(hi, 'Month-wise trail from fault:', 'गड़बड़ी से माहवार क्रम:')}\n$monthLines',
+    if (culpritLines.isNotEmpty)
+      '${_l(hi, 'Entries on fault date:', 'गड़बड़ी की तिथि की प्रविष्टियाँ:')}\n$culpritLines',
+    if (monthLines.isNotEmpty)
+      '${_l(hi, 'Month-wise trail from fault:', 'गड़बड़ी से माहवार क्रम:')}\n$monthLines',
   ].join('\n\n');
 }
 
-String formatRecordingMismatchFaultTrace(List<RecordingMismatchMonth> issues, {bool hi = false}) {
+String formatRecordingMismatchFaultTrace(List<RecordingMismatchMonth> issues,
+    {bool hi = false}) {
   if (issues.isEmpty) return '';
-  final chronological = stableSorted(issues, (a, b) => jsLocaleCompare(a.month, b.month));
+  final chronological =
+      stableSorted(issues, (a, b) => jsLocaleCompare(a.month, b.month));
   final lines = chronological.map((m) {
     final dir = m.difference > 0
         ? _l(hi, 'payments exceed ledger', 'भुगतान लेजर से अधिक')
@@ -928,13 +983,25 @@ String formatRecordingMismatchFaultTrace(List<RecordingMismatchMonth> issues, {b
 
 /* ─── Chronological fix queue for self-audit ─── */
 
-enum AuditFixAction { delete, edit, alignPaymentMonth, alignLedgerMonth, review }
+enum AuditFixAction {
+  delete,
+  edit,
+  alignPaymentMonth,
+  alignLedgerMonth,
+  review
+}
 
 enum FixSeverity { critical, warning, info }
 
 enum FixEntryKind { payment, ledger }
 
-enum FixFindingKind { duplicatePayments, ledgerOvercount, recordingMismatch, orphanedPayments, channelBalance }
+enum FixFindingKind {
+  duplicatePayments,
+  ledgerOvercount,
+  recordingMismatch,
+  orphanedPayments,
+  channelBalance
+}
 
 class AuditFixQueueItem {
   const AuditFixQueueItem({
@@ -1000,7 +1067,8 @@ String channelLabel(PaymentChannel ch, {bool hi = false}) => switch (ch) {
     };
 
 /// Ordered list of exact entries to inspect — earliest discrepancy date first.
-List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = false}) {
+List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input,
+    {bool hi = false}) {
   final items = <AuditFixQueueItem>[];
   final seen = <String>{};
   void push(AuditFixQueueItem item) {
@@ -1012,7 +1080,8 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
   for (final group in input.duplicateGroups) {
     final sorted = stableSorted(
       group.payments,
-      (AuditPaymentRow a, AuditPaymentRow b) => jsLocaleCompare(paymentTransactionDate(a), paymentTransactionDate(b)),
+      (AuditPaymentRow a, AuditPaymentRow b) =>
+          jsLocaleCompare(paymentTransactionDate(a), paymentTransactionDate(b)),
     );
     for (var idx = 0; idx < sorted.length; idx++) {
       final p = sorted[idx];
@@ -1024,16 +1093,21 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
         issueLabel: _l(hi, 'Duplicate payment', 'डुप्लिकेट भुगतान'),
         entryKind: FixEntryKind.payment,
         entryId: p.id,
-        title: _l(hi, 'Flat ${group.flatNumber} — ${group.chargeTitle}', 'फ्लैट ${group.flatNumber} — ${group.chargeTitle}'),
+        title: _l(hi, 'Flat ${group.flatNumber} — ${group.chargeTitle}',
+            'फ्लैट ${group.flatNumber} — ${group.chargeTitle}'),
         amount: p.amount,
         detail: hi
             ? '${group.paymentMethod.toUpperCase()} · ${fmtIsoMonthToDisplay(group.month)} · एक ही रसीद शीर्ष के लिए ${group.count} पंक्तियाँ'
             : '${group.paymentMethod.toUpperCase()} · ${fmtIsoMonthToDisplay(group.month)} · ${group.count} rows for same receipt head',
         action: isExtra ? AuditFixAction.delete : AuditFixAction.review,
         actionHint: isExtra
-            ? _l(hi, 'Delete this extra duplicate — keep one verified row per flat per billing month',
+            ? _l(
+                hi,
+                'Delete this extra duplicate — keep one verified row per flat per billing month',
                 'यह अतिरिक्त डुप्लिकेट हटाएँ — प्रति फ्लैट प्रति बिलिंग माह एक सत्यापित पंक्ति रखें')
-            : _l(hi, 'Keep this entry — delete the newer duplicate(s) for this flat/month',
+            : _l(
+                hi,
+                'Keep this entry — delete the newer duplicate(s) for this flat/month',
                 'यह प्रविष्टि रखें — इस फ्लैट/माह की नई डुप्लिकेट प्रविष्टियाँ हटाएँ'),
         severity: FixSeverity.critical,
         findingKind: FixFindingKind.duplicatePayments,
@@ -1051,13 +1125,16 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
         issueLabel: _l(hi, 'Orphan ledger receipt', 'बिना लिंक की लेजर रसीद'),
         entryKind: FixEntryKind.ledger,
         entryId: e.id,
-        title: _truthy(e.title) ? e.title! : _l(hi, 'Ledger entry', 'लेजर प्रविष्टि'),
+        title: _truthy(e.title)
+            ? e.title!
+            : _l(hi, 'Ledger entry', 'लेजर प्रविष्टि'),
         amount: e.totalAmount,
         detail: hi
             ? '${fmtIsoMonthToDisplay(issue.month)} की अवधि रिपोर्ट बढ़ाता है — कोई जुड़ा रखरखाव भुगतान नहीं'
             : 'Inflates ${fmtIsoMonthToDisplay(issue.month)} period report — no linked maintenance payment',
         action: AuditFixAction.delete,
-        actionHint: _l(hi, 'Delete this orphan finance_entries row', 'यह बिना लिंक की finance_entries पंक्ति हटाएँ'),
+        actionHint: _l(hi, 'Delete this orphan finance_entries row',
+            'यह बिना लिंक की finance_entries पंक्ति हटाएँ'),
         severity: FixSeverity.critical,
         findingKind: FixFindingKind.ledgerOvercount,
       ));
@@ -1068,10 +1145,12 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
         queueKey: 'boundary-pay-${row.payment.id}',
         sortDate: paymentTransactionDate(row.payment),
         month: issue.month,
-        issueLabel: _l(hi, 'Payment vs ledger month mismatch', 'भुगतान बनाम लेजर माह असंगति'),
+        issueLabel: _l(hi, 'Payment vs ledger month mismatch',
+            'भुगतान बनाम लेजर माह असंगति'),
         entryKind: FixEntryKind.payment,
         entryId: row.payment.id,
-        title: _l(hi, 'Flat ${row.payment.flatNumber}$titleSuffix', 'फ्लैट ${row.payment.flatNumber}$titleSuffix'),
+        title: _l(hi, 'Flat ${row.payment.flatNumber}$titleSuffix',
+            'फ्लैट ${row.payment.flatNumber}$titleSuffix'),
         amount: row.payment.amount,
         detail: hi
             ? 'भुगतान माह ${row.paymentMonth} ≠ लेजर माह ${row.entryMonth}'
@@ -1089,9 +1168,13 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
     }
   }
 
-  final mismatchMonths = stableSorted(input.recordingMismatchMonths, (a, b) => jsLocaleCompare(a.month, b.month));
+  final mismatchMonths = stableSorted(input.recordingMismatchMonths,
+      (a, b) => jsLocaleCompare(a.month, b.month));
   for (final monthIssue in mismatchMonths) {
-    final sources = stableSorted(monthIssue.sources, (RecordingMismatchSource a, RecordingMismatchSource b) => jsLocaleCompare(a.date, b.date));
+    final sources = stableSorted(
+        monthIssue.sources,
+        (RecordingMismatchSource a, RecordingMismatchSource b) =>
+            jsLocaleCompare(a.date, b.date));
     for (final source in sources) {
       final isOrphanLedger = source.kind == MismatchSourceKind.orphanLedger;
       final isOrphanPayment = source.kind == MismatchSourceKind.orphanPayment;
@@ -1100,8 +1183,10 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
         sortDate: slice10(source.date),
         month: monthIssue.month,
         issueLabel: isOrphanPayment
-            ? _l(hi, 'Orphan payment (no ledger)', 'बिना लिंक भुगतान (लेजर नहीं)')
-            : _l(hi, 'Orphan ledger (no payment)', 'बिना लिंक लेजर (भुगतान नहीं)'),
+            ? _l(hi, 'Orphan payment (no ledger)',
+                'बिना लिंक भुगतान (लेजर नहीं)')
+            : _l(hi, 'Orphan ledger (no payment)',
+                'बिना लिंक लेजर (भुगतान नहीं)'),
         entryKind: isOrphanLedger ? FixEntryKind.ledger : FixEntryKind.payment,
         entryId: source.id,
         title: source.label,
@@ -1123,7 +1208,8 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
 
   for (final p in input.orphanedPayments) {
     final sortDate = paymentTransactionDate(p);
-    final month = sortDate.isNotEmpty ? (ymOf(sortDate) ?? 'unknown') : 'unknown';
+    final month =
+        sortDate.isNotEmpty ? (ymOf(sortDate) ?? 'unknown') : 'unknown';
     push(AuditFixQueueItem(
       queueKey: 'orphan-pay-${p.id}',
       sortDate: sortDate.isNotEmpty ? sortDate : '9999-12-31',
@@ -1133,9 +1219,12 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
       entryId: p.id,
       title: _l(hi, 'Flat ${p.flatNumber}', 'फ्लैट ${p.flatNumber}'),
       amount: p.amount,
-      detail: _l(hi, 'Verified payment with no finance_entry_id', 'सत्यापित भुगतान जिसका finance_entry_id नहीं है'),
+      detail: _l(hi, 'Verified payment with no finance_entry_id',
+          'सत्यापित भुगतान जिसका finance_entry_id नहीं है'),
       action: AuditFixAction.delete,
-      actionHint: _l(hi, 'Delete if mistaken, or re-record from Finance → Payments with ledger',
+      actionHint: _l(
+          hi,
+          'Delete if mistaken, or re-record from Finance → Payments with ledger',
           'गलत हो तो हटाएँ, या वित्त → भुगतान से लेजर के साथ फिर से दर्ज करें'),
       severity: FixSeverity.warning,
       findingKind: FixFindingKind.orphanedPayments,
@@ -1146,17 +1235,25 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
     if (trace == null || trace.firstNegativeDate == null) continue;
     final chLabel = channelLabel(trace.channel, hi: hi);
     for (final c in trace.culprits) {
-      final kind = c.type == BalanceTxnType.expense ? _l(hi, 'Expense', 'खर्च') : _l(hi, 'Receipt', 'रसीद');
+      final kind = c.type == BalanceTxnType.expense
+          ? _l(hi, 'Expense', 'खर्च')
+          : _l(hi, 'Receipt', 'रसीद');
       push(AuditFixQueueItem(
         queueKey: 'channel-${trace.channel.name}-${c.id}',
         sortDate: c.date,
         month: jsSlice(c.date, 0, 7),
-        issueLabel: hi ? 'ऋणात्मक $chLabel शेष' : 'Negative ${chLabel.toLowerCase()} balance',
-        entryKind: c.source == BalanceTxnSource.payment ? FixEntryKind.payment : FixEntryKind.ledger,
+        issueLabel: hi
+            ? 'ऋणात्मक $chLabel शेष'
+            : 'Negative ${chLabel.toLowerCase()} balance',
+        entryKind: c.source == BalanceTxnSource.payment
+            ? FixEntryKind.payment
+            : FixEntryKind.ledger,
         entryId: c.id,
         title: c.label,
         amount: c.amount,
-        detail: hi ? 'गड़बड़ी की तिथि पर $kind → शेष ${jsInr(c.balanceAfter)}' : '$kind on fault date → balance ${jsInr(c.balanceAfter)}',
+        detail: hi
+            ? 'गड़बड़ी की तिथि पर $kind → शेष ${jsInr(c.balanceAfter)}'
+            : '$kind on fault date → balance ${jsInr(c.balanceAfter)}',
         action: AuditFixAction.review,
         actionHint: hi
             ? 'payment_method माध्यम टैग जाँचें — वित्त → लेन-देन ($chLabel) में संपादन या हटाना पड़ सकता है'
@@ -1175,7 +1272,10 @@ List<AuditFixQueueItem> buildAuditFixQueue(AuditFixQueueInput input, {bool hi = 
 }
 
 /// `paymentMonthKey` from `financeAuditRemediation.ts`.
-String paymentMonthKey({String? dueDate, String? paymentDate, String? createdAt}) {
-  final d = _truthy(dueDate) ? dueDate! : (_truthy(paymentDate) ? paymentDate! : (createdAt ?? ''));
+String paymentMonthKey(
+    {String? dueDate, String? paymentDate, String? createdAt}) {
+  final d = _truthy(dueDate)
+      ? dueDate!
+      : (_truthy(paymentDate) ? paymentDate! : (createdAt ?? ''));
   return d.isNotEmpty ? (ymOf(d) ?? '') : '';
 }

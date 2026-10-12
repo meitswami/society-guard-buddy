@@ -55,7 +55,8 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
   void didUpdateWidget(covariant AdminAuditModule old) {
     super.didUpdateWidget(old);
     final q = widget.ctx.initialQuery;
-    if (q != null && q.isNotEmpty && q != old.ctx.initialQuery) setState(() => _search.text = q);
+    if (q != null && q.isNotEmpty && q != old.ctx.initialQuery)
+      setState(() => _search.text = q);
     if (old.ctx.societyId != widget.ctx.societyId) _refresh();
   }
 
@@ -75,7 +76,8 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
     }
     setState(() => _loading = true);
     try {
-      final rows = await _service.fetchLogs(widget.ctx.societyId, filter: _filter);
+      final rows =
+          await _service.fetchLogs(widget.ctx.societyId, filter: _filter);
       if (mounted) setState(() => _logs = rows);
     } catch (_) {
       if (mounted) setState(() => _logs = const []);
@@ -91,7 +93,9 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
 
   void _scrollToAlarms() {
     final c = _alarmsKey.currentContext;
-    if (c != null) Scrollable.ensureVisible(c, duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    if (c != null)
+      Scrollable.ensureVisible(c,
+          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
   }
 
   void _navigate(String tab, String? subTab) {
@@ -111,11 +115,14 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
   String _eventLabel(String type) => switch (type) {
         'login_success' => context.tr('✅ Login Success', '✅ लॉगिन सफल'),
         'login_failed' => context.tr('❌ Login Failed', '❌ लॉगिन विफल'),
-        'password_change' => context.tr('🔑 Password Changed', '🔑 पासवर्ड बदला गया'),
+        'password_change' =>
+          context.tr('🔑 Password Changed', '🔑 पासवर्ड बदला गया'),
         'password_reset' => context.tr('🔄 Password Reset', '🔄 पासवर्ड रीसेट'),
         'logout' => context.tr('🚪 Logout', '🚪 लॉगआउट'),
-        'biometric_register' => context.tr('👆 Biometric Registered', '👆 बायोमेट्रिक पंजीकृत'),
-        'geofence_violation' => context.tr('📍 Geofence / Location breach', '📍 जियोफेंस / स्थान उल्लंघन'),
+        'biometric_register' =>
+          context.tr('👆 Biometric Registered', '👆 बायोमेट्रिक पंजीकृत'),
+        'geofence_violation' => context.tr(
+            '📍 Geofence / Location breach', '📍 जियोफेंस / स्थान उल्लंघन'),
         _ => type,
       };
 
@@ -127,7 +134,8 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
         'password_reset' => context.tr('Password Reset', 'पासवर्ड रीसेट'),
         'logout' => context.tr('Logout', 'लॉगआउट'),
         'biometric_register' => context.tr('Biometric', 'बायोमेट्रिक'),
-        'geofence_violation' => context.tr('Geofence / Location', 'जियोफेंस / स्थान'),
+        'geofence_violation' =>
+          context.tr('Geofence / Location', 'जियोफेंस / स्थान'),
         _ => f,
       };
 
@@ -149,7 +157,10 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
     final t = context.tokens;
     final total = _logs.length;
     final failed = _logs.where((l) => l.eventType == 'login_failed').length;
-    final resets = _logs.where((l) => l.eventType == 'password_reset' || l.eventType == 'password_change').length;
+    final resets = _logs
+        .where((l) =>
+            l.eventType == 'password_reset' || l.eventType == 'password_change')
+        .length;
     final filtered = _filtered;
 
     return PageContainer(
@@ -157,8 +168,11 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
       children: [
         PageHeader(
           icon: Icons.description_outlined,
-          title: context.tk('audit.title', 'Security Audit Logs', 'सुरक्षा ऑडिट लॉग'),
-          subtitle: context.isHi ? '$total घटनाएँ · $failed विफल · $resets रीसेट' : '$total events · $failed failed · $resets resets',
+          title: context.tk(
+              'audit.title', 'Security Audit Logs', 'सुरक्षा ऑडिट लॉग'),
+          subtitle: context.isHi
+              ? '$total घटनाएँ · $failed विफल · $resets रीसेट'
+              : '$total events · $failed failed · $resets resets',
           bottomSpacing: 16,
         ),
         StatGrid(columns: 3, spacing: 8, children: [
@@ -167,16 +181,23 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
             iconColor: t.accent,
             title: context.tr('Total events', 'कुल घटनाएँ'),
             value: '$total',
-            description: context.tr('All security audit log entries stored for this society.', 'इस सोसाइटी के लिए संग्रहीत सभी सुरक्षा ऑडिट लॉग प्रविष्टियाँ।'),
-            howCalculated: context.tr('Count of audit_logs rows loaded in this view.', 'इस दृश्य में लोड की गई audit_logs पंक्तियों की संख्या।'),
+            description: context.tr(
+                'All security audit log entries stored for this society.',
+                'इस सोसाइटी के लिए संग्रहीत सभी सुरक्षा ऑडिट लॉग प्रविष्टियाँ।'),
+            howCalculated: context.tr(
+                'Count of audit_logs rows loaded in this view.',
+                'इस दृश्य में लोड की गई audit_logs पंक्तियों की संख्या।'),
           ),
           DescriptiveStatCard(
             icon: Icons.warning_amber_rounded,
             iconColor: t.warning,
             title: context.tr('Failed logins', 'विफल लॉगिन'),
             value: '$failed',
-            description: context.tr('Unsuccessful login attempts — possible wrong password or abuse.', 'असफल लॉगिन प्रयास — संभवतः गलत पासवर्ड या दुरुपयोग।'),
-            howCalculated: context.tr('Rows where event_type = login_failed.', 'वे पंक्तियाँ जहाँ event_type = login_failed।'),
+            description: context.tr(
+                'Unsuccessful login attempts — possible wrong password or abuse.',
+                'असफल लॉगिन प्रयास — संभवतः गलत पासवर्ड या दुरुपयोग।'),
+            howCalculated: context.tr('Rows where event_type = login_failed.',
+                'वे पंक्तियाँ जहाँ event_type = login_failed।'),
           ),
           DescriptiveStatCard(
             icon: Icons.shield_outlined,
@@ -184,16 +205,27 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
             title: context.tr('Password changes', 'पासवर्ड बदलाव'),
             caption: context.tr('Pwd changes', 'पासवर्ड बदलाव'),
             value: '$resets',
-            description: context.tr('Password reset or change events for admins, guards, or residents.', 'एडमिन, गार्ड या निवासियों के पासवर्ड रीसेट या बदलाव की घटनाएँ।'),
-            howCalculated: context.tr('Rows where event_type is password_reset or password_change.', 'वे पंक्तियाँ जहाँ event_type password_reset या password_change है।'),
+            description: context.tr(
+                'Password reset or change events for admins, guards, or residents.',
+                'एडमिन, गार्ड या निवासियों के पासवर्ड रीसेट या बदलाव की घटनाएँ।'),
+            howCalculated: context.tr(
+                'Rows where event_type is password_reset or password_change.',
+                'वे पंक्तियाँ जहाँ event_type password_reset या password_change है।'),
           ),
         ]),
         const SizedBox(height: 16),
-        KeyedSubtree(key: _alarmsKey, child: FinanceAuditAlarms(societyId: ctx.societyId, refreshSeq: _refreshSeq)),
+        KeyedSubtree(
+            key: _alarmsKey,
+            child: FinanceAuditAlarms(
+                societyId: ctx.societyId, refreshSeq: _refreshSeq)),
         const SizedBox(height: 16),
-        FinanceIntegrityAudit(societyId: ctx.societyId, onOpenAlarms: _scrollToAlarms),
+        FinanceIntegrityAudit(
+            societyId: ctx.societyId, onOpenAlarms: _scrollToAlarms),
         const SizedBox(height: 16),
-        BankReconciliationPanel(societyId: ctx.societyId, adminName: ctx.adminName, refreshSeq: _refreshSeq),
+        BankReconciliationPanel(
+            societyId: ctx.societyId,
+            adminName: ctx.adminName,
+            refreshSeq: _refreshSeq),
         const SizedBox(height: 16),
         ManualAuditTracer(societyId: ctx.societyId, onNavigate: _navigate),
         const SizedBox(height: 16),
@@ -204,7 +236,8 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
             child: AppTextField(
               controller: _search,
               caps: false,
-              hint: context.tr('Search name, ID, IP...', 'नाम, ID, IP खोजें...'),
+              hint:
+                  context.tr('Search name, ID, IP...', 'नाम, ID, IP खोजें...'),
               prefixIcon: Icons.search,
               onChanged: (_) => setState(() {}),
             ),
@@ -228,9 +261,14 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
         if (_loading)
           const LoadingView()
         else if (filtered.isEmpty)
-          EmptyView(message: context.tr('No audit logs found', 'कोई ऑडिट लॉग नहीं मिला'))
+          EmptyView(
+              message:
+                  context.tr('No audit logs found', 'कोई ऑडिट लॉग नहीं मिला'))
         else
-          for (final log in filtered) ...[_logCard(log), const SizedBox(height: 8)],
+          for (final log in filtered) ...[
+            _logCard(log),
+            const SizedBox(height: 8)
+          ],
       ],
     );
   }
@@ -273,33 +311,51 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
             const SizedBox(height: 12),
             Row(children: [
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(context.tr('IP Address', 'IP पता'), style: AppText.caption(context)),
-                  Text((log.ipAddress ?? '').isNotEmpty ? log.ipAddress! : 'N/A', style: AppText.mono(context, size: 12)),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(context.tr('IP Address', 'IP पता'),
+                          style: AppText.caption(context)),
+                      Text(
+                          (log.ipAddress ?? '').isNotEmpty
+                              ? log.ipAddress!
+                              : 'N/A',
+                          style: AppText.mono(context, size: 12)),
+                    ]),
               ),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(context.tr('User Type', 'उपयोगकर्ता प्रकार'), style: AppText.caption(context)),
-                  Text(log.userType.isEmpty ? '' : '${log.userType[0].toUpperCase()}${log.userType.substring(1)}',
-                      style: const TextStyle(fontSize: 12)),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(context.tr('User Type', 'उपयोगकर्ता प्रकार'),
+                          style: AppText.caption(context)),
+                      Text(
+                          log.userType.isEmpty
+                              ? ''
+                              : '${log.userType[0].toUpperCase()}${log.userType.substring(1)}',
+                          style: const TextStyle(fontSize: 12)),
+                    ]),
               ),
             ]),
             if (log.deviceInfo.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(context.tr('Device Info', 'डिवाइस जानकारी'), style: AppText.caption(context)),
+              Text(context.tr('Device Info', 'डिवाइस जानकारी'),
+                  style: AppText.caption(context)),
               _kvBox(log.deviceInfo),
             ],
             if (log.details.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(context.tr('Details', 'विवरण'), style: AppText.caption(context)),
+              Text(context.tr('Details', 'विवरण'),
+                  style: AppText.caption(context)),
               _kvBox(log.details),
             ],
             if ((log.userAgent ?? '').isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(context.tr('User Agent', 'यूज़र एजेंट'), style: AppText.caption(context)),
-              Text(log.userAgent!, style: AppText.mono(context, size: 10, color: t.mutedForeground)),
+              Text(context.tr('User Agent', 'यूज़र एजेंट'),
+                  style: AppText.caption(context)),
+              Text(log.userAgent!,
+                  style: AppText.mono(context,
+                      size: 10, color: t.mutedForeground)),
             ],
           ],
         ],
@@ -313,12 +369,19 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
       width: double.infinity,
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: AppTokens.tint(t.muted, 0.5), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+      decoration: BoxDecoration(
+          color: AppTokens.tint(t.muted, 0.5),
+          borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         for (final e in m.entries)
           Text.rich(TextSpan(children: [
-            TextSpan(text: '${e.key}: ', style: AppText.mono(context, size: 10, color: t.mutedForeground)),
-            TextSpan(text: jsString(e.value), style: AppText.mono(context, size: 10)),
+            TextSpan(
+                text: '${e.key}: ',
+                style:
+                    AppText.mono(context, size: 10, color: t.mutedForeground)),
+            TextSpan(
+                text: jsString(e.value),
+                style: AppText.mono(context, size: 10)),
           ])),
       ]),
     );
