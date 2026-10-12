@@ -62,8 +62,9 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
       final rows = await _service.fetchFixedAssets(_sid);
       if (mounted) setState(() => _assets = rows);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, auditErrText(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -115,8 +116,9 @@ class _AdminFixedAssetsModuleState extends State<AdminFixedAssetsModule> {
                 'मानक टेम्पलेट पहले से मौजूद हैं'));
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, auditErrText(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _seeding = false);
     }

@@ -112,10 +112,12 @@ class _BankReconciliationPanelState extends State<BankReconciliationPanel> {
     final used = <String>{};
     for (final m in existing) {
       if (m.status == 'confirmed' || m.status == 'manual') {
-        if (m.maintenancePaymentId != null)
+        if (m.maintenancePaymentId != null) {
           used.add('maintenance_payment:${m.maintenancePaymentId}');
-        if (m.financeEntryId != null)
+        }
+        if (m.financeEntryId != null) {
           used.add('finance_entry:${m.financeEntryId}');
+        }
       }
     }
     final inputs = lineRows
@@ -162,10 +164,12 @@ class _BankReconciliationPanelState extends State<BankReconciliationPanel> {
       final matchedLineIds = matches.map((m) => m.statementLineId).toSet();
       final used = <String>{};
       for (final m in matches) {
-        if (m.maintenancePaymentId != null)
+        if (m.maintenancePaymentId != null) {
           used.add('maintenance_payment:${m.maintenancePaymentId}');
-        if (m.financeEntryId != null)
+        }
+        if (m.financeEntryId != null) {
           used.add('finance_entry:${m.financeEntryId}');
+        }
       }
 
       final dbSuggested =
@@ -271,19 +275,21 @@ class _BankReconciliationPanelState extends State<BankReconciliationPanel> {
     setState(() => _importing = true);
     try {
       final bytes = file.bytes;
-      if (bytes == null)
+      if (bytes == null) {
         throw Exception(
             context.tr('Could not read file', 'फ़ाइल पढ़ी नहीं जा सकी'));
+      }
       final text =
           utf8.decode(bytes, allowMalformed: true).replaceFirst('﻿', '');
       final parsed = parseBankStatementCsv(text);
       if (parsed.isEmpty) {
-        if (mounted)
+        if (mounted) {
           AppFeedback.toast(
               context,
               context.tr('No valid rows found in CSV',
                   'CSV में कोई मान्य पंक्ति नहीं मिली'),
               tone: BadgeTone.alert);
+        }
         return;
       }
       final dates = parsed.map((r) => r.lineDate).toList()..sort();

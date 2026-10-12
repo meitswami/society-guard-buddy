@@ -33,7 +33,9 @@ class FinancePeriodReportExportInput {
   final String? generatedBy;
   final bool includeSignatures;
 
-  FinancePeriodReportExportInput withLetterhead(SocietyLetterhead? lh, ReportPdfMode mode) => FinancePeriodReportExportInput(
+  FinancePeriodReportExportInput withLetterhead(
+          SocietyLetterhead? lh, ReportPdfMode mode) =>
+      FinancePeriodReportExportInput(
         societyName: societyName,
         periodFrom: periodFrom,
         periodTo: periodTo,
@@ -67,16 +69,29 @@ FinancePeriodReportExportInput toFinancePeriodReportExportInput(
       generatedBy: generatedBy,
     );
 
-const List<String> kHeadWiseHeaders = ['Head', 'Cash', 'Bank / UPI', 'Other', 'Total'];
+const List<String> kHeadWiseHeaders = [
+  'Head',
+  'Cash',
+  'Bank / UPI',
+  'Other',
+  'Total'
+];
 
-List<List<Object?>> financePeriodSummaryRows(FinancePeriodReportExportInput input) {
+List<List<Object?>> financePeriodSummaryRows(
+    FinancePeriodReportExportInput input) {
   final r = input.report;
   return [
-    ['Period', '${fmtIsoDateToDisplay(input.periodFrom)} to ${fmtIsoDateToDisplay(input.periodTo)}'],
+    [
+      'Period',
+      '${fmtIsoDateToDisplay(input.periodFrom)} to ${fmtIsoDateToDisplay(input.periodTo)}'
+    ],
     ['Generated', fmtDateTimeFull(input.generatedAt)],
     ['', ''],
     ['Collection receipts — Cash', moneyInr(r.receiptByMethod.cash)],
-    ['Collection receipts — Bank / UPI / online', moneyInr(r.receiptByMethod.bank)],
+    [
+      'Collection receipts — Bank / UPI / online',
+      moneyInr(r.receiptByMethod.bank)
+    ],
     ['Collection receipts — Other', moneyInr(r.receiptByMethod.other)],
     ['Total receipts', moneyInr(r.totalReceipts)],
     ['Verified payment rows', '${r.verifiedPaymentCount}'],
@@ -100,21 +115,37 @@ List<List<Object?>> financePeriodSummaryRows(FinancePeriodReportExportInput inpu
   ];
 }
 
-List<List<Object?>> headWiseRows(List<HeadAmount> rows) =>
-    [for (final h in rows) [h.head, h.row.cash, h.row.bank, h.row.other, h.row.total]];
+List<List<Object?>> headWiseRows(List<HeadAmount> rows) => [
+      for (final h in rows)
+        [h.head, h.row.cash, h.row.bank, h.row.other, h.row.total]
+    ];
 
-Uint8List buildFinancePeriodReportExcel(FinancePeriodReportExportInput input) => rowsToXlsxBytes([
-      ExportSheet(name: 'Summary', headers: const ['Item', 'Value'], rows: financePeriodSummaryRows(input)),
-      ExportSheet(name: 'Receipts by head', headers: kHeadWiseHeaders, rows: headWiseRows(input.report.receiptByHead)),
-      ExportSheet(name: 'Expenses by head', headers: kHeadWiseHeaders, rows: headWiseRows(input.report.expenseByHead)),
+Uint8List buildFinancePeriodReportExcel(FinancePeriodReportExportInput input) =>
+    rowsToXlsxBytes([
+      ExportSheet(
+          name: 'Summary',
+          headers: const ['Item', 'Value'],
+          rows: financePeriodSummaryRows(input)),
+      ExportSheet(
+          name: 'Receipts by head',
+          headers: kHeadWiseHeaders,
+          rows: headWiseRows(input.report.receiptByHead)),
+      ExportSheet(
+          name: 'Expenses by head',
+          headers: kHeadWiseHeaders,
+          rows: headWiseRows(input.report.expenseByHead)),
     ]);
 
 Uint8List buildFinancePeriodReportWord(FinancePeriodReportExportInput input) {
-  List<List<Object?>> money(List<List<Object?>> rows) =>
-      [for (final r in rows) [for (final c in r) c is num ? moneyInr(c) : '$c']];
-  final receiptTable = buildHtmlTable(kHeadWiseHeaders, money(headWiseRows(input.report.receiptByHead)), {1, 2, 3, 4});
-  final expenseTable = buildHtmlTable(kHeadWiseHeaders, money(headWiseRows(input.report.expenseByHead)), {1, 2, 3, 4});
-  final summaryTable = buildHtmlTable(const ['Item', 'Value'], financePeriodSummaryRows(input));
+  List<List<Object?>> money(List<List<Object?>> rows) => [
+        for (final r in rows) [for (final c in r) c is num ? moneyInr(c) : '$c']
+      ];
+  final receiptTable = buildHtmlTable(kHeadWiseHeaders,
+      money(headWiseRows(input.report.receiptByHead)), {1, 2, 3, 4});
+  final expenseTable = buildHtmlTable(kHeadWiseHeaders,
+      money(headWiseRows(input.report.expenseByHead)), {1, 2, 3, 4});
+  final summaryTable =
+      buildHtmlTable(const ['Item', 'Value'], financePeriodSummaryRows(input));
   final body = '''
     <h1>${escapeHtml(input.societyName.isEmpty ? 'Society' : input.societyName)}</h1>
     <p class="meta">Finance period report · ${fmtIsoDateToDisplay(input.periodFrom)} to ${fmtIsoDateToDisplay(input.periodTo)}</p>
@@ -126,7 +157,11 @@ Uint8List buildFinancePeriodReportWord(FinancePeriodReportExportInput input) {
   return htmlToWordBytes('Finance period report', body);
 }
 
-Uint8List buildFinancePeriodReportCsv(FinancePeriodReportExportInput input) => rowsToCsvBytes(const ['Item', 'Value'], [
+Uint8List buildFinancePeriodReportCsv(FinancePeriodReportExportInput input) =>
+    rowsToCsvBytes(const [
+      'Item',
+      'Value'
+    ], [
       ...financePeriodSummaryRows(input),
       ['', ''],
       ['Collection receipts (head-wise)', ''],
@@ -140,13 +175,27 @@ Uint8List buildFinancePeriodReportCsv(FinancePeriodReportExportInput input) => r
 
 const List<double> _headWidthsMm = [52, 28, 32, 24, 28];
 
-pw.Widget _headWiseTable(String title, List<HeadAmount> rows, String footerLabel, ChannelTotals totals, double total) {
+pw.Widget _headWiseTable(String title, List<HeadAmount> rows,
+    String footerLabel, ChannelTotals totals, double total) {
   final body = <List<String>>[
     if (rows.isEmpty)
       ['(none in this period)', '—', '—', '—', '—']
     else
-      for (final h in rows) [h.head, moneyInr(h.row.cash), moneyInr(h.row.bank), moneyInr(h.row.other), moneyInr(h.row.total)],
-    [footerLabel, moneyInr(totals.cash), moneyInr(totals.bank), moneyInr(totals.other), moneyInr(total)],
+      for (final h in rows)
+        [
+          h.head,
+          moneyInr(h.row.cash),
+          moneyInr(h.row.bank),
+          moneyInr(h.row.other),
+          moneyInr(h.row.total)
+        ],
+    [
+      footerLabel,
+      moneyInr(totals.cash),
+      moneyInr(totals.bank),
+      moneyInr(totals.other),
+      moneyInr(total)
+    ],
   ];
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -169,7 +218,8 @@ pw.Widget _headWiseTable(String title, List<HeadAmount> rows, String footerLabel
 }
 
 /// Printable finance period report (`buildFinancePeriodReportPdfBlob`).
-Future<Uint8List> buildFinancePeriodReportPdf(FinancePeriodReportExportInput input) {
+Future<Uint8List> buildFinancePeriodReportPdf(
+    FinancePeriodReportExportInput input) {
   final r = input.report;
   final pdf = SocietyReportPdf(
     letterhead: input.letterhead ?? input.societyName,
@@ -179,7 +229,8 @@ Future<Uint8List> buildFinancePeriodReportPdf(FinancePeriodReportExportInput inp
   pdf.header(ReportMeta(
     title: 'Finance period report',
     society: input.societyName,
-    period: '${fmtIsoDateToDisplay(input.periodFrom)} to ${fmtIsoDateToDisplay(input.periodTo)}',
+    period:
+        '${fmtIsoDateToDisplay(input.periodFrom)} to ${fmtIsoDateToDisplay(input.periodTo)}',
     date: fmtDateTimeFull(input.generatedAt),
     generatedBy: input.generatedBy,
   ));
@@ -188,13 +239,16 @@ Future<Uint8List> buildFinancePeriodReportPdf(FinancePeriodReportExportInput inp
     size: 8,
     gapAfterMm: 3,
   ));
-  pdf.add(_headWiseTable('Collection receipts (head-wise)', r.receiptByHead, 'All receipts', r.receiptByMethod, r.totalReceipts));
-  pdf.add(_headWiseTable('Expenses (head-wise)', r.expenseByHead, 'All expenses', r.expenseByMethod, r.totalExpenses));
+  pdf.add(_headWiseTable('Collection receipts (head-wise)', r.receiptByHead,
+      'All receipts', r.receiptByMethod, r.totalReceipts));
+  pdf.add(_headWiseTable('Expenses (head-wise)', r.expenseByHead,
+      'All expenses', r.expenseByMethod, r.totalExpenses));
   pdf.add(SocietyPdf.text('Summary', size: 11, gapAfterMm: 2));
   pdf.add(SocietyPdf.text('  Cash in hand (net): ${moneyInr(r.cashInHand)}'));
   pdf.add(SocietyPdf.text('  Cash in bank (net): ${moneyInr(r.cashInBank)}'));
   pdf.add(SocietyPdf.text('  Other channels (net): ${moneyInr(r.otherNet)}'));
-  pdf.add(SocietyPdf.text('  Total balance: ${moneyInr(r.totalBalance)}', size: 11, gapAfterMm: 3));
+  pdf.add(SocietyPdf.text('  Total balance: ${moneyInr(r.totalBalance)}',
+      size: 11, gapAfterMm: 3));
   pdf.add(SocietyPdf.text(
     'Receipts use verified maintenance payment dates (verified_at / payment_date / created_at). Expenses use ledger separate-entry rows by transaction_date.',
     size: 8,
@@ -205,7 +259,8 @@ Future<Uint8List> buildFinancePeriodReportPdf(FinancePeriodReportExportInput inp
 }
 
 /// `downloadFinancePeriodReport(format, input)` bytes.
-Future<Uint8List> buildFinancePeriodReportBytes(ExportFormat format, FinancePeriodReportExportInput input) async =>
+Future<Uint8List> buildFinancePeriodReportBytes(
+        ExportFormat format, FinancePeriodReportExportInput input) async =>
     switch (format) {
       ExportFormat.pdf => await buildFinancePeriodReportPdf(input),
       ExportFormat.excel => buildFinancePeriodReportExcel(input),

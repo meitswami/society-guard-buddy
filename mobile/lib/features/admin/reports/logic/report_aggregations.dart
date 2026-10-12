@@ -4,7 +4,8 @@ import 'finance_period_report.dart';
 /// (the Supabase fetch lives in `data/reports_repository.dart`).
 
 class StatusBucket {
-  const StatusBucket({required this.status, required this.count, required this.total});
+  const StatusBucket(
+      {required this.status, required this.count, required this.total});
 
   /// Web sets both `payment_status` and `status` to the bucket key.
   final String status;
@@ -15,7 +16,10 @@ class StatusBucket {
 
   @override
   bool operator ==(Object other) =>
-      other is StatusBucket && other.status == status && other.count == count && other.total == total;
+      other is StatusBucket &&
+      other.status == status &&
+      other.count == count &&
+      other.total == total;
 
   @override
   int get hashCode => Object.hash(status, count, total);
@@ -55,7 +59,8 @@ class ReportModuleAggregations {
 }
 
 /// Count + sum per key, in first-seen order (JS `Map` iteration order).
-List<StatusBucket> bucketByKey<T>(Iterable<T> rows, String Function(T) keyFn, double Function(T) amountFn) {
+List<StatusBucket> bucketByKey<T>(
+    Iterable<T> rows, String Function(T) keyFn, double Function(T) amountFn) {
   final counts = <String, int>{};
   final totals = <String, double>{};
   for (final row in rows) {
@@ -63,11 +68,15 @@ List<StatusBucket> bucketByKey<T>(Iterable<T> rows, String Function(T) keyFn, do
     counts[key] = (counts[key] ?? 0) + 1;
     totals[key] = (totals[key] ?? 0) + amountFn(row);
   }
-  return [for (final k in counts.keys) StatusBucket(status: k, count: counts[k]!, total: totals[k]!)];
+  return [
+    for (final k in counts.keys)
+      StatusBucket(status: k, count: counts[k]!, total: totals[k]!)
+  ];
 }
 
 /// Ledger payment-status buckets for a filtered entry set.
-List<StatusBucket> computeLedgerStatusBuckets(Iterable<FinancePeriodLedgerEntry> entries) =>
+List<StatusBucket> computeLedgerStatusBuckets(
+        Iterable<FinancePeriodLedgerEntry> entries) =>
     bucketByKey(entries, (e) => e.effectiveStatus, (e) => e.totalAmount);
 
 class LedgerInflowGroup {
@@ -95,7 +104,8 @@ class LedgerInflowGroup {
       other.count == count;
 
   @override
-  int get hashCode => Object.hash(recordMode, destination, total, flatUnits, count);
+  int get hashCode =>
+      Object.hash(recordMode, destination, total, flatUnits, count);
 }
 
 /// Group ledger inflows by `record_mode` + `destination` (Report page and Finance totals).

@@ -84,7 +84,9 @@ class _FinanceAuditAlarmsState extends State<FinanceAuditAlarms> {
   void didUpdateWidget(covariant FinanceAuditAlarms old) {
     super.didUpdateWidget(old);
     if (old.refreshSeq != widget.refreshSeq ||
-        old.societyId != widget.societyId) _detect();
+        old.societyId != widget.societyId) {
+      _detect();
+    }
   }
 
   @override
@@ -212,9 +214,10 @@ class _FinanceAuditAlarmsState extends State<FinanceAuditAlarms> {
     final flat = _lookupFlat.text.trim();
     final month = _lookupMonth.text.trim();
     if (flat.isEmpty && _lookupChargeId.isEmpty && month.isEmpty) {
-      if (!silent)
+      if (!silent) {
         AppFeedback.toast(context, context.t('finance.filterNeedOne'),
             tone: BadgeTone.alert);
+      }
       return;
     }
     setState(() {

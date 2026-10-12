@@ -685,9 +685,10 @@ IntegrityAuditResult computeIntegrityAudit(IntegrityAuditInput input,
     /* ─── 7. Finance entries with wrong flat count ─── */
     final linkedCount = <String, int>{};
     for (final p in allPayments) {
-      if (p.hasFinanceEntry)
+      if (p.hasFinanceEntry) {
         linkedCount[p.financeEntryId!] =
             (linkedCount[p.financeEntryId!] ?? 0) + 1;
+      }
     }
     final mismatchIds = <String>[];
     for (final e in allLedger) {

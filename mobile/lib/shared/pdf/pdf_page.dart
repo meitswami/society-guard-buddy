@@ -21,8 +21,9 @@ double ptToMm(double pt) => pt / PdfPageFormat.mm;
 double fontPtToMm(double pt) => pt * 25.4 / 72;
 
 /// Page size (mm) for an orientation.
-({double w, double h}) letterSizeMm({bool landscape = false}) =>
-    landscape ? (w: kLetterHeightMm, h: kLetterWidthMm) : (w: kLetterWidthMm, h: kLetterHeightMm);
+({double w, double h}) letterSizeMm({bool landscape = false}) => landscape
+    ? (w: kLetterHeightMm, h: kLetterWidthMm)
+    : (w: kLetterWidthMm, h: kLetterHeightMm);
 
 /// Letter page format with zero built-in margins (margins come from the letterhead layout).
 PdfPageFormat societyPdfFormat({bool landscape = false}) {

@@ -92,8 +92,9 @@ Uint8List _xlsx(
   for (var i = 0; i < sheets.length; i++) {
     final s = sheets[i];
     final name = s.name.length > 31 ? s.name.substring(0, 31) : s.name;
-    if (i == 0 && defaultSheet != null && defaultSheet != name)
+    if (i == 0 && defaultSheet != null && defaultSheet != name) {
       book.rename(defaultSheet, name);
+    }
     final sheet = book[name];
     sheet.appendRow([for (final h in s.headers) TextCellValue(h)]);
     for (final r in s.rows) {

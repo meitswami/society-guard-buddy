@@ -7,7 +7,8 @@ import 'package:kutumbika_mobile/features/admin/reports/export/monthly_report_ex
 import 'package:kutumbika_mobile/features/admin/reports/logic/finance_period_report.dart';
 import 'package:kutumbika_mobile/shared/pdf/letterhead_report_engine.dart';
 
-final Uint8List tinyPng = Uint8List.fromList(img.encodePng(img.Image(width: 4, height: 4)));
+final Uint8List tinyPng =
+    Uint8List.fromList(img.encodePng(img.Image(width: 4, height: 4)));
 
 SocietyLetterhead societyA() => SocietyLetterhead(
       societyId: 'society-a',
@@ -39,7 +40,8 @@ SocietyLetterhead societyB() => SocietyLetterhead(
       defaultReportFormat: ReportPdfMode.letterhead,
     );
 
-bool isPdf(Uint8List b) => b.length > 4 && String.fromCharCodes(b.sublist(0, 4)) == '%PDF';
+bool isPdf(Uint8List b) =>
+    b.length > 4 && String.fromCharCodes(b.sublist(0, 4)) == '%PDF';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -57,20 +59,30 @@ void main() {
       expect(layout.contentWidth, closeTo(layout.pageW - 40, 1e-5));
     });
 
-    test('plain mode uses standard margins without requiring a letterhead asset', () {
-      final layout = measureReportLayout(SocietyLetterhead.nameOnly('No Letterhead Society'), mode: ReportPdfMode.plain);
+    test(
+        'plain mode uses standard margins without requiring a letterhead asset',
+        () {
+      final layout = measureReportLayout(
+          SocietyLetterhead.nameOnly('No Letterhead Society'),
+          mode: ReportPdfMode.plain);
       expect(layout.contentTop, lessThan(30));
       expect(layout.contentBottom, greaterThan(layout.pageH - 20));
     });
 
     test('auto band places content below the header rule', () {
-      final lh = SocietyLetterhead(name: 'Gamma', letterheadMode: LetterheadMode.auto, address: 'Plot 4', contactPhone: '9999999999');
+      final lh = SocietyLetterhead(
+          name: 'Gamma',
+          letterheadMode: LetterheadMode.auto,
+          address: 'Plot 4',
+          contactPhone: '9999999999');
       final layout = measureReportLayout(lh);
       expect(layout.contentTop, greaterThanOrEqualTo(40));
       expect(autoHeaderRuleY(lh, layout), lessThan(layout.contentTop));
     });
 
-    test('content never overlaps header or footer reserves across page breaks (10+ pages)', () async {
+    test(
+        'content never overlaps header or footer reserves across page breaks (10+ pages)',
+        () async {
       final report = SocietyReportPdf(letterhead: societyA());
       for (var i = 0; i < 120; i++) {
         report.add(SocietyPdf.text('Row $i', size: 9, gapAfterMm: 22));
@@ -82,9 +94,13 @@ void main() {
   });
 
   group('LetterheadReportEngine — report modes & multi-society', () {
-    test('marks official letterhead only when the current society has an asset', () {
+    test('marks official letterhead only when the current society has an asset',
+        () {
       expect(societyHasOfficialLetterhead(societyA()), isTrue);
-      expect(societyHasOfficialLetterhead(const SocietyLetterhead(name: 'Bare Society', letterheadMode: LetterheadMode.auto)), isFalse);
+      expect(
+          societyHasOfficialLetterhead(const SocietyLetterhead(
+              name: 'Bare Society', letterheadMode: LetterheadMode.auto)),
+          isFalse);
       expect(kLetterheadNotConfiguredWarning, contains('not been configured'));
     });
 
@@ -100,14 +116,24 @@ void main() {
       final none = letterheadContextFor('s1', null);
       expect(none.mode, ReportPdfMode.plain);
       expect(none.warning, kLetterheadNotConfiguredWarning);
-      final bare = letterheadContextFor('s1', const SocietyLetterhead(name: 'Bare', letterheadMode: LetterheadMode.auto));
+      final bare = letterheadContextFor(
+          's1',
+          const SocietyLetterhead(
+              name: 'Bare', letterheadMode: LetterheadMode.auto));
       expect(bare.mode, ReportPdfMode.plain);
       expect(bare.warning, isNotNull);
       final ok = letterheadContextFor('s1', societyA());
       expect(ok.mode, ReportPdfMode.letterhead);
       expect(ok.warning, isNull);
-      expect(letterheadContextFor('s1', societyA(), preferredMode: ReportPdfMode.plain).mode, ReportPdfMode.plain);
-      final stationery = letterheadContextFor('s1', const SocietyLetterhead(name: 'S', letterheadMode: LetterheadMode.stationery));
+      expect(
+          letterheadContextFor('s1', societyA(),
+                  preferredMode: ReportPdfMode.plain)
+              .mode,
+          ReportPdfMode.plain);
+      final stationery = letterheadContextFor(
+          's1',
+          const SocietyLetterhead(
+              name: 'S', letterheadMode: LetterheadMode.stationery));
       expect(stationery.mode, ReportPdfMode.letterhead);
     });
 
@@ -159,17 +185,21 @@ void main() {
       expect(bytes.length, greaterThan(200));
     });
 
-    test('long table splits across pages without leaving the content band', () async {
+    test('long table splits across pages without leaving the content band',
+        () async {
       final report = SocietyReportPdf(letterhead: societyA());
       report.add(SocietyPdf.table(
         headers: const ['Flat', 'Dues'],
-        rows: [for (var i = 0; i < 200; i++) ['Flat ${i + 1}', '₹${(i + 1) * 100}']],
+        rows: [
+          for (var i = 0; i < 200; i++) ['Flat ${i + 1}', '₹${(i + 1) * 100}']
+        ],
       ));
       await report.save();
       expect(report.pageCount, greaterThan(1));
     });
 
-    test('empty monthly report still produces a valid PDF with header', () async {
+    test('empty monthly report still produces a valid PDF with header',
+        () async {
       final bytes = await buildMonthlyReportPdf(ReportExportContext(
         societyName: 'Alpha Cooperative Housing Society',
         reportMonth: '2026-08',
@@ -185,7 +215,8 @@ void main() {
         societyName: 'Unbranded Society',
         reportMonth: '2026-08',
         tab: MonthlyReportTab.visitor,
-        letterhead: SocietyLetterhead(name: 'Unbranded Society', letterheadMode: LetterheadMode.auto),
+        letterhead: SocietyLetterhead(
+            name: 'Unbranded Society', letterheadMode: LetterheadMode.auto),
         pdfMode: ReportPdfMode.plain,
         includeSignatures: false,
       ));
@@ -195,7 +226,10 @@ void main() {
 
     test('supports Unicode / Hindi title text in report header', () async {
       final report = SocietyReportPdf(letterhead: societyA());
-      report.header(const ReportMeta(title: 'समिति के 7 सदस्यों का चुनाव', society: 'एवरग्रीन हाइट्स', period: 'अगस्त 2026'));
+      report.header(const ReportMeta(
+          title: 'समिति के 7 सदस्यों का चुनाव',
+          society: 'एवरग्रीन हाइट्स',
+          period: 'अगस्त 2026'));
       final bytes = await report.save();
       expect(bytes.length, greaterThan(300));
     });
@@ -211,7 +245,13 @@ void main() {
       final r = computeFinancePeriodReport(
         periodFrom: '2026-04-01',
         periodTo: '2026-04-30',
-        payments: const [FinancePeriodPayment(paymentStatus: 'verified', amount: 1000, paymentMethod: 'cash', dueDate: '2026-04-02')],
+        payments: const [
+          FinancePeriodPayment(
+              paymentStatus: 'verified',
+              amount: 1000,
+              paymentMethod: 'cash',
+              dueDate: '2026-04-02')
+        ],
         ledgerEntries: const [],
       );
       final bytes = await buildMonthlyReportPdf(ReportExportContext(

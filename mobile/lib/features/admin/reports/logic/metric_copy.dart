@@ -1,7 +1,8 @@
 /// Tap-to-explain copy for report cards — port of the entries of
 /// `src/lib/descriptiveMetricCopy.ts` used by Reports, with Hindi translations.
 class MetricCopy {
-  const MetricCopy(this.titleEn, this.titleHi, this.descEn, this.descHi, [this.howEn, this.howHi]);
+  const MetricCopy(this.titleEn, this.titleHi, this.descEn, this.descHi,
+      [this.howEn, this.howHi]);
 
   final String titleEn;
   final String titleHi;

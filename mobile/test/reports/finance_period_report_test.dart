@@ -4,8 +4,10 @@ import 'package:kutumbika_mobile/features/admin/reports/logic/finance_dates.dart
 import 'package:kutumbika_mobile/features/admin/reports/logic/finance_heads.dart';
 import 'package:kutumbika_mobile/features/admin/reports/logic/finance_period_report.dart';
 
-FinanceOpeningBalanceAnchor anchor(String date, {double? cash, double? bank, double? other}) =>
-    FinanceOpeningBalanceAnchor(asOnDate: date, cashAmount: cash, bankAmount: bank, otherAmount: other);
+FinanceOpeningBalanceAnchor anchor(String date,
+        {double? cash, double? bank, double? other}) =>
+    FinanceOpeningBalanceAnchor(
+        asOnDate: date, cashAmount: cash, bankAmount: bank, otherAmount: other);
 
 ChannelByHeadRow row(double cash, double bank, double other, double total) =>
     ChannelByHeadRow(cash: cash, bank: bank, other: other, total: total);
@@ -21,13 +23,19 @@ void main() {
 
     test('defines Feb 2026 as the earliest reporting month', () {
       expect(kFinanceReportingEarliestMonth, '2026-02');
-      expect(financeReportingMonthRange('2026-02'), (from: '2026-02-01', to: '2026-02-28'));
+      expect(financeReportingMonthRange('2026-02'),
+          (from: '2026-02-01', to: '2026-02-28'));
     });
 
     test('finds latest anchor before period start', () {
-      final anchors = [anchor('2026-01-31', bank: 10000), anchor('2026-02-28', bank: 18145)];
-      expect(findApplicableOpeningAnchor(anchors, '2026-03-01')?.asOnDate, '2026-02-28');
-      expect(findApplicableOpeningAnchor(anchors, '2026-02-28')?.asOnDate, '2026-01-31');
+      final anchors = [
+        anchor('2026-01-31', bank: 10000),
+        anchor('2026-02-28', bank: 18145)
+      ];
+      expect(findApplicableOpeningAnchor(anchors, '2026-03-01')?.asOnDate,
+          '2026-02-28');
+      expect(findApplicableOpeningAnchor(anchors, '2026-02-28')?.asOnDate,
+          '2026-01-31');
       expect(findApplicableOpeningAnchor(anchors, '2026-01-31'), isNull);
     });
 
@@ -44,7 +52,9 @@ void main() {
       expect(report.appliedOpeningAnchor?.bankAmount, 18145);
     });
 
-    test('uses manual cash anchor of zero for period starting after anchor date', () {
+    test(
+        'uses manual cash anchor of zero for period starting after anchor date',
+        () {
       final report = computeFinancePeriodReport(
         periodFrom: '2026-03-01',
         periodTo: '2026-03-31',
@@ -61,7 +71,11 @@ void main() {
         periodFrom: '2026-04-01',
         periodTo: '2026-04-30',
         payments: const [
-          FinancePeriodPayment(paymentStatus: 'verified', amount: 500, paymentMethod: 'upi', dueDate: '2026-03-15'),
+          FinancePeriodPayment(
+              paymentStatus: 'verified',
+              amount: 500,
+              paymentMethod: 'upi',
+              dueDate: '2026-03-15'),
         ],
         ledgerEntries: const [],
         openingBalanceAnchors: [anchor('2026-02-28', bank: 18145)],
@@ -71,8 +85,12 @@ void main() {
   });
 
   group('finance period report head-wise columns', () {
-    test('groups verified receipts by head with cash, bank, and total columns', () {
-      final chargeMajorHeadById = {'ch-maint': 'OPERATION & MAINTENANCE', 'ch-corpus': 'SOCIETY CORPUS FUND'};
+    test('groups verified receipts by head with cash, bank, and total columns',
+        () {
+      final chargeMajorHeadById = {
+        'ch-maint': 'OPERATION & MAINTENANCE',
+        'ch-corpus': 'SOCIETY CORPUS FUND'
+      };
       final report = computeFinancePeriodReport(
         periodFrom: '2026-04-01',
         periodTo: '2026-04-30',
@@ -108,11 +126,14 @@ void main() {
         HeadAmount('SOCIETY CORPUS FUND', row(0, 2500, 0, 2500)),
         HeadAmount('OPERATION & MAINTENANCE', row(1500, 0, 0, 1500)),
       ]);
-      expect(report.receiptByMethod, ChannelTotals(cash: 1500, bank: 2500, other: 0));
+      expect(report.receiptByMethod,
+          ChannelTotals(cash: 1500, bank: 2500, other: 0));
       expect(report.totalReceipts, 4000);
     });
 
-    test('groups separate-entry expenses by head with cash, bank, and total columns', () {
+    test(
+        'groups separate-entry expenses by head with cash, bank, and total columns',
+        () {
       final report = computeFinancePeriodReport(
         periodFrom: '2026-04-01',
         periodTo: '2026-04-30',
@@ -149,11 +170,13 @@ void main() {
         HeadAmount('Electricity', row(800, 1200, 0, 2000)),
         HeadAmount('Security salary', row(300, 0, 0, 300)),
       ]);
-      expect(report.expenseByMethod, ChannelTotals(cash: 1100, bank: 1200, other: 0));
+      expect(report.expenseByMethod,
+          ChannelTotals(cash: 1100, bank: 1200, other: 0));
       expect(report.totalExpenses, 2300);
     });
 
-    test('includes February 2026 society expenses in the Feb period report', () {
+    test('includes February 2026 society expenses in the Feb period report',
+        () {
       final report = computeFinancePeriodReport(
         periodFrom: '2026-02-01',
         periodTo: '2026-02-28',
@@ -179,14 +202,16 @@ void main() {
       );
 
       expect(report.totalExpenses, 168751);
-      expect(report.expenseByMethod, ChannelTotals(cash: 68751, bank: 100000, other: 0));
+      expect(report.expenseByMethod,
+          ChannelTotals(cash: 68751, bank: 100000, other: 0));
       // Untitled separate entries fall back to the "Society expense" head.
       expect(report.expenseByHead.single.head, 'Society expense');
     });
   });
 
   group('period report rules (extra coverage)', () {
-    test('linked ledger rows are not double counted; pending rows are ignored', () {
+    test('linked ledger rows are not double counted; pending rows are ignored',
+        () {
       final report = computeFinancePeriodReport(
         periodFrom: '2026-05-01',
         periodTo: '2026-05-31',
@@ -199,7 +224,11 @@ void main() {
             financeEntryId: 'fe-linked',
             chargeId: 'c1',
           ),
-          FinancePeriodPayment(paymentStatus: 'pending', amount: 999, paymentMethod: 'cash', dueDate: '2026-05-03'),
+          FinancePeriodPayment(
+              paymentStatus: 'pending',
+              amount: 999,
+              paymentMethod: 'cash',
+              dueDate: '2026-05-03'),
         ],
         ledgerEntries: const [
           FinancePeriodLedgerEntry(
@@ -233,19 +262,30 @@ void main() {
       expect(report.totalReceipts, 1700);
       expect(report.totalExpenses, 0);
       // Without chargeMajorHeadById, payments land in "Uncategorized" (web Reports behaviour).
-      expect(report.receiptByHead.map((h) => h.head), ['Uncategorized', 'SOCIETY CORPUS FUND']);
+      expect(report.receiptByHead.map((h) => h.head),
+          ['Uncategorized', 'SOCIETY CORPUS FUND']);
       expect(report.cashInHand, 1000);
       expect(report.cashInBank, 700);
       expect(report.totalBalance, 1700);
     });
 
-    test('opening balance is computed from earlier rows and closing adds the period net', () {
+    test(
+        'opening balance is computed from earlier rows and closing adds the period net',
+        () {
       final report = computeFinancePeriodReport(
         periodFrom: '2026-06-01',
         periodTo: '2026-06-30',
         payments: const [
-          FinancePeriodPayment(paymentStatus: 'verified', amount: 2000, paymentMethod: 'cash', dueDate: '2026-05-10'),
-          FinancePeriodPayment(paymentStatus: 'verified', amount: 300, paymentMethod: 'cash', dueDate: '2026-06-10'),
+          FinancePeriodPayment(
+              paymentStatus: 'verified',
+              amount: 2000,
+              paymentMethod: 'cash',
+              dueDate: '2026-05-10'),
+          FinancePeriodPayment(
+              paymentStatus: 'verified',
+              amount: 300,
+              paymentMethod: 'cash',
+              dueDate: '2026-06-10'),
         ],
         ledgerEntries: const [
           FinancePeriodLedgerEntry(
@@ -277,14 +317,26 @@ void main() {
 
     test('event food ledger rows are filtered out of the society ledger', () {
       const entries = [
-        FinancePeriodLedgerEntry(id: 'a', destination: 'separate_entry', title: 'Event food — Diwali'),
-        FinancePeriodLedgerEntry(id: 'b', destination: 'separate_entry', expenseId: 'e-food'),
-        FinancePeriodLedgerEntry(id: 'c', destination: 'separate_entry', expenseId: 'e-pay', title: 'Event food — x'),
-        FinancePeriodLedgerEntry(id: 'd', destination: 'corpus', title: 'Event contribution — Holi'),
-        FinancePeriodLedgerEntry(id: 'e', destination: 'corpus', title: 'Head adjustment — fix'),
-        FinancePeriodLedgerEntry(id: 'f', destination: 'separate_entry', title: 'Electricity'),
+        FinancePeriodLedgerEntry(
+            id: 'a',
+            destination: 'separate_entry',
+            title: 'Event food — Diwali'),
+        FinancePeriodLedgerEntry(
+            id: 'b', destination: 'separate_entry', expenseId: 'e-food'),
+        FinancePeriodLedgerEntry(
+            id: 'c',
+            destination: 'separate_entry',
+            expenseId: 'e-pay',
+            title: 'Event food — x'),
+        FinancePeriodLedgerEntry(
+            id: 'd', destination: 'corpus', title: 'Event contribution — Holi'),
+        FinancePeriodLedgerEntry(
+            id: 'e', destination: 'corpus', title: 'Head adjustment — fix'),
+        FinancePeriodLedgerEntry(
+            id: 'f', destination: 'separate_entry', title: 'Electricity'),
       ];
-      final kept = filterSocietyLedgerEntries(entries, {'e-food': 'food', 'e-pay': 'payment'});
+      final kept = filterSocietyLedgerEntries(
+          entries, {'e-food': 'food', 'e-pay': 'payment'});
       expect(kept.map((e) => e.id), ['c', 'f']);
     });
 
@@ -305,7 +357,11 @@ void main() {
       expect(e.isVerified, isTrue);
       expect(e.ledgerDate, '2026-04-01');
       expect(e.allocations.single.flatNumber, '101');
-      final p = FinancePeriodPayment.fromJson({'payment_status': 'verified', 'amount': '700', 'due_date': '2026-04-09T00:00:00'});
+      final p = FinancePeriodPayment.fromJson({
+        'payment_status': 'verified',
+        'amount': '700',
+        'due_date': '2026-04-09T00:00:00'
+      });
       expect(p.amount, 700);
       expect(p.billingDate, '2026-04-09');
     });
@@ -315,7 +371,11 @@ void main() {
         periodFrom: '2026-04-01',
         periodTo: '2026-04-30',
         payments: const [
-          FinancePeriodPayment(paymentStatus: 'verified', amount: 123456, paymentMethod: 'cash', dueDate: '2026-04-05'),
+          FinancePeriodPayment(
+              paymentStatus: 'verified',
+              amount: 123456,
+              paymentMethod: 'cash',
+              dueDate: '2026-04-05'),
         ],
         ledgerEntries: const [],
       );
@@ -340,33 +400,46 @@ void main() {
     });
 
     test('expense head parsing handles legacy bracket titles', () {
-      expect(financeExpenseHeadFromLedgerTitle('[Electricity] March bill'), 'Electricity');
-      expect(financeExpenseHeadFromLedgerTitle('[Events & Functions] Tent'), 'Tent');
+      expect(financeExpenseHeadFromLedgerTitle('[Electricity] March bill'),
+          'Electricity');
+      expect(financeExpenseHeadFromLedgerTitle('[Events & Functions] Tent'),
+          'Tent');
       expect(financeExpenseHeadFromLedgerTitle('  '), 'Society expense');
       expect(financeExpenseHeadFromLedgerTitle(null), 'Society expense');
-      expect(financeExpenseHeadFromLedgerEntry('[Caterer] Dinner', 'food'), 'Event food — Caterer');
-      expect(inferMajorHeadFromGroupName('Security guard salary'), 'SALARY & WAGES');
-      expect(inferMajorHeadFromGroupName('Lift AMC'), 'OPERATION & MAINTENANCE');
-      expect(inferMajorHeadFromGroupName('Corpus legal fund'), 'CORPUS FUND (LEGAL)');
+      expect(financeExpenseHeadFromLedgerEntry('[Caterer] Dinner', 'food'),
+          'Event food — Caterer');
+      expect(inferMajorHeadFromGroupName('Security guard salary'),
+          'SALARY & WAGES');
+      expect(
+          inferMajorHeadFromGroupName('Lift AMC'), 'OPERATION & MAINTENANCE');
+      expect(inferMajorHeadFromGroupName('Corpus legal fund'),
+          'CORPUS FUND (LEGAL)');
       expect(inferMajorHeadFromGroupName(''), 'MISCELLANEOUS');
     });
 
     test('date helpers', () {
       expect(addDaysYmd('2026-02-28', 1), '2026-03-01');
       expect(addDaysYmd('2026-03-01', -1), '2026-02-28');
-      expect(dateInInclusiveRange('2026-04-30', '2026-04-01', '2026-04-30'), isTrue);
-      expect(dateInInclusiveRange('2026-05-01', '2026-04-01', '2026-04-30'), isFalse);
-      expect(dateInInclusiveRange('not-a-date', '2026-04-01', '2026-04-30'), isFalse);
+      expect(dateInInclusiveRange('2026-04-30', '2026-04-01', '2026-04-30'),
+          isTrue);
+      expect(dateInInclusiveRange('2026-05-01', '2026-04-01', '2026-04-30'),
+          isFalse);
+      expect(dateInInclusiveRange('not-a-date', '2026-04-01', '2026-04-30'),
+          isFalse);
       expect(isDateBefore('2026-03-31', '2026-04-01'), isTrue);
       expect(isDateBefore('2026-04-01', '2026-04-01'), isFalse);
       expect(
-        ledgerTransactionDate(transactionDate: null, entryMonth: null, createdAt: '2026-01-09T10:00:00Z'),
+        ledgerTransactionDate(
+            transactionDate: null,
+            entryMonth: null,
+            createdAt: '2026-01-09T10:00:00Z'),
         '2026-01-09',
       );
       expect(clampFinancePeriodFrom('2025-12-01'), '2026-02-01');
       expect(defaultFinancePeriodFrom(DateTime(2026, 7, 19)), '2026-07-01');
       expect(defaultFinancePeriodTo(DateTime(2026, 7, 9)), '2026-07-09');
-      expect(financeReportingMonthRange('2028-02'), (from: '2028-02-01', to: '2028-02-29'));
+      expect(financeReportingMonthRange('2028-02'),
+          (from: '2028-02-01', to: '2028-02-29'));
     });
 
     test('opening anchor form helpers', () {

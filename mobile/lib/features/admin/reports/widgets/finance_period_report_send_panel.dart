@@ -43,10 +43,12 @@ class FinancePeriodReportSendPanel extends ConsumerStatefulWidget {
   final List<String>? flatNumbers;
 
   @override
-  ConsumerState<FinancePeriodReportSendPanel> createState() => _FinancePeriodReportSendPanelState();
+  ConsumerState<FinancePeriodReportSendPanel> createState() =>
+      _FinancePeriodReportSendPanelState();
 }
 
-class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodReportSendPanel> {
+class _FinancePeriodReportSendPanelState
+    extends ConsumerState<FinancePeriodReportSendPanel> {
   bool _sendPush = true;
   bool _sending = false;
   String? _batchId;
@@ -84,7 +86,8 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
 
   Future<void> _reloadBatch() async {
     try {
-      final id = await ReportsRepository.latestPeriodReportBatch(widget.societyId);
+      final id =
+          await ReportsRepository.latestPeriodReportBatch(widget.societyId);
       if (mounted) setState(() => _batchId = id);
     } catch (_) {}
   }
@@ -102,17 +105,25 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
         _anchors = results[1] as List<FinanceOpeningBalanceAnchor>;
       });
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, context.t('mobile.loadFailed'), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, context.t('mobile.loadFailed'),
+            tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  String get _from => widget.periodFrom ?? (_monthly ? financeReportingMonthRange(_month).from : _customFrom);
-  String get _to => widget.periodTo ?? (_monthly ? financeReportingMonthRange(_month).to : _customTo);
+  String get _from =>
+      widget.periodFrom ??
+      (_monthly ? financeReportingMonthRange(_month).from : _customFrom);
+  String get _to =>
+      widget.periodTo ??
+      (_monthly ? financeReportingMonthRange(_month).to : _customTo);
   String get _label =>
       widget.periodLabel ??
-      (_monthly ? fmtIsoMonthToDisplay(_month) : '${fmtIsoDateToDisplay(_customFrom)} – ${fmtIsoDateToDisplay(_customTo)}');
+      (_monthly
+          ? fmtIsoMonthToDisplay(_month)
+          : '${fmtIsoDateToDisplay(_customFrom)} – ${fmtIsoDateToDisplay(_customTo)}');
 
   FinancePeriodReportResult? get _report {
     if (widget.periodReport != null) return widget.periodReport;
@@ -127,24 +138,32 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
     );
   }
 
-  List<String> get _flats => widget.flatNumbers ?? [for (final f in _data.flats) f.flatNumber];
+  List<String> get _flats =>
+      widget.flatNumbers ?? [for (final f in _data.flats) f.flatNumber];
 
   String get _adminName {
-    if (widget.adminName != null && widget.adminName!.isNotEmpty) return widget.adminName!;
+    if (widget.adminName != null && widget.adminName!.isNotEmpty)
+      return widget.adminName!;
     final s = ref.read(sessionProvider).value;
     return s is SessionAdmin ? s.admin.name : 'Admin';
   }
 
   Future<void> _send(FinancePeriodReportResult report) async {
-    final flats = <String>{for (final f in _flats) if (f.isNotEmpty) f}.toList();
+    final flats = <String>{
+      for (final f in _flats)
+        if (f.isNotEmpty) f
+    }.toList();
     if (flats.isEmpty) {
-      AppFeedback.toast(context, context.tr('No flats to notify', 'सूचित करने के लिए कोई फ्लैट नहीं'), tone: BadgeTone.alert);
+      AppFeedback.toast(context,
+          context.tr('No flats to notify', 'सूचित करने के लिए कोई फ्लैट नहीं'),
+          tone: BadgeTone.alert);
       return;
     }
     final label = _label;
     final ok = await AppFeedback.confirm(
       context,
-      title: context.tr('Send period report to members?', 'सदस्यों को अवधि प्रतिवेदन भेजें?'),
+      title: context.tr(
+          'Send period report to members?', 'सदस्यों को अवधि प्रतिवेदन भेजें?'),
       message: context.tr(
         'Delivers one in-app alert per flat (${flats.length})${_sendPush ? ' and a push notification' : ''} for $label.',
         '$label के लिए प्रति फ्लैट एक इन-ऐप सूचना (${flats.length})${_sendPush ? ' और पुश सूचना' : ''} भेजी जाएगी।',
@@ -156,7 +175,8 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
     setState(() => _sending = true);
     try {
       final ctx = await resolveLetterheadReportContext(widget.societyId);
-      final pdf = await buildFinancePeriodReportPdf(toFinancePeriodReportExportInput(
+      final pdf =
+          await buildFinancePeriodReportPdf(toFinancePeriodReportExportInput(
         report,
         societyName: widget.societyName,
         periodFrom: _from,
@@ -176,13 +196,15 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
       if (!mounted) return;
       AppFeedback.toast(
         context,
-        context.tr('Period report sent to ${flats.length} flat(s)', 'अवधि प्रतिवेदन ${flats.length} फ्लैट को भेजा गया'),
+        context.tr('Period report sent to ${flats.length} flat(s)',
+            'अवधि प्रतिवेदन ${flats.length} फ्लैट को भेजा गया'),
         tone: BadgeTone.success,
       );
       await _reloadBatch();
     } catch (e) {
       if (mounted) {
-        AppFeedback.toast(context, '${context.tr('Could not send period report', 'अवधि प्रतिवेदन नहीं भेजा जा सका')}: $e',
+        AppFeedback.toast(context,
+            '${context.tr('Could not send period report', 'अवधि प्रतिवेदन नहीं भेजा जा सका')}: $e',
             tone: BadgeTone.alert);
       }
     } finally {
@@ -195,7 +217,8 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
     if (batch == null) return;
     final ok = await AppFeedback.confirm(
       context,
-      title: context.tr('Recall last period report batch?', 'पिछला अवधि प्रतिवेदन बैच वापस लें?'),
+      title: context.tr('Recall last period report batch?',
+          'पिछला अवधि प्रतिवेदन बैच वापस लें?'),
       message: context.tr(
         'Removes in-app notifications and the stored PDF for the most recent send.',
         'सबसे हाल में भेजी गई इन-ऐप सूचनाएँ और संग्रहीत PDF हटा दी जाएँगी।',
@@ -208,11 +231,17 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
     try {
       await ReportsRepository.recallPeriodReport(widget.societyId, batch);
       if (!mounted) return;
-      AppFeedback.toast(context, context.tr('Last period report batch recalled', 'पिछला अवधि प्रतिवेदन बैच वापस लिया गया'),
+      AppFeedback.toast(
+          context,
+          context.tr('Last period report batch recalled',
+              'पिछला अवधि प्रतिवेदन बैच वापस लिया गया'),
           tone: BadgeTone.success);
       await _reloadBatch();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, '${context.tr('Recall failed', 'वापस लेना विफल')}: $e', tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(
+            context, '${context.tr('Recall failed', 'वापस लेना विफल')}: $e',
+            tone: BadgeTone.alert);
     }
   }
 
@@ -222,35 +251,51 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 10),
-        Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          ReportTabPill(
-            label: context.tr('Monthly', 'मासिक'),
-            icon: Icons.calendar_month_outlined,
-            selected: _monthly,
-            onTap: () => setState(() => _monthly = true),
-          ),
-          ReportTabPill(
-            label: context.tr('Date range', 'तारीख सीमा'),
-            icon: Icons.date_range_outlined,
-            selected: !_monthly,
-            onTap: () => setState(() => _monthly = false),
-          ),
-          if (_monthly)
-            MonthPickerButton(value: _month, minMonth: kFinanceReportingEarliestMonth, onChanged: (v) => setState(() => _month = v)),
-        ]),
+        Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ReportTabPill(
+                label: context.tr('Monthly', 'मासिक'),
+                icon: Icons.calendar_month_outlined,
+                selected: _monthly,
+                onTap: () => setState(() => _monthly = true),
+              ),
+              ReportTabPill(
+                label: context.tr('Date range', 'तारीख सीमा'),
+                icon: Icons.date_range_outlined,
+                selected: !_monthly,
+                onTap: () => setState(() => _monthly = false),
+              ),
+              if (_monthly)
+                MonthPickerButton(
+                    value: _month,
+                    minMonth: kFinanceReportingEarliestMonth,
+                    onChanged: (v) => setState(() => _month = v)),
+            ]),
         if (!_monthly) ...[
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: ReportDateField(label: context.tr('From', 'से'), value: _customFrom, onChanged: (v) => setState(() => _customFrom = v))),
+            Expanded(
+                child: ReportDateField(
+                    label: context.tr('From', 'से'),
+                    value: _customFrom,
+                    onChanged: (v) => setState(() => _customFrom = v))),
             const SizedBox(width: 8),
-            Expanded(child: ReportDateField(label: context.tr('To', 'तक'), value: _customTo, onChanged: (v) => setState(() => _customTo = v))),
+            Expanded(
+                child: ReportDateField(
+                    label: context.tr('To', 'तक'),
+                    value: _customTo,
+                    onChanged: (v) => setState(() => _customTo = v))),
           ]),
         ],
         if (_from.compareTo(_to) > 0)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              context.tr('End date must be on or after start date.', 'अंतिम तारीख प्रारंभ तारीख के बराबर या बाद की होनी चाहिए।'),
+              context.tr('End date must be on or after start date.',
+                  'अंतिम तारीख प्रारंभ तारीख के बराबर या बाद की होनी चाहिए।'),
               style: TextStyle(fontSize: 11, color: t.destructive),
             ),
           ),
@@ -272,7 +317,8 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
             Icon(Icons.notifications_none, size: 14, color: t.foreground),
             const SizedBox(width: 6),
             Text(context.tr('Send to members', 'सदस्यों को भेजें'),
-                style: AppText.bodyMedium(context).copyWith(fontSize: 12, fontWeight: FontWeight.w600)),
+                style: AppText.bodyMedium(context)
+                    .copyWith(fontSize: 12, fontWeight: FontWeight.w600)),
           ]),
           const SizedBox(height: 2),
           Text(
@@ -284,7 +330,8 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
           if (!_driven && report != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(financePeriodSummaryMessage(report, _label), style: AppText.tiny(context)),
+              child: Text(financePeriodSummaryMessage(report, _label),
+                  style: AppText.tiny(context)),
             ),
           const SizedBox(height: 8),
           Wrap(
@@ -298,18 +345,26 @@ class _FinancePeriodReportSendPanelState extends ConsumerState<FinancePeriodRepo
                   SizedBox(
                     width: 28,
                     height: 28,
-                    child: Checkbox(value: _sendPush, onChanged: (v) => setState(() => _sendPush = v ?? false)),
+                    child: Checkbox(
+                        value: _sendPush,
+                        onChanged: (v) =>
+                            setState(() => _sendPush = v ?? false)),
                   ),
-                  Text(context.tr('Push notification', 'पुश सूचना'), style: AppText.tiny(context).copyWith(fontSize: 11)),
+                  Text(context.tr('Push notification', 'पुश सूचना'),
+                      style: AppText.tiny(context).copyWith(fontSize: 11)),
                 ]),
               ),
               AppButton(
-                label: _sending ? context.tr('Sending…', 'भेजा जा रहा है…') : context.tr('Send', 'भेजें'),
+                label: _sending
+                    ? context.tr('Sending…', 'भेजा जा रहा है…')
+                    : context.tr('Send', 'भेजें'),
                 icon: Icons.send_outlined,
                 dense: true,
                 expand: false,
                 loading: _sending || _loading,
-                onPressed: (_sending || flatsEmpty || report == null) ? null : () => _send(report),
+                onPressed: (_sending || flatsEmpty || report == null)
+                    ? null
+                    : () => _send(report),
               ),
               if (_batchId != null)
                 AppButton.secondary(

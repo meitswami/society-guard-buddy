@@ -47,10 +47,12 @@ class LetterheadLayout {
 typedef PdfTextMeasure = double Function(String text, double fontSizePt);
 
 /// Average-glyph estimate (Helvetica / Noto Sans ≈ 0.55 em) used when no font metrics are available.
-double estimateTextWidthMm(String text, double fontSizePt) => text.length * 0.55 * fontPtToMm(fontSizePt);
+double estimateTextWidthMm(String text, double fontSizePt) =>
+    text.length * 0.55 * fontPtToMm(fontSizePt);
 
 /// jsPDF `splitTextToSize`: greedy word wrap to [maxWidthMm] (long words are broken).
-List<String> splitTextToSize(String text, double maxWidthMm, double fontSizePt, {PdfTextMeasure? measure}) {
+List<String> splitTextToSize(String text, double maxWidthMm, double fontSizePt,
+    {PdfTextMeasure? measure}) {
   final m = measure ?? estimateTextWidthMm;
   final out = <String>[];
   for (final paragraph in text.split('\n')) {
@@ -120,7 +122,8 @@ LetterheadLayout measureLetterheadLayout(
   final left = _leftReserve(lh);
   final right = _rightReserve(lh);
 
-  LetterheadLayout build(double headerHeight, double footerHeight, double contentTop, double contentBottom) =>
+  LetterheadLayout build(double headerHeight, double footerHeight,
+          double contentTop, double contentBottom) =>
       LetterheadLayout(
         headerHeight: headerHeight,
         footerHeight: footerHeight,
@@ -143,7 +146,8 @@ LetterheadLayout measureLetterheadLayout(
   final contentBottom = pageH - bottom;
   final brandMode = lh.brandMode;
 
-  if (brandMode == LetterheadMode.stationery || (brandMode == LetterheadMode.image && lh.hasOfficialAsset)) {
+  if (brandMode == LetterheadMode.stationery ||
+      (brandMode == LetterheadMode.image && lh.hasOfficialAsset)) {
     // Full-page stationery / uploaded letterhead — safe content inside configured reserves.
     return build(top, bottom, top, contentBottom);
   }
@@ -163,13 +167,15 @@ LetterheadLayout measureLetterheadLayout(
     final lines = splitTextToSize(contact, maxTextW, 8, measure: measure);
     y += _max([3.6, lines.length * 3.4]);
   }
-  final ruleY = _max([y + 2.5, left + (hasLogo ? kLetterheadLogoSizeMm : 6) + 2, top - 8]);
+  final ruleY = _max(
+      [y + 2.5, left + (hasLogo ? kLetterheadLogoSizeMm : 6) + 2, top - 8]);
   final contentTop = _max([ruleY + 6, top, left]);
   return build(contentTop, bottom, contentTop, contentBottom);
 }
 
 /// Where the auto-band header rule sits (mm) — used when drawing the band.
-double autoHeaderRuleY(SocietyLetterhead lh, LetterheadLayout layout, {PdfTextMeasure? measure}) {
+double autoHeaderRuleY(SocietyLetterhead lh, LetterheadLayout layout,
+    {PdfTextMeasure? measure}) {
   final left = layout.leftMargin;
   final hasLogo = lh.logoBytes != null && lh.logoBytes!.isNotEmpty;
   final textX = hasLogo ? left + kLetterheadLogoSizeMm + 3.5 : left;
@@ -185,7 +191,8 @@ double autoHeaderRuleY(SocietyLetterhead lh, LetterheadLayout layout, {PdfTextMe
     final lines = splitTextToSize(contact, maxTextW, 8, measure: measure);
     y += _max([3.6, lines.length * 3.4]);
   }
-  final ruleY = _max([y + 2.5, left + (hasLogo ? kLetterheadLogoSizeMm : 6) + 2]);
+  final ruleY =
+      _max([y + 2.5, left + (hasLogo ? kLetterheadLogoSizeMm : 6) + 2]);
   final maxRule = layout.contentTop - 3;
   return ruleY < maxRule ? ruleY : maxRule;
 }

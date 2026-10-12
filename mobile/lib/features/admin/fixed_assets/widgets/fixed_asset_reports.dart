@@ -34,8 +34,9 @@ class _FixedAssetReportsState extends State<FixedAssetReports> {
           assets: widget.assets,
           format: f);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, auditErrText(e), tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _exporting = false);
     }

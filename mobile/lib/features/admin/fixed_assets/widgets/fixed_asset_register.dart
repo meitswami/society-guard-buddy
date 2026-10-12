@@ -114,8 +114,9 @@ class _FixedAssetRegisterState extends State<FixedAssetRegister> {
                 'Asset removed from register', 'संपत्ति रजिस्टर से हटाई गई'));
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, auditErrText(e), tone: BadgeTone.alert);
+      }
     }
   }
 

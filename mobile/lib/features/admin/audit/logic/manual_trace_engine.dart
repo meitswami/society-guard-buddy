@@ -138,8 +138,9 @@ TraceResult computeManualTrace({
 
   try {
     final bounds = monthBoundsMs(month);
-    if (bounds == null)
+    if (bounds == null) {
       throw FormatException(_l(hi, 'Invalid month', 'अमान्य माह'));
+    }
     bool inMonth(String? d) {
       final t = jsTimeMs(d);
       return t != null && t >= bounds.fromMs && t <= bounds.toMs;

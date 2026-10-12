@@ -35,7 +35,9 @@ class CashFlowStatementView extends StatelessWidget {
   final List<FinancePeriodReserveTransfer> reserveTransfers;
   final List<FinanceOpeningBalanceAnchor> openingBalanceAnchors;
 
-  String get _displayPeriod => periodLabel ?? '${fmtIsoDateToDisplay(periodFrom)} – ${fmtIsoDateToDisplay(periodTo)}';
+  String get _displayPeriod =>
+      periodLabel ??
+      '${fmtIsoDateToDisplay(periodFrom)} – ${fmtIsoDateToDisplay(periodTo)}';
 
   ReportDetailRow _entryRow(StatementEntry e) => ReportDetailRow(
         id: e.id,
@@ -45,7 +47,9 @@ class CashFlowStatementView extends StatelessWidget {
         date: fmtDate(e.date),
         dateIso: e.date,
         status: e.type.name,
-        extra: e.runningBalance != null ? 'Bal: ${rupees(e.runningBalance!)}' : null,
+        extra: e.runningBalance != null
+            ? 'Bal: ${rupees(e.runningBalance!)}'
+            : null,
         meta: e,
       );
 
@@ -58,24 +62,47 @@ class CashFlowStatementView extends StatelessWidget {
       subtitle: entry.label,
       totalAmount: entry.amount,
       rows: [
-        ReportDetailRow(id: 'd-source', label: context.tr('Source', 'स्रोत'), sublabel: entry.source?.name ?? '—'),
-        ReportDetailRow(id: 'd-dest', label: context.tr('Destination', 'गंतव्य'), sublabel: entry.destination?.replaceAll('_', ' ') ?? '—'),
-        ReportDetailRow(id: 'd-amt', label: context.tr('Amount', 'राशि'), amount: entry.amount),
-        ReportDetailRow(id: 'd-method', label: context.tr('Payment method', 'भुगतान विधि'), sublabel: entry.paymentMethod ?? '—'),
-        ReportDetailRow(id: 'd-txn', label: context.tr('Transaction ID', 'लेनदेन आईडी'), sublabel: dash(entry.transactionId)),
-        ReportDetailRow(id: 'd-date', label: context.tr('Date', 'तारीख'), sublabel: fmtDate(entry.date)),
+        ReportDetailRow(
+            id: 'd-source',
+            label: context.tr('Source', 'स्रोत'),
+            sublabel: entry.source?.name ?? '—'),
+        ReportDetailRow(
+            id: 'd-dest',
+            label: context.tr('Destination', 'गंतव्य'),
+            sublabel: entry.destination?.replaceAll('_', ' ') ?? '—'),
+        ReportDetailRow(
+            id: 'd-amt',
+            label: context.tr('Amount', 'राशि'),
+            amount: entry.amount),
+        ReportDetailRow(
+            id: 'd-method',
+            label: context.tr('Payment method', 'भुगतान विधि'),
+            sublabel: entry.paymentMethod ?? '—'),
+        ReportDetailRow(
+            id: 'd-txn',
+            label: context.tr('Transaction ID', 'लेनदेन आईडी'),
+            sublabel: dash(entry.transactionId)),
+        ReportDetailRow(
+            id: 'd-date',
+            label: context.tr('Date', 'तारीख'),
+            sublabel: fmtDate(entry.date)),
         if (entry.aggregateFlatCount != null)
           ReportDetailRow(
             id: 'd-flats',
             label: context.tr('Flats in entry', 'प्रविष्टि में फ्लैट'),
             sublabel: statementNumber(entry.aggregateFlatCount!),
           ),
-        ReportDetailRow(id: 'd-notes', label: context.tr('Notes', 'टिप्पणियाँ'), sublabel: dash(entry.notes)),
+        ReportDetailRow(
+            id: 'd-notes',
+            label: context.tr('Notes', 'टिप्पणियाँ'),
+            sublabel: dash(entry.notes)),
       ],
     );
   }
 
-  ReportDetailLayer _list(BuildContext context, String title, String subtitle, List<StatementEntry> entries) => ReportDetailLayer(
+  ReportDetailLayer _list(BuildContext context, String title, String subtitle,
+          List<StatementEntry> entries) =>
+      ReportDetailLayer(
         title: title,
         subtitle: subtitle,
         totalAmount: entries.fold<double>(0, (s, e) => s + e.amount),
@@ -83,11 +110,15 @@ class CashFlowStatementView extends StatelessWidget {
         onRowTap: (row) => _entryDetail(context, row),
       );
 
-  void _openStatement(BuildContext context, CashFlowResult cfs, PaymentChannel ch) {
+  void _openStatement(
+      BuildContext context, CashFlowResult cfs, PaymentChannel ch) {
     final entries = filterStatementByChannel(cfs.statementEntries, ch);
-    final withBal = addRunningBalance(entries, ch == PaymentChannel.cash ? cfs.opening.cash : cfs.opening.bank);
+    final withBal = addRunningBalance(entries,
+        ch == PaymentChannel.cash ? cfs.opening.cash : cfs.opening.bank);
     final layer = ReportDetailLayer(
-      title: ch == PaymentChannel.cash ? context.tr('Cash Statement', 'नकद विवरण') : context.tr('Bank Statement', 'बैंक विवरण'),
+      title: ch == PaymentChannel.cash
+          ? context.tr('Cash Statement', 'नकद विवरण')
+          : context.tr('Bank Statement', 'बैंक विवरण'),
       subtitle: ch == PaymentChannel.cash
           ? '${context.tr('Chronological cash transactions', 'क्रमवार नकद लेनदेन')} — $_displayPeriod'
           : '${context.tr('Chronological bank / UPI transactions', 'क्रमवार बैंक / यूपीआई लेनदेन')} — $_displayPeriod',
@@ -110,13 +141,18 @@ class CashFlowStatementView extends StatelessWidget {
       case CashFlowDrillKind.reserve:
         final out = line.drillKey == 'out';
         final filtered = cfs.statementEntries
-            .where((e) => e.type == StatementEntryType.reserve && (out ? e.amount < 0 : e.amount >= 0))
+            .where((e) =>
+                e.type == StatementEntryType.reserve &&
+                (out ? e.amount < 0 : e.amount >= 0))
             .toList();
         ReportDetailSheet.show(
           context,
           _list(
             context,
-            out ? context.tr('Reserve transfers (out)', 'रिज़र्व हस्तांतरण (बाहर)') : context.tr('Reserve draw (in)', 'रिज़र्व निकासी (अंदर)'),
+            out
+                ? context.tr(
+                    'Reserve transfers (out)', 'रिज़र्व हस्तांतरण (बाहर)')
+                : context.tr('Reserve draw (in)', 'रिज़र्व निकासी (अंदर)'),
             _displayPeriod,
             filtered,
           ),
@@ -124,13 +160,16 @@ class CashFlowStatementView extends StatelessWidget {
         );
         return;
       default:
-        final filtered = filterStatementEntriesForDrill(cfs.statementEntries, line.drillKind!, line.drillKey);
+        final filtered = filterStatementEntriesForDrill(
+            cfs.statementEntries, line.drillKind!, line.drillKey);
         final title = line.drillKind == CashFlowDrillKind.corpus
             ? context.tr('Corpus receipts', 'कोष रसीदें')
             : line.drillKind == CashFlowDrillKind.expenseHead
                 ? '${context.tr('Payments', 'भुगतान')} — ${line.drillKey}'
                 : context.tr('Collections — Detail', 'संग्रह — विवरण');
-        ReportDetailSheet.show(context, _list(context, title, _displayPeriod, filtered), societyName: societyName);
+        ReportDetailSheet.show(
+            context, _list(context, title, _displayPeriod, filtered),
+            societyName: societyName);
     }
   }
 
@@ -174,7 +213,9 @@ class CashFlowStatementView extends StatelessWidget {
             openingBalanceAnchors: openingBalanceAnchors,
           );
 
-    Widget stmtButton(String label, IconData icon, Color color, PaymentChannel ch) => Material(
+    Widget stmtButton(
+            String label, IconData icon, Color color, PaymentChannel ch) =>
+        Material(
           color: AppTokens.tint(color, 0.15),
           borderRadius: BorderRadius.circular(AppTokens.radiusSm),
           child: InkWell(
@@ -185,13 +226,18 @@ class CashFlowStatementView extends StatelessWidget {
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(icon, size: 12, color: color),
                 const SizedBox(width: 4),
-                Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: color)),
               ]),
             ),
           ),
         );
 
-    Color amountColor(double v) => v < 0 ? t.destructive : (v > 0 ? t.foreground : t.mutedForeground);
+    Color amountColor(double v) =>
+        v < 0 ? t.destructive : (v > 0 ? t.foreground : t.mutedForeground);
 
     IconData? sectionIcon(CashFlowSection s) => switch (s) {
           CashFlowSection.operating => Icons.trending_up,
@@ -212,22 +258,29 @@ class CashFlowStatementView extends StatelessWidget {
         children: [
           if (line.indent) const SizedBox(width: 16),
           if (line.isSectionHeader && sectionIcon(line.section) != null) ...[
-            Icon(sectionIcon(line.section), size: 14, color: sectionColor(line.section)),
+            Icon(sectionIcon(line.section),
+                size: 14, color: sectionColor(line.section)),
             const SizedBox(width: 6),
           ],
           Flexible(
             child: Text(
               _lineLabel(context, line),
-              style: AppText.body(context).copyWith(fontSize: 12, fontWeight: line.bold ? FontWeight.w600 : FontWeight.w400),
+              style: AppText.body(context).copyWith(
+                  fontSize: 12,
+                  fontWeight: line.bold ? FontWeight.w600 : FontWeight.w400),
             ),
           ),
-          if (line.drillable) Icon(Icons.chevron_right, size: 14, color: t.mutedForeground),
+          if (line.drillable)
+            Icon(Icons.chevron_right, size: 14, color: t.mutedForeground),
         ],
       );
       final row = Container(
         decoration: BoxDecoration(
-          color: line.bold && !line.drillable ? AppTokens.tint(t.muted, 0.3) : null,
-          border: Border(bottom: BorderSide(color: AppTokens.tint(t.border, 0.4))),
+          color: line.bold && !line.drillable
+              ? AppTokens.tint(t.muted, 0.3)
+              : null,
+          border:
+              Border(bottom: BorderSide(color: AppTokens.tint(t.border, 0.4))),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         child: Row(
@@ -236,7 +289,10 @@ class CashFlowStatementView extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               fmtCashFlowAmount(line.amount),
-              style: AppText.mono(context, size: 12, weight: line.bold ? FontWeight.w600 : FontWeight.w400, color: amountColor(line.amount)),
+              style: AppText.mono(context,
+                  size: 12,
+                  weight: line.bold ? FontWeight.w600 : FontWeight.w400,
+                  color: amountColor(line.amount)),
             ),
           ],
         ),
@@ -259,15 +315,24 @@ class CashFlowStatementView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(context.tr('Cash Flow Statement', 'नकदी प्रवाह विवरण'), style: AppText.sectionTitle(context)),
-                      Text('$_displayPeriod · ${context.tr('Synced with Reports → Financial', 'प्रतिवेदन → वित्तीय से समन्वित')}',
+                      Text(
+                          context.tr(
+                              'Cash Flow Statement', 'नकदी प्रवाह विवरण'),
+                          style: AppText.sectionTitle(context)),
+                      Text(
+                          '$_displayPeriod · ${context.tr('Synced with Reports → Financial', 'प्रतिवेदन → वित्तीय से समन्वित')}',
                           style: AppText.tiny(context)),
                     ],
                   ),
                 ),
-                stmtButton(context.tr('Cash Stmt', 'नकद विवरण'), Icons.payments_outlined, t.success, PaymentChannel.cash),
+                stmtButton(context.tr('Cash Stmt', 'नकद विवरण'),
+                    Icons.payments_outlined, t.success, PaymentChannel.cash),
                 const SizedBox(width: 6),
-                stmtButton(context.tr('Bank Stmt', 'बैंक विवरण'), Icons.account_balance_outlined, t.primary, PaymentChannel.bank),
+                stmtButton(
+                    context.tr('Bank Stmt', 'बैंक विवरण'),
+                    Icons.account_balance_outlined,
+                    t.primary,
+                    PaymentChannel.bank),
               ],
             ),
           ),
@@ -276,7 +341,8 @@ class CashFlowStatementView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(24),
               child: Text(
-                context.tr('End date must be on or after start date.', 'अंतिम तारीख प्रारंभ तारीख के बराबर या बाद की होनी चाहिए।'),
+                context.tr('End date must be on or after start date.',
+                    'अंतिम तारीख प्रारंभ तारीख के बराबर या बाद की होनी चाहिए।'),
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: t.destructive),
               ),
@@ -284,15 +350,21 @@ class CashFlowStatementView extends StatelessWidget {
           else if (loading)
             Padding(
               padding: const EdgeInsets.all(24),
-              child: Text(context.tr('Loading cash flow data…', 'नकदी प्रवाह डेटा लोड हो रहा है…'),
-                  textAlign: TextAlign.center, style: AppText.caption(context)),
+              child: Text(
+                  context.tr('Loading cash flow data…',
+                      'नकदी प्रवाह डेटा लोड हो रहा है…'),
+                  textAlign: TextAlign.center,
+                  style: AppText.caption(context)),
             )
           else if (cfs != null) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
               child: Row(children: [
-                Expanded(child: Text(context.tr('Particulars', 'विवरण'), style: AppText.caption(context))),
-                Text(context.tr('Amount (₹)', 'राशि (₹)'), style: AppText.caption(context)),
+                Expanded(
+                    child: Text(context.tr('Particulars', 'विवरण'),
+                        style: AppText.caption(context))),
+                Text(context.tr('Amount (₹)', 'राशि (₹)'),
+                    style: AppText.caption(context)),
               ]),
             ),
             for (final line in cfs.lines) lineRow(line),
@@ -301,13 +373,16 @@ class CashFlowStatementView extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(children: [
                 Expanded(
-                  child: Text(context.tr('Closing cash + bank', 'समापन नकद + बैंक'),
-                      style: AppText.bodyMedium(context).copyWith(fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: Text(
+                      context.tr('Closing cash + bank', 'समापन नकद + बैंक'),
+                      style: AppText.bodyMedium(context)
+                          .copyWith(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
                 InfoValue(
                   value: rupees(cfs.closing.cash + cfs.closing.bank),
                   metric: ReportMetrics.closingBalance,
-                  style: AppText.mono(context, size: 12, weight: FontWeight.w700, color: t.primary),
+                  style: AppText.mono(context,
+                      size: 12, weight: FontWeight.w700, color: t.primary),
                 ),
               ]),
             ),
@@ -316,13 +391,31 @@ class CashFlowStatementView extends StatelessWidget {
               child: StatGrid(
                 spacing: 8,
                 children: [
-                  _miniTile(context, Icons.north_east, t.success, context.tr('Closing cash', 'समापन नकद'),
-                      rupees(cfs.closing.cash), onTap: () => _openStatement(context, cfs, PaymentChannel.cash)),
-                  _miniTile(context, Icons.account_balance_outlined, t.primary, context.tr('Closing bank', 'समापन बैंक'),
-                      rupees(cfs.closing.bank), onTap: () => _openStatement(context, cfs, PaymentChannel.bank)),
-                  _miniInfo(context, context.tr('Period net (cash)', 'अवधि नेट (नकद)'), rupees(cfs.periodReport.cashInHand),
+                  _miniTile(
+                      context,
+                      Icons.north_east,
+                      t.success,
+                      context.tr('Closing cash', 'समापन नकद'),
+                      rupees(cfs.closing.cash),
+                      onTap: () =>
+                          _openStatement(context, cfs, PaymentChannel.cash)),
+                  _miniTile(
+                      context,
+                      Icons.account_balance_outlined,
+                      t.primary,
+                      context.tr('Closing bank', 'समापन बैंक'),
+                      rupees(cfs.closing.bank),
+                      onTap: () =>
+                          _openStatement(context, cfs, PaymentChannel.bank)),
+                  _miniInfo(
+                      context,
+                      context.tr('Period net (cash)', 'अवधि नेट (नकद)'),
+                      rupees(cfs.periodReport.cashInHand),
                       ReportMetrics.cashInHand),
-                  _miniInfo(context, context.tr('Period net (bank)', 'अवधि नेट (बैंक)'), rupees(cfs.periodReport.cashInBank),
+                  _miniInfo(
+                      context,
+                      context.tr('Period net (bank)', 'अवधि नेट (बैंक)'),
+                      rupees(cfs.periodReport.cashInBank),
                       ReportMetrics.cashInBank),
                 ],
               ),
@@ -333,7 +426,9 @@ class CashFlowStatementView extends StatelessWidget {
     );
   }
 
-  Widget _miniTile(BuildContext context, IconData icon, Color color, String label, String value, {required VoidCallback onTap}) {
+  Widget _miniTile(BuildContext context, IconData icon, Color color,
+      String label, String value,
+      {required VoidCallback onTap}) {
     return Material(
       color: AppTokens.tint(color, 0.08),
       shape: RoundedRectangleBorder(
@@ -345,20 +440,24 @@ class CashFlowStatementView extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Icon(icon, size: 12, color: color),
               const SizedBox(width: 4),
               Flexible(child: Text(label, style: AppText.tiny(context))),
             ]),
-            Text(value, style: AppText.mono(context, size: 12, weight: FontWeight.w600)),
+            Text(value,
+                style:
+                    AppText.mono(context, size: 12, weight: FontWeight.w600)),
           ]),
         ),
       ),
     );
   }
 
-  Widget _miniInfo(BuildContext context, String label, String value, MetricCopy metric) {
+  Widget _miniInfo(
+      BuildContext context, String label, String value, MetricCopy metric) {
     final t = context.tokens;
     return Container(
       padding: const EdgeInsets.all(8),
@@ -369,7 +468,10 @@ class CashFlowStatementView extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: AppText.tiny(context)),
-        InfoValue(value: value, metric: metric, style: AppText.mono(context, size: 12, weight: FontWeight.w600)),
+        InfoValue(
+            value: value,
+            metric: metric,
+            style: AppText.mono(context, size: 12, weight: FontWeight.w600)),
       ]),
     );
   }

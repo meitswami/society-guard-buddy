@@ -31,7 +31,8 @@ enum ExportFormat {
 
   String get mimeType => switch (this) {
         ExportFormat.pdf => 'application/pdf',
-        ExportFormat.excel => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ExportFormat.excel =>
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ExportFormat.word => 'application/msword',
         ExportFormat.csv => 'text/csv',
       };
@@ -39,7 +40,8 @@ enum ExportFormat {
 
 /// One worksheet of a multi-sheet export.
 class ExportSheet {
-  const ExportSheet({required this.name, required this.headers, required this.rows});
+  const ExportSheet(
+      {required this.name, required this.headers, required this.rows});
 
   final String name;
   final List<String> headers;
@@ -55,7 +57,10 @@ String _sheetName(String raw, Set<String> used) {
   // Duplicate names would make the workbook invalid (the web throws here).
   while (used.contains(name.toLowerCase())) {
     final suffix = ' ($i)';
-    name = (base.length + suffix.length > 31 ? base.substring(0, 31 - suffix.length) : base) + suffix;
+    name = (base.length + suffix.length > 31
+            ? base.substring(0, 31 - suffix.length)
+            : base) +
+        suffix;
     i++;
   }
   used.add(name.toLowerCase());
@@ -66,7 +71,8 @@ CellValue? _cell(Object? v) {
   if (v == null) return null;
   if (v is int) return IntCellValue(v);
   if (v is num) {
-    if (v == v.truncateToDouble() && v.abs() < 1e15) return IntCellValue(v.toInt());
+    if (v == v.truncateToDouble() && v.abs() < 1e15)
+      return IntCellValue(v.toInt());
     return DoubleCellValue(v.toDouble());
   }
   if (v is bool) return BoolCellValue(v);
@@ -81,7 +87,8 @@ Uint8List rowsToXlsxBytes(List<ExportSheet> sheets) {
   final names = [for (final s in sheets) _sheetName(s.name, used)];
   for (var i = 0; i < sheets.length; i++) {
     final name = names[i];
-    if (i == 0 && defaultSheet != null && defaultSheet != name) book.rename(defaultSheet, name);
+    if (i == 0 && defaultSheet != null && defaultSheet != name)
+      book.rename(defaultSheet, name);
     final sheet = book[name];
     sheet.appendRow([for (final h in sheets[i].headers) TextCellValue(h)]);
     for (final r in sheets[i].rows) {
@@ -94,22 +101,32 @@ Uint8List rowsToXlsxBytes(List<ExportSheet> sheets) {
 
 /// `rowsToCsvBlob(headers, rows)` — UTF-8 with BOM (Hindi-safe in Excel).
 Uint8List rowsToCsvBytes(List<String> headers, List<List<Object?>> rows) =>
-    ExportKit.csvBytes(headers: headers, rows: [for (final r in rows) [for (final c in r) c is num ? jsNum(c) : c]]);
+    ExportKit.csvBytes(headers: headers, rows: [
+      for (final r in rows) [for (final c in r) c is num ? jsNum(c) : c]
+    ]);
 
-String jsNum(num n) => (n is double && n == n.truncateToDouble() && n.abs() < 1e21) ? n.toInt().toString() : n.toString();
+String jsNum(num n) =>
+    (n is double && n == n.truncateToDouble() && n.abs() < 1e21)
+        ? n.toInt().toString()
+        : n.toString();
 
-String escapeHtml(String text) =>
-    text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+String escapeHtml(String text) => text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 
 /// `buildHtmlTable(headers, rows, numericCols)`.
-String buildHtmlTable(List<String> headers, List<List<Object?>> rows, [Set<int> numericCols = const {}]) {
+String buildHtmlTable(List<String> headers, List<List<Object?>> rows,
+    [Set<int> numericCols = const {}]) {
   final head = headers.map((h) => '<th>${escapeHtml(h)}</th>').join();
   final body = rows.map((row) {
     final cells = <String>[];
     for (var i = 0; i < row.length; i++) {
       final cls = numericCols.contains(i) ? ' class="num"' : '';
       final c = row[i];
-      cells.add('<td$cls>${escapeHtml(c == null ? '' : (c is num ? jsNum(c) : c.toString()))}</td>');
+      cells.add(
+          '<td$cls>${escapeHtml(c == null ? '' : (c is num ? jsNum(c) : c.toString()))}</td>');
     }
     return '<tr>${cells.join()}</tr>';
   }).join();
@@ -137,7 +154,12 @@ Uint8List htmlToWordBytes(String title, String bodyHtml) {
 }
 
 /// Share an export file (mobile equivalent of `triggerDownload`).
-Future<void> shareExportFile(Uint8List bytes, String filename, ExportFormat format, {String? text}) {
-  final name = filename.toLowerCase().endsWith('.${format.extension}') ? filename : '$filename.${format.extension}';
-  return ExportKit.shareBytes(bytes, name, mimeType: format.mimeType, text: text);
+Future<void> shareExportFile(
+    Uint8List bytes, String filename, ExportFormat format,
+    {String? text}) {
+  final name = filename.toLowerCase().endsWith('.${format.extension}')
+      ? filename
+      : '$filename.${format.extension}';
+  return ExportKit.shareBytes(bytes, name,
+      mimeType: format.mimeType, text: text);
 }

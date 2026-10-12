@@ -55,8 +55,9 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
   void didUpdateWidget(covariant AdminAuditModule old) {
     super.didUpdateWidget(old);
     final q = widget.ctx.initialQuery;
-    if (q != null && q.isNotEmpty && q != old.ctx.initialQuery)
+    if (q != null && q.isNotEmpty && q != old.ctx.initialQuery) {
       setState(() => _search.text = q);
+    }
     if (old.ctx.societyId != widget.ctx.societyId) _refresh();
   }
 
@@ -93,9 +94,10 @@ class _AdminAuditModuleState extends State<AdminAuditModule> {
 
   void _scrollToAlarms() {
     final c = _alarmsKey.currentContext;
-    if (c != null)
+    if (c != null) {
       Scrollable.ensureVisible(c,
           duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    }
   }
 
   void _navigate(String tab, String? subTab) {

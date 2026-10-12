@@ -32,8 +32,9 @@ PaymentChannel normalizePaymentChannel(Object? method) {
   final x =
       (method ?? 'cash').toString().toLowerCase().replaceAll(RegExp(r'\s'), '');
   if (x == 'cash') return PaymentChannel.cash;
-  if (_bankChannelKeys.any((k) => x == k || x.contains(k)))
+  if (_bankChannelKeys.any((k) => x == k || x.contains(k))) {
     return PaymentChannel.bank;
+  }
   return PaymentChannel.other;
 }
 
@@ -496,8 +497,9 @@ List<LedgerOvercountMonth> analyzeLedgerOvercountByMonth(
       final d = p.billingDate;
       if (d.isEmpty) continue;
       final t = jsTimeMs(d);
-      if (t != null && t >= bounds.fromMs && t <= bounds.toMs)
+      if (t != null && t >= bounds.fromMs && t <= bounds.toMs) {
         reportTotal += p.amount;
+      }
     }
 
     final unlinked = <LedgerOvercountEntry>[];

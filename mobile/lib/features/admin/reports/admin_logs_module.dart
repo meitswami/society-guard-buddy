@@ -28,7 +28,8 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
   AdminModuleContext get ctx => widget.ctx;
 
   _LogsTab _tab = _LogsTab.visitors;
-  late final TextEditingController _search = TextEditingController(text: ctx.initialQuery ?? '');
+  late final TextEditingController _search =
+      TextEditingController(text: ctx.initialQuery ?? '');
   String _category = 'all';
   String _date = ymdOf(DateTime.now());
   List<ReportVisitor> _visitors = const [];
@@ -55,7 +56,8 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
       _failed = false;
     });
     try {
-      final rows = await ReportsRepository.loadVisitorsForDay(ctx.societyId, day);
+      final rows =
+          await ReportsRepository.loadVisitorsForDay(ctx.societyId, day);
       if (!mounted || day != _date) return;
       setState(() => _visitors = rows);
     } catch (_) {
@@ -73,7 +75,8 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
           v.name.toLowerCase().contains(q) ||
           v.phone.contains(s) ||
           v.flatNumber.toLowerCase().contains(q) ||
-          (v.vehicleNumber != null && v.vehicleNumber!.toLowerCase().contains(q)) ||
+          (v.vehicleNumber != null &&
+              v.vehicleNumber!.toLowerCase().contains(q)) ||
           v.guardName.toLowerCase().contains(q);
       final matchCategory = _category == 'all' || v.category == _category;
       return matchSearch && matchCategory;
@@ -93,8 +96,11 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
     try {
       final now = await ReportsRepository.markVisitorExit(ctx.societyId, v);
       if (!mounted) return;
-      setState(() => _visitors = [for (final x in _visitors) x.id == v.id ? x.markedExit(now) : x]);
-      AppFeedback.toast(context, context.t('swal.exitMarked'), tone: BadgeTone.success);
+      setState(() => _visitors = [
+            for (final x in _visitors) x.id == v.id ? x.markedExit(now) : x
+          ]);
+      AppFeedback.toast(context, context.t('swal.exitMarked'),
+          tone: BadgeTone.success);
     } catch (e) {
       if (mounted) AppFeedback.toast(context, '$e', tone: BadgeTone.alert);
     } finally {
@@ -118,8 +124,19 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
         ],
     ];
     try {
-      final bytes = rowsToCsvBytes(const ['Name', 'Phone', 'Flat', 'Category', 'Purpose', 'Entry', 'Exit', 'Guard', 'Vehicle'], rows);
-      await shareExportFile(bytes, 'kutumbika-log-$_date.csv', ExportFormat.csv);
+      final bytes = rowsToCsvBytes(const [
+        'Name',
+        'Phone',
+        'Flat',
+        'Category',
+        'Purpose',
+        'Entry',
+        'Exit',
+        'Guard',
+        'Vehicle'
+      ], rows);
+      await shareExportFile(
+          bytes, 'kutumbika-log-$_date.csv', ExportFormat.csv);
     } catch (e) {
       if (mounted) AppFeedback.toast(context, '$e', tone: BadgeTone.alert);
     }
@@ -145,7 +162,10 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
             Flexible(
               child: Text(label,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: active ? t.primary : t.foreground)),
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: active ? t.primary : t.foreground)),
             ),
           ]),
         ),
@@ -165,7 +185,12 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
     return [
       Align(
         alignment: Alignment.centerRight,
-        child: AppButton.secondary(label: 'CSV', icon: Icons.download_outlined, dense: true, expand: false, onPressed: _exportCsv),
+        child: AppButton.secondary(
+            label: 'CSV',
+            icon: Icons.download_outlined,
+            dense: true,
+            expand: false,
+            onPressed: _exportCsv),
       ),
       const SizedBox(height: 12),
       TextField(
@@ -176,7 +201,9 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
           hintText: context.t('logs.searchPlaceholder'),
           suffixIcon: _search.text.isEmpty
               ? null
-              : IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() => _search.clear())),
+              : IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () => setState(() => _search.clear())),
         ),
       ),
       const SizedBox(height: 12),
@@ -196,7 +223,8 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
         onChanged: (c) => setState(() => _category = c),
       ),
       const SizedBox(height: 14),
-      Text('${filtered.length} ${context.t('common.records')}', style: AppText.caption(context)),
+      Text('${filtered.length} ${context.t('common.records')}',
+          style: AppText.caption(context)),
       const SizedBox(height: 10),
       if (_loading)
         const LoadingView()
@@ -224,44 +252,66 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
           child: Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: v.isInside ? t.success : t.mutedForeground),
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: v.isInside ? t.success : t.mutedForeground),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Flexible(
                 child: Text(v.name,
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.sectionTitle(context)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.sectionTitle(context)),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: v.category == 'service' ? t.secondary : AppTokens.tint(catColor, 0.2),
+                  color: v.category == 'service'
+                      ? t.secondary
+                      : AppTokens.tint(catColor, 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(v.category, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: catColor)),
+                child: Text(v.category,
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: catColor)),
               ),
             ]),
             const SizedBox(height: 4),
             Text.rich(
               TextSpan(children: [
-                TextSpan(text: v.phone, style: const TextStyle(fontFamily: 'JetBrainsMono')),
-                TextSpan(text: ' · ${context.t('common.flat')} ${v.flatNumber}'),
+                TextSpan(
+                    text: v.phone,
+                    style: const TextStyle(fontFamily: 'JetBrainsMono')),
+                TextSpan(
+                    text: ' · ${context.t('common.flat')} ${v.flatNumber}'),
               ]),
               style: AppText.caption(context),
             ),
-            if (v.purpose.isNotEmpty) Text(v.purpose, style: AppText.caption(context)),
+            if (v.purpose.isNotEmpty)
+              Text(v.purpose, style: AppText.caption(context)),
             const SizedBox(height: 6),
             Wrap(spacing: 12, children: [
-              Text('In: ${fmtTime(v.entryTime)}', style: AppText.caption(context)),
-              if (!v.isInside) Text('Out: ${fmtTime(v.exitTime)}', style: AppText.caption(context)),
-              if (v.hasVehicle) Text(v.vehicleNumber!, style: AppText.mono(context, size: 12, color: t.mutedForeground)),
+              Text('In: ${fmtTime(v.entryTime)}',
+                  style: AppText.caption(context)),
+              if (!v.isInside)
+                Text('Out: ${fmtTime(v.exitTime)}',
+                    style: AppText.caption(context)),
+              if (v.hasVehicle)
+                Text(v.vehicleNumber!,
+                    style: AppText.mono(context,
+                        size: 12, color: t.mutedForeground)),
             ]),
             const SizedBox(height: 4),
-            Text('${context.t('logs.guard')}: ${v.guardName}', style: AppText.tiny(context)),
+            Text('${context.t('logs.guard')}: ${v.guardName}',
+                style: AppText.tiny(context)),
           ]),
         ),
         if (v.isInside)
@@ -289,12 +339,19 @@ class _AdminLogsModuleState extends State<AdminLogsModule> {
           bottomSpacing: 16,
         ),
         Row(children: [
-          Expanded(child: _hubButton(_LogsTab.visitors, Icons.description_outlined, context.t('duty.visitorLogs'))),
+          Expanded(
+              child: _hubButton(_LogsTab.visitors, Icons.description_outlined,
+                  context.t('duty.visitorLogs'))),
           const SizedBox(width: 8),
-          Expanded(child: _hubButton(_LogsTab.duty, Icons.fact_check_outlined, context.t('duty.adminTab'))),
+          Expanded(
+              child: _hubButton(_LogsTab.duty, Icons.fact_check_outlined,
+                  context.t('duty.adminTab'))),
         ]),
         const SizedBox(height: 16),
-        if (_tab == _LogsTab.visitors) ..._visitorLogs() else GuardDutyReviewPanel(societyId: ctx.societyId),
+        if (_tab == _LogsTab.visitors)
+          ..._visitorLogs()
+        else
+          GuardDutyReviewPanel(societyId: ctx.societyId),
       ],
     );
   }

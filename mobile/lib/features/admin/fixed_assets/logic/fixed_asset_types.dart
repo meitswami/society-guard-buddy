@@ -347,8 +347,9 @@ DateTime? _ymdLocal(String? iso, {int hour = 12}) {
 
 /// `computeEndDateFromMonths` — JS `setMonth` overflow semantics, ISO (UTC) date of local noon.
 String? computeEndDateFromMonths(String? startIso, int? months) {
-  if (startIso == null || startIso.isEmpty || months == null || months <= 0)
+  if (startIso == null || startIso.isEmpty || months == null || months <= 0) {
     return null;
+  }
   final d = _ymdLocal(startIso);
   if (d == null) return null;
   final end = DateTime(d.year, d.month + months, d.day, 12);

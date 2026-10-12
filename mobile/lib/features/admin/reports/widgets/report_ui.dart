@@ -30,7 +30,10 @@ Future<void> showMetricInfo(
   return AppFeedback.info(
     context,
     title: title ?? metric.title(hi),
-    description: [metric.description(hi), if (extraDescription != null) extraDescription].join(' '),
+    description: [
+      metric.description(hi),
+      if (extraDescription != null) extraDescription
+    ].join(' '),
     howCalculated: metric.how(hi),
     navigateLabel: navigateLabel,
     onNavigate: onNavigate,
@@ -39,14 +42,19 @@ Future<void> showMetricInfo(
 
 /// Web `rounded-lg border border-border bg-card/40 p-3` panel.
 class ReportPanel extends StatelessWidget {
-  const ReportPanel({super.key, required this.child, this.padding = const EdgeInsets.all(12), this.margin});
+  const ReportPanel(
+      {super.key,
+      required this.child,
+      this.padding = const EdgeInsets.all(12),
+      this.margin});
 
   final Widget child;
   final EdgeInsets padding;
   final EdgeInsets? margin;
 
   @override
-  Widget build(BuildContext context) => CardSection(padding: padding, margin: margin, child: child);
+  Widget build(BuildContext context) =>
+      CardSection(padding: padding, margin: margin, child: child);
 }
 
 /// Web `DescriptiveStatCard` with an icon row, tappable value and optional extra content.
@@ -90,34 +98,46 @@ class ReportStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final hi = isHindi(context);
-    void info() => showMetricInfo(context, metric, title: title, onNavigate: onNavigate, navigateLabel: navigateLabel);
+    void info() => showMetricInfo(context, metric,
+        title: title, onNavigate: onNavigate, navigateLabel: navigateLabel);
     final valueText = Text(
       value,
       textAlign: center ? TextAlign.center : TextAlign.start,
       style: compact
-          ? AppText.mono(context, size: 17, weight: FontWeight.w700, color: valueColor)
-          : AppText.statValue(context, color: valueColor).copyWith(fontSize: 22),
+          ? AppText.mono(context,
+              size: 17, weight: FontWeight.w700, color: valueColor)
+          : AppText.statValue(context, color: valueColor)
+              .copyWith(fontSize: 22),
     );
     return CardSection(
       padding: EdgeInsets.all(compact ? 10 : 14),
       onTap: info,
       child: Column(
-        crossAxisAlignment: center ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            center ? CrossAxisAlignment.center : CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              if (icon != null) Icon(icon, size: 16, color: iconColor ?? t.mutedForeground),
+              if (icon != null)
+                Icon(icon, size: 16, color: iconColor ?? t.mutedForeground),
               if (label != null) ...[
                 const SizedBox(width: 6),
-                Flexible(child: Text(label!, style: AppText.bodyMedium(context).copyWith(fontSize: 12, fontWeight: FontWeight.w600))),
+                Flexible(
+                    child: Text(label!,
+                        style: AppText.bodyMedium(context).copyWith(
+                            fontSize: 12, fontWeight: FontWeight.w600))),
               ],
               const Spacer(),
-              Icon(Icons.info_outline, size: 14, color: AppTokens.tint(t.mutedForeground, 0.7)),
+              Icon(Icons.info_outline,
+                  size: 14, color: AppTokens.tint(t.mutedForeground, 0.7)),
             ],
           ),
           const SizedBox(height: 6),
           if (onNavigate != null)
-            InkWell(onTap: onNavigate, borderRadius: BorderRadius.circular(6), child: valueText)
+            InkWell(
+                onTap: onNavigate,
+                borderRadius: BorderRadius.circular(6),
+                child: valueText)
           else
             valueText,
           Text(
@@ -158,22 +178,26 @@ class InfoValue extends StatelessWidget {
     final t = context.tokens;
     return InkWell(
       borderRadius: BorderRadius.circular(6),
-      onTap: () => showMetricInfo(context, metric, title: title, extraDescription: extraDescription),
+      onTap: () => showMetricInfo(context, metric,
+          title: title, extraDescription: extraDescription),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment:
+              alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
           children: [
             Flexible(
               child: Text(
                 value,
-                style: style ?? AppText.mono(context, size: 12, weight: FontWeight.w700),
+                style: style ??
+                    AppText.mono(context, size: 12, weight: FontWeight.w700),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 3),
-            Icon(Icons.info_outline, size: 11, color: AppTokens.tint(t.mutedForeground, 0.6)),
+            Icon(Icons.info_outline,
+                size: 11, color: AppTokens.tint(t.mutedForeground, 0.6)),
           ],
         ),
       ),
@@ -183,7 +207,13 @@ class InfoValue extends StatelessWidget {
 
 /// Report type tab pill (web `rounded-lg text-xs font-medium` buttons).
 class ReportTabPill extends StatelessWidget {
-  const ReportTabPill({super.key, required this.label, required this.selected, required this.onTap, this.icon, this.trailing});
+  const ReportTabPill(
+      {super.key,
+      required this.label,
+      required this.selected,
+      required this.onTap,
+      this.icon,
+      this.trailing});
 
   final String label;
   final bool selected;
@@ -206,9 +236,17 @@ class ReportTabPill extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[Icon(icon, size: 14, color: fg), const SizedBox(width: 6)],
-              Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: fg)),
-              if (trailing != null) ...[const SizedBox(width: 4), Icon(trailing, size: 14, color: AppTokens.tint(fg, 0.7))],
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: fg),
+                const SizedBox(width: 6)
+              ],
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w500, color: fg)),
+              if (trailing != null) ...[
+                const SizedBox(width: 4),
+                Icon(trailing, size: 14, color: AppTokens.tint(fg, 0.7))
+              ],
             ],
           ),
         ),
@@ -219,7 +257,8 @@ class ReportTabPill extends StatelessWidget {
 
 /// Month chooser (web `<input type="month" min=…>` shown as `MM/yyyy`).
 class MonthPickerButton extends StatelessWidget {
-  const MonthPickerButton({super.key, required this.value, required this.onChanged, this.minMonth});
+  const MonthPickerButton(
+      {super.key, required this.value, required this.onChanged, this.minMonth});
 
   /// `yyyy-MM`
   final String value;
@@ -227,7 +266,8 @@ class MonthPickerButton extends StatelessWidget {
   final String? minMonth;
 
   Future<void> _pick(BuildContext context) async {
-    final picked = await showMonthPickerSheet(context, initial: value, minMonth: minMonth);
+    final picked =
+        await showMonthPickerSheet(context, initial: value, minMonth: minMonth);
     if (picked != null && picked != value) onChanged(picked);
   }
 
@@ -241,11 +281,38 @@ class MonthPickerButton extends StatelessWidget {
       );
 }
 
-const List<String> _monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const List<String> _monthsHi = ['जन', 'फ़र', 'मार्च', 'अप्रै', 'मई', 'जून', 'जुला', 'अग', 'सित', 'अक्टू', 'नव', 'दिस'];
+const List<String> _monthsEn = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec'
+];
+const List<String> _monthsHi = [
+  'जन',
+  'फ़र',
+  'मार्च',
+  'अप्रै',
+  'मई',
+  'जून',
+  'जुला',
+  'अग',
+  'सित',
+  'अक्टू',
+  'नव',
+  'दिस'
+];
 
 /// Year + month grid sheet. Returns `yyyy-MM`.
-Future<String?> showMonthPickerSheet(BuildContext context, {required String initial, String? minMonth}) {
+Future<String?> showMonthPickerSheet(BuildContext context,
+    {required String initial, String? minMonth}) {
   final parts = initial.split('-');
   var year = int.tryParse(parts[0]) ?? DateTime.now().year;
   final selMonth = parts.length > 1 ? int.tryParse(parts[1]) ?? 1 : 1;
@@ -269,12 +336,18 @@ Future<String?> showMonthPickerSheet(BuildContext context, {required String init
                 Row(
                   children: [
                     IconButton(
-                      onPressed: year > minYear ? () => setSt(() => year--) : null,
+                      onPressed:
+                          year > minYear ? () => setSt(() => year--) : null,
                       icon: const Icon(Icons.chevron_left),
                     ),
-                    Expanded(child: Center(child: Text('$year', style: AppText.sectionTitle(ctx).copyWith(fontSize: 16)))),
+                    Expanded(
+                        child: Center(
+                            child: Text('$year',
+                                style: AppText.sectionTitle(ctx)
+                                    .copyWith(fontSize: 16)))),
                     IconButton(
-                      onPressed: year < maxYear ? () => setSt(() => year++) : null,
+                      onPressed:
+                          year < maxYear ? () => setSt(() => year++) : null,
                       icon: const Icon(Icons.chevron_right),
                     ),
                   ],
@@ -290,23 +363,31 @@ Future<String?> showMonthPickerSheet(BuildContext context, {required String init
                   children: [
                     for (var m = 1; m <= 12; m++)
                       Builder(builder: (_) {
-                        final disabled = year < minYear || (year == minYear && m < minM);
+                        final disabled =
+                            year < minYear || (year == minYear && m < minM);
                         final selected = year == selYear && m == selMonth;
                         return Opacity(
                           opacity: disabled ? 0.35 : 1,
                           child: Material(
                             color: selected ? t.primary : t.secondary,
-                            borderRadius: BorderRadius.circular(AppTokens.radiusSm),
+                            borderRadius:
+                                BorderRadius.circular(AppTokens.radiusSm),
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(AppTokens.radiusSm),
-                              onTap: disabled ? null : () => Navigator.pop(ctx, '$year-${pad2(m)}'),
+                              borderRadius:
+                                  BorderRadius.circular(AppTokens.radiusSm),
+                              onTap: disabled
+                                  ? null
+                                  : () =>
+                                      Navigator.pop(ctx, '$year-${pad2(m)}'),
                               child: Center(
                                 child: Text(
                                   hi ? _monthsHi[m - 1] : _monthsEn[m - 1],
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: selected ? t.primaryForeground : t.secondaryForeground,
+                                    color: selected
+                                        ? t.primaryForeground
+                                        : t.secondaryForeground,
                                   ),
                                 ),
                               ),
@@ -327,7 +408,11 @@ Future<String?> showMonthPickerSheet(BuildContext context, {required String init
 
 /// Date field (web `DateInput`): shows `dd/MM/yyyy`, emits `yyyy-MM-dd`.
 class ReportDateField extends StatelessWidget {
-  const ReportDateField({super.key, required this.label, required this.value, required this.onChanged});
+  const ReportDateField(
+      {super.key,
+      required this.label,
+      required this.value,
+      required this.onChanged});
 
   final String label;
   final String value;
@@ -351,7 +436,9 @@ class ReportDateField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(label, style: AppText.tiny(context))),
+        Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(label, style: AppText.tiny(context))),
         Material(
           color: t.input,
           borderRadius: BorderRadius.circular(AppTokens.radiusSm),
@@ -366,8 +453,11 @@ class ReportDateField extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Expanded(child: Text(fmtIsoDateToDisplay(value), style: AppText.body(context))),
-                  Icon(Icons.calendar_today_outlined, size: 16, color: t.mutedForeground),
+                  Expanded(
+                      child: Text(fmtIsoDateToDisplay(value),
+                          style: AppText.body(context))),
+                  Icon(Icons.calendar_today_outlined,
+                      size: 16, color: t.mutedForeground),
                 ],
               ),
             ),
@@ -380,7 +470,8 @@ class ReportDateField extends StatelessWidget {
 
 /// Small coloured status chip (web `text-[10px] px-1.5 py-0.5 rounded-full`).
 class MiniStatusChip extends StatelessWidget {
-  const MiniStatusChip(this.label, {super.key, required this.color, this.capitalize = true});
+  const MiniStatusChip(this.label,
+      {super.key, required this.color, this.capitalize = true});
 
   final String label;
   final Color color;
@@ -389,9 +480,12 @@ class MiniStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(color: AppTokens.tint(color, 0.15), borderRadius: BorderRadius.circular(999)),
+        decoration: BoxDecoration(
+            color: AppTokens.tint(color, 0.15),
+            borderRadius: BorderRadius.circular(999)),
         child: Text(capitalize ? capitalizeWords(label) : label,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color)),
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w500, color: color)),
       );
 }
 

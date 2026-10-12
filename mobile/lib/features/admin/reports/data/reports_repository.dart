@@ -39,7 +39,8 @@ class ReportFinanceData {
   final List<FinancePeriodReserveTransfer> reserveTransfers;
 
   /// Ledger without event food / contribution rows (web `useSocietyFinanceData`).
-  List<FinancePeriodLedgerEntry> get societyLedgerEntries => filterSocietyLedgerEntries(ledgerEntries, expenseCategoryById);
+  List<FinancePeriodLedgerEntry> get societyLedgerEntries =>
+      filterSocietyLedgerEntries(ledgerEntries, expenseCategoryById);
 }
 
 /// `fetchFinanceFlatReport` result.
@@ -67,30 +68,44 @@ abstract final class ReportsRepository {
   static Future<ReportFinanceData> loadFinanceCore(String societyId) async {
     if (!dbReady || societyId.isEmpty) return ReportFinanceData.empty;
     final results = await Future.wait<Object?>([
-      db.from('flats').select('flat_number, id, owner_name, is_occupied').eq('society_id', societyId).order('flat_number', ascending: true),
+      db
+          .from('flats')
+          .select('flat_number, id, owner_name, is_occupied')
+          .eq('society_id', societyId)
+          .order('flat_number', ascending: true),
       db.from('societies').select('name').eq('id', societyId).maybeSingle(),
-      db.from('maintenance_charges').select('*').eq('society_id', societyId).order('created_at', ascending: false),
+      db
+          .from('maintenance_charges')
+          .select('*')
+          .eq('society_id', societyId)
+          .order('created_at', ascending: false),
       db
           .from('finance_entries')
-          .select('*, finance_entry_counterparties(*), finance_entry_allocations(*)')
+          .select(
+              '*, finance_entry_counterparties(*), finance_entry_allocations(*)')
           .eq('society_id', societyId)
           .order('created_at', ascending: false)
           .limit(2500),
       db
           .from('reserve_fund_transfers')
-          .select('id, entry_month, amount, direction, payment_method, notes, created_at')
+          .select(
+              'id, entry_month, amount, direction, payment_method, notes, created_at')
           .eq('society_id', societyId)
           .order('entry_month', ascending: false)
           .limit(500),
     ]);
 
-    final flats = sortFlatsByNumber(rowsOf(results[0]).map(ReportFlat.fromJson), (f) => f.flatNumber);
+    final flats = sortFlatsByNumber(
+        rowsOf(results[0]).map(ReportFlat.fromJson), (f) => f.flatNumber);
     final societyRow = results[1];
-    final societyName = societyRow is Map ? (societyRow['name'] ?? '').toString() : '';
+    final societyName =
+        societyRow is Map ? (societyRow['name'] ?? '').toString() : '';
     final charges = rowsOf(results[2]).map(ReportCharge.fromJson).toList();
     final ledgerRaw = rowsOf(results[3]);
-    final ledgerEntries = ledgerRaw.map(FinancePeriodLedgerEntry.fromJson).toList();
-    final reserveTransfers = rowsOf(results[4]).map(FinancePeriodReserveTransfer.fromJson).toList();
+    final ledgerEntries =
+        ledgerRaw.map(FinancePeriodLedgerEntry.fromJson).toList();
+    final reserveTransfers =
+        rowsOf(results[4]).map(FinancePeriodReserveTransfer.fromJson).toList();
 
     final flatIds = [for (final f in flats) f.id];
     final chargeIds = [for (final c in charges) c.id];
@@ -102,7 +117,11 @@ abstract final class ReportsRepository {
     final wave2 = await Future.wait<Object?>([
       flatIds.isEmpty
           ? Future.value(const <Map<String, dynamic>>[])
-          : db.from('members').select('flat_id, name').eq('is_primary', true).inFilter('flat_id', flatIds),
+          : db
+              .from('members')
+              .select('flat_id, name')
+              .eq('is_primary', true)
+              .inFilter('flat_id', flatIds),
       chargeIds.isEmpty
           ? Future.value(const <Map<String, dynamic>>[])
           : db
@@ -113,18 +132,24 @@ abstract final class ReportsRepository {
               .limit(2500),
       linkedExpenseIds.isEmpty
           ? Future.value(const <Map<String, dynamic>>[])
-          : db.from('expenses').select('id, expense_category').inFilter('id', linkedExpenseIds.toSet().toList()),
+          : db
+              .from('expenses')
+              .select('id, expense_category')
+              .inFilter('id', linkedExpenseIds.toSet().toList()),
     ]);
 
     final primaryByFlatId = <String, String>{};
     for (final row in rowsOf(wave2[0])) {
       final fid = row['flat_id']?.toString();
       final name = row['name']?.toString().trim() ?? '';
-      if (fid != null && fid.isNotEmpty && name.isNotEmpty) primaryByFlatId[fid] = name;
+      if (fid != null && fid.isNotEmpty && name.isNotEmpty)
+        primaryByFlatId[fid] = name;
     }
-    final payments = rowsOf(wave2[1]).map(FinancePeriodPayment.fromJson).toList();
+    final payments =
+        rowsOf(wave2[1]).map(FinancePeriodPayment.fromJson).toList();
     final expenseCategoryById = <String, String>{
-      for (final row in rowsOf(wave2[2])) row['id'].toString(): (row['expense_category'] ?? '').toString(),
+      for (final row in rowsOf(wave2[2]))
+        row['id'].toString(): (row['expense_category'] ?? '').toString(),
     };
 
     return ReportFinanceData(
@@ -140,12 +165,14 @@ abstract final class ReportsRepository {
   }
 
   /// `useSocietyOpeningBalanceAnchors` — errors resolve to an empty list like the web.
-  static Future<List<FinanceOpeningBalanceAnchor>> loadOpeningAnchors(String societyId) async {
+  static Future<List<FinanceOpeningBalanceAnchor>> loadOpeningAnchors(
+      String societyId) async {
     if (!dbReady || societyId.isEmpty) return const [];
     try {
       final data = await db
           .from('finance_opening_balance_anchors')
-          .select('id, as_on_date, cash_amount, bank_amount, other_amount, notes')
+          .select(
+              'id, as_on_date, cash_amount, bank_amount, other_amount, notes')
           .eq('society_id', societyId)
           .order('as_on_date', ascending: false);
       return rowsOf(data).map(FinanceOpeningBalanceAnchor.fromJson).toList();
@@ -161,16 +188,22 @@ abstract final class ReportsRepository {
     String periodFrom,
     String periodTo,
   ) async {
-    if (!dbReady || societyId.isEmpty || periodFrom.compareTo(periodTo) > 0) return ReportModuleAggregations.empty;
+    if (!dbReady || societyId.isEmpty || periodFrom.compareTo(periodTo) > 0)
+      return ReportModuleAggregations.empty;
     final from = '${periodFrom}T00:00:00';
     final to = '${periodTo}T23:59:59';
 
     final ids = await Future.wait<Object?>([
       db.from('maintenance_charges').select('id').eq('society_id', societyId),
       db.from('donation_campaigns').select('id').eq('society_id', societyId),
-      db.from('expense_groups').select('id').eq('society_id', societyId).eq('group_kind', 'general'),
+      db
+          .from('expense_groups')
+          .select('id')
+          .eq('society_id', societyId)
+          .eq('group_kind', 'general'),
     ]);
-    List<String> idList(Object? d) => [for (final r in rowsOf(d)) r['id'].toString()];
+    List<String> idList(Object? d) =>
+        [for (final r in rowsOf(d)) r['id'].toString()];
     final chargeIds = idList(ids[0]);
     final campIds = idList(ids[1]);
     final groupIds = idList(ids[2]);
@@ -232,7 +265,10 @@ abstract final class ReportsRepository {
     final expIds = idList(res[2]);
     var splitStatuses = const <StatusBucket>[];
     if (expIds.isNotEmpty) {
-      final splits = await db.from('expense_splits').select('amount, is_settled').inFilter('expense_id', expIds);
+      final splits = await db
+          .from('expense_splits')
+          .select('amount, is_settled')
+          .inFilter('expense_id', expIds);
       splitStatuses = bucketByKey<Map<String, dynamic>>(
         rowsOf(splits),
         (s) => s['is_settled'] == true ? 'settled' : 'pending',
@@ -260,10 +296,17 @@ abstract final class ReportsRepository {
   static Future<FlatReportSource> loadFlatReportSource(String societyId) async {
     if (!dbReady || societyId.isEmpty) return const FlatReportSource();
     final groupRows = rowsOf(
-      await db.from('expense_groups').select('id, name').eq('society_id', societyId).eq('group_kind', 'general'),
+      await db
+          .from('expense_groups')
+          .select('id, name')
+          .eq('society_id', societyId)
+          .eq('group_kind', 'general'),
     );
     if (groupRows.isEmpty) return const FlatReportSource();
-    final groupNameById = {for (final g in groupRows) g['id'].toString(): (g['name'] ?? '').toString()};
+    final groupNameById = {
+      for (final g in groupRows)
+        g['id'].toString(): (g['name'] ?? '').toString()
+    };
     final expenseRows = rowsOf(
       await db
           .from('expenses')
@@ -285,7 +328,9 @@ abstract final class ReportsRepository {
     }
     final expenses = [
       for (final e in expenseRows)
-        FlatReportExpense.fromJson(e, groupName: groupNameById[e['group_id']?.toString()] ?? 'Unknown group'),
+        FlatReportExpense.fromJson(e,
+            groupName:
+                groupNameById[e['group_id']?.toString()] ?? 'Unknown group'),
     ];
     return FlatReportSource(expenses: expenses, splits: splits);
   }
@@ -293,7 +338,8 @@ abstract final class ReportsRepository {
   // ─── Gate data ────────────────────────────────────────────────────────────
 
   /// Guard shifts with `login_time` in the month (same bounds as the web).
-  static Future<List<ReportShiftRow>> loadShifts(String societyId, String monthFrom, String monthTo) async {
+  static Future<List<ReportShiftRow>> loadShifts(
+      String societyId, String monthFrom, String monthTo) async {
     if (!dbReady || societyId.isEmpty) return const [];
     final data = await db
         .from('guard_shifts')
@@ -307,7 +353,8 @@ abstract final class ReportsRepository {
 
   /// Visitors whose `entry_time` ISO string starts with `yyyy-MM` — the web filters
   /// `entryTime.startsWith(reportMonth)` on the UTC timestamp, so the bounds are UTC.
-  static Future<List<ReportVisitor>> loadVisitorsForMonth(String societyId, String ym) async {
+  static Future<List<ReportVisitor>> loadVisitorsForMonth(
+      String societyId, String ym) async {
     if (!dbReady || societyId.isEmpty) return const [];
     final parts = ym.split('-');
     final y = int.tryParse(parts[0]) ?? DateTime.now().year;
@@ -318,7 +365,8 @@ abstract final class ReportsRepository {
   }
 
   /// Visitors whose `entry_time` starts with `yyyy-MM-dd` (UTC day, like the web Logs filter).
-  static Future<List<ReportVisitor>> loadVisitorsForDay(String societyId, String ymd) async {
+  static Future<List<ReportVisitor>> loadVisitorsForDay(
+      String societyId, String ymd) async {
     if (!dbReady || societyId.isEmpty) return const [];
     final d = DateTime.tryParse(ymd);
     if (d == null) return const [];
@@ -327,7 +375,8 @@ abstract final class ReportsRepository {
     return _loadVisitorsBetween(societyId, start, end);
   }
 
-  static Future<List<ReportVisitor>> _loadVisitorsBetween(String societyId, DateTime start, DateTime end) async {
+  static Future<List<ReportVisitor>> _loadVisitorsBetween(
+      String societyId, DateTime start, DateTime end) async {
     final out = <ReportVisitor>[];
     const page = 1000;
     for (var offset = 0;; offset += page) {
@@ -347,7 +396,8 @@ abstract final class ReportsRepository {
   }
 
   /// Web store `markExit`: sets `exit_time` (and `vehicle_exit_time` for vehicles).
-  static Future<String> markVisitorExit(String societyId, ReportVisitor visitor) async {
+  static Future<String> markVisitorExit(
+      String societyId, ReportVisitor visitor) async {
     final now = DateTime.now().toUtc().toIso8601String();
     var q = db.from('visitors').update({
       'exit_time': now,
@@ -376,24 +426,36 @@ abstract final class ReportsRepository {
     return (id == null || id.isEmpty) ? null : id;
   }
 
-  static Future<SocietyNotificationSound> societyNotificationSound(String societyId) async {
-    if (societyId.isEmpty) return const SocietyNotificationSound(soundKey: 'digital');
+  static Future<SocietyNotificationSound> societyNotificationSound(
+      String societyId) async {
+    if (societyId.isEmpty)
+      return const SocietyNotificationSound(soundKey: 'digital');
     try {
-      final data = await db.from('societies').select('admin_push_sound_url').eq('id', societyId).maybeSingle();
+      final data = await db
+          .from('societies')
+          .select('admin_push_sound_url')
+          .eq('id', societyId)
+          .maybeSingle();
       final url = data?['admin_push_sound_url']?.toString().trim() ?? '';
-      if (url.isNotEmpty) return SocietyNotificationSound(soundKey: 'custom', soundCustomUrl: url);
+      if (url.isNotEmpty)
+        return SocietyNotificationSound(
+            soundKey: 'custom', soundCustomUrl: url);
     } catch (_) {}
     return const SocietyNotificationSound(soundKey: 'digital');
   }
 
   /// `uploadFinancePeriodReportPdf` → public URL (null on failure).
-  static Future<String?> uploadFinancePeriodReportPdf(String societyId, String batchId, Uint8List pdf) async {
+  static Future<String?> uploadFinancePeriodReportPdf(
+      String societyId, String batchId, Uint8List pdf) async {
     final path = 'finance-reports/$societyId/$batchId.pdf';
     try {
       await db.storage.from('notification-media').uploadBinary(
             path,
             pdf,
-            fileOptions: const FileOptions(cacheControl: '3600', upsert: true, contentType: 'application/pdf'),
+            fileOptions: const FileOptions(
+                cacheControl: '3600',
+                upsert: true,
+                contentType: 'application/pdf'),
           );
       return db.storage.from('notification-media').getPublicUrl(path);
     } catch (_) {
@@ -411,11 +473,15 @@ abstract final class ReportsRepository {
     required List<String> flatNumbers,
     required bool sendPush,
   }) async {
-    final flats = <String>{for (final f in flatNumbers) if (f.isNotEmpty) f}.toList();
+    final flats = <String>{
+      for (final f in flatNumbers)
+        if (f.isNotEmpty) f
+    }.toList();
     if (flats.isEmpty) throw StateError('No flats to notify');
 
     final batchId = _uuid.v4();
-    final pdfUrl = await uploadFinancePeriodReportPdf(societyId, batchId, pdfBytes);
+    final pdfUrl =
+        await uploadFinancePeriodReportPdf(societyId, batchId, pdfBytes);
     if (pdfUrl == null) throw StateError('Could not upload period report PDF');
 
     final title = 'Finance report · $periodLabel';
@@ -461,7 +527,8 @@ abstract final class ReportsRepository {
   }
 
   /// `recallFinancePeriodReportNotifications` — removes the batch rows + stored PDF.
-  static Future<List<String>> recallPeriodReport(String societyId, String batchId) async {
+  static Future<List<String>> recallPeriodReport(
+      String societyId, String batchId) async {
     final batchRows = rowsOf(await db
         .from('notifications')
         .select('target_id')
@@ -470,7 +537,8 @@ abstract final class ReportsRepository {
         .eq('type', 'finance_period_report'));
     final targetIds = <String>{
       for (final r in batchRows)
-        if ((r['target_id'] ?? '').toString().isNotEmpty) r['target_id'].toString(),
+        if ((r['target_id'] ?? '').toString().isNotEmpty)
+          r['target_id'].toString(),
     }.toList();
     await db
         .from('notifications')
@@ -479,7 +547,9 @@ abstract final class ReportsRepository {
         .eq('society_id', societyId)
         .eq('type', 'finance_period_report');
     try {
-      await db.storage.from('notification-media').remove(['finance-reports/$societyId/$batchId.pdf']);
+      await db.storage
+          .from('notification-media')
+          .remove(['finance-reports/$societyId/$batchId.pdf']);
     } catch (_) {}
     return targetIds;
   }

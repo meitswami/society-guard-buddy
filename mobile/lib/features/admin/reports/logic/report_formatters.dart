@@ -40,7 +40,9 @@ String fmtIsoDateToDisplay(String? iso) {
   final s = iso.length > 10 ? iso.substring(0, 10) : iso;
   final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(s);
   if (m == null) return iso;
-  final y = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), d = int.parse(m.group(3)!);
+  final y = int.parse(m.group(1)!),
+      mo = int.parse(m.group(2)!),
+      d = int.parse(m.group(3)!);
   final dt = DateTime(y, mo, d);
   if (dt.month != mo || dt.day != d) return iso;
   return _date.format(dt);
@@ -79,5 +81,7 @@ String formatLedgerFieldLabel(String? value, {String fallback = '—'}) {
 }
 
 /// `capitalize` (CSS `text-transform: capitalize` on single words / phrases).
-String capitalizeWords(String s) =>
-    s.split(' ').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
+String capitalizeWords(String s) => s
+    .split(' ')
+    .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+    .join(' ');

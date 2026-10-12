@@ -59,7 +59,9 @@ class FlatReportExpense {
   final String? groupName;
   final double totalAmount;
 
-  factory FlatReportExpense.fromJson(Map<String, dynamic> j, {String? groupName}) => FlatReportExpense(
+  factory FlatReportExpense.fromJson(Map<String, dynamic> j,
+          {String? groupName}) =>
+      FlatReportExpense(
         id: (j['id'] ?? '').toString(),
         title: (j['title'] ?? '').toString(),
         expenseDate: (j['expense_date'] ?? '').toString(),
@@ -71,7 +73,11 @@ class FlatReportExpense {
 
 /// `expense_splits` row.
 class FlatReportSplit {
-  const FlatReportSplit({required this.expenseId, required this.flatNumber, this.amount = 0, this.isSettled = false});
+  const FlatReportSplit(
+      {required this.expenseId,
+      required this.flatNumber,
+      this.amount = 0,
+      this.isSettled = false});
 
   final String expenseId;
   final String flatNumber;
@@ -121,7 +127,9 @@ List<FlatReportRow> buildFlatReportRows({
         final primary = primaryByFlatId[flat.id];
         resName = (primary != null && primary.isNotEmpty)
             ? primary
-            : ((flat.ownerName != null && flat.ownerName!.isNotEmpty) ? flat.ownerName! : flatNum);
+            : ((flat.ownerName != null && flat.ownerName!.isNotEmpty)
+                ? flat.ownerName!
+                : flatNum);
       } else {
         resName = flatNum;
       }
@@ -147,7 +155,9 @@ List<FlatReportRow> buildFlatReportRows({
       title: chargeTitleById[p.chargeId] ?? 'Maintenance',
       amount: amt,
       date: d.length > 10 ? d.substring(0, 10) : d,
-      method: (p.paymentMethod == null || p.paymentMethod!.isEmpty) ? 'cash' : p.paymentMethod!,
+      method: (p.paymentMethod == null || p.paymentMethod!.isEmpty)
+          ? 'cash'
+          : p.paymentMethod!,
       status: 'paid',
     ));
     final feId = p.financeEntryId;
@@ -158,7 +168,8 @@ List<FlatReportRow> buildFlatReportRows({
     if (e.destination == 'separate_entry') continue;
     final ledgerDate = e.ledgerDate;
     if (ledgerDate.isEmpty || !isInRange(ledgerDate)) continue;
-    if (e.recordMode == 'flats_only' && countedFinanceEntryIds.contains(e.id)) continue;
+    if (e.recordMode == 'flats_only' && countedFinanceEntryIds.contains(e.id))
+      continue;
     for (final alloc in e.allocations) {
       final flatNum = alloc.flatNumber;
       if (flatNum.isEmpty || flatNum == 'SOCIETY') continue;
@@ -168,10 +179,13 @@ List<FlatReportRow> buildFlatReportRows({
       row.maintenanceCount += 1;
       row.details.add(FlatReportDetailRow(
         type: 'maintenance',
-        title: (e.title == null || e.title!.isEmpty) ? 'Ledger receipt' : e.title!,
+        title:
+            (e.title == null || e.title!.isEmpty) ? 'Ledger receipt' : e.title!,
         amount: amt,
         date: ledgerDate.length > 10 ? ledgerDate.substring(0, 10) : ledgerDate,
-        method: (e.paymentMethod == null || e.paymentMethod!.isEmpty) ? 'other' : e.paymentMethod!,
+        method: (e.paymentMethod == null || e.paymentMethod!.isEmpty)
+            ? 'other'
+            : e.paymentMethod!,
         status: 'verified',
       ));
     }
@@ -213,7 +227,8 @@ List<FlatReportRow> buildFlatReportRows({
     row.details.sort((a, b) => jsLocaleCompare(b.date, a.date));
   }
 
-  var rows = flatMap.values.toList()..sort((a, b) => compareFlatNumbers(a.flatNumber, b.flatNumber));
+  var rows = flatMap.values.toList()
+    ..sort((a, b) => compareFlatNumbers(a.flatNumber, b.flatNumber));
   if (selectedFlat != 'all') {
     rows = rows.where((r) => r.flatNumber == selectedFlat).toList();
   }

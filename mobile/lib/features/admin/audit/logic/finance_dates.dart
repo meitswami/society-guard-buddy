@@ -34,8 +34,9 @@ bool isBillingDateInEntryMonth(String billingYmd, String entryMonthYm) {
 /// `transaction_date` → `${entry_month}-01` → `created_at` (first 10 chars).
 String ledgerTransactionDate(
     {String? transactionDate, String? entryMonth, String? createdAt}) {
-  if (transactionDate != null && transactionDate.isNotEmpty)
+  if (transactionDate != null && transactionDate.isNotEmpty) {
     return slice10(transactionDate);
+  }
   if (entryMonth != null && entryMonth.isNotEmpty) return '$entryMonth-01';
   return slice10(createdAt ?? '');
 }

@@ -118,13 +118,20 @@ class ReportShiftRow {
         guardId: (j['guard_id'] ?? '').toString(),
         guardName: (j['guard_name'] ?? '').toString(),
         loginTime: (j['login_time'] ?? '').toString(),
-        logoutTime: (j['logout_time'] == null || j['logout_time'].toString().isEmpty) ? null : j['logout_time'].toString(),
+        logoutTime:
+            (j['logout_time'] == null || j['logout_time'].toString().isEmpty)
+                ? null
+                : j['logout_time'].toString(),
       );
 }
 
 /// `flats` row used by the finance reports.
 class ReportFlat {
-  const ReportFlat({required this.id, required this.flatNumber, this.ownerName, this.isOccupied});
+  const ReportFlat(
+      {required this.id,
+      required this.flatNumber,
+      this.ownerName,
+      this.isOccupied});
 
   final String id;
   final String flatNumber;
@@ -141,7 +148,11 @@ class ReportFlat {
 
 /// `maintenance_charges` row (subset).
 class ReportCharge {
-  const ReportCharge({required this.id, required this.title, this.amount = 0, this.expenseGroupId});
+  const ReportCharge(
+      {required this.id,
+      required this.title,
+      this.amount = 0,
+      this.expenseGroupId});
 
   final String id;
   final String title;

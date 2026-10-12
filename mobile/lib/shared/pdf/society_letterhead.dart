@@ -30,11 +30,14 @@ enum ReportPdfMode {
 
   String get dbValue => name;
 
-  static ReportPdfMode parse(Object? raw) => raw?.toString() == 'plain' ? ReportPdfMode.plain : ReportPdfMode.letterhead;
+  static ReportPdfMode parse(Object? raw) => raw?.toString() == 'plain'
+      ? ReportPdfMode.plain
+      : ReportPdfMode.letterhead;
 }
 
 class SocietyReportSettings {
-  const SocietyReportSettings({this.defaultReportFormat = ReportPdfMode.letterhead});
+  const SocietyReportSettings(
+      {this.defaultReportFormat = ReportPdfMode.letterhead});
 
   final ReportPdfMode defaultReportFormat;
 }
@@ -119,12 +122,15 @@ class SocietyLetterhead {
       letterheadUrl: s(data['letterhead_url']),
       letterheadStoragePath: s(data['letterhead_storage_path']),
       // DB null → 'auto'; an unknown value stays null so [brandMode] infers it (web `modeOf`).
-      letterheadMode: data['letterhead_mode'] == null ? LetterheadMode.auto : LetterheadMode.parse(data['letterhead_mode']),
+      letterheadMode: data['letterhead_mode'] == null
+          ? LetterheadMode.auto
+          : LetterheadMode.parse(data['letterhead_mode']),
       letterheadTopMm: toNum(data['letterhead_top_mm'], 40),
       letterheadBottomMm: toNum(data['letterhead_bottom_mm'], 18),
       letterheadLeftMm: toNum(data['letterhead_left_mm'], kPdfMarginMm),
       letterheadRightMm: toNum(data['letterhead_right_mm'], kPdfMarginMm),
-      defaultReportFormat: ReportPdfMode.parse(data['default_report_format'] ?? 'letterhead'),
+      defaultReportFormat:
+          ReportPdfMode.parse(data['default_report_format'] ?? 'letterhead'),
       address: s(data['address']),
       city: s(data['city']),
       state: s(data['state']),
@@ -163,16 +169,21 @@ class SocietyLetterhead {
         contactPhone: contactPhone,
         contactEmail: contactEmail,
         logoBytes: clearLogoBytes ? null : (logoBytes ?? this.logoBytes),
-        letterheadBytes: clearLetterheadBytes ? null : (letterheadBytes ?? this.letterheadBytes),
+        letterheadBytes: clearLetterheadBytes
+            ? null
+            : (letterheadBytes ?? this.letterheadBytes),
       );
 
   bool _has(String? v) => v != null && v.isNotEmpty;
 
   /// Uploaded official letterhead asset present (`hasOfficialLetterheadAsset`).
   bool get hasOfficialAsset =>
-      (letterheadBytes != null && letterheadBytes!.isNotEmpty) || _has(letterheadUrl) || _has(letterheadStoragePath);
+      (letterheadBytes != null && letterheadBytes!.isNotEmpty) ||
+      _has(letterheadUrl) ||
+      _has(letterheadStoragePath);
 
-  bool get hasLogo => (logoBytes != null && logoBytes!.isNotEmpty) || _has(logoUrl);
+  bool get hasLogo =>
+      (logoBytes != null && logoBytes!.isNotEmpty) || _has(logoUrl);
 
   /// Effective mode (`modeOf`): explicit mode, else image when an asset exists.
   LetterheadMode get brandMode {
@@ -184,19 +195,25 @@ class SocietyLetterhead {
 
 /// `Address · City, State · Pincode`.
 String letterheadAddressLine(SocietyLetterhead info) {
-  final cityState = [info.city, info.state].where((p) => (p ?? '').isNotEmpty).join(', ');
-  final parts = [info.address, cityState, info.pincode].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty);
+  final cityState =
+      [info.city, info.state].where((p) => (p ?? '').isNotEmpty).join(', ');
+  final parts = [info.address, cityState, info.pincode]
+      .map((p) => (p ?? '').trim())
+      .where((p) => p.isNotEmpty);
   return parts.join(' · ');
 }
 
 /// `Phone · Email`.
-String letterheadContactLine(SocietyLetterhead info) =>
-    [info.contactPhone, info.contactEmail].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
+String letterheadContactLine(SocietyLetterhead info) => [
+      info.contactPhone,
+      info.contactEmail
+    ].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
 
 /// Whether this society has an uploaded official letterhead (or uses stationery).
 bool societyHasOfficialLetterhead(SocietyLetterhead? info) {
   if (info == null) return false;
-  return info.hasOfficialAsset || info.letterheadMode == LetterheadMode.stationery;
+  return info.hasOfficialAsset ||
+      info.letterheadMode == LetterheadMode.stationery;
 }
 
 const String _fullSelect =
@@ -211,7 +228,8 @@ Future<Uint8List?> fetchImageBytes(String? url) async {
   if (u.isEmpty) return null;
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
   try {
-    final req = await client.getUrl(Uri.parse(u)).timeout(const Duration(seconds: 20));
+    final req =
+        await client.getUrl(Uri.parse(u)).timeout(const Duration(seconds: 20));
     final res = await req.close().timeout(const Duration(seconds: 30));
     if (res.statusCode < 200 || res.statusCode >= 300) {
       debugPrint('[letterhead] image fetch failed $u ${res.statusCode}');
@@ -219,7 +237,8 @@ Future<Uint8List?> fetchImageBytes(String? url) async {
     }
     final type = res.headers.contentType?.mimeType ?? '';
     if (type == 'application/pdf' || u.toLowerCase().contains('.pdf')) {
-      debugPrint('[letterhead] PDF letterhead cannot be embedded as image background; upload a PNG/JPG scan');
+      debugPrint(
+          '[letterhead] PDF letterhead cannot be embedded as image background; upload a PNG/JPG scan');
       return null;
     }
     final builder = BytesBuilder(copy: false);
@@ -248,7 +267,8 @@ Future<String?> _signedUrlForStoragePath(String? path) async {
 }
 
 /// Preload logo / letterhead images (`resolveLetterheadAssets`).
-Future<SocietyLetterhead> resolveLetterheadAssets(SocietyLetterhead info) async {
+Future<SocietyLetterhead> resolveLetterheadAssets(
+    SocietyLetterhead info) async {
   var letterheadUrl = info.letterheadUrl;
   if ((letterheadUrl == null || letterheadUrl.isEmpty) &&
       info.letterheadStoragePath != null &&
@@ -256,23 +276,40 @@ Future<SocietyLetterhead> resolveLetterheadAssets(SocietyLetterhead info) async 
     letterheadUrl = await _signedUrlForStoragePath(info.letterheadStoragePath);
   }
   final results = await Future.wait<Uint8List?>([
-    info.logoBytes != null ? Future.value(info.logoBytes) : fetchImageBytes(info.logoUrl),
-    info.letterheadBytes != null ? Future.value(info.letterheadBytes) : fetchImageBytes(letterheadUrl),
+    info.logoBytes != null
+        ? Future.value(info.logoBytes)
+        : fetchImageBytes(info.logoUrl),
+    info.letterheadBytes != null
+        ? Future.value(info.letterheadBytes)
+        : fetchImageBytes(letterheadUrl),
   ]);
-  return info.copyWith(letterheadUrl: letterheadUrl, logoBytes: results[0], letterheadBytes: results[1]);
+  return info.copyWith(
+      letterheadUrl: letterheadUrl,
+      logoBytes: results[0],
+      letterheadBytes: results[1]);
 }
 
 /// Fetch the current society's letterhead (never another society's).
-Future<SocietyLetterhead?> fetchSocietyLetterhead(String? societyId, {bool loadAssets = true}) async {
+Future<SocietyLetterhead?> fetchSocietyLetterhead(String? societyId,
+    {bool loadAssets = true}) async {
   if (societyId == null || societyId.isEmpty || !dbReady) return null;
   Map<String, dynamic>? data;
   try {
-    data = await db.from('societies').select(_fullSelect).eq('id', societyId).maybeSingle();
+    data = await db
+        .from('societies')
+        .select(_fullSelect)
+        .eq('id', societyId)
+        .maybeSingle();
     if (data == null) return null;
   } catch (e) {
-    debugPrint('[letterhead] primary select failed, trying fallback columns $e');
+    debugPrint(
+        '[letterhead] primary select failed, trying fallback columns $e');
     try {
-      data = await db.from('societies').select(_fallbackSelect).eq('id', societyId).maybeSingle();
+      data = await db
+          .from('societies')
+          .select(_fallbackSelect)
+          .eq('id', societyId)
+          .maybeSingle();
     } catch (e2) {
       debugPrint('[letterhead] fallback select failed $e2');
       return null;
@@ -281,7 +318,9 @@ Future<SocietyLetterhead?> fetchSocietyLetterhead(String? societyId, {bool loadA
   }
   final row = SocietyLetterhead.fromSocietyRow(data);
   // Hard multi-society guard: only assets belonging to this society id.
-  if (row.societyId != null && row.societyId!.isNotEmpty && row.societyId != societyId) {
+  if (row.societyId != null &&
+      row.societyId!.isNotEmpty &&
+      row.societyId != societyId) {
     debugPrint('[letterhead] society id mismatch — refusing letterhead');
     return null;
   }

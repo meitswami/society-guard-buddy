@@ -13,7 +13,8 @@ bool matchesHaystack(String haystack, String query) {
   return haystack.toLowerCase().contains(q);
 }
 
-List<ReportVisitor> filterVisitorRows(List<ReportVisitor> visitors, String query) {
+List<ReportVisitor> filterVisitorRows(
+    List<ReportVisitor> visitors, String query) {
   final q = normalizeReportQuery(query);
   if (q.isEmpty) return visitors;
   return visitors.where((v) {
@@ -32,7 +33,8 @@ List<ReportVisitor> filterVisitorRows(List<ReportVisitor> visitors, String query
   }).toList();
 }
 
-List<FinancePeriodLedgerEntry> filterLedgerEntries(List<FinancePeriodLedgerEntry> entries, String query) {
+List<FinancePeriodLedgerEntry> filterLedgerEntries(
+    List<FinancePeriodLedgerEntry> entries, String query) {
   final q = normalizeReportQuery(query);
   if (q.isEmpty) return entries;
   return entries.where((e) {
@@ -54,7 +56,8 @@ List<FinancePeriodLedgerEntry> filterLedgerEntries(List<FinancePeriodLedgerEntry
   }).toList();
 }
 
-List<ReportDetailRow> filterReportDetailRows(List<ReportDetailRow> rows, String query) {
+List<ReportDetailRow> filterReportDetailRows(
+    List<ReportDetailRow> rows, String query) {
   final q = normalizeReportQuery(query);
   if (q.isEmpty) return rows;
   return rows.where((row) {
@@ -70,11 +73,14 @@ List<ReportDetailRow> filterReportDetailRows(List<ReportDetailRow> rows, String 
   }).toList();
 }
 
-List<ReportShiftRow> filterShiftRows(List<ReportShiftRow> shifts, String query) {
+List<ReportShiftRow> filterShiftRows(
+    List<ReportShiftRow> shifts, String query) {
   final q = normalizeReportQuery(query);
   if (q.isEmpty) return shifts;
   return shifts.where((s) {
-    final haystack = [s.guardName, s.guardId, s.loginTime, s.logoutTime ?? ''].join(' ').toLowerCase();
+    final haystack = [s.guardName, s.guardId, s.loginTime, s.logoutTime ?? '']
+        .join(' ')
+        .toLowerCase();
     return haystack.contains(q);
   }).toList();
 }

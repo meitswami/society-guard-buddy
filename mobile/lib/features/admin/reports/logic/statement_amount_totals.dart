@@ -15,7 +15,11 @@ class AmountRow {
 }
 
 class MonthlyAmountTotal {
-  const MonthlyAmountTotal({required this.monthKey, required this.label, required this.total, required this.count});
+  const MonthlyAmountTotal(
+      {required this.monthKey,
+      required this.label,
+      required this.total,
+      required this.count});
 
   final String monthKey;
   final String label;
@@ -24,7 +28,11 @@ class MonthlyAmountTotal {
 
   @override
   bool operator ==(Object other) =>
-      other is MonthlyAmountTotal && other.monthKey == monthKey && other.label == label && other.total == total && other.count == count;
+      other is MonthlyAmountTotal &&
+      other.monthKey == monthKey &&
+      other.label == label &&
+      other.total == total &&
+      other.count == count;
 
   @override
   int get hashCode => Object.hash(monthKey, label, total, count);
@@ -33,7 +41,8 @@ class MonthlyAmountTotal {
   String toString() => 'MonthlyAmountTotal($monthKey, $label, $total, $count)';
 }
 
-double sumAmountRows(Iterable<double?> amounts) => amounts.fold(0.0, (s, a) => s + (a ?? 0));
+double sumAmountRows(Iterable<double?> amounts) =>
+    amounts.fold(0.0, (s, a) => s + (a ?? 0));
 
 String? _monthKeyFromRow(AmountRow row) {
   final iso = row.dateIso;
@@ -44,13 +53,17 @@ String? _monthKeyFromRow(AmountRow row) {
   final date = row.date;
   if (date != null && date.isNotEmpty) {
     final trimmed = date.trim();
-    if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(trimmed)) return trimmed.substring(0, 7);
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(trimmed))
+      return trimmed.substring(0, 7);
     final s = trimmed.length > 10 ? trimmed.substring(0, 10) : trimmed;
     final m = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(s);
     if (m != null) {
-      final d = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), y = int.parse(m.group(3)!);
+      final d = int.parse(m.group(1)!),
+          mo = int.parse(m.group(2)!),
+          y = int.parse(m.group(3)!);
       final dt = DateTime(y, mo, d);
-      if (dt.year == y && dt.month == mo && dt.day == d) return '$y-${pad2(mo)}';
+      if (dt.year == y && dt.month == mo && dt.day == d)
+        return '$y-${pad2(mo)}';
     }
   }
   return null;
@@ -70,6 +83,10 @@ List<MonthlyAmountTotal> monthlyAmountTotals(Iterable<AmountRow> rows) {
   final keys = map.keys.toList()..sort();
   return [
     for (final k in keys)
-      MonthlyAmountTotal(monthKey: k, label: fmtIsoMonthToDisplay(k), total: map[k]!.total, count: map[k]!.count),
+      MonthlyAmountTotal(
+          monthKey: k,
+          label: fmtIsoMonthToDisplay(k),
+          total: map[k]!.total,
+          count: map[k]!.count),
   ];
 }

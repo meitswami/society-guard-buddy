@@ -28,7 +28,13 @@ import 'widgets/report_ui.dart';
 
 enum _ReportTab { financial, visitor, vehicle, allModules, engine }
 
-enum _FinancialKind { collectionReceipts, expenses, flatWise, cashFlow, donationStatuses }
+enum _FinancialKind {
+  collectionReceipts,
+  expenses,
+  flatWise,
+  cashFlow,
+  donationStatuses
+}
 
 const Map<_FinancialKind, String> _kindKey = {
   _FinancialKind.collectionReceipts: 'reports.kind.collectionReceipts',
@@ -57,7 +63,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
 
   _ReportTab _tab = _ReportTab.financial;
   List<_FinancialKind> _kinds = [_FinancialKind.collectionReceipts];
-  late final TextEditingController _search = TextEditingController(text: ctx.initialQuery ?? '');
+  late final TextEditingController _search =
+      TextEditingController(text: ctx.initialQuery ?? '');
   String get _q => _search.text;
 
   String _reportMonth = ymOf(DateTime.now());
@@ -102,7 +109,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
 
   // ─── Periods ──────────────────────────────────────────────────────────────
 
-  ({String from, String to}) get _monthRange => financeReportingMonthRange(_reportMonth);
+  ({String from, String to}) get _monthRange =>
+      financeReportingMonthRange(_reportMonth);
 
   ({String from, String to}) get _statementRange =>
       _monthlyMode ? _monthRange : (from: _customFrom, to: _customTo);
@@ -111,7 +119,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
       ? fmtIsoMonthToDisplay(_reportMonth)
       : '${fmtIsoDateToDisplay(_customFrom)} – ${fmtIsoDateToDisplay(_customTo)}';
 
-  bool get _periodInvalid => _statementRange.from.compareTo(_statementRange.to) > 0;
+  bool get _periodInvalid =>
+      _statementRange.from.compareTo(_statementRange.to) > 0;
 
   void _onStatementPeriodChanged() {
     final r = _statementRange;
@@ -160,7 +169,9 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
         _loadedMonth = ym;
       });
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.t('mobile.loadFailed'), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, context.t('mobile.loadFailed'),
+            tone: BadgeTone.alert);
     } finally {
       if (mounted && ym == _reportMonth) setState(() => _monthLoading = false);
     }
@@ -176,7 +187,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
       return;
     }
     try {
-      final a = await ReportsRepository.loadModuleAggregations(ctx.societyId, r.from, r.to);
+      final a = await ReportsRepository.loadModuleAggregations(
+          ctx.societyId, r.from, r.to);
       if (mounted && key == _aggKey) setState(() => _aggregations = a);
     } catch (_) {}
   }
@@ -205,9 +217,11 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
 
   // ─── Derived data ─────────────────────────────────────────────────────────
 
-  List<ReportVisitor> get _displayVisitors => filterVisitorRows(_monthVisitors, _q);
+  List<ReportVisitor> get _displayVisitors =>
+      filterVisitorRows(_monthVisitors, _q);
 
-  List<ReportVisitor> get _displayVehicles => _displayVisitors.where((v) => v.hasVehicle).toList();
+  List<ReportVisitor> get _displayVehicles =>
+      _displayVisitors.where((v) => v.hasVehicle).toList();
 
   List<ReportShiftRow> get _searchedShifts => filterShiftRows(_shifts, _q);
 
@@ -224,9 +238,11 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
 
   List<FinancePeriodLedgerEntry> get _periodEntries => _periodInvalid
       ? const []
-      : filterLedgerByTransactionDateRange(_finance.societyLedgerEntries, _statementRange.from, _statementRange.to);
+      : filterLedgerByTransactionDateRange(_finance.societyLedgerEntries,
+          _statementRange.from, _statementRange.to);
 
-  List<FinancePeriodLedgerEntry> get _searchedPeriodEntries => filterLedgerEntries(_periodEntries, _q);
+  List<FinancePeriodLedgerEntry> get _searchedPeriodEntries =>
+      filterLedgerEntries(_periodEntries, _q);
 
   List<FinancePeriodLedgerEntry> get _monthEntries {
     final r = _monthRange;
@@ -236,7 +252,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     }).toList();
   }
 
-  List<FinancePeriodLedgerEntry> get _searchedMonthEntries => filterLedgerEntries(_monthEntries, _q);
+  List<FinancePeriodLedgerEntry> get _searchedMonthEntries =>
+      filterLedgerEntries(_monthEntries, _q);
 
   ReportExportContext _exportContext() {
     final searched = _searchedPeriodEntries;
@@ -275,7 +292,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
         _ReportTab.engine => 'engine',
       };
 
-  String _fileLabel() => _statementLabel.replaceAll(RegExp(r'\s+'), '-').replaceAll('/', '-');
+  String _fileLabel() =>
+      _statementLabel.replaceAll(RegExp(r'\s+'), '-').replaceAll('/', '-');
 
   // ─── Exports ──────────────────────────────────────────────────────────────
 
@@ -292,7 +310,10 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
       try {
         await _engineExporter?.call(format);
       } catch (e) {
-        if (mounted) AppFeedback.toast(context, '${context.tr('Export failed', 'निर्यात विफल')}: $e', tone: BadgeTone.alert);
+        if (mounted)
+          AppFeedback.toast(
+              context, '${context.tr('Export failed', 'निर्यात विफल')}: $e',
+              tone: BadgeTone.alert);
       }
       return;
     }
@@ -300,25 +321,34 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
       if (format == ExportFormat.pdf) {
         final c = await resolveLetterheadReportContext(ctx.societyId);
         if (!mounted) return;
-        if (c?.warning != null) AppFeedback.toast(context, letterheadWarningText(context), tone: BadgeTone.warning);
-        final bytes = await _buildPdf(c?.mode ?? ReportPdfMode.letterhead, c?.letterhead);
+        if (c?.warning != null)
+          AppFeedback.toast(context, letterheadWarningText(context),
+              tone: BadgeTone.warning);
+        final bytes =
+            await _buildPdf(c?.mode ?? ReportPdfMode.letterhead, c?.letterhead);
         if (!mounted) return;
-        await SocietyPdfOutput.preview(context, bytes, '$_tabId-report-${_fileLabel()}.pdf');
+        await SocietyPdfOutput.preview(
+            context, bytes, '$_tabId-report-${_fileLabel()}.pdf');
         return;
       }
       final file = await buildMonthlyReportFile(format, _exportContext());
       await shareExportFile(file.bytes, file.filename, format);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, '${context.tr('Export failed', 'निर्यात विफल')}: $e', tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(
+            context, '${context.tr('Export failed', 'निर्यात विफल')}: $e',
+            tone: BadgeTone.alert);
     }
   }
 
   // ─── Detail sheets ────────────────────────────────────────────────────────
 
-  void _openSheet(String title, String subtitle, List<ReportDetailRow> rows, {double? total}) {
+  void _openSheet(String title, String subtitle, List<ReportDetailRow> rows,
+      {double? total}) {
     ReportDetailSheet.show(
       context,
-      ReportDetailLayer(title: title, subtitle: subtitle, totalAmount: total, rows: rows),
+      ReportDetailLayer(
+          title: title, subtitle: subtitle, totalAmount: total, rows: rows),
       initialSearchQuery: _q,
       societyName: _societyName,
     );
@@ -329,13 +359,17 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     final total = entries.fold<double>(0, (s, e) => s + e.totalAmount);
     _openSheet(
       context.tr('Finance — All Entries', 'वित्त — सभी प्रविष्टियाँ'),
-      context.tr('All finance entries for ${fmtIsoMonthToDisplay(_reportMonth)}', '${fmtIsoMonthToDisplay(_reportMonth)} की सभी वित्त प्रविष्टियाँ'),
+      context.tr(
+          'All finance entries for ${fmtIsoMonthToDisplay(_reportMonth)}',
+          '${fmtIsoMonthToDisplay(_reportMonth)} की सभी वित्त प्रविष्टियाँ'),
       [
         for (final e in entries)
           ReportDetailRow(
             id: e.id,
-            label: '${formatLedgerFieldLabel(e.recordMode)} → ${formatLedgerFieldLabel(e.destination)}',
-            sublabel: 'Flats: ${jsNumberString(e.aggregateFlatCount)} | Method: ${(e.paymentMethod ?? '').isEmpty ? 'N/A' : e.paymentMethod}',
+            label:
+                '${formatLedgerFieldLabel(e.recordMode)} → ${formatLedgerFieldLabel(e.destination)}',
+            sublabel:
+                'Flats: ${jsNumberString(e.aggregateFlatCount)} | Method: ${(e.paymentMethod ?? '').isEmpty ? 'N/A' : e.paymentMethod}',
             amount: e.totalAmount,
             date: fmtDate(e.ledgerDate),
             dateIso: e.ledgerDate,
@@ -348,15 +382,19 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
 
   void _openVisitors() => _openSheet(
         context.tr('Visitors — Detail', 'आगंतुक — विवरण'),
-        context.tr('All visitors for $_reportMonth', '$_reportMonth के सभी आगंतुक'),
+        context.tr(
+            'All visitors for $_reportMonth', '$_reportMonth के सभी आगंतुक'),
         [
-          for (final v in _displayVisitors.where((v) => v.category == 'visitor'))
+          for (final v
+              in _displayVisitors.where((v) => v.category == 'visitor'))
             ReportDetailRow(
               id: v.id,
               label: v.name,
               sublabel: 'Flat ${v.flatNumber} · ${v.purpose}',
               date: fmtDateTime(v.entryTime),
-              extra: v.isInside ? 'Still inside' : 'Out: ${fmtDateTime(v.exitTime)}',
+              extra: v.isInside
+                  ? 'Still inside'
+                  : 'Out: ${fmtDateTime(v.exitTime)}',
               status: v.isInside ? 'inside' : 'exited',
             ),
         ],
@@ -364,7 +402,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
 
   void _openVehicles() => _openSheet(
         context.tr('Vehicles — Detail', 'वाहन — विवरण'),
-        context.tr('All vehicle entries for $_reportMonth', '$_reportMonth की सभी वाहन प्रविष्टियाँ'),
+        context.tr('All vehicle entries for $_reportMonth',
+            '$_reportMonth की सभी वाहन प्रविष्टियाँ'),
         [
           for (final v in _displayVehicles)
             ReportDetailRow(
@@ -380,9 +419,11 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
 
   void _openDeliveries() => _openSheet(
         context.tr('Deliveries & Services — Detail', 'वितरण व सेवाएँ — विवरण'),
-        context.tr('All delivery/service entries for $_reportMonth', '$_reportMonth की सभी वितरण/सेवा प्रविष्टियाँ'),
+        context.tr('All delivery/service entries for $_reportMonth',
+            '$_reportMonth की सभी वितरण/सेवा प्रविष्टियाँ'),
         [
-          for (final v in _displayVisitors.where((v) => v.category == 'delivery' || v.category == 'service'))
+          for (final v in _displayVisitors.where(
+              (v) => v.category == 'delivery' || v.category == 'service'))
             ReportDetailRow(
               id: v.id,
               label: v.name,
@@ -396,7 +437,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
 
   void _openShifts() => _openSheet(
         context.tr('Guard Shifts — Detail', 'गार्ड पारी — विवरण'),
-        context.tr('All guard shifts for $_reportMonth', '$_reportMonth की सभी गार्ड पारियाँ'),
+        context.tr('All guard shifts for $_reportMonth',
+            '$_reportMonth की सभी गार्ड पारियाँ'),
         [
           for (final s in _searchedShifts)
             ReportDetailRow(
@@ -404,7 +446,9 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
               label: s.guardName,
               sublabel: 'Guard ID: ${s.guardId}',
               date: '${fmtDate(s.loginTime)}, ${fmtTime(s.loginTime)}',
-              extra: s.logoutTime != null ? 'Out: ${fmtTime(s.logoutTime)}' : 'Active',
+              extra: s.logoutTime != null
+                  ? 'Out: ${fmtTime(s.logoutTime)}'
+                  : 'Active',
               status: s.logoutTime != null ? 'completed' : 'active',
             ),
         ],
@@ -414,7 +458,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     final d = _aggregations.donationStatuses;
     _openSheet(
       context.tr('Donations — Summary', 'दान — सारांश'),
-      context.tr('Donation payments for $_statementLabel', '$_statementLabel के दान भुगतान'),
+      context.tr('Donation payments for $_statementLabel',
+          '$_statementLabel के दान भुगतान'),
       [
         for (var i = 0; i < d.length; i++)
           ReportDetailRow(
@@ -445,18 +490,31 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     switch (_tab) {
       case _ReportTab.financial:
         final a = _searchedPeriodEntries.length, b = _periodEntries.length;
-        return hi ? '$b में से $a खाता-बही प्रविष्टियाँ मेल खाती हैं' : '$a of $b ledger entries match';
+        return hi
+            ? '$b में से $a खाता-बही प्रविष्टियाँ मेल खाती हैं'
+            : '$a of $b ledger entries match';
       case _ReportTab.visitor:
         final a = _displayVisitors.length, b = _monthVisitors.length;
-        return hi ? '$b में से $a प्रविष्टियाँ मेल खाती हैं' : '$a of $b entries match';
+        return hi
+            ? '$b में से $a प्रविष्टियाँ मेल खाती हैं'
+            : '$a of $b entries match';
       case _ReportTab.vehicle:
-        final a = _displayVehicles.length, b = _monthVisitors.where((v) => v.hasVehicle).length;
-        return hi ? '$b में से $a वाहन प्रविष्टियाँ मेल खाती हैं' : '$a of $b vehicle entries match';
+        final a = _displayVehicles.length,
+            b = _monthVisitors.where((v) => v.hasVehicle).length;
+        return hi
+            ? '$b में से $a वाहन प्रविष्टियाँ मेल खाती हैं'
+            : '$a of $b vehicle entries match';
       case _ReportTab.allModules:
-        final f = _searchedMonthEntries.length, v = _displayVisitors.length, s = _searchedShifts.length;
-        return hi ? '$f वित्त · $v आगंतुक · $s पारियाँ मेल खाती हैं' : '$f finance · $v visitors · $s shifts match';
+        final f = _searchedMonthEntries.length,
+            v = _displayVisitors.length,
+            s = _searchedShifts.length;
+        return hi
+            ? '$f वित्त · $v आगंतुक · $s पारियाँ मेल खाती हैं'
+            : '$f finance · $v visitors · $s shifts match';
       case _ReportTab.engine:
-        return hi ? 'कस्टम प्रतिवेदन पंक्तियाँ फ़िल्टर हो रही हैं…' : 'Filtering custom report rows…';
+        return hi
+            ? 'कस्टम प्रतिवेदन पंक्तियाँ फ़िल्टर हो रही हैं…'
+            : 'Filtering custom report rows…';
     }
   }
 
@@ -466,7 +524,9 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
       if (_kinds.contains(k)) {
         if (_kinds.length > 1) _kinds = _kinds.where((x) => x != k).toList();
       } else {
-        _kinds = _FinancialKind.values.where((x) => x == k || _kinds.contains(x)).toList();
+        _kinds = _FinancialKind.values
+            .where((x) => x == k || _kinds.contains(x))
+            .toList();
       }
     });
     if (_kinds.contains(_FinancialKind.flatWise)) _ensureFlatReport();
@@ -483,14 +543,16 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(rs(sheetCtx, 'reports.tab.financial'), style: AppText.sectionTitle(sheetCtx)),
+                child: Text(rs(sheetCtx, 'reports.tab.financial'),
+                    style: AppText.sectionTitle(sheetCtx)),
               ),
             ),
             for (final k in _FinancialKind.values)
               CheckboxListTile(
                 dense: true,
                 value: _kinds.contains(k),
-                title: Text(rs(sheetCtx, _kindKey[k]!), style: const TextStyle(fontSize: 13)),
+                title: Text(rs(sheetCtx, _kindKey[k]!),
+                    style: const TextStyle(fontSize: 13)),
                 onChanged: (_) {
                   _toggleKind(k);
                   setSt(() {});
@@ -502,7 +564,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     );
   }
 
-  List<String> get _kindLabels => [for (final k in _kinds) rs(context, _kindKey[k]!)];
+  List<String> get _kindLabels =>
+      [for (final k in _kinds) rs(context, _kindKey[k]!)];
 
   Widget _headerActions() {
     final engine = _tab == _ReportTab.engine;
@@ -525,7 +588,11 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
             onExport: _export,
             formats: engine
                 ? const [ExportFormat.excel, ExportFormat.csv, ExportFormat.pdf]
-                : const [ExportFormat.excel, ExportFormat.word, ExportFormat.csv],
+                : const [
+                    ExportFormat.excel,
+                    ExportFormat.word,
+                    ExportFormat.csv
+                  ],
           ),
           if (!engine)
             SharePdfWhatsAppButton(
@@ -556,7 +623,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     return ReportPanel(
       margin: const EdgeInsets.only(bottom: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(context.t('report.searchTitle'), style: AppText.bodyMedium(context).copyWith(fontSize: 11)),
+        Text(context.t('report.searchTitle'),
+            style: AppText.bodyMedium(context).copyWith(fontSize: 11)),
         const SizedBox(height: 8),
         TextField(
           controller: _search,
@@ -574,7 +642,10 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
                   ),
           ),
         ),
-        if (summary != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(summary, style: AppText.tiny(context))),
+        if (summary != null)
+          Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(summary, style: AppText.tiny(context))),
       ]),
     );
   }
@@ -582,7 +653,9 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
   Widget _tabs() {
     final labels = _kindLabels;
     final finLabel = _tab == _ReportTab.financial
-        ? (labels.length == 1 ? '${rs(context, 'reports.tab.financial')}: ${labels.first}' : '${rs(context, 'reports.tab.financial')} (${labels.length})')
+        ? (labels.length == 1
+            ? '${rs(context, 'reports.tab.financial')}: ${labels.first}'
+            : '${rs(context, 'reports.tab.financial')} (${labels.length})')
         : rs(context, 'reports.tab.financial');
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -598,9 +671,21 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           ),
           for (final (tab, key, icon) in [
             (_ReportTab.visitor, 'reports.tab.visitor', Icons.people_outline),
-            (_ReportTab.vehicle, 'reports.tab.vehicle', Icons.directions_car_outlined),
-            (_ReportTab.allModules, 'reports.tab.allModules', Icons.assignment_outlined),
-            (_ReportTab.engine, 'reports.tab.custom', Icons.table_chart_outlined),
+            (
+              _ReportTab.vehicle,
+              'reports.tab.vehicle',
+              Icons.directions_car_outlined
+            ),
+            (
+              _ReportTab.allModules,
+              'reports.tab.allModules',
+              Icons.assignment_outlined
+            ),
+            (
+              _ReportTab.engine,
+              'reports.tab.custom',
+              Icons.table_chart_outlined
+            ),
           ]) ...[
             const SizedBox(width: 6),
             ReportTabPill(
@@ -629,9 +714,13 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       ReportPanel(
         margin: const EdgeInsets.only(bottom: 16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(
-            labels.length == 1 ? labels.first : context.tr('${labels.length} reports selected', '${labels.length} प्रतिवेदन चुने गए'),
+            labels.length == 1
+                ? labels.first
+                : context.tr('${labels.length} reports selected',
+                    '${labels.length} प्रतिवेदन चुने गए'),
             style: AppText.bodyMedium(context).copyWith(fontSize: 11),
           ),
           Text(
@@ -650,37 +739,50 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
             ExportFormatMenuButton(
               label: rs(context, 'reports.downloadView'),
               onExport: _export,
-              formats: const [ExportFormat.excel, ExportFormat.word, ExportFormat.csv],
+              formats: const [
+                ExportFormat.excel,
+                ExportFormat.word,
+                ExportFormat.csv
+              ],
             ),
             SharePdfWhatsAppButton(
               label: rs(context, 'reports.shareWhatsApp'),
               filename: filename,
-              message: '$_societyName — $_statementLabel financial report (${labels.join(', ')})',
+              message:
+                  '$_societyName — $_statementLabel financial report (${labels.join(', ')})',
               getBytes: _shareBytes,
             ),
           ]),
           const SizedBox(height: 12),
-          Wrap(spacing: 6, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-            ReportTabPill(
-              label: context.tr('Monthly', 'मासिक'),
-              icon: Icons.calendar_month_outlined,
-              selected: _monthlyMode,
-              onTap: () {
-                setState(() => _monthlyMode = true);
-                _onStatementPeriodChanged();
-              },
-            ),
-            ReportTabPill(
-              label: context.tr('Date range', 'तारीख सीमा'),
-              icon: Icons.date_range_outlined,
-              selected: !_monthlyMode,
-              onTap: () {
-                setState(() => _monthlyMode = false);
-                _onStatementPeriodChanged();
-              },
-            ),
-            if (_monthlyMode) MonthPickerButton(value: _reportMonth, minMonth: kFinanceReportingEarliestMonth, onChanged: _setMonth),
-          ]),
+          Wrap(
+              spacing: 6,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                ReportTabPill(
+                  label: context.tr('Monthly', 'मासिक'),
+                  icon: Icons.calendar_month_outlined,
+                  selected: _monthlyMode,
+                  onTap: () {
+                    setState(() => _monthlyMode = true);
+                    _onStatementPeriodChanged();
+                  },
+                ),
+                ReportTabPill(
+                  label: context.tr('Date range', 'तारीख सीमा'),
+                  icon: Icons.date_range_outlined,
+                  selected: !_monthlyMode,
+                  onTap: () {
+                    setState(() => _monthlyMode = false);
+                    _onStatementPeriodChanged();
+                  },
+                ),
+                if (_monthlyMode)
+                  MonthPickerButton(
+                      value: _reportMonth,
+                      minMonth: kFinanceReportingEarliestMonth,
+                      onChanged: _setMonth),
+              ]),
           if (!_monthlyMode) ...[
             const SizedBox(height: 8),
             Row(children: [
@@ -711,13 +813,16 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                context.tr('End date must be on or after start date.', 'अंतिम तारीख प्रारंभ तारीख के बराबर या बाद की होनी चाहिए।'),
+                context.tr('End date must be on or after start date.',
+                    'अंतिम तारीख प्रारंभ तारीख के बराबर या बाद की होनी चाहिए।'),
                 style: TextStyle(fontSize: 11, color: t.destructive),
               ),
             ),
         ]),
       ),
-      if (_financeLoading && _finance.flats.isEmpty && _finance.payments.isEmpty)
+      if (_financeLoading &&
+          _finance.flats.isEmpty &&
+          _finance.payments.isEmpty)
         const LoadingView()
       else ...[
         if (report != null && ctx.societyId.isNotEmpty)
@@ -742,12 +847,19 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     ]);
   }
 
-  Widget _financialSection(_FinancialKind k, FinancePeriodReportResult? report) {
+  Widget _financialSection(
+      _FinancialKind k, FinancePeriodReportResult? report) {
     switch (k) {
       case _FinancialKind.collectionReceipts:
-        return report == null ? const SizedBox.shrink() : FinancePeriodHeadTables(report: report, section: FinancePeriodHeadSection.receipts);
+        return report == null
+            ? const SizedBox.shrink()
+            : FinancePeriodHeadTables(
+                report: report, section: FinancePeriodHeadSection.receipts);
       case _FinancialKind.expenses:
-        return report == null ? const SizedBox.shrink() : FinancePeriodHeadTables(report: report, section: FinancePeriodHeadSection.expenses);
+        return report == null
+            ? const SizedBox.shrink()
+            : FinancePeriodHeadTables(
+                report: report, section: FinancePeriodHeadSection.expenses);
       case _FinancialKind.flatWise:
         if (_finance.flats.isEmpty) return const SizedBox.shrink();
         final src = _flatSource;
@@ -803,14 +915,21 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           children: [
             const SizedBox(height: 8),
             if (d.isEmpty)
-              Text(context.tr('No donations for this period.', 'इस अवधि में कोई दान नहीं।'), style: AppText.caption(context))
+              Text(
+                  context.tr('No donations for this period.',
+                      'इस अवधि में कोई दान नहीं।'),
+                  style: AppText.caption(context))
             else
               for (final s in d)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(children: [
-                    Expanded(child: Text(capitalizeWords(s.status), style: AppText.body(context).copyWith(fontSize: 12))),
-                    Text('${s.count} · ${rupees(s.total)}', style: AppText.mono(context, size: 12)),
+                    Expanded(
+                        child: Text(capitalizeWords(s.status),
+                            style:
+                                AppText.body(context).copyWith(fontSize: 12))),
+                    Text('${s.count} · ${rupees(s.total)}',
+                        style: AppText.mono(context, size: 12)),
                   ]),
                 ),
           ],
@@ -821,12 +940,20 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
   Widget _visitorTab() {
     final v = _displayVisitors;
     final stats = ReportVisitorStats.of(v);
-    final filteredCount = _q.trim().isNotEmpty && v.length != _monthVisitors.length ? ' / ${_monthVisitors.length}' : '';
+    final filteredCount =
+        _q.trim().isNotEmpty && v.length != _monthVisitors.length
+            ? ' / ${_monthVisitors.length}'
+            : '';
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       StatGrid(columns: 3, spacing: 8, children: [
         ReportStatCard(
-          metric: const MetricCopy('Visitors', 'आगंतुक', 'Visitor log entries in the selected report month.',
-              'चुने गए प्रतिवेदन माह की आगंतुक प्रविष्टियाँ।', 'Count of visitor records in the month filter.', 'माह फ़िल्टर में आगंतुक अभिलेखों की गिनती।'),
+          metric: const MetricCopy(
+              'Visitors',
+              'आगंतुक',
+              'Visitor log entries in the selected report month.',
+              'चुने गए प्रतिवेदन माह की आगंतुक प्रविष्टियाँ।',
+              'Count of visitor records in the month filter.',
+              'माह फ़िल्टर में आगंतुक अभिलेखों की गिनती।'),
           title: context.t('dashboard.visitors'),
           caption: context.t('dashboard.visitors'),
           icon: Icons.people_outline,
@@ -837,8 +964,13 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           navigateLabel: context.tr('View visitor list', 'आगंतुक सूची देखें'),
         ),
         ReportStatCard(
-          metric: const MetricCopy('Deliveries', 'वितरण', 'Delivery personnel entries in the selected month.',
-              'चुने गए माह की वितरण कर्मी प्रविष्टियाँ।', 'Visitors categorised as deliveries in the month.', 'माह में वितरण श्रेणी के आगंतुक।'),
+          metric: const MetricCopy(
+              'Deliveries',
+              'वितरण',
+              'Delivery personnel entries in the selected month.',
+              'चुने गए माह की वितरण कर्मी प्रविष्टियाँ।',
+              'Visitors categorised as deliveries in the month.',
+              'माह में वितरण श्रेणी के आगंतुक।'),
           title: context.t('dashboard.deliveries'),
           caption: context.t('dashboard.deliveries'),
           icon: Icons.local_shipping_outlined,
@@ -849,8 +981,13 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           navigateLabel: context.tr('View delivery list', 'वितरण सूची देखें'),
         ),
         ReportStatCard(
-          metric: const MetricCopy('Inside now', 'अभी अंदर', 'Visitors who entered but have no exit time recorded yet.',
-              'जो आगंतुक अंदर आए पर जिनका बाहर जाने का समय दर्ज नहीं हुआ।', 'Entries in month with exit_time null.', 'माह की प्रविष्टियाँ जिनका exit_time खाली है।'),
+          metric: const MetricCopy(
+              'Inside now',
+              'अभी अंदर',
+              'Visitors who entered but have no exit time recorded yet.',
+              'जो आगंतुक अंदर आए पर जिनका बाहर जाने का समय दर्ज नहीं हुआ।',
+              'Entries in month with exit_time null.',
+              'माह की प्रविष्टियाँ जिनका exit_time खाली है।'),
           title: context.t('dashboard.insideNow'),
           caption: context.t('dashboard.insideNow'),
           icon: Icons.door_front_door_outlined,
@@ -860,11 +997,15 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
         ),
       ]),
       const SizedBox(height: 20),
-      SectionTitle('${context.t('report.entries')} (${v.length}$filteredCount)'),
+      SectionTitle(
+          '${context.t('report.entries')} (${v.length}$filteredCount)'),
       if (_monthLoading && _loadedMonth != _reportMonth)
         const LoadingView()
       else if (v.isEmpty)
-        EmptyView(message: _q.trim().isNotEmpty ? context.t('report.searchNoResults') : context.t('report.noEntries'))
+        EmptyView(
+            message: _q.trim().isNotEmpty
+                ? context.t('report.searchNoResults')
+                : context.t('report.noEntries'))
       else
         for (final x in v) _visitorRow(x),
     ]);
@@ -876,20 +1017,29 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(children: [
-        Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: v.isInside ? t.success : t.mutedForeground)),
+        Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: v.isInside ? t.success : t.mutedForeground)),
         const SizedBox(width: 8),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text.rich(
               TextSpan(children: [
                 TextSpan(text: v.name),
-                TextSpan(text: ' · ${v.flatNumber}', style: TextStyle(color: t.mutedForeground)),
+                TextSpan(
+                    text: ' · ${v.flatNumber}',
+                    style: TextStyle(color: t.mutedForeground)),
               ]),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppText.bodyMedium(context).copyWith(fontSize: 12),
             ),
-            Text('${v.category} · ${fmtDateTime(v.entryTime)}', style: AppText.tiny(context)),
+            Text('${v.category} · ${fmtDateTime(v.entryTime)}',
+                style: AppText.tiny(context)),
           ]),
         ),
         if (v.hasVehicle) _plate(v.vehicleNumber!),
@@ -899,7 +1049,9 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
 
   Widget _plate(String n) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(color: context.tokens.muted, borderRadius: BorderRadius.circular(4)),
+        decoration: BoxDecoration(
+            color: context.tokens.muted,
+            borderRadius: BorderRadius.circular(4)),
         child: Text(n, style: AppText.mono(context, size: 10)),
       );
 
@@ -911,8 +1063,13 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       StatGrid(spacing: 8, children: [
         ReportStatCard(
-          metric: const MetricCopy('Vehicle entries', 'वाहन प्रविष्टियाँ', 'Visitor log rows that include a vehicle number in the period.',
-              'अवधि की वे आगंतुक प्रविष्टियाँ जिनमें वाहन नंबर है।', 'Count of month visitors with vehicle_number set.', 'माह के आगंतुक जिनका vehicle_number भरा है, उनकी गिनती।'),
+          metric: const MetricCopy(
+              'Vehicle entries',
+              'वाहन प्रविष्टियाँ',
+              'Visitor log rows that include a vehicle number in the period.',
+              'अवधि की वे आगंतुक प्रविष्टियाँ जिनमें वाहन नंबर है।',
+              'Count of month visitors with vehicle_number set.',
+              'माह के आगंतुक जिनका vehicle_number भरा है, उनकी गिनती।'),
           icon: Icons.directions_car_outlined,
           value: '${stats.totalVehicles}',
           center: true,
@@ -921,8 +1078,13 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           navigateLabel: context.tr('View vehicles', 'वाहन देखें'),
         ),
         ReportStatCard(
-          metric: const MetricCopy('Unique flats', 'अलग-अलग फ्लैट', 'Distinct flat numbers that had vehicle entries in the period.',
-              'अवधि में वाहन प्रविष्टि वाले अलग-अलग फ्लैट नंबर।', 'Distinct flat_number on vehicle visitor rows.', 'वाहन आगंतुक पंक्तियों पर अलग flat_number।'),
+          metric: const MetricCopy(
+              'Unique flats',
+              'अलग-अलग फ्लैट',
+              'Distinct flat numbers that had vehicle entries in the period.',
+              'अवधि में वाहन प्रविष्टि वाले अलग-अलग फ्लैट नंबर।',
+              'Distinct flat_number on vehicle visitor rows.',
+              'वाहन आगंतुक पंक्तियों पर अलग flat_number।'),
           icon: Icons.people_outline,
           value: '${stats.uniqueFlats}',
           center: true,
@@ -939,7 +1101,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
         EmptyView(
           message: _q.trim().isNotEmpty
               ? context.t('report.searchNoResults')
-              : context.tr('No vehicle entries this month', 'इस माह कोई वाहन प्रविष्टि नहीं'),
+              : context.tr('No vehicle entries this month',
+                  'इस माह कोई वाहन प्रविष्टि नहीं'),
         )
       else
         for (final x in v)
@@ -947,16 +1110,25 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
             margin: const EdgeInsets.only(bottom: 6),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(children: [
-              Icon(Icons.directions_car_outlined, size: 16, color: t.mutedForeground),
+              Icon(Icons.directions_car_outlined,
+                  size: 16, color: t.mutedForeground),
               const SizedBox(width: 8),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(x.vehicleNumber ?? '', style: AppText.mono(context, size: 12, weight: FontWeight.w600)),
-                  Text('${x.name} · ${context.t('common.flat')} ${x.flatNumber} · ${fmtDateTime(x.entryTime)}', style: AppText.tiny(context)),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(x.vehicleNumber ?? '',
+                          style: AppText.mono(context,
+                              size: 12, weight: FontWeight.w600)),
+                      Text(
+                          '${x.name} · ${context.t('common.flat')} ${x.flatNumber} · ${fmtDateTime(x.entryTime)}',
+                          style: AppText.tiny(context)),
+                    ]),
               ),
               MiniStatusChip(
-                x.isInside ? context.tr('Inside', 'अंदर') : context.tr('Exited', 'बाहर'),
+                x.isInside
+                    ? context.tr('Inside', 'अंदर')
+                    : context.tr('Exited', 'बाहर'),
                 color: x.isInside ? t.success : t.mutedForeground,
                 capitalize: false,
               ),
@@ -968,29 +1140,40 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
   Widget _allModulesTab() {
     final t = context.tokens;
     final monthEntries = _searchedMonthEntries;
-    final monthTotal = monthEntries.fold<double>(0, (s, e) => s + e.totalAmount);
+    final monthTotal =
+        monthEntries.fold<double>(0, (s, e) => s + e.totalAmount);
     final stats = ReportVisitorStats.of(_displayVisitors);
     final d = _aggregations.donationStatuses;
-    Widget extra(String s) => Padding(padding: const EdgeInsets.only(top: 4), child: Text(s, style: AppText.tiny(context)));
+    Widget extra(String s) => Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(s, style: AppText.tiny(context)));
     Widget soon(IconData icon, Color color, String label) => Opacity(
           opacity: 0.6,
           child: CardSection(
             padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Icon(icon, size: 16, color: color),
                 const SizedBox(width: 6),
-                Flexible(child: Text(label, style: AppText.bodyMedium(context).copyWith(fontSize: 12, fontWeight: FontWeight.w600))),
+                Flexible(
+                    child: Text(label,
+                        style: AppText.bodyMedium(context).copyWith(
+                            fontSize: 12, fontWeight: FontWeight.w600))),
               ]),
               const SizedBox(height: 8),
-              Text(rs(context, 'reports.comingSoon'), style: AppText.tiny(context)),
+              Text(rs(context, 'reports.comingSoon'),
+                  style: AppText.tiny(context)),
             ]),
           ),
         );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
         padding: const EdgeInsets.only(bottom: 16),
-        child: Text(context.tr('Summary across all modules for $_reportMonth', '$_reportMonth के सभी मॉड्यूल का सारांश'), style: AppText.caption(context)),
+        child: Text(
+            context.tr('Summary across all modules for $_reportMonth',
+                '$_reportMonth के सभी मॉड्यूल का सारांश'),
+            style: AppText.caption(context)),
       ),
       StatGrid(children: [
         ReportStatCard(
@@ -1003,7 +1186,10 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           value: rupees(monthTotal),
           onNavigate: _openMonthFinance,
           navigateLabel: context.tr('View finance detail', 'वित्त विवरण देखें'),
-          children: [extra(context.tr('${monthEntries.length} entries', '${monthEntries.length} प्रविष्टियाँ'))],
+          children: [
+            extra(context.tr('${monthEntries.length} entries',
+                '${monthEntries.length} प्रविष्टियाँ'))
+          ],
         ),
         ReportStatCard(
           metric: ReportMetrics.guardShifts,
@@ -1015,7 +1201,9 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           value: '${_searchedShifts.length}',
           onNavigate: _openShifts,
           navigateLabel: context.tr('View shift list', 'पारी सूची देखें'),
-          children: [extra(context.tr('Login/Logout records', 'लॉगिन/लॉगआउट अभिलेख'))],
+          children: [
+            extra(context.tr('Login/Logout records', 'लॉगिन/लॉगआउट अभिलेख'))
+          ],
         ),
         ReportStatCard(
           metric: ReportMetrics.moduleVisitors,
@@ -1051,7 +1239,10 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           value: '${stats.totalDeliveries}',
           onNavigate: _openDeliveries,
           navigateLabel: context.tr('View deliveries', 'वितरण देखें'),
-          children: [extra(context.tr('Delivery/Service entries', 'वितरण/सेवा प्रविष्टियाँ'))],
+          children: [
+            extra(context.tr(
+                'Delivery/Service entries', 'वितरण/सेवा प्रविष्टियाँ'))
+          ],
         ),
         ReportStatCard(
           metric: ReportMetrics.moduleDonations,
@@ -1065,9 +1256,12 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           navigateLabel: context.tr('View donations', 'दान देखें'),
           children: [extra(rupees(d.fold<double>(0, (s, x) => s + x.total)))],
         ),
-        soon(Icons.local_parking_outlined, t.accent, context.tr('Parking', 'पार्किंग')),
-        soon(Icons.how_to_vote_outlined, t.primary, context.tr('Polls & Elections', 'मतदान व चुनाव')),
-        soon(Icons.build_outlined, t.mutedForeground, context.tr('Maintenance Requests', 'रखरखाव अनुरोध')),
+        soon(Icons.local_parking_outlined, t.accent,
+            context.tr('Parking', 'पार्किंग')),
+        soon(Icons.how_to_vote_outlined, t.primary,
+            context.tr('Polls & Elections', 'मतदान व चुनाव')),
+        soon(Icons.build_outlined, t.mutedForeground,
+            context.tr('Maintenance Requests', 'रखरखाव अनुरोध')),
       ]),
     ]);
   }
@@ -1102,7 +1296,8 @@ class _AdminReportsModuleState extends State<AdminReportsModule> {
           _ReportTab.visitor => _visitorTab(),
           _ReportTab.vehicle => _vehicleTab(),
           _ReportTab.allModules => _allModulesTab(),
-          _ReportTab.engine => ctx.societyId.isEmpty ? const SizedBox.shrink() : _engineTab(),
+          _ReportTab.engine =>
+            ctx.societyId.isEmpty ? const SizedBox.shrink() : _engineTab(),
         },
       ],
     );

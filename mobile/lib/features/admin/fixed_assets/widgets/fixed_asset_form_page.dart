@@ -51,8 +51,9 @@ class _AssetDateFieldState extends State<AssetDateField> {
   @override
   void didUpdateWidget(covariant AssetDateField old) {
     super.didUpdateWidget(old);
-    if (!_focus.hasFocus && old.value != widget.value)
+    if (!_focus.hasFocus && old.value != widget.value) {
       _ctrl.text = fmtIsoDateToDisplay(widget.value);
+    }
   }
 
   @override
@@ -280,8 +281,9 @@ class _FixedAssetFormPageState extends State<FixedAssetFormPage> {
     final t = context.tokens;
     final hi = context.isHi;
     final groupIds = ['', ...widget.expenseGroups.map((g) => g.id)];
-    if (_groupId != null && !groupIds.contains(_groupId))
+    if (_groupId != null && !groupIds.contains(_groupId)) {
       groupIds.add(_groupId!);
+    }
     const gap = SizedBox(height: 12);
     final numFmt = [FilteringTextInputFormatter.digitsOnly];
     return Scaffold(

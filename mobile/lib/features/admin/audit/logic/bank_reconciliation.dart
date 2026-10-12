@@ -96,8 +96,9 @@ class ReconcilablePayment extends ReconcilableTarget {
   @override
   String displayLabel({bool hi = false}) {
     if (!hi) return label;
-    if (savedFallback)
+    if (savedFallback) {
       return label == 'Linked record' ? 'जुड़ा रिकॉर्ड' : label;
+    }
     return 'फ्लैट $flatNumber — ${chargeTitle ?? 'रखरखाव'} — ${jsInr(amount)}';
   }
 }
@@ -130,8 +131,9 @@ class ReconcilableLedgerEntry extends ReconcilableTarget {
   @override
   String displayLabel({bool hi = false}) {
     if (!hi) return label;
-    if (savedFallback)
+    if (savedFallback) {
       return label == 'Linked record' ? 'जुड़ा रिकॉर्ड' : label;
+    }
     return '${isExpense ? 'खर्च' : 'रसीद'} — ${title ?? 'लेजर'} — ${jsInr(labelAmount)}';
   }
 }
@@ -380,9 +382,10 @@ String? parseFlexibleDate(String raw, [DateTime? now]) {
   final iso = DateTime.tryParse(s);
   if (iso != null) return ymdOfDate(iso.isUtc ? iso.toLocal() : iso);
   m = RegExp(r'^(\d{4})[/.](\d{1,2})[/.](\d{1,2})$').firstMatch(s);
-  if (m != null)
+  if (m != null) {
     return _ymd(
         int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
+  }
   m = RegExp(r'^(\d{1,2})[.\-/ ](\d{1,2})[.\-/ ](\d{2}|\d{4})$').firstMatch(s);
   if (m != null) {
     final yRaw = m.group(3)!;
@@ -408,8 +411,9 @@ String? parseFlexibleDate(String raw, [DateTime? now]) {
       .firstMatch(s);
   if (m != null) {
     final mo = _monthFromName(m.group(1)!);
-    if (mo != null)
+    if (mo != null) {
       return _ymd(int.parse(m.group(3)!), mo, int.parse(m.group(2)!));
+    }
   }
   return null;
 }
@@ -677,8 +681,9 @@ List<ReconcilableTarget> buildReconcilableTargets(
   final targets = <ReconcilableTarget>[];
   for (final p in payments) {
     if (p.paymentStatus != 'verified') continue;
-    if (normalizePaymentChannel(p.paymentMethod) != PaymentChannel.bank)
+    if (normalizePaymentChannel(p.paymentMethod) != PaymentChannel.bank) {
       continue;
+    }
     if (alreadyMatchedPaymentIds.contains(p.id)) continue;
     final billing = paymentBillingDate(p.dueDate);
     targets.add(ReconcilablePayment(
@@ -695,8 +700,9 @@ List<ReconcilableTarget> buildReconcilableTargets(
   }
   for (final e in ledgerEntries) {
     if (e.paymentStatus != 'verified') continue;
-    if (normalizePaymentChannel(e.paymentMethod) != PaymentChannel.bank)
+    if (normalizePaymentChannel(e.paymentMethod) != PaymentChannel.bank) {
       continue;
+    }
     if (alreadyMatchedEntryIds.contains(e.id)) continue;
     final isExpense = e.destination == 'separate_entry';
     targets.add(ReconcilableLedgerEntry(

@@ -72,7 +72,15 @@ class StatementEntry {
 
 enum CashFlowSection { operating, investing, financing, summary }
 
-enum CashFlowDrillKind { receipts, expenses, expenseHead, corpus, reserve, cashStatement, bankStatement }
+enum CashFlowDrillKind {
+  receipts,
+  expenses,
+  expenseHead,
+  corpus,
+  reserve,
+  cashStatement,
+  bankStatement
+}
 
 class CashFlowLine {
   const CashFlowLine({
@@ -104,7 +112,11 @@ class CashFlowLine {
 }
 
 class CashBalances {
-  const CashBalances({required this.cash, required this.bank, required this.other, required this.total});
+  const CashBalances(
+      {required this.cash,
+      required this.bank,
+      required this.other,
+      required this.total});
 
   final double cash;
   final double bank;
@@ -140,10 +152,13 @@ class CashFlowResult {
   final double corpusReceipts;
 }
 
-String _reserveTransferDate(FinancePeriodReserveTransfer r) => '${r.entryMonth}-01';
+String _reserveTransferDate(FinancePeriodReserveTransfer r) =>
+    '${r.entryMonth}-01';
 
 bool _isReserveOutflow(String direction) =>
-    direction == 'operating_to_reserve' || direction == 'reserve_to_fixed' || direction == 'reserve_to_emergency';
+    direction == 'operating_to_reserve' ||
+    direction == 'reserve_to_fixed' ||
+    direction == 'reserve_to_emergency';
 
 StatementEntry _reserveToStatement(FinancePeriodReserveTransfer r) {
   final outflow = _isReserveOutflow(r.direction);
@@ -151,7 +166,9 @@ StatementEntry _reserveToStatement(FinancePeriodReserveTransfer r) {
     id: r.id,
     date: _reserveTransferDate(r),
     label: r.direction.replaceAll('_', ' '),
-    sublabel: (r.notes == null || r.notes!.isEmpty) ? 'Reserve fund transfer' : r.notes,
+    sublabel: (r.notes == null || r.notes!.isEmpty)
+        ? 'Reserve fund transfer'
+        : r.notes,
     amount: outflow ? -r.amount : r.amount,
     type: StatementEntryType.reserve,
     channel: normalizePaymentChannel(r.paymentMethod),
@@ -182,7 +199,9 @@ List<StatementEntry> buildPeriodStatementEntries({
       id: p.id ?? 'mp-$d-${p.flatNumber}',
       date: d,
       label: 'Maintenance receipt · Flat ${p.flatNumber ?? '—'}',
-      sublabel: (p.residentName == null || p.residentName!.isEmpty) ? null : p.residentName,
+      sublabel: (p.residentName == null || p.residentName!.isEmpty)
+          ? null
+          : p.residentName,
       amount: p.amount,
       type: StatementEntryType.receipt,
       channel: normalizePaymentChannel(p.paymentMethod),
@@ -197,16 +216,21 @@ List<StatementEntry> buildPeriodStatementEntries({
   for (final e in ledgerEntries) {
     if (!e.isVerified) continue;
     final ledgerDate = e.ledgerDate;
-    if (ledgerDate.isEmpty || !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
+    if (ledgerDate.isEmpty ||
+        !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
     final ch = normalizePaymentChannel(e.paymentMethod);
     final isCorpus = e.destination == 'corpus';
-    final method = (e.paymentMethod == null || e.paymentMethod!.isEmpty) ? 'N/A' : e.paymentMethod!;
+    final method = (e.paymentMethod == null || e.paymentMethod!.isEmpty)
+        ? 'N/A'
+        : e.paymentMethod!;
     final hasTitle = e.title != null && e.title!.isNotEmpty;
 
     if (e.isExpense) {
       final head = financeExpenseHeadFromLedgerEntry(
         e.title,
-        e.expenseId != null && e.expenseId!.isNotEmpty ? categories[e.expenseId] : null,
+        e.expenseId != null && e.expenseId!.isNotEmpty
+            ? categories[e.expenseId]
+            : null,
       );
       entries.add(StatementEntry(
         id: e.id,
@@ -249,7 +273,8 @@ List<StatementEntry> buildPeriodStatementEntries({
   }
 
   for (final r in reserveTransfers) {
-    if (!dateInInclusiveRange(_reserveTransferDate(r), periodFrom, periodTo)) continue;
+    if (!dateInInclusiveRange(_reserveTransferDate(r), periodFrom, periodTo))
+      continue;
     entries.add(_reserveToStatement(r));
   }
 
@@ -279,8 +304,8 @@ CashFlowResult computeCashFlowStatement({
     openingBalanceAnchors: openingBalanceAnchors,
   );
 
-  final periodReserve =
-      reserveTransfers.where((r) => dateInInclusiveRange(_reserveTransferDate(r), periodFrom, periodTo));
+  final periodReserve = reserveTransfers.where((r) =>
+      dateInInclusiveRange(_reserveTransferDate(r), periodFrom, periodTo));
 
   var investingOut = 0.0;
   const investingIn = 0.0;
@@ -320,10 +345,17 @@ CashFlowResult computeCashFlowStatement({
 
   final maintenanceReceipts = periodReport.maintenanceReceipts;
   final corpusReceipts = periodReport.corpusReceipts;
-  final expenseByHeadFlat = [for (final h in periodReport.expenseByHead) (h.head, h.row.total)];
+  final expenseByHeadFlat = [
+    for (final h in periodReport.expenseByHead) (h.head, h.row.total)
+  ];
 
   final lines = <CashFlowLine>[
-    const CashFlowLine(id: 'sec-op', label: 'Operating Activities', amount: 0, section: CashFlowSection.operating, bold: true),
+    const CashFlowLine(
+        id: 'sec-op',
+        label: 'Operating Activities',
+        amount: 0,
+        section: CashFlowSection.operating,
+        bold: true),
     CashFlowLine(
       id: 'op-receipts',
       label: 'Collections from members (verified receipts)',
@@ -369,7 +401,12 @@ CashFlowResult computeCashFlowStatement({
       section: CashFlowSection.operating,
       bold: true,
     ),
-    const CashFlowLine(id: 'sec-inv', label: 'Investing Activities', amount: 0, section: CashFlowSection.investing, bold: true),
+    const CashFlowLine(
+        id: 'sec-inv',
+        label: 'Investing Activities',
+        amount: 0,
+        section: CashFlowSection.investing,
+        bold: true),
     CashFlowLine(
       id: 'inv-reserve',
       label: 'Reserve fund transfers (out)',
@@ -387,7 +424,12 @@ CashFlowResult computeCashFlowStatement({
       section: CashFlowSection.investing,
       bold: true,
     ),
-    const CashFlowLine(id: 'sec-fin', label: 'Financing Activities', amount: 0, section: CashFlowSection.financing, bold: true),
+    const CashFlowLine(
+        id: 'sec-fin',
+        label: 'Financing Activities',
+        amount: 0,
+        section: CashFlowSection.financing,
+        bold: true),
     CashFlowLine(
       id: 'fin-reserve',
       label: 'Reserve draw to operating',
@@ -405,7 +447,8 @@ CashFlowResult computeCashFlowStatement({
       section: CashFlowSection.financing,
       bold: true,
     ),
-    const CashFlowLine(id: 'sep1', label: '', amount: 0, section: CashFlowSection.summary),
+    const CashFlowLine(
+        id: 'sep1', label: '', amount: 0, section: CashFlowSection.summary),
     CashFlowLine(
       id: 'net-change',
       label: 'Net increase / (decrease) in cash & bank',
@@ -475,10 +518,12 @@ CashFlowResult computeCashFlowStatement({
   );
 }
 
-List<StatementEntry> filterStatementByChannel(List<StatementEntry> entries, PaymentChannel channel) =>
+List<StatementEntry> filterStatementByChannel(
+        List<StatementEntry> entries, PaymentChannel channel) =>
     entries.where((e) => e.channel == channel).toList();
 
-List<StatementEntry> addRunningBalance(List<StatementEntry> entries, double openingBalance) {
+List<StatementEntry> addRunningBalance(
+    List<StatementEntry> entries, double openingBalance) {
   var bal = openingBalance;
   return [
     for (final e in entries) e.withRunningBalance(bal += e.amount),
@@ -489,7 +534,8 @@ String? _flatNumberFromStatementLabel(String label) =>
     RegExp(r'Flat\s+(\S+)', caseSensitive: false).firstMatch(label)?.group(1);
 
 /// Flat maintenance receipts in numeric flat order (101 → 605); others interleaved by date.
-List<StatementEntry> sortFlatMaintenanceReceiptEntries(List<StatementEntry> entries) {
+List<StatementEntry> sortFlatMaintenanceReceiptEntries(
+    List<StatementEntry> entries) {
   final list = [...entries];
   list.sort((a, b) {
     final byFlatOrDate = compareByFlatThenDate(
@@ -511,14 +557,25 @@ List<StatementEntry> filterStatementEntriesForDrill(
 ]) {
   if (kind == CashFlowDrillKind.receipts) {
     return sortFlatMaintenanceReceiptEntries(
-      entries.where((e) => e.type == StatementEntryType.receipt || e.type == StatementEntryType.corpus).toList(),
+      entries
+          .where((e) =>
+              e.type == StatementEntryType.receipt ||
+              e.type == StatementEntryType.corpus)
+          .toList(),
     );
   }
-  if (kind == CashFlowDrillKind.corpus) return entries.where((e) => e.type == StatementEntryType.corpus).toList();
-  if (kind == CashFlowDrillKind.expenseHead && drillKey != null && drillKey.isNotEmpty) {
-    return entries.where((e) => e.type == StatementEntryType.expense && e.expenseHead == drillKey).toList();
+  if (kind == CashFlowDrillKind.corpus)
+    return entries.where((e) => e.type == StatementEntryType.corpus).toList();
+  if (kind == CashFlowDrillKind.expenseHead &&
+      drillKey != null &&
+      drillKey.isNotEmpty) {
+    return entries
+        .where((e) =>
+            e.type == StatementEntryType.expense && e.expenseHead == drillKey)
+        .toList();
   }
-  if (kind == CashFlowDrillKind.reserve) return entries.where((e) => e.type == StatementEntryType.reserve).toList();
+  if (kind == CashFlowDrillKind.reserve)
+    return entries.where((e) => e.type == StatementEntryType.reserve).toList();
   return entries;
 }
 

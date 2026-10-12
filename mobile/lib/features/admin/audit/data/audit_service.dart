@@ -91,11 +91,12 @@ class AuditService {
   /// FinanceAuditAlarms: charges (ordered by title) + verified/pending payments.
   Future<({List<ChargeOption> charges, List<AuditPaymentRow> payments})>
       fetchAlarmData(String societyId) async {
-    if (!dbReady)
+    if (!dbReady) {
       return (
         charges: const <ChargeOption>[],
         payments: const <AuditPaymentRow>[]
       );
+    }
     final charges = rowsOf(await db
             .from('maintenance_charges')
             .select('id, title')
@@ -104,8 +105,9 @@ class AuditService {
         .map((c) => ChargeOption(
             (c['id'] ?? '').toString(), (c['title'] ?? '').toString()))
         .toList();
-    if (charges.isEmpty)
+    if (charges.isEmpty) {
       return (charges: charges, payments: const <AuditPaymentRow>[]);
+    }
     final payments = rowsOf(await db
             .from('maintenance_payments')
             .select(_paymentCols)
@@ -119,11 +121,12 @@ class AuditService {
   /// FinanceLedgerOvercountPanel inputs (verified payments + all ledger rows, no transaction_date — like web).
   Future<({List<AuditPaymentRow> payments, List<AuditLedgerRow> ledger})>
       fetchOvercountData(String societyId) async {
-    if (!dbReady)
+    if (!dbReady) {
       return (
         payments: const <AuditPaymentRow>[],
         ledger: const <AuditLedgerRow>[]
       );
+    }
     final chargeIds = rowsOf(await db
             .from('maintenance_charges')
             .select('id')
@@ -345,8 +348,9 @@ class AuditService {
               .inFilter('payment_status', ['verified', 'pending']))
           .map(AuditPaymentRow.fromJson)
           .toList();
-      if (isMonthly)
+      if (isMonthly) {
         return findMonthlyMaintenanceMonthConflicts(rows, chargeIds, targets);
+      }
       return findReceiptHeadConflicts(rows, [
         for (final t in targets)
           ReceiptHeadRecordingTarget(

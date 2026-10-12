@@ -12,21 +12,27 @@ import 'report_export.dart';
 /// `ExportFormatMenu`, `SharePdfWhatsAppButton` and the PDF preview tab.
 
 /// Builds a PDF for the chosen mode with the resolved society letterhead.
-typedef SocietyPdfBuilder = Future<Uint8List> Function(ReportPdfMode mode, SocietyLetterhead? letterhead);
+typedef SocietyPdfBuilder = Future<Uint8List> Function(
+    ReportPdfMode mode, SocietyLetterhead? letterhead);
 
-String _pdfName(String filename) => filename.toLowerCase().endsWith('.pdf') ? filename : '$filename.pdf';
+String _pdfName(String filename) =>
+    filename.toLowerCase().endsWith('.pdf') ? filename : '$filename.pdf';
 
 /// In-app PDF viewer (web "PDF opens to view" / Preview Report).
 class SocietyPdfPreviewPage extends StatelessWidget {
-  const SocietyPdfPreviewPage({super.key, required this.bytes, required this.filename, this.title});
+  const SocietyPdfPreviewPage(
+      {super.key, required this.bytes, required this.filename, this.title});
 
   final Uint8List bytes;
   final String filename;
   final String? title;
 
-  static Future<void> open(BuildContext context, Uint8List bytes, String filename, {String? title}) =>
+  static Future<void> open(
+          BuildContext context, Uint8List bytes, String filename,
+          {String? title}) =>
       Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => SocietyPdfPreviewPage(bytes: bytes, filename: filename, title: title),
+        builder: (_) => SocietyPdfPreviewPage(
+            bytes: bytes, filename: filename, title: title),
       ));
 
   @override
@@ -35,7 +41,8 @@ class SocietyPdfPreviewPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: t.background,
       appBar: AppBar(
-        title: Text(title ?? context.tr('Preview Report', 'प्रतिवेदन पूर्वावलोकन')),
+        title: Text(
+            title ?? context.tr('Preview Report', 'प्रतिवेदन पूर्वावलोकन')),
         actions: [
           IconButton(
             tooltip: context.t('mobile.share'),
@@ -59,14 +66,18 @@ class SocietyPdfPreviewPage extends StatelessWidget {
 
 /// Output helpers (web `previewSocietyReportPdf` / `downloadSocietyReportPdf` / `sharePdfOnWhatsApp`).
 abstract final class SocietyPdfOutput {
-  static Future<void> preview(BuildContext context, Uint8List bytes, String filename, {String? title}) =>
+  static Future<void> preview(
+          BuildContext context, Uint8List bytes, String filename,
+          {String? title}) =>
       SocietyPdfPreviewPage.open(context, bytes, filename, title: title);
 
   /// Mobile "download" = share sheet (Save to Files / Drive / Downloads).
-  static Future<void> download(Uint8List bytes, String filename) => ExportKit.sharePdf(bytes, _pdfName(filename));
+  static Future<void> download(Uint8List bytes, String filename) =>
+      ExportKit.sharePdf(bytes, _pdfName(filename));
 
   /// Share sheet with the message pre-filled (pick WhatsApp).
-  static Future<void> shareWhatsApp(Uint8List bytes, String filename, {String? message}) =>
+  static Future<void> shareWhatsApp(Uint8List bytes, String filename,
+          {String? message}) =>
       ExportKit.sharePdf(bytes, _pdfName(filename), text: message);
 }
 
@@ -116,28 +127,40 @@ class _ReportPdfActionsButtonState extends State<ReportPdfActionsButton> {
   Future<void> _run({required bool preview, ReportPdfMode? preferred}) async {
     final sid = widget.societyId;
     if (sid == null || sid.isEmpty) {
-      AppFeedback.toast(context, context.tr('Select a society first', 'पहले सोसाइटी चुनें'), tone: BadgeTone.alert);
+      AppFeedback.toast(
+          context, context.tr('Select a society first', 'पहले सोसाइटी चुनें'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _busy = true);
     try {
-      final ctx = await resolveLetterheadReportContext(sid, preferredMode: preferred ?? _defaultMode);
+      final ctx = await resolveLetterheadReportContext(sid,
+          preferredMode: preferred ?? _defaultMode);
       if (!mounted) return;
       if (ctx == null) {
-        AppFeedback.toast(context, context.tr('Society not found', 'सोसाइटी नहीं मिली'), tone: BadgeTone.alert);
+        AppFeedback.toast(
+            context, context.tr('Society not found', 'सोसाइटी नहीं मिली'),
+            tone: BadgeTone.alert);
         return;
       }
-      if (ctx.warning != null) AppFeedback.toast(context, letterheadWarningText(context), tone: BadgeTone.warning);
+      if (ctx.warning != null)
+        AppFeedback.toast(context, letterheadWarningText(context),
+            tone: BadgeTone.warning);
       final bytes = await widget.buildPdf(ctx.mode, ctx.letterhead);
       if (!mounted) return;
       if (preview) {
         await SocietyPdfOutput.preview(context, bytes, widget.filename);
       } else {
         await SocietyPdfOutput.download(bytes, widget.filename);
-        if (mounted) AppFeedback.toast(context, context.tr('PDF ready', 'PDF तैयार'), tone: BadgeTone.success);
+        if (mounted)
+          AppFeedback.toast(context, context.tr('PDF ready', 'PDF तैयार'),
+              tone: BadgeTone.success);
       }
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, '${context.tr('PDF failed', 'PDF विफल')}: $e', tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(
+            context, '${context.tr('PDF failed', 'PDF विफल')}: $e',
+            tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -168,13 +191,15 @@ class _ReportPdfActionsButtonState extends State<ReportPdfActionsButton> {
             ),
             ListTile(
               leading: const Icon(Icons.download_outlined),
-              title: Text('${ctx.tr('Plain PDF', 'साधारण PDF')}${_defaultMode == ReportPdfMode.plain ? dflt : ''}'),
+              title: Text(
+                  '${ctx.tr('Plain PDF', 'साधारण PDF')}${_defaultMode == ReportPdfMode.plain ? dflt : ''}'),
               onTap: () => Navigator.pop(ctx, 'plain'),
             ),
             if (!_hasLetterhead)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                child: Text(letterheadWarningText(ctx), style: TextStyle(fontSize: 12, color: t.warning)),
+                child: Text(letterheadWarningText(ctx),
+                    style: TextStyle(fontSize: 12, color: t.warning)),
               ),
           ],
         ),
@@ -205,15 +230,21 @@ class _ReportPdfActionsButtonState extends State<ReportPdfActionsButton> {
 }
 
 /// Bilingual copy of [kLetterheadNotConfiguredWarning].
-String letterheadWarningText(BuildContext context) =>
-    context.tr(kLetterheadNotConfiguredWarning, 'आधिकारिक सोसाइटी लेटरहेड कॉन्फ़िगर नहीं किया गया है।');
+String letterheadWarningText(BuildContext context) => context.tr(
+    kLetterheadNotConfiguredWarning,
+    'आधिकारिक सोसाइटी लेटरहेड कॉन्फ़िगर नहीं किया गया है।');
 
 /// Web `ExportFormatMenu`.
 class ExportFormatMenuButton extends StatelessWidget {
   const ExportFormatMenuButton({
     super.key,
     required this.onExport,
-    this.formats = const [ExportFormat.pdf, ExportFormat.excel, ExportFormat.word, ExportFormat.csv],
+    this.formats = const [
+      ExportFormat.pdf,
+      ExportFormat.excel,
+      ExportFormat.word,
+      ExportFormat.csv
+    ],
     this.label,
     this.disabled = false,
   });
@@ -239,7 +270,11 @@ class ExportFormatMenuButton extends StatelessWidget {
         for (final f in formats)
           PopupMenuItem(
             value: f,
-            child: Row(children: [Icon(_icon(f), size: 16), const SizedBox(width: 8), Text(f.label)]),
+            child: Row(children: [
+              Icon(_icon(f), size: 16),
+              const SizedBox(width: 8),
+              Text(f.label)
+            ]),
           ),
       ],
       child: IgnorePointer(
@@ -288,9 +323,13 @@ class _SharePdfWhatsAppButtonState extends State<SharePdfWhatsAppButton> {
     setState(() => _busy = true);
     try {
       final bytes = await widget.getBytes();
-      await SocietyPdfOutput.shareWhatsApp(bytes, widget.filename, message: widget.message);
+      await SocietyPdfOutput.shareWhatsApp(bytes, widget.filename,
+          message: widget.message);
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.tr('Could not share PDF', 'PDF साझा नहीं हो सका'), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(
+            context, context.tr('Could not share PDF', 'PDF साझा नहीं हो सका'),
+            tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -316,13 +355,21 @@ class _SharePdfWhatsAppButtonState extends State<SharePdfWhatsAppButton> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (_busy)
-                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: fg))
+                  SizedBox(
+                      width: 14,
+                      height: 14,
+                      child:
+                          CircularProgressIndicator(strokeWidth: 2, color: fg))
                 else
                   Icon(Icons.chat_rounded, size: 14, color: fg),
                 const SizedBox(width: 6),
                 Text(
-                  _busy ? context.tr('Sharing…', 'साझा हो रहा है…') : (widget.label ?? context.tr('Share PDF', 'PDF साझा करें')),
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg),
+                  _busy
+                      ? context.tr('Sharing…', 'साझा हो रहा है…')
+                      : (widget.label ??
+                          context.tr('Share PDF', 'PDF साझा करें')),
+                  style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600, color: fg),
                 ),
               ],
             ),

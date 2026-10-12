@@ -49,7 +49,9 @@ class ReportVisitorStats {
   factory ReportVisitorStats.of(List<ReportVisitor> v) => ReportVisitorStats(
         totalVisitors: v.where((x) => x.category == 'visitor').length,
         totalVehicles: v.where((x) => x.hasVehicle).length,
-        totalDeliveries: v.where((x) => x.category == 'delivery' || x.category == 'service').length,
+        totalDeliveries: v
+            .where((x) => x.category == 'delivery' || x.category == 'service')
+            .length,
         currentlyInside: v.where((x) => x.isInside).length,
         uniqueFlats: {for (final x in v) x.flatNumber}.length,
       );
@@ -92,7 +94,8 @@ class ReportExportContext {
   final List<ReportVisitor> visitors;
   final ReportVisitorStats? visitorStats;
 
-  ReportExportContext withPdf(SocietyLetterhead? lh, ReportPdfMode mode) => ReportExportContext(
+  ReportExportContext withPdf(SocietyLetterhead? lh, ReportPdfMode mode) =>
+      ReportExportContext(
         societyName: societyName,
         reportMonth: reportMonth,
         tab: tab,
@@ -112,16 +115,29 @@ class ReportExportContext {
 
 /// Sheet kind decides how numbers are printed in the PDF.
 class _Sheet extends ExportSheet {
-  const _Sheet({required super.name, required super.headers, required super.rows, this.moneySummary = false});
+  const _Sheet(
+      {required super.name,
+      required super.headers,
+      required super.rows,
+      this.moneySummary = false});
 
   /// 2-column summary whose numeric values are money (financial summary).
   final bool moneySummary;
 }
 
-const List<String> _headWiseHeaders = ['Head', 'Cash', 'Bank / UPI', 'Other', 'Total'];
+const List<String> _headWiseHeaders = [
+  'Head',
+  'Cash',
+  'Bank / UPI',
+  'Other',
+  'Total'
+];
 
-List<List<Object?>> _headWiseSheetRows(List<HeadAmount> rows, String footerLabel, ChannelTotals footer, double total) => [
-      for (final h in rows) [h.head, h.row.cash, h.row.bank, h.row.other, h.row.total],
+List<List<Object?>> _headWiseSheetRows(List<HeadAmount> rows,
+        String footerLabel, ChannelTotals footer, double total) =>
+    [
+      for (final h in rows)
+        [h.head, h.row.cash, h.row.bank, h.row.other, h.row.total],
       [footerLabel, footer.cash, footer.bank, footer.other, total],
     ];
 
@@ -129,7 +145,8 @@ List<_Sheet> _financialSheets(ReportExportContext ctx) {
   final entries = ctx.financeEntries;
   final net = ctx.reportMonthNet;
   final entryTotal = sumAmountRows(entries.map((e) => e.totalAmount));
-  final monthly = monthlyAmountTotals(entries.map((e) => AmountRow(amount: e.totalAmount, dateIso: e.ledgerDate)));
+  final monthly = monthlyAmountTotals(entries
+      .map((e) => AmountRow(amount: e.totalAmount, dateIso: e.ledgerDate)));
   final sheets = <_Sheet>[
     _Sheet(
       name: 'Summary',
@@ -150,12 +167,14 @@ List<_Sheet> _financialSheets(ReportExportContext ctx) {
     sheets.add(_Sheet(
       name: 'Receipts by head',
       headers: _headWiseHeaders,
-      rows: _headWiseSheetRows(hw.receiptByHead, 'All receipts', hw.receiptByMethod, hw.totalReceipts),
+      rows: _headWiseSheetRows(hw.receiptByHead, 'All receipts',
+          hw.receiptByMethod, hw.totalReceipts),
     ));
     sheets.add(_Sheet(
       name: 'Expenses by head',
       headers: _headWiseHeaders,
-      rows: _headWiseSheetRows(hw.expenseByHead, 'All expenses', hw.expenseByMethod, hw.totalExpenses),
+      rows: _headWiseSheetRows(hw.expenseByHead, 'All expenses',
+          hw.expenseByMethod, hw.totalExpenses),
     ));
   }
   sheets.addAll([
@@ -169,15 +188,30 @@ List<_Sheet> _financialSheets(ReportExportContext ctx) {
     ),
     _Sheet(
       name: 'Totals by mode',
-      headers: const ['record_mode', 'destination', 'entries', 'total_amount', 'flat_units'],
+      headers: const [
+        'record_mode',
+        'destination',
+        'entries',
+        'total_amount',
+        'flat_units'
+      ],
       rows: [
-        for (final g in ctx.financeGroups) [g.recordMode, g.destination, g.count, g.total, g.flatUnits],
+        for (final g in ctx.financeGroups)
+          [g.recordMode, g.destination, g.count, g.total, g.flatUnits],
         ['', '', 'Total', entryTotal, ''],
       ],
     ),
     _Sheet(
       name: 'All entries',
-      headers: const ['record_mode', 'destination', 'flat_units', 'total_amount', 'status', 'method', 'date'],
+      headers: const [
+        'record_mode',
+        'destination',
+        'flat_units',
+        'total_amount',
+        'status',
+        'method',
+        'date'
+      ],
       rows: [
         for (final e in entries)
           [
@@ -199,7 +233,10 @@ List<_Sheet> _financialSheets(ReportExportContext ctx) {
 List<_Sheet> _visitorSheets(ReportExportContext ctx) {
   final s = ctx.visitorStats ?? ReportVisitorStats.of(ctx.visitors);
   return [
-    _Sheet(name: 'Summary', headers: const ['Item', 'Value'], rows: [
+    _Sheet(name: 'Summary', headers: const [
+      'Item',
+      'Value'
+    ], rows: [
       ['Report month', ctx.reportMonth],
       ['Total visitors', s.totalVisitors],
       ['Vehicles', s.totalVehicles],
@@ -209,7 +246,17 @@ List<_Sheet> _visitorSheets(ReportExportContext ctx) {
     ]),
     _Sheet(
       name: 'Visitors',
-      headers: const ['Name', 'Phone', 'Flat', 'Category', 'Purpose', 'Entry', 'Exit', 'Vehicle', 'Guard'],
+      headers: const [
+        'Name',
+        'Phone',
+        'Flat',
+        'Category',
+        'Purpose',
+        'Entry',
+        'Exit',
+        'Vehicle',
+        'Guard'
+      ],
       rows: [
         for (final v in ctx.visitors)
           [
@@ -231,13 +278,24 @@ List<_Sheet> _visitorSheets(ReportExportContext ctx) {
 List<_Sheet> _vehicleSheets(ReportExportContext ctx) {
   final vehicles = ctx.visitors.where((v) => v.hasVehicle).toList();
   return [
-    _Sheet(name: 'Summary', headers: const ['Item', 'Value'], rows: [
+    _Sheet(name: 'Summary', headers: const [
+      'Item',
+      'Value'
+    ], rows: [
       ['Report month', ctx.reportMonth],
       ['Vehicle entries', vehicles.length],
     ]),
     _Sheet(
       name: 'Vehicles',
-      headers: const ['Vehicle', 'Name', 'Flat', 'Category', 'Entry', 'Exit', 'Guard'],
+      headers: const [
+        'Vehicle',
+        'Name',
+        'Flat',
+        'Category',
+        'Entry',
+        'Exit',
+        'Guard'
+      ],
       rows: [
         for (final v in vehicles)
           [
@@ -258,18 +316,24 @@ List<_Sheet> _sheetsForTab(ReportExportContext ctx) => switch (ctx.tab) {
       MonthlyReportTab.financial => _financialSheets(ctx),
       MonthlyReportTab.visitor => _visitorSheets(ctx),
       MonthlyReportTab.vehicle => _vehicleSheets(ctx),
-      MonthlyReportTab.allModules => [..._financialSheets(ctx), ..._visitorSheets(ctx)],
+      MonthlyReportTab.allModules => [
+          ..._financialSheets(ctx),
+          ..._visitorSheets(ctx)
+        ],
     };
 
 /// Exposed for tests: `(sheet name, headers, rows)` per tab.
-List<ExportSheet> monthlyReportSheets(ReportExportContext ctx) => _sheetsForTab(ctx);
+List<ExportSheet> monthlyReportSheets(ReportExportContext ctx) =>
+    _sheetsForTab(ctx);
 
-String _cellText(Object? c) => c == null ? '' : (c is num ? jsNumberString(c) : c.toString());
+String _cellText(Object? c) =>
+    c == null ? '' : (c is num ? jsNumberString(c) : c.toString());
 
 /// `buildMonthlyReportPdfBlob`.
 Future<Uint8List> buildMonthlyReportPdf(ReportExportContext ctx) {
   final pdf = SocietyReportPdf(
-    letterhead: ctx.letterhead ?? (ctx.societyName.isEmpty ? 'Society' : ctx.societyName),
+    letterhead: ctx.letterhead ??
+        (ctx.societyName.isEmpty ? 'Society' : ctx.societyName),
     mode: ctx.pdfMode,
     title: ctx.tab.title,
   );
@@ -282,14 +346,18 @@ Future<Uint8List> buildMonthlyReportPdf(ReportExportContext ctx) {
   ));
   for (final sheet in _sheetsForTab(ctx)) {
     pdf.add(SocietyPdf.text(sheet.name, size: 12, gapAfterMm: 2.5));
-    if (sheet.rows.isEmpty) pdf.add(SocietyPdf.text('(No data)', size: 8, gapAfterMm: 1));
+    if (sheet.rows.isEmpty)
+      pdf.add(SocietyPdf.text('(No data)', size: 8, gapAfterMm: 1));
     for (final row in sheet.rows) {
       final parts = <String>[];
       for (var i = 0; i < row.length; i++) {
         final c = row[i];
         // Web: 2-column summaries print the value as money. Count summaries
         // (visitor / vehicle) print plain numbers instead of "₹12".
-        if (c is num && sheet.headers.length == 2 && i == 1 && sheet.moneySummary) {
+        if (c is num &&
+            sheet.headers.length == 2 &&
+            i == 1 &&
+            sheet.moneySummary) {
           parts.add(moneyInr(c));
         } else {
           parts.add(_cellText(c));
@@ -299,7 +367,8 @@ Future<Uint8List> buildMonthlyReportPdf(ReportExportContext ctx) {
     }
     pdf.gap(4);
   }
-  if (ctx.includeSignatures && ctx.tab == MonthlyReportTab.financial) pdf.signatures();
+  if (ctx.includeSignatures && ctx.tab == MonthlyReportTab.financial)
+    pdf.signatures();
   return pdf.save();
 }
 
@@ -314,12 +383,15 @@ Uint8List _buildWord(ReportExportContext ctx) {
       for (final r in sheet.rows)
         [
           for (var i = 0; i < r.length; i++)
-            (numeric.contains(i) && r[i] is num && (i != 1 || sheet.moneySummary || ta == 1))
+            (numeric.contains(i) &&
+                    r[i] is num &&
+                    (i != 1 || sheet.moneySummary || ta == 1))
                 ? moneyInr(r[i] as num)
                 : _cellText(r[i]),
         ],
     ];
-    parts.write('<h2>${escapeHtml(sheet.name)}</h2>${buildHtmlTable(sheet.headers, rows, numeric)}');
+    parts.write(
+        '<h2>${escapeHtml(sheet.name)}</h2>${buildHtmlTable(sheet.headers, rows, numeric)}');
   }
   final body = '''
     <h1>${escapeHtml(ctx.societyName.isEmpty ? 'Society' : ctx.societyName)}</h1>
@@ -341,8 +413,10 @@ Uint8List _buildCsv(ReportExportContext ctx) {
 }
 
 /// `downloadMonthlyReport` bytes + file name (`{tab}-report-{period}.{ext}`).
-Future<({Uint8List bytes, String filename})> buildMonthlyReportFile(ExportFormat format, ReportExportContext ctx) async {
-  final base = '${ctx.tab.id}-report-${ctx.reportMonth.replaceAll(RegExp(r'\s+'), '-').replaceAll('/', '-')}';
+Future<({Uint8List bytes, String filename})> buildMonthlyReportFile(
+    ExportFormat format, ReportExportContext ctx) async {
+  final base =
+      '${ctx.tab.id}-report-${ctx.reportMonth.replaceAll(RegExp(r'\s+'), '-').replaceAll('/', '-')}';
   final bytes = switch (format) {
     ExportFormat.pdf => await buildMonthlyReportPdf(ctx),
     ExportFormat.excel => rowsToXlsxBytes(_sheetsForTab(ctx)),

@@ -47,7 +47,8 @@ class ReportColumnDef {
   final ReportColumnFormat? format;
   final bool? defaultVisible;
 
-  bool get isNumeric => type == ReportColumnType.number || format == ReportColumnFormat.money;
+  bool get isNumeric =>
+      type == ReportColumnType.number || format == ReportColumnFormat.money;
 }
 
 class ReportFilterOption {
@@ -103,7 +104,10 @@ class ReportSortDef {
   }
 
   @override
-  bool operator ==(Object other) => other is ReportSortDef && other.field == field && other.ascending == ascending;
+  bool operator ==(Object other) =>
+      other is ReportSortDef &&
+      other.field == field &&
+      other.ascending == ascending;
 
   @override
   int get hashCode => Object.hash(field, ascending);
@@ -170,19 +174,23 @@ class DateRangeValue {
   final String? from;
   final String? to;
 
-  bool get isEmpty => (from == null || from!.isEmpty) && (to == null || to!.isEmpty);
+  bool get isEmpty =>
+      (from == null || from!.isEmpty) && (to == null || to!.isEmpty);
 
-  Map<String, Object?> toJson() => {if (from != null) 'from': from, if (to != null) 'to': to};
+  Map<String, Object?> toJson() =>
+      {if (from != null) 'from': from, if (to != null) 'to': to};
 
   static DateRangeValue? fromJson(Object? j) {
     if (j is DateRangeValue) return j;
     if (j is! Map) return null;
-    String? s(Object? v) => (v == null || v.toString().isEmpty) ? null : v.toString();
+    String? s(Object? v) =>
+        (v == null || v.toString().isEmpty) ? null : v.toString();
     return DateRangeValue(from: s(j['from']), to: s(j['to']));
   }
 
   @override
-  bool operator ==(Object other) => other is DateRangeValue && other.from == from && other.to == to;
+  bool operator ==(Object other) =>
+      other is DateRangeValue && other.from == from && other.to == to;
 
   @override
   int get hashCode => Object.hash(from, to);
@@ -219,7 +227,11 @@ class ReportRequest {
 }
 
 class ReportTotal {
-  const ReportTotal({required this.key, required this.label, required this.value, required this.aggregate});
+  const ReportTotal(
+      {required this.key,
+      required this.label,
+      required this.value,
+      required this.aggregate});
 
   final String key;
   final String label;
@@ -283,7 +295,8 @@ class SavedReportDefinition {
   final String updatedAt;
 
   factory SavedReportDefinition.fromJson(Map<String, dynamic> row) {
-    List<String>? list(Object? v) => v is List ? v.map((e) => e.toString()).toList() : null;
+    List<String>? list(Object? v) =>
+        v is List ? v.map((e) => e.toString()).toList() : null;
     final f = row['filters'];
     return SavedReportDefinition(
       id: row['id'].toString(),

@@ -107,8 +107,9 @@ Object? _jsonSafe(Object? v) {
     if (v == v.truncateToDouble() && v.abs() < 1e15) return v.toInt();
     return v;
   }
-  if (v is Map)
+  if (v is Map) {
     return {for (final e in v.entries) e.key.toString(): _jsonSafe(e.value)};
+  }
   if (v is Iterable) return [for (final e in v) _jsonSafe(e)];
   if (v == null || v is num || v is String || v is bool) return v;
   return v.toString();

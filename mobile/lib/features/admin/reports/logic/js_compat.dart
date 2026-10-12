@@ -23,7 +23,9 @@ int? jsDateMs(Object? value) {
   if (s.isEmpty) return null;
   var m = _dateOnly.firstMatch(s);
   if (m != null) {
-    final y = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), d = int.parse(m.group(3)!);
+    final y = int.parse(m.group(1)!),
+        mo = int.parse(m.group(2)!),
+        d = int.parse(m.group(3)!);
     if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
     return DateTime.utc(y, mo, d).millisecondsSinceEpoch;
   }
@@ -34,7 +36,8 @@ int? jsDateMs(Object? value) {
     return DateTime.utc(y, mo).millisecondsSinceEpoch;
   }
   m = _yearOnly.firstMatch(s);
-  if (m != null) return DateTime.utc(int.parse(m.group(1)!)).millisecondsSinceEpoch;
+  if (m != null)
+    return DateTime.utc(int.parse(m.group(1)!)).millisecondsSinceEpoch;
   return DateTime.tryParse(s)?.millisecondsSinceEpoch;
 }
 
@@ -49,14 +52,17 @@ DateTime? jsDate(Object? value) {
 int? localDayStartMs(String ymd) {
   final m = _dateOnly.firstMatch(ymd.length >= 10 ? ymd.substring(0, 10) : ymd);
   if (m == null) return null;
-  return DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!)).millisecondsSinceEpoch;
+  return DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!),
+          int.parse(m.group(3)!))
+      .millisecondsSinceEpoch;
 }
 
 /// `new Date('${ymd}T23:59:59.999').getTime()`.
 int? localDayEndMs(String ymd) {
   final m = _dateOnly.firstMatch(ymd.length >= 10 ? ymd.substring(0, 10) : ymd);
   if (m == null) return null;
-  return DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!), 23, 59, 59, 999)
+  return DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!),
+          int.parse(m.group(3)!), 23, 59, 59, 999)
       .millisecondsSinceEpoch;
 }
 
@@ -126,7 +132,8 @@ int _charClass(int c) {
   if (c >= 0x30 && c <= 0x39) return 2;
   final ch = String.fromCharCode(c);
   if (ch.toLowerCase() != ch.toUpperCase()) return 3; // cased letters
-  if (c >= 0x0900) return 3; // Devanagari & other scripts sort after Latin symbols
+  if (c >= 0x0900)
+    return 3; // Devanagari & other scripts sort after Latin symbols
   return 1;
 }
 
@@ -136,7 +143,8 @@ bool _isDigit(int c) => c >= 0x30 && c <= 0x39;
 /// collation): case-insensitive primary comparison with digit runs compared by
 /// value when [numeric] is true; lower-case sorts before upper-case on ties.
 /// When [baseOnly] is true (`sensitivity: 'base'`) case differences compare equal.
-int jsLocaleCompare(String a, String b, {bool numeric = false, bool baseOnly = false}) {
+int jsLocaleCompare(String a, String b,
+    {bool numeric = false, bool baseOnly = false}) {
   final ac = a.codeUnits, bc = b.codeUnits;
   var i = 0, j = 0;
   while (i < ac.length && j < bc.length) {
@@ -149,8 +157,10 @@ int jsLocaleCompare(String a, String b, {bool numeric = false, bool baseOnly = f
       while (je < bc.length && _isDigit(bc[je])) {
         je++;
       }
-      final da = String.fromCharCodes(ac.sublist(i, ie)).replaceFirst(RegExp(r'^0+(?=\d)'), '');
-      final db = String.fromCharCodes(bc.sublist(j, je)).replaceFirst(RegExp(r'^0+(?=\d)'), '');
+      final da = String.fromCharCodes(ac.sublist(i, ie))
+          .replaceFirst(RegExp(r'^0+(?=\d)'), '');
+      final db = String.fromCharCodes(bc.sublist(j, je))
+          .replaceFirst(RegExp(r'^0+(?=\d)'), '');
       if (da.length != db.length) return da.length < db.length ? -1 : 1;
       final cmp = da.compareTo(db);
       if (cmp != 0) return cmp < 0 ? -1 : 1;
@@ -160,7 +170,8 @@ int jsLocaleCompare(String a, String b, {bool numeric = false, bool baseOnly = f
     }
     final ka = _charClass(ca), kb = _charClass(cb);
     if (ka != kb) return ka < kb ? -1 : 1;
-    final la = String.fromCharCode(ca).toLowerCase(), lb = String.fromCharCode(cb).toLowerCase();
+    final la = String.fromCharCode(ca).toLowerCase(),
+        lb = String.fromCharCode(cb).toLowerCase();
     final cmp = la.compareTo(lb);
     if (cmp != 0) return cmp < 0 ? -1 : 1;
     i++;
@@ -186,7 +197,9 @@ int jsLocaleCompare(String a, String b, {bool numeric = false, bool baseOnly = f
 String pad2(int n) => n.toString().padLeft(2, '0');
 
 /// `format(date, 'yyyy-MM-dd')` in local time.
-String ymdOf(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${pad2(d.month)}-${pad2(d.day)}';
+String ymdOf(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${pad2(d.month)}-${pad2(d.day)}';
 
 /// `format(date, 'yyyy-MM')` in local time.
-String ymOf(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${pad2(d.month)}';
+String ymOf(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${pad2(d.month)}';

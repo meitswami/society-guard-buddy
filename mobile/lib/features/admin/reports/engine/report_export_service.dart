@@ -15,7 +15,8 @@ String formatExportCell(ReportColumnDef? col, Object? value) {
     final n = jsNumber(value);
     return n.isFinite ? moneyInr(n) : jsString(value);
   }
-  if (col.format == ReportColumnFormat.date && value is String) return value.length > 10 ? value.substring(0, 10) : value;
+  if (col.format == ReportColumnFormat.date && value is String)
+    return value.length > 10 ? value.substring(0, 10) : value;
   if (col.format == ReportColumnFormat.datetime && value is String) {
     final s = value.replaceFirst('T', ' ');
     return s.length > 19 ? s.substring(0, 19) : s;
@@ -26,12 +27,14 @@ String formatExportCell(ReportColumnDef? col, Object? value) {
 /// UI cell (`formatCell` in MetadataReportEngine): `—` for empty values.
 String formatReportCell(ReportColumnDef col, Object? value) {
   if (value == null || value == '') return '—';
-  if (col.format == ReportColumnFormat.money || col.type == ReportColumnType.number) {
+  if (col.format == ReportColumnFormat.money ||
+      col.type == ReportColumnType.number) {
     final n = jsNumber(value);
     if (!n.isFinite) return jsString(value);
     return col.format == ReportColumnFormat.money ? moneyInr(n) : toLocaleIn(n);
   }
-  if (col.format == ReportColumnFormat.date && value is String) return value.length > 10 ? value.substring(0, 10) : value;
+  if (col.format == ReportColumnFormat.date && value is String)
+    return value.length > 10 ? value.substring(0, 10) : value;
   if (col.format == ReportColumnFormat.datetime && value is String) {
     final s = value.replaceFirst('T', ' ');
     return s.length > 19 ? s.substring(0, 19) : s;
@@ -40,14 +43,16 @@ String formatReportCell(ReportColumnDef col, Object? value) {
 }
 
 /// `toMatrix(result)` — formatted cells + TOTAL row.
-({List<String> headers, List<List<String>> rows, Set<int> numericCols}) reportResultMatrix(ReportResult result) {
+({List<String> headers, List<List<String>> rows, Set<int> numericCols})
+    reportResultMatrix(ReportResult result) {
   final headers = [for (final c in result.columns) c.label];
   final numericCols = <int>{
     for (var i = 0; i < result.columns.length; i++)
       if (result.columns[i].isNumeric) i,
   };
   final rows = [
-    for (final row in result.rows) [for (final c in result.columns) formatExportCell(c, row[c.key])],
+    for (final row in result.rows)
+      [for (final c in result.columns) formatExportCell(c, row[c.key])],
   ];
   if (result.totals.isNotEmpty) {
     final totalsRow = [
@@ -61,7 +66,8 @@ String formatReportCell(ReportColumnDef col, Object? value) {
     ];
     if (totalsRow.any((c) => c.isNotEmpty)) {
       final firstEmpty = totalsRow.indexWhere((c) => c.isEmpty);
-      if (firstEmpty >= 0 && !result.totals.any((t) => t.key == result.columns[firstEmpty].key)) {
+      if (firstEmpty >= 0 &&
+          !result.totals.any((t) => t.key == result.columns[firstEmpty].key)) {
         totalsRow[firstEmpty] = 'TOTAL';
       } else if (totalsRow.first.isEmpty) {
         totalsRow[0] = 'TOTAL';
@@ -94,7 +100,8 @@ Future<({Uint8List bytes, String filename})> exportReportResult(
     case ExportFormat.csv:
       bytes = rowsToCsvBytes(m.headers, m.rows);
     case ExportFormat.excel:
-      bytes = rowsToXlsxBytes([ExportSheet(name: result.title, headers: m.headers, rows: m.rows)]);
+      bytes = rowsToXlsxBytes(
+          [ExportSheet(name: result.title, headers: m.headers, rows: m.rows)]);
     case ExportFormat.word:
       bytes = htmlToWordBytes(
         result.title,
@@ -107,10 +114,15 @@ Future<({Uint8List bytes, String filename})> exportReportResult(
         landscape: m.headers.length > 6,
         title: result.title,
       );
-      pdf.header(ReportMeta(title: result.title, society: letterhead?.name, period: subtitle));
+      pdf.header(ReportMeta(
+          title: result.title, society: letterhead?.name, period: subtitle));
       pdf.add(SocietyPdf.table(
         headers: m.headers,
-        rows: m.rows.isEmpty ? [['(No data)', ...List.filled(m.headers.length - 1, '')]] : m.rows,
+        rows: m.rows.isEmpty
+            ? [
+                ['(No data)', ...List.filled(m.headers.length - 1, '')]
+              ]
+            : m.rows,
         numericColumns: m.numericCols,
         headerSize: 8,
         cellSize: 7,

@@ -55,10 +55,15 @@ String? _primaryDateRangeKey(ReportDefinition? def) {
   return null;
 }
 
-ReportFilterValues _withSyncedPeriod(ReportFilterValues base, ReportDefinition def, String from, String to) {
+ReportFilterValues _withSyncedPeriod(
+    ReportFilterValues base, ReportDefinition def, String from, String to) {
   final key = _primaryDateRangeKey(def);
   if (key == null || (from.isEmpty && to.isEmpty)) return base;
-  return {...base, key: DateRangeValue(from: from.isEmpty ? null : from, to: to.isEmpty ? null : to)};
+  return {
+    ...base,
+    key: DateRangeValue(
+        from: from.isEmpty ? null : from, to: to.isEmpty ? null : to)
+  };
 }
 
 class _MetadataReportEngineState extends State<MetadataReportEngine> {
@@ -98,7 +103,8 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
   @override
   void didUpdateWidget(covariant MetadataReportEngine old) {
     super.didUpdateWidget(old);
-    if (old.periodFrom != widget.periodFrom || old.periodTo != widget.periodTo) {
+    if (old.periodFrom != widget.periodFrom ||
+        old.periodTo != widget.periodTo) {
       final key = _primaryDateRangeKey(_def);
       if (key != null) {
         setState(() {
@@ -133,11 +139,13 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
     _textFilterTimer?.cancel();
     _saveName.dispose();
     final cb = widget.onExportReady;
-    if (cb != null) WidgetsBinding.instance.addPostFrameCallback((_) => cb(null));
+    if (cb != null)
+      WidgetsBinding.instance.addPostFrameCallback((_) => cb(null));
     super.dispose();
   }
 
-  void _selectReport(String id, {SavedReportDefinition? saved, bool run = true}) {
+  void _selectReport(String id,
+      {SavedReportDefinition? saved, bool run = true}) {
     final def = _service.getDefinition(id);
     final defaults = <String, Object?>{
       for (final f in def.filters)
@@ -149,16 +157,25 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
       if (saved != null) {
         _selectedColumns = (saved.columns?.isNotEmpty ?? false)
             ? [...saved.columns!]
-            : [for (final c in def.columns) if (c.defaultVisible != false) c.key];
+            : [
+                for (final c in def.columns)
+                  if (c.defaultVisible != false) c.key
+              ];
         final restored = <String, Object?>{
-          for (final e in saved.filters.entries) e.key: e.value is Map ? DateRangeValue.fromJson(e.value) : e.value,
+          for (final e in saved.filters.entries)
+            e.key: e.value is Map ? DateRangeValue.fromJson(e.value) : e.value,
         };
-        _filters = _withSyncedPeriod(restored, def, widget.periodFrom, widget.periodTo);
+        _filters = _withSyncedPeriod(
+            restored, def, widget.periodFrom, widget.periodTo);
         _sort = saved.sort ?? def.defaultSort;
         _groupBy = saved.groupBy ?? def.defaultGroupBy ?? [];
       } else {
-        _selectedColumns = [for (final c in def.columns) if (c.defaultVisible != false) c.key];
-        _filters = _withSyncedPeriod(defaults, def, widget.periodFrom, widget.periodTo);
+        _selectedColumns = [
+          for (final c in def.columns)
+            if (c.defaultVisible != false) c.key
+        ];
+        _filters = _withSyncedPeriod(
+            defaults, def, widget.periodFrom, widget.periodTo);
         _sort = def.defaultSort;
         _groupBy = [...?def.defaultGroupBy];
       }
@@ -191,7 +208,9 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
       );
 
   Future<void> _run() async {
-    if (widget.societyId.isEmpty || _reportId.isEmpty || _selectedColumns.isEmpty) return;
+    if (widget.societyId.isEmpty ||
+        _reportId.isEmpty ||
+        _selectedColumns.isEmpty) return;
     final token = ++_runToken;
     setState(() {
       _loading = true;
@@ -215,7 +234,8 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
   Future<void> _refreshSaved() async {
     if (widget.societyId.isEmpty) return;
     try {
-      final list = await _service.listSaved(widget.societyId, _reportId.isEmpty ? null : _reportId);
+      final list = await _service.listSaved(
+          widget.societyId, _reportId.isEmpty ? null : _reportId);
       if (mounted) setState(() => _saved = list);
     } catch (_) {
       if (mounted) setState(() => _saved = []);
@@ -257,7 +277,8 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
   void _toggleColumn(String key) {
     setState(() {
       if (_selectedColumns.contains(key)) {
-        if (_selectedColumns.length > 1) _selectedColumns = _selectedColumns.where((k) => k != key).toList();
+        if (_selectedColumns.length > 1)
+          _selectedColumns = _selectedColumns.where((k) => k != key).toList();
       } else {
         _selectedColumns = [..._selectedColumns, key];
       }
@@ -282,9 +303,15 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
       );
       _saveName.clear();
       await _refreshSaved();
-      if (mounted) AppFeedback.toast(context, context.tr('Report definition saved', 'प्रतिवेदन परिभाषा सहेजी गई'), tone: BadgeTone.success);
+      if (mounted)
+        AppFeedback.toast(context,
+            context.tr('Report definition saved', 'प्रतिवेदन परिभाषा सहेजी गई'),
+            tone: BadgeTone.success);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, '${context.tr('Save failed', 'सहेजना विफल')}: $e', tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(
+            context, '${context.tr('Save failed', 'सहेजना विफल')}: $e',
+            tone: BadgeTone.alert);
     }
   }
 
@@ -306,13 +333,15 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => SafeArea(
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+            constraints:
+                BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
             child: ListView(
               shrinkWrap: true,
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: Text(ctx.tr('Columns', 'कॉलम'), style: AppText.sectionTitle(ctx)),
+                  child: Text(ctx.tr('Columns', 'कॉलम'),
+                      style: AppText.sectionTitle(ctx)),
                 ),
                 for (final c in def.columns)
                   CheckboxListTile(
@@ -336,33 +365,38 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
     final label = f.label;
     switch (f.type) {
       case ReportFilterType.dateRange:
-        final v = DateRangeValue.fromJson(_filters[f.key]) ?? const DateRangeValue();
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(label, style: AppText.tiny(context)),
-          const SizedBox(height: 4),
-          Row(children: [
-            Expanded(
-              child: ReportDateField(
-                label: context.tr('From', 'से'),
-                value: v.from ?? '',
-                onChanged: (x) => _setFilter(f.key, DateRangeValue(from: x, to: v.to)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ReportDateField(
-                label: context.tr('To', 'तक'),
-                value: v.to ?? '',
-                onChanged: (x) => _setFilter(f.key, DateRangeValue(from: v.from, to: x)),
-              ),
-            ),
-            IconButton(
-              tooltip: context.tr('Clear', 'साफ़ करें'),
-              onPressed: v.isEmpty ? null : () => _setFilter(f.key, null),
-              icon: const Icon(Icons.clear, size: 18),
-            ),
-          ]),
-        ]);
+        final v =
+            DateRangeValue.fromJson(_filters[f.key]) ?? const DateRangeValue();
+        return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(label, style: AppText.tiny(context)),
+              const SizedBox(height: 4),
+              Row(children: [
+                Expanded(
+                  child: ReportDateField(
+                    label: context.tr('From', 'से'),
+                    value: v.from ?? '',
+                    onChanged: (x) =>
+                        _setFilter(f.key, DateRangeValue(from: x, to: v.to)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ReportDateField(
+                    label: context.tr('To', 'तक'),
+                    value: v.to ?? '',
+                    onChanged: (x) =>
+                        _setFilter(f.key, DateRangeValue(from: v.from, to: x)),
+                  ),
+                ),
+                IconButton(
+                  tooltip: context.tr('Clear', 'साफ़ करें'),
+                  onPressed: v.isEmpty ? null : () => _setFilter(f.key, null),
+                  icon: const Icon(Icons.clear, size: 18),
+                ),
+              ]),
+            ]);
       case ReportFilterType.select:
         final items = ['', ...?f.options?.map((o) => o.value)];
         final cur = (_filters[f.key] ?? '').toString();
@@ -370,17 +404,27 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
           label: label,
           items: items,
           value: items.contains(cur) ? cur : '',
-          labelOf: (v) => v.isEmpty ? context.tr('All', 'सभी') : f.options!.firstWhere((o) => o.value == v).label,
-          onChanged: (v) => _setFilter(f.key, (v == null || v.isEmpty) ? null : v),
+          labelOf: (v) => v.isEmpty
+              ? context.tr('All', 'सभी')
+              : f.options!.firstWhere((o) => o.value == v).label,
+          onChanged: (v) =>
+              _setFilter(f.key, (v == null || v.isEmpty) ? null : v),
         );
       case ReportFilterType.boolean:
-        final cur = _filters[f.key] == true ? 'true' : (_filters[f.key] == false ? 'false' : '');
+        final cur = _filters[f.key] == true
+            ? 'true'
+            : (_filters[f.key] == false ? 'false' : '');
         return AppDropdown<String>(
           label: label,
           items: const ['', 'true', 'false'],
           value: cur,
-          labelOf: (v) => v.isEmpty ? context.tr('All', 'सभी') : (v == 'true' ? context.tr('Yes', 'हाँ') : context.tr('No', 'नहीं')),
-          onChanged: (v) => _setFilter(f.key, (v == null || v.isEmpty) ? null : v == 'true'),
+          labelOf: (v) => v.isEmpty
+              ? context.tr('All', 'सभी')
+              : (v == 'true'
+                  ? context.tr('Yes', 'हाँ')
+                  : context.tr('No', 'नहीं')),
+          onChanged: (v) =>
+              _setFilter(f.key, (v == null || v.isEmpty) ? null : v == 'true'),
         );
       case ReportFilterType.text:
       case ReportFilterType.number:
@@ -390,7 +434,8 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
           label: label,
           caps: false,
           initialValue: (_filters[f.key] ?? '').toString(),
-          keyboardType: f.type == ReportFilterType.number ? TextInputType.number : null,
+          keyboardType:
+              f.type == ReportFilterType.number ? TextInputType.number : null,
           onChanged: (v) {
             _textFilterTimer?.cancel();
             _textFilterTimer = Timer(const Duration(milliseconds: 350), () {
@@ -406,7 +451,9 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
     final t = context.tokens;
     if (_catalog.isEmpty) {
       return ReportPanel(
-        child: Text(context.tr('No reports available for your role.', 'आपकी भूमिका के लिए कोई प्रतिवेदन उपलब्ध नहीं।'),
+        child: Text(
+            context.tr('No reports available for your role.',
+                'आपकी भूमिका के लिए कोई प्रतिवेदन उपलब्ध नहीं।'),
             style: AppText.caption(context)),
       );
     }
@@ -417,7 +464,9 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
         if (f.type != ReportFilterType.dateRange || f.key != syncedKey) f,
     ];
     final result = _result;
-    final colLabel = {for (final c in def?.columns ?? const <ReportColumnDef>[]) c.key: c.label};
+    final colLabel = {
+      for (final c in def?.columns ?? const <ReportColumnDef>[]) c.key: c.label
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -437,7 +486,8 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
           if (_loading)
             Padding(
               padding: const EdgeInsets.only(left: 8, bottom: 12),
-              child: Text(context.tr('Updating…', 'अपडेट हो रहा है…'), style: AppText.tiny(context)),
+              child: Text(context.tr('Updating…', 'अपडेट हो रहा है…'),
+                  style: AppText.tiny(context)),
             ),
         ]),
         if ((def?.description ?? '').isNotEmpty)
@@ -451,57 +501,74 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
         if (extraFilters.isNotEmpty) ...[
           const SizedBox(height: 12),
           ReportPanel(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(context.tr('Filters', 'फ़िल्टर'), style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
-              for (final f in extraFilters) Padding(padding: const EdgeInsets.only(top: 10), child: _filterField(f)),
-            ]),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(context.tr('Filters', 'फ़िल्टर'),
+                      style:
+                          AppText.bodyMedium(context).copyWith(fontSize: 12)),
+                  for (final f in extraFilters)
+                    Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: _filterField(f)),
+                ]),
           ),
         ],
         if (def != null) ...[
           const SizedBox(height: 12),
           ReportPanel(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    FieldLabel(context.tr('Columns', 'कॉलम')),
-                    AppButton.secondary(
-                      label: context.tr('Toggle column…', 'कॉलम चुनें…'),
-                      icon: Icons.view_column_outlined,
-                      dense: true,
-                      onPressed: _openColumns,
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            FieldLabel(context.tr('Columns', 'कॉलम')),
+                            AppButton.secondary(
+                              label:
+                                  context.tr('Toggle column…', 'कॉलम चुनें…'),
+                              icon: Icons.view_column_outlined,
+                              dense: true,
+                              onPressed: _openColumns,
+                            ),
+                          ]),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AppDropdown<String>(
+                        label: context.tr('Group by', 'समूह द्वारा'),
+                        items: ['', for (final c in def.columns) c.key],
+                        value: _groupBy.isEmpty ? '' : _groupBy.first,
+                        labelOf: (k) => k.isEmpty
+                            ? context.tr('None', 'कोई नहीं')
+                            : colLabel[k] ?? k,
+                        onChanged: (v) {
+                          setState(() =>
+                              _groupBy = (v == null || v.isEmpty) ? [] : [v]);
+                          _run();
+                        },
+                      ),
                     ),
                   ]),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: AppDropdown<String>(
-                    label: context.tr('Group by', 'समूह द्वारा'),
-                    items: ['', for (final c in def.columns) c.key],
-                    value: _groupBy.isEmpty ? '' : _groupBy.first,
-                    labelOf: (k) => k.isEmpty ? context.tr('None', 'कोई नहीं') : colLabel[k] ?? k,
-                    onChanged: (v) {
-                      setState(() => _groupBy = (v == null || v.isEmpty) ? [] : [v]);
-                      _run();
-                    },
+                  const SizedBox(height: 8),
+                  Text(
+                    '${context.tr('Showing', 'दिखाए गए')}: ${_selectedColumns.map((k) => colLabel[k] ?? k).join(', ')}',
+                    style: AppText.tiny(context),
                   ),
-                ),
-              ]),
-              const SizedBox(height: 8),
-              Text(
-                '${context.tr('Showing', 'दिखाए गए')}: ${_selectedColumns.map((k) => colLabel[k] ?? k).join(', ')}',
-                style: AppText.tiny(context),
-              ),
-            ]),
+                ]),
           ),
         ],
         const SizedBox(height: 12),
         ReportPanel(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               Icon(Icons.bookmark_border, size: 14, color: t.foreground),
               const SizedBox(width: 4),
-              Text(context.tr('Saved views', 'सहेजे गए दृश्य'), style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
+              Text(context.tr('Saved views', 'सहेजे गए दृश्य'),
+                  style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
             ]),
             const SizedBox(height: 8),
             Row(children: [
@@ -510,7 +577,10 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
                   controller: _saveName,
                   onChanged: (_) => setState(() {}),
                   style: const TextStyle(fontSize: 13),
-                  decoration: InputDecoration(isDense: true, hintText: context.tr('Name this view…', 'इस दृश्य का नाम…')),
+                  decoration: InputDecoration(
+                      isDense: true,
+                      hintText:
+                          context.tr('Name this view…', 'इस दृश्य का नाम…')),
                 ),
               ),
               const SizedBox(width: 8),
@@ -524,20 +594,27 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
             for (final s in _saved)
               Container(
                 margin: const EdgeInsets.only(top: 6),
-                decoration: BoxDecoration(color: AppTokens.tint(t.secondary, 0.5), borderRadius: BorderRadius.circular(6)),
+                decoration: BoxDecoration(
+                    color: AppTokens.tint(t.secondary, 0.5),
+                    borderRadius: BorderRadius.circular(6)),
                 child: Row(children: [
                   Expanded(
                     child: InkWell(
                       onTap: () => _selectReport(s.reportId, saved: s),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                        child: Text(s.name, style: AppText.body(context).copyWith(fontSize: 12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 8),
+                        child: Text(s.name,
+                            style:
+                                AppText.body(context).copyWith(fontSize: 12)),
                       ),
                     ),
                   ),
                   IconButton(
-                    tooltip: context.tr('Delete saved report', 'सहेजा प्रतिवेदन हटाएं'),
-                    icon: Icon(Icons.delete_outline, size: 18, color: t.mutedForeground),
+                    tooltip: context.tr(
+                        'Delete saved report', 'सहेजा प्रतिवेदन हटाएं'),
+                    icon: Icon(Icons.delete_outline,
+                        size: 18, color: t.mutedForeground),
                     onPressed: () => _deleteSaved(s),
                   ),
                 ]),
@@ -546,7 +623,10 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
         ),
         if (_error != null) ...[
           const SizedBox(height: 12),
-          NoticeBanner(message: _error!, tone: BadgeTone.alert, icon: Icons.error_outline),
+          NoticeBanner(
+              message: _error!,
+              tone: BadgeTone.alert,
+              icon: Icons.error_outline),
         ],
         if (result != null) ...[
           const SizedBox(height: 12),
@@ -556,7 +636,8 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
                 [
                   '${result.totalRows} ${context.tr(result.totalRows == 1 ? 'row' : 'rows', 'पंक्तियाँ')}',
                   if (result.grouped) context.tr(' (grouped)', ' (समूहित)'),
-                  if (result.totals.isNotEmpty) ' · ${result.totals.map((x) => '${x.label} ${moneyInr(x.value)}').join(' · ')}',
+                  if (result.totals.isNotEmpty)
+                    ' · ${result.totals.map((x) => '${x.label} ${moneyInr(x.value)}').join(' · ')}',
                 ].join(),
                 style: AppText.caption(context),
               ),
@@ -572,7 +653,8 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Text('${result.page} / ${result.totalPages}', style: AppText.tiny(context).copyWith(fontSize: 11)),
+              child: Text('${result.page} / ${result.totalPages}',
+                  style: AppText.tiny(context).copyWith(fontSize: 11)),
             ),
             IconPillButton(
               icon: Icons.chevron_right,
@@ -595,8 +677,10 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
                 dataRowMaxHeight: 40,
                 horizontalMargin: 10,
                 columnSpacing: 16,
-                headingRowColor: WidgetStatePropertyAll(AppTokens.tint(t.secondary, 0.4)),
-                headingTextStyle: AppText.caption(context).copyWith(fontWeight: FontWeight.w600),
+                headingRowColor:
+                    WidgetStatePropertyAll(AppTokens.tint(t.secondary, 0.4)),
+                headingTextStyle: AppText.caption(context)
+                    .copyWith(fontWeight: FontWeight.w600),
                 dataTextStyle: AppText.body(context).copyWith(fontSize: 12),
                 columns: [
                   for (final c in result.columns)
@@ -605,15 +689,26 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
                       label: c.sortable != false
                           ? InkWell(
                               onTap: () {
-                                final same = _sort?.field == c.field || _sort?.field == c.key;
-                                setState(() => _sort = ReportSortDef(field: c.field, ascending: same ? !(_sort!.ascending) : true));
+                                final same = _sort?.field == c.field ||
+                                    _sort?.field == c.key;
+                                setState(() => _sort = ReportSortDef(
+                                    field: c.field,
+                                    ascending:
+                                        same ? !(_sort!.ascending) : true));
                                 _run();
                               },
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                Text(c.label),
-                                if (_sort?.field == c.field || _sort?.field == c.key)
-                                  Icon(_sort!.ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 12),
-                              ]),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(c.label),
+                                    if (_sort?.field == c.field ||
+                                        _sort?.field == c.key)
+                                      Icon(
+                                          _sort!.ascending
+                                              ? Icons.arrow_upward
+                                              : Icons.arrow_downward,
+                                          size: 12),
+                                  ]),
                             )
                           : Text(c.label),
                     ),
@@ -621,9 +716,12 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
                 rows: result.rows.isEmpty
                     ? [
                         DataRow(cells: [
-                          DataCell(Text(context.tr('No rows match the current filters.', 'वर्तमान फ़िल्टर से कोई पंक्ति मेल नहीं खाती।'),
+                          DataCell(Text(
+                              context.tr('No rows match the current filters.',
+                                  'वर्तमान फ़िल्टर से कोई पंक्ति मेल नहीं खाती।'),
                               style: AppText.caption(context))),
-                          for (var i = 1; i < result.columns.length; i++) const DataCell(SizedBox()),
+                          for (var i = 1; i < result.columns.length; i++)
+                            const DataCell(SizedBox()),
                         ]),
                       ]
                     : [
@@ -632,7 +730,11 @@ class _MetadataReportEngineState extends State<MetadataReportEngine> {
                             for (final c in result.columns)
                               DataCell(Text(
                                 formatReportCell(c, row[c.key]),
-                                style: c.isNumeric ? const TextStyle(fontFeatures: [FontFeature.tabularFigures()]) : null,
+                                style: c.isNumeric
+                                    ? const TextStyle(fontFeatures: [
+                                        FontFeature.tabularFigures()
+                                      ])
+                                    : null,
                               )),
                           ]),
                       ],

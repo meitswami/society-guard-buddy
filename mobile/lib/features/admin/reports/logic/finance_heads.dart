@@ -21,7 +21,8 @@ final RegExp _genericEventGroup = RegExp(
   caseSensitive: false,
 );
 
-bool _t(String pattern, String s) => RegExp(pattern, caseSensitive: false).hasMatch(s);
+bool _t(String pattern, String s) =>
+    RegExp(pattern, caseSensitive: false).hasMatch(s);
 
 /// Guess major head from an existing sub-head / group name (legacy rows).
 String inferMajorHeadFromGroupName(String? name) {
@@ -32,14 +33,21 @@ String inferMajorHeadFromGroupName(String? name) {
   if (_t(r'fixed deposit|\bfd\b', n)) return 'FIXED DEPOSIT';
   if (_t(r'^bank\b|bank account', n)) return 'BANK';
   if (_t(r'^cash\b|petty cash', n)) return 'CASH';
-  if (_t(r'legal|professional|audit|advocate|lawyer', n)) return 'LEGAL & PROFESSIONAL FEES';
-  if (_t(r'fixed asset|furniture|chair|equipment|machine|softner|softener|installation|asset', n)) {
+  if (_t(r'legal|professional|audit|advocate|lawyer', n))
+    return 'LEGAL & PROFESSIONAL FEES';
+  if (_t(
+      r'fixed asset|furniture|chair|equipment|machine|softner|softener|installation|asset',
+      n)) {
     return 'FIXED ASSETS';
   }
-  if (_t(r'salary|wage|security|guard|sweeper|cleaning|garden|housekeeping|house keeping|labour|labor', n)) {
+  if (_t(
+      r'salary|wage|security|guard|sweeper|cleaning|garden|housekeeping|house keeping|labour|labor',
+      n)) {
     return 'SALARY & WAGES';
   }
-  if (_t(r'electric|water|wifi|cctv|dg set|diesel|printing|maintenance|repair|insurance|lift|amc|utility', n)) {
+  if (_t(
+      r'electric|water|wifi|cctv|dg set|diesel|printing|maintenance|repair|insurance|lift|amc|utility',
+      n)) {
     return 'OPERATION & MAINTENANCE';
   }
   return 'MISCELLANEOUS';
@@ -48,11 +56,13 @@ String inferMajorHeadFromGroupName(String? name) {
 /// Stored `major_head` when valid, else inferred from the group name.
 String resolveGroupMajorHead({required String name, String? majorHead}) {
   final stored = majorHead?.trim();
-  if (stored != null && kSocietyPaymentMajorHeads.contains(stored)) return stored;
+  if (stored != null && kSocietyPaymentMajorHeads.contains(stored))
+    return stored;
   return inferMajorHeadFromGroupName(name);
 }
 
-final RegExp _eventFoodPrefix = RegExp(r'^event food\s*[—–-]', caseSensitive: false);
+final RegExp _eventFoodPrefix =
+    RegExp(r'^event food\s*[—–-]', caseSensitive: false);
 
 /// Head for period report / totals — not the raw ledger title.
 /// Legacy rows used `[Group] line`; generic event groups map to the line item head.
@@ -64,7 +74,8 @@ String financeExpenseHeadFromLedgerTitle(String? rawTitle) {
   if (bracket != null) {
     final group = bracket.group(1)!.trim();
     final rest = bracket.group(2)!.trim();
-    if (_genericEventGroup.hasMatch(group)) return rest.isNotEmpty ? rest : group;
+    if (_genericEventGroup.hasMatch(group))
+      return rest.isNotEmpty ? rest : group;
     return group;
   }
   return t;
@@ -82,14 +93,16 @@ String financeReceiptHeadFromLedgerEntry({
     if (fromCharge != null && fromCharge.isNotEmpty) return fromCharge;
   }
   if (destination == 'corpus') return 'SOCIETY CORPUS FUND';
-  if (destination == 'current_month_maintenance') return 'OPERATION & MAINTENANCE';
+  if (destination == 'current_month_maintenance')
+    return 'OPERATION & MAINTENANCE';
   final tt = (title ?? '').trim();
   if (tt.isNotEmpty) return inferMajorHeadFromGroupName(tt);
   return 'Uncategorized';
 }
 
 /// Receipt head for a maintenance payment (by its charge's major head).
-String financeReceiptHeadForPayment(String? chargeId, [Map<String, String>? chargeMajorHeadById]) {
+String financeReceiptHeadForPayment(String? chargeId,
+    [Map<String, String>? chargeMajorHeadById]) {
   if (chargeId != null && chargeId.isNotEmpty) {
     return chargeMajorHeadById?[chargeId] ?? 'Uncategorized';
   }
@@ -97,7 +110,8 @@ String financeReceiptHeadForPayment(String? chargeId, [Map<String, String>? char
 }
 
 /// Expense head for a separate-entry ledger row.
-String financeExpenseHeadFromLedgerEntry(String? rawTitle, [String? expenseCategory]) {
+String financeExpenseHeadFromLedgerEntry(String? rawTitle,
+    [String? expenseCategory]) {
   if (expenseCategory == 'food') {
     final parsed = financeExpenseHeadFromLedgerTitle(rawTitle);
     if (_eventFoodPrefix.hasMatch(parsed)) return parsed;
@@ -110,22 +124,30 @@ String financeExpenseHeadFromLedgerEntry(String? rawTitle, [String? expenseCateg
 /// Event / catering bills — reconciled in Events & food, not Finance → Transactions.
 bool isEventFoodExpenseCategory(String? category) => category == 'food';
 
-bool isEventFoodLedgerTitle(String? title) => _eventFoodPrefix.hasMatch((title ?? '').trim());
+bool isEventFoodLedgerTitle(String? title) =>
+    _eventFoodPrefix.hasMatch((title ?? '').trim());
 
 /// Flat contribution receipts — reconciled in Events & food.
 bool isEventContributionLedgerTitle(String? title) =>
-    RegExp(r'^event contribution\s*[—–-]', caseSensitive: false).hasMatch((title ?? '').trim());
+    RegExp(r'^event contribution\s*[—–-]', caseSensitive: false)
+        .hasMatch((title ?? '').trim());
 
 bool isHeadScopedLedgerTitle(String? title) {
   final t = (title ?? '').trim();
-  return RegExp(r'^head contribution\s*[—–-]', caseSensitive: false).hasMatch(t) ||
+  return RegExp(r'^head contribution\s*[—–-]', caseSensitive: false)
+          .hasMatch(t) ||
       RegExp(r'^head adjustment\s*[—–-]', caseSensitive: false).hasMatch(t);
 }
 
 /// Web `isEventFoodLedgerEntry` — rows excluded from the society ledger in reports.
-bool isEventFoodLedgerEntry({String? expenseId, String? title, required Map<String, String> expenseCategoryById}) {
+bool isEventFoodLedgerEntry(
+    {String? expenseId,
+    String? title,
+    required Map<String, String> expenseCategoryById}) {
   if (expenseId != null && expenseId.isNotEmpty) {
     return isEventFoodExpenseCategory(expenseCategoryById[expenseId]);
   }
-  return isEventFoodLedgerTitle(title) || isEventContributionLedgerTitle(title) || isHeadScopedLedgerTitle(title);
+  return isEventFoodLedgerTitle(title) ||
+      isEventContributionLedgerTitle(title) ||
+      isHeadScopedLedgerTitle(title);
 }

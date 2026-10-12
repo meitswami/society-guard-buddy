@@ -21,7 +21,6 @@
 /// ```
 library;
 
-
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
@@ -36,23 +35,35 @@ export 'letterhead_layout.dart';
 export 'pdf_page.dart';
 export 'society_letterhead.dart';
 
-const String kLetterheadNotConfiguredWarning = 'Official society letterhead has not been configured.';
+const String kLetterheadNotConfiguredWarning =
+    'Official society letterhead has not been configured.';
 
 /// Colours from "Society letter Head.pdf" (indigo header rule, charcoal footer rule).
 abstract final class LetterheadColors {
-  static const PdfColor headerRule = PdfColor.fromInt(0xFF374178); // rgb(55,65,120)
-  static const PdfColor footerRule = PdfColor.fromInt(0xFF787D87); // rgb(120,125,135)
+  static const PdfColor headerRule =
+      PdfColor.fromInt(0xFF374178); // rgb(55,65,120)
+  static const PdfColor footerRule =
+      PdfColor.fromInt(0xFF787D87); // rgb(120,125,135)
   static const PdfColor name = PdfColor.fromInt(0xFF111827); // rgb(17,24,39)
   static const PdfColor meta = PdfColor.fromInt(0xFF4B5563); // rgb(75,85,99)
   static const PdfColor grey80 = PdfColor.fromInt(0xFF505050); // rgb(80,80,80)
-  static const PdfColor grey120 = PdfColor.fromInt(0xFF787878); // rgb(120,120,120)
-  static const PdfColor fill240 = PdfColor.fromInt(0xFFF0F0F0); // rgb(240,240,240)
-  static const PdfColor rule180 = PdfColor.fromInt(0xFFB4B4B4); // rgb(180,180,180)
+  static const PdfColor grey120 =
+      PdfColor.fromInt(0xFF787878); // rgb(120,120,120)
+  static const PdfColor fill240 =
+      PdfColor.fromInt(0xFFF0F0F0); // rgb(240,240,240)
+  static const PdfColor rule180 =
+      PdfColor.fromInt(0xFFB4B4B4); // rgb(180,180,180)
 }
 
 /// Standard report metadata header (only non-empty fields are drawn).
 class ReportMeta {
-  const ReportMeta({required this.title, this.reportNo, this.date, this.society, this.period, this.generatedBy});
+  const ReportMeta(
+      {required this.title,
+      this.reportNo,
+      this.date,
+      this.society,
+      this.period,
+      this.generatedBy});
 
   final String title;
   final String? reportNo;
@@ -78,7 +89,10 @@ class ReportMeta {
 }
 
 class SignatureBlockOpts {
-  const SignatureBlockOpts({this.preparedBy = true, this.verifiedBy = true, this.authorizedSignatory = true});
+  const SignatureBlockOpts(
+      {this.preparedBy = true,
+      this.verifiedBy = true,
+      this.authorizedSignatory = true});
 
   final bool preparedBy;
   final bool verifiedBy;
@@ -122,8 +136,9 @@ LetterheadReportContext letterheadContextFor(
     );
   }
   final settings = SocietyReportSettings(
-    defaultReportFormat:
-        letterhead.defaultReportFormat == ReportPdfMode.plain ? ReportPdfMode.plain : ReportPdfMode.letterhead,
+    defaultReportFormat: letterhead.defaultReportFormat == ReportPdfMode.plain
+        ? ReportPdfMode.plain
+        : ReportPdfMode.letterhead,
   );
   final requested = preferredMode ?? settings.defaultReportFormat;
   if (requested == ReportPdfMode.letterhead &&
@@ -137,7 +152,11 @@ LetterheadReportContext letterheadContextFor(
       warning: kLetterheadNotConfiguredWarning,
     );
   }
-  return LetterheadReportContext(societyId: societyId, letterhead: letterhead, settings: settings, mode: requested);
+  return LetterheadReportContext(
+      societyId: societyId,
+      letterhead: letterhead,
+      settings: settings,
+      mode: requested);
 }
 
 /// Load society-scoped letterhead + report settings. Never falls back to another society.
@@ -147,22 +166,34 @@ Future<LetterheadReportContext?> resolveLetterheadReportContext(
 }) async {
   if (societyId == null || societyId.isEmpty) return null;
   final letterhead = await fetchSocietyLetterhead(societyId);
-  return letterheadContextFor(societyId, letterhead, preferredMode: preferredMode);
+  return letterheadContextFor(societyId, letterhead,
+      preferredMode: preferredMode);
 }
 
 /// Measure layout without drawing (tests / preflight) — web `measureReportLayout`.
-LetterheadLayout measureReportLayout(Object? letterhead, {ReportPdfMode mode = ReportPdfMode.letterhead, bool landscape = false}) =>
+LetterheadLayout measureReportLayout(Object? letterhead,
+        {ReportPdfMode mode = ReportPdfMode.letterhead,
+        bool landscape = false}) =>
     measureLetterheadLayout(letterhead, mode: mode, landscape: landscape);
 
 /// Characters missing from the bundled PDF fonts are mapped to ASCII.
-String pdfSafeText(String s) => s.replaceAll('→', '->').replaceAll('←', '<-').replaceAll('✓', '√').replaceAll(' ', ' ');
+String pdfSafeText(String s) => s
+    .replaceAll('→', '->')
+    .replaceAll('←', '<-')
+    .replaceAll('✓', '√')
+    .replaceAll(' ', ' ');
 
 bool _looksLikeImage(Uint8List b) {
   if (b.length < 12) return false;
   final png = b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47;
   final jpg = b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF;
   final gif = b[0] == 0x47 && b[1] == 0x49 && b[2] == 0x46;
-  final webp = b[0] == 0x52 && b[1] == 0x49 && b[2] == 0x46 && b[3] == 0x46 && b[8] == 0x57 && b[9] == 0x45;
+  final webp = b[0] == 0x52 &&
+      b[1] == 0x49 &&
+      b[2] == 0x46 &&
+      b[3] == 0x46 &&
+      b[8] == 0x57 &&
+      b[9] == 0x45;
   return png || jpg || gif || webp;
 }
 
@@ -175,8 +206,10 @@ Uint8List? _prepareImageSync((Uint8List, int) args) {
     final longest = image.width > image.height ? image.width : image.height;
     if (longest > maxSide) {
       image = image.width >= image.height
-          ? img.copyResize(image, width: maxSide, interpolation: img.Interpolation.average)
-          : img.copyResize(image, height: maxSide, interpolation: img.Interpolation.average);
+          ? img.copyResize(image,
+              width: maxSide, interpolation: img.Interpolation.average)
+          : img.copyResize(image,
+              height: maxSide, interpolation: img.Interpolation.average);
     }
     if (image.hasAlpha) {
       final bg = img.Image(width: image.width, height: image.height);
@@ -192,7 +225,8 @@ Uint8List? _prepareImageSync((Uint8List, int) args) {
 
 /// Decode, downscale (≈200 dpi on Letter) and flatten an image to JPEG so PDFs stay small.
 /// Returns null when the bytes are not a supported image.
-Future<Uint8List?> preparePdfImage(Uint8List? bytes, {int maxSide = 2200}) async {
+Future<Uint8List?> preparePdfImage(Uint8List? bytes,
+    {int maxSide = 2200}) async {
   if (bytes == null || bytes.isEmpty || !_looksLikeImage(bytes)) return null;
   final isJpeg = bytes[0] == 0xFF && bytes[1] == 0xD8;
   if (isJpeg && bytes.length < 600 * 1024) return bytes;
@@ -206,7 +240,8 @@ Future<Uint8List?> preparePdfImage(Uint8List? bytes, {int maxSide = 2200}) async
 /// Ascent of Noto Sans (hhea 1069/1000) — converts jsPDF baselines to widget tops.
 const double _ascentEm = 1.069;
 
-double _topForBaseline(double baselineMm, double fontPt) => baselineMm - _ascentEm * fontPtToMm(fontPt);
+double _topForBaseline(double baselineMm, double fontPt) =>
+    baselineMm - _ascentEm * fontPtToMm(fontPt);
 
 /// Builder for a society report PDF (web `beginSocietyReport` … `finalizeSocietyReport`).
 class SocietyReportPdf {
@@ -216,7 +251,8 @@ class SocietyReportPdf {
     this.landscape = false,
     this.title,
   })  : letterhead = SocietyLetterhead.coerce(letterhead),
-        layout = measureLetterheadLayout(letterhead, mode: mode, landscape: landscape);
+        layout = measureLetterheadLayout(letterhead,
+            mode: mode, landscape: landscape);
 
   /// Letterhead (a [SocietyLetterhead], a society name or null).
   final SocietyLetterhead letterhead;
@@ -245,18 +281,24 @@ class SocietyReportPdf {
 
   /// `drawSignatureSection` — kept on one page.
   void signatures([SignatureBlockOpts opts = const SignatureBlockOpts()]) =>
-      _children.add(SocietyPdf.signatureSection(contentWidthMm: layout.contentWidth, opts: opts));
+      _children.add(SocietyPdf.signatureSection(
+          contentWidthMm: layout.contentWidth, opts: opts));
 
   /// Build the document (pages are laid out immediately; see [pageCount]).
   Future<pw.Document> build() async {
     if (_doc != null) return _doc!;
     final doc = await ExportKit.newPdf(title: title);
-    final lhBytes = mode == ReportPdfMode.plain ? null : await preparePdfImage(letterhead.letterheadBytes);
-    final logoBytes = mode == ReportPdfMode.plain ? null : await preparePdfImage(letterhead.logoBytes, maxSide: 600);
+    final lhBytes = mode == ReportPdfMode.plain
+        ? null
+        : await preparePdfImage(letterhead.letterheadBytes);
+    final logoBytes = mode == ReportPdfMode.plain
+        ? null
+        : await preparePdfImage(letterhead.logoBytes, maxSide: 600);
     final lhImage = lhBytes == null ? null : pw.MemoryImage(lhBytes);
     final logoImage = logoBytes == null ? null : pw.MemoryImage(logoBytes);
     final painter = _LetterheadPainter(
-      lh: letterhead.copyWith(logoBytes: logoBytes, clearLogoBytes: logoBytes == null),
+      lh: letterhead.copyWith(
+          logoBytes: logoBytes, clearLogoBytes: logoBytes == null),
       layout: layout,
       mode: mode,
       letterheadImage: lhImage,
@@ -275,7 +317,9 @@ class SocietyReportPdf {
           buildBackground: painter.build,
         ),
         maxPages: 5000,
-        build: (_) => _children.isEmpty ? [pw.SizedBox(height: 1)] : List<pw.Widget>.of(_children),
+        build: (_) => _children.isEmpty
+            ? [pw.SizedBox(height: 1)]
+            : List<pw.Widget>.of(_children),
       ),
     );
     _doc = doc;
@@ -324,21 +368,28 @@ class _LetterheadPainter {
       color: color,
     );
     final top = mmToPt(_topForBaseline(baselineMm, sizePt));
-    final child = pw.Text(pdfSafeText(text), style: style, softWrap: false, maxLines: 1);
+    final child =
+        pw.Text(pdfSafeText(text), style: style, softWrap: false, maxLines: 1);
     if (alignRight) {
-      return pw.Positioned(right: mmToPt(layout.pageW - xMm), top: top, child: child);
+      return pw.Positioned(
+          right: mmToPt(layout.pageW - xMm), top: top, child: child);
     }
     return pw.Positioned(
       left: mmToPt(xMm),
       top: top,
-      child: maxWidthMm == null ? child : pw.SizedBox(width: mmToPt(maxWidthMm), child: child),
+      child: maxWidthMm == null
+          ? child
+          : pw.SizedBox(width: mmToPt(maxWidthMm), child: child),
     );
   }
 
-  pw.Widget _hLine(double x1Mm, double x2Mm, double yMm, double widthMm, PdfColor color) => pw.Positioned(
+  pw.Widget _hLine(double x1Mm, double x2Mm, double yMm, double widthMm,
+          PdfColor color) =>
+      pw.Positioned(
         left: mmToPt(x1Mm),
         top: mmToPt(yMm - widthMm / 2),
-        child: pw.Container(width: mmToPt(x2Mm - x1Mm), height: mmToPt(widthMm), color: color),
+        child: pw.Container(
+            width: mmToPt(x2Mm - x1Mm), height: mmToPt(widthMm), color: color),
       );
 
   String _pageLabel(pw.Context ctx) => '${ctx.pageNumber}/${ctx.pagesCount}';
@@ -365,39 +416,51 @@ class _LetterheadPainter {
       ));
       textX = margin + kLetterheadLogoSizeMm + 3.5;
     }
-    final maxTextW = (layout.pageW - textX - layout.rightMargin) < 40 ? 40.0 : layout.pageW - textX - layout.rightMargin;
-    out.add(_text(lh.name.isEmpty ? 'Society' : lh.name, textX, margin + 4, 15, bold: true, color: LetterheadColors.name, maxWidthMm: maxTextW));
+    final maxTextW = (layout.pageW - textX - layout.rightMargin) < 40
+        ? 40.0
+        : layout.pageW - textX - layout.rightMargin;
+    out.add(_text(lh.name.isEmpty ? 'Society' : lh.name, textX, margin + 4, 15,
+        bold: true, color: LetterheadColors.name, maxWidthMm: maxTextW));
     var y = margin + 9.5;
     for (final line in [letterheadAddressLine(lh), letterheadContactLine(lh)]) {
       if (line.isEmpty) continue;
       final lines = splitTextToSize(line, maxTextW, 8);
       for (var i = 0; i < lines.length; i++) {
-        out.add(_text(lines[i], textX, y + i * 3.4, 8, color: LetterheadColors.meta, maxWidthMm: maxTextW));
+        out.add(_text(lines[i], textX, y + i * 3.4, 8,
+            color: LetterheadColors.meta, maxWidthMm: maxTextW));
       }
       y += (lines.length * 3.4) < 3.6 ? 3.6 : lines.length * 3.4;
     }
     final ruleY = autoHeaderRuleY(lh, layout);
-    out.add(_hLine(margin, layout.pageW - layout.rightMargin, ruleY, 0.85, LetterheadColors.headerRule));
+    out.add(_hLine(margin, layout.pageW - layout.rightMargin, ruleY, 0.85,
+        LetterheadColors.headerRule));
     return out;
   }
 
   List<pw.Widget> _footerBand(pw.Context ctx) => [
-        _hLine(layout.leftMargin, layout.pageW - layout.rightMargin, layout.contentBottom, 0.7, LetterheadColors.footerRule),
-        _text(lh.name.isEmpty ? 'Society' : lh.name, layout.leftMargin, _footerTextY, 9,
-            bold: true, color: LetterheadColors.name, maxWidthMm: layout.contentWidth * 0.75),
-        _text(_pageLabel(ctx), layout.pageW - layout.rightMargin, _footerTextY, 9,
+        _hLine(layout.leftMargin, layout.pageW - layout.rightMargin,
+            layout.contentBottom, 0.7, LetterheadColors.footerRule),
+        _text(lh.name.isEmpty ? 'Society' : lh.name, layout.leftMargin,
+            _footerTextY, 9,
+            bold: true,
+            color: LetterheadColors.name,
+            maxWidthMm: layout.contentWidth * 0.75),
+        _text(
+            _pageLabel(ctx), layout.pageW - layout.rightMargin, _footerTextY, 9,
             color: LetterheadColors.meta, alignRight: true),
       ];
 
   pw.Widget build(pw.Context ctx) {
     final children = <pw.Widget>[];
     if (mode == ReportPdfMode.plain) {
-      children.add(_text(_pageLabel(ctx), layout.pageW - layout.rightMargin, layout.pageH - 8, 8,
+      children.add(_text(_pageLabel(ctx), layout.pageW - layout.rightMargin,
+          layout.pageH - 8, 8,
           color: LetterheadColors.meta, alignRight: true));
     } else {
       final brand = lh.brandMode;
       if (brand == LetterheadMode.stationery) {
-        children.add(_text(_pageLabel(ctx), layout.pageW - layout.rightMargin, _footerTextY, 8,
+        children.add(_text(
+            _pageLabel(ctx), layout.pageW - layout.rightMargin, _footerTextY, 8,
             color: LetterheadColors.meta, alignRight: true));
       } else if (brand == LetterheadMode.image && letterheadImage != null) {
         children.add(pw.Positioned(
@@ -410,7 +473,8 @@ class _LetterheadPainter {
             fit: pw.BoxFit.fill,
           ),
         ));
-        children.add(_text(_pageLabel(ctx), layout.pageW - layout.rightMargin, _footerTextY, 8,
+        children.add(_text(
+            _pageLabel(ctx), layout.pageW - layout.rightMargin, _footerTextY, 8,
             color: LetterheadColors.meta, alignRight: true));
       } else {
         children.addAll(_autoHeader());
@@ -442,7 +506,10 @@ abstract final class SocietyPdf {
         child: pw.Text(
           pdfSafeText(text),
           textAlign: align,
-          style: pw.TextStyle(fontSize: size, fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal, color: color),
+          style: pw.TextStyle(
+              fontSize: size,
+              fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+              color: color),
         ),
       );
 
@@ -453,7 +520,10 @@ abstract final class SocietyPdf {
           children: [
             pw.Text(
               pdfSafeText(meta.title),
-              style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: LetterheadColors.name),
+              style: pw.TextStyle(
+                  fontSize: 13,
+                  fontWeight: pw.FontWeight.bold,
+                  color: LetterheadColors.name),
             ),
             pw.SizedBox(height: mmToPt(2)),
             for (final (label, value) in meta.rows)
@@ -465,10 +535,15 @@ abstract final class SocietyPdf {
                     pw.SizedBox(
                       width: mmToPt(28),
                       child: pw.Text('$label:',
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: LetterheadColors.meta)),
+                          style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                              color: LetterheadColors.meta)),
                     ),
                     pw.Expanded(
-                      child: pw.Text(pdfSafeText(value), style: const pw.TextStyle(fontSize: 9, color: LetterheadColors.meta)),
+                      child: pw.Text(pdfSafeText(value),
+                          style: const pw.TextStyle(
+                              fontSize: 9, color: LetterheadColors.meta)),
                     ),
                   ],
                 ),
@@ -479,15 +554,22 @@ abstract final class SocietyPdf {
       );
 
   /// `drawSignatureSection`: Prepared By · Verified By, then Authorized Signatory (right).
-  static pw.Widget signatureSection({required double contentWidthMm, SignatureBlockOpts opts = const SignatureBlockOpts()}) {
+  static pw.Widget signatureSection(
+      {required double contentWidthMm,
+      SignatureBlockOpts opts = const SignatureBlockOpts()}) {
     final lineW = (contentWidthMm * 0.35) < 48 ? contentWidthMm * 0.35 : 48.0;
     pw.Widget block(String label) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           mainAxisSize: pw.MainAxisSize.min,
           children: [
-            pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: LetterheadColors.name)),
+            pw.Text(label,
+                style: const pw.TextStyle(
+                    fontSize: 9, color: LetterheadColors.name)),
             pw.SizedBox(height: mmToPt(8)),
-            pw.Container(width: mmToPt(lineW), height: 0.8, color: LetterheadColors.footerRule),
+            pw.Container(
+                width: mmToPt(lineW),
+                height: 0.8,
+                color: LetterheadColors.footerRule),
           ],
         );
     return pw.Inseparable(
@@ -500,13 +582,19 @@ abstract final class SocietyPdf {
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.SizedBox(width: mmToPt(contentWidthMm / 2), child: opts.preparedBy ? block('Prepared By') : pw.SizedBox()),
+                  pw.SizedBox(
+                      width: mmToPt(contentWidthMm / 2),
+                      child: opts.preparedBy
+                          ? block('Prepared By')
+                          : pw.SizedBox()),
                   if (opts.verifiedBy) block('Verified By'),
                 ],
               ),
             pw.SizedBox(height: mmToPt(10)),
             if (opts.authorizedSignatory)
-              pw.Row(mainAxisAlignment: pw.MainAxisAlignment.end, children: [block('Authorized Signatory')]),
+              pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [block('Authorized Signatory')]),
             pw.SizedBox(height: mmToPt(4)),
           ],
         ),
@@ -534,33 +622,47 @@ abstract final class SocietyPdf {
             ? pw.FixedColumnWidth(mmToPt(columnWidthsMm[i]))
             : const pw.FlexColumnWidth(),
     };
-    pw.Widget cell(String v, int col, {bool bold = false, double size = 7.5}) => pw.Padding(
+    pw.Widget cell(String v, int col, {bool bold = false, double size = 7.5}) =>
+        pw.Padding(
           padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 2.5),
           child: pw.Text(
             pdfSafeText(v),
-            textAlign: numericColumns.contains(col) ? pw.TextAlign.right : pw.TextAlign.left,
-            style: pw.TextStyle(fontSize: size, fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal),
+            textAlign: numericColumns.contains(col)
+                ? pw.TextAlign.right
+                : pw.TextAlign.left,
+            style: pw.TextStyle(
+                fontSize: size,
+                fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal),
           ),
         );
     return pw.Table(
       columnWidths: widths,
       border: borders
           ? pw.TableBorder.all(color: LetterheadColors.rule180, width: 0.5)
-          : const pw.TableBorder(horizontalInside: pw.BorderSide(color: PdfColors.grey300, width: 0.3)),
+          : const pw.TableBorder(
+              horizontalInside:
+                  pw.BorderSide(color: PdfColors.grey300, width: 0.3)),
       children: [
         pw.TableRow(
           repeat: true,
           decoration: const pw.BoxDecoration(color: LetterheadColors.fill240),
-          children: [for (var i = 0; i < headers.length; i++) cell(headers[i], i, bold: true, size: headerSize)],
+          children: [
+            for (var i = 0; i < headers.length; i++)
+              cell(headers[i], i, bold: true, size: headerSize)
+          ],
         ),
         for (var r = 0; r < rows.length; r++)
           pw.TableRow(
             decoration: filledRows.contains(r)
                 ? const pw.BoxDecoration(color: LetterheadColors.fill240)
-                : (zebra && r.isOdd ? const pw.BoxDecoration(color: PdfColor.fromInt(0xFFFAFAFA)) : null),
+                : (zebra && r.isOdd
+                    ? const pw.BoxDecoration(
+                        color: PdfColor.fromInt(0xFFFAFAFA))
+                    : null),
             children: [
               for (var i = 0; i < headers.length; i++)
-                cell(i < rows[r].length ? rows[r][i] : '', i, bold: boldRows.contains(r), size: cellSize),
+                cell(i < rows[r].length ? rows[r][i] : '', i,
+                    bold: boldRows.contains(r), size: cellSize),
             ],
           ),
       ],
@@ -568,7 +670,9 @@ abstract final class SocietyPdf {
   }
 
   /// Two-column `label — value` list (summary blocks).
-  static pw.Widget keyValues(List<(String, String)> rows, {double size = 9, double labelWidthMm = 70}) => pw.Column(
+  static pw.Widget keyValues(List<(String, String)> rows,
+          {double size = 9, double labelWidthMm = 70}) =>
+      pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           for (final (k, v) in rows)
@@ -577,8 +681,13 @@ abstract final class SocietyPdf {
               child: pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.SizedBox(width: mmToPt(labelWidthMm), child: pw.Text(pdfSafeText(k), style: pw.TextStyle(fontSize: size))),
-                  pw.Expanded(child: pw.Text(pdfSafeText(v), style: pw.TextStyle(fontSize: size))),
+                  pw.SizedBox(
+                      width: mmToPt(labelWidthMm),
+                      child: pw.Text(pdfSafeText(k),
+                          style: pw.TextStyle(fontSize: size))),
+                  pw.Expanded(
+                      child: pw.Text(pdfSafeText(v),
+                          style: pw.TextStyle(fontSize: size))),
                 ],
               ),
             ),
@@ -586,6 +695,10 @@ abstract final class SocietyPdf {
       );
 
   /// Horizontal rule across the content band.
-  static pw.Widget rule({PdfColor color = LetterheadColors.rule180, double thickness = 0.5}) =>
-      pw.Padding(padding: const pw.EdgeInsets.symmetric(vertical: 2), child: pw.Divider(color: color, thickness: thickness, height: 1));
+  static pw.Widget rule(
+          {PdfColor color = LetterheadColors.rule180,
+          double thickness = 0.5}) =>
+      pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 2),
+          child: pw.Divider(color: color, thickness: thickness, height: 1));
 }

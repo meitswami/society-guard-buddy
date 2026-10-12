@@ -66,7 +66,9 @@ class SocietyLetterhead {
   String get brandMode {
     if (letterheadMode == 'image' ||
         letterheadMode == 'stationery' ||
-        letterheadMode == 'auto') return letterheadMode;
+        letterheadMode == 'auto') {
+      return letterheadMode;
+    }
     return hasOfficialAsset ? 'image' : 'auto';
   }
 
@@ -97,8 +99,9 @@ double? _numOrNull(Object? v) =>
     v == null ? null : double.tryParse(v.toString());
 
 Future<Uint8List?> _download(String? url) async {
-  if (url == null || url.trim().isEmpty || url.toLowerCase().contains('.pdf'))
+  if (url == null || url.trim().isEmpty || url.toLowerCase().contains('.pdf')) {
     return null;
+  }
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
   try {
     final req =
@@ -203,8 +206,9 @@ Future<LetterheadContext?> resolveLetterheadReportContext(
     String? societyId) async {
   if (societyId == null || societyId.isEmpty) return null;
   final lh = await fetchSocietyLetterhead(societyId);
-  if (lh == null)
+  if (lh == null) {
     return const LetterheadContext(letterhead: null, mode: 'plain');
+  }
   final requested = lh.defaultReportFormat;
   if (requested == 'letterhead' &&
       !lh.hasOfficialAsset &&

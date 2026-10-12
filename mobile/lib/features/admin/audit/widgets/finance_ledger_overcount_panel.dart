@@ -46,7 +46,9 @@ class _FinanceLedgerOvercountPanelState
     super.didUpdateWidget(old);
     if (old.refreshSeq != widget.refreshSeq ||
         old.societyId != widget.societyId ||
-        old.focusMonth != widget.focusMonth) _detect();
+        old.focusMonth != widget.focusMonth) {
+      _detect();
+    }
   }
 
   Future<void> _detect() async {
@@ -54,8 +56,9 @@ class _FinanceLedgerOvercountPanelState
     try {
       final d = await _service.fetchOvercountData(widget.societyId);
       var found = analyzeLedgerOvercountByMonth(d.payments, d.ledger);
-      if (widget.focusMonth != null)
+      if (widget.focusMonth != null) {
         found = found.where((x) => x.month == widget.focusMonth).toList();
+      }
       if (mounted) setState(() => _issues = found);
     } catch (_) {
       if (mounted) setState(() => _issues = const []);

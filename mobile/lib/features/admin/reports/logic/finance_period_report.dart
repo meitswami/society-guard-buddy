@@ -21,7 +21,8 @@ import 'finance_heads.dart';
 import 'js_compat.dart';
 import 'payment_channel.dart';
 
-export 'payment_channel.dart' show ChannelTotals, PaymentChannel, normalizePaymentChannel;
+export 'payment_channel.dart'
+    show ChannelTotals, PaymentChannel, normalizePaymentChannel;
 
 // ─── Input rows ──────────────────────────────────────────────────────────────
 
@@ -61,7 +62,8 @@ class FinancePeriodPayment {
   final String? verifiedAt;
 
   /// From a raw `maintenance_payments` row (`select('*')`).
-  factory FinancePeriodPayment.fromJson(Map<String, dynamic> j) => FinancePeriodPayment(
+  factory FinancePeriodPayment.fromJson(Map<String, dynamic> j) =>
+      FinancePeriodPayment(
         id: j['id']?.toString(),
         paymentStatus: j['payment_status']?.toString(),
         amount: jsAmount(j['amount']),
@@ -86,13 +88,15 @@ class FinancePeriodPayment {
 
 /// One `finance_entry_allocations` row.
 class FinanceEntryAllocation {
-  const FinanceEntryAllocation({required this.flatNumber, this.amount = 0, this.flatId});
+  const FinanceEntryAllocation(
+      {required this.flatNumber, this.amount = 0, this.flatId});
 
   final String flatNumber;
   final double amount;
   final String? flatId;
 
-  factory FinanceEntryAllocation.fromJson(Map<String, dynamic> j) => FinanceEntryAllocation(
+  factory FinanceEntryAllocation.fromJson(Map<String, dynamic> j) =>
+      FinanceEntryAllocation(
         flatNumber: (j['flat_number'] ?? '').toString(),
         amount: jsAmount(j['amount']),
         flatId: j['flat_id']?.toString(),
@@ -168,10 +172,18 @@ class FinancePeriodLedgerEntry {
       allocationStyle: j['allocation_style']?.toString(),
       distributedAt: j['distributed_at']?.toString(),
       allocations: allocs is List
-          ? allocs.whereType<Map>().map((e) => FinanceEntryAllocation.fromJson(Map<String, dynamic>.from(e))).toList()
+          ? allocs
+              .whereType<Map>()
+              .map((e) =>
+                  FinanceEntryAllocation.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
           : const [],
       counterpartyNames: cps is List
-          ? cps.whereType<Map>().map((e) => (e['name'] ?? '').toString()).where((s) => s.isNotEmpty).toList()
+          ? cps
+              .whereType<Map>()
+              .map((e) => (e['name'] ?? '').toString())
+              .where((s) => s.isNotEmpty)
+              .toList()
           : const [],
     );
   }
@@ -182,11 +194,15 @@ class FinancePeriodLedgerEntry {
   bool get isVerified => effectiveStatus == 'verified';
 
   /// `ledgerTransactionDate(e)`.
-  String get ledgerDate => ledgerTransactionDate(transactionDate: transactionDate, entryMonth: entryMonth, createdAt: createdAt);
+  String get ledgerDate => ledgerTransactionDate(
+      transactionDate: transactionDate,
+      entryMonth: entryMonth,
+      createdAt: createdAt);
 
   bool get isExpense => destination == 'separate_entry';
 
-  bool get isInflowDestination => destination == 'current_month_maintenance' || destination == 'corpus';
+  bool get isInflowDestination =>
+      destination == 'current_month_maintenance' || destination == 'corpus';
 }
 
 /// `reserve_fund_transfers` row.
@@ -209,7 +225,8 @@ class FinancePeriodReserveTransfer {
   final String? notes;
   final String createdAt;
 
-  factory FinancePeriodReserveTransfer.fromJson(Map<String, dynamic> j) => FinancePeriodReserveTransfer(
+  factory FinancePeriodReserveTransfer.fromJson(Map<String, dynamic> j) =>
+      FinancePeriodReserveTransfer(
         id: (j['id'] ?? '').toString(),
         entryMonth: (j['entry_month'] ?? '').toString(),
         amount: jsAmount(j['amount']),
@@ -251,12 +268,14 @@ class FinanceOpeningBalanceAnchor {
     );
   }
 
-  String get _ymd => asOnDate.length > 10 ? asOnDate.substring(0, 10) : asOnDate;
+  String get _ymd =>
+      asOnDate.length > 10 ? asOnDate.substring(0, 10) : asOnDate;
 }
 
 /// Cash / bank / other + total for one receipt or expense head.
 class ChannelByHeadRow {
-  ChannelByHeadRow({this.cash = 0, this.bank = 0, this.other = 0, this.total = 0});
+  ChannelByHeadRow(
+      {this.cash = 0, this.bank = 0, this.other = 0, this.total = 0});
 
   double cash;
   double bank;
@@ -265,13 +284,18 @@ class ChannelByHeadRow {
 
   @override
   bool operator ==(Object other) =>
-      other is ChannelByHeadRow && other.cash == cash && other.bank == bank && other.other == this.other && other.total == total;
+      other is ChannelByHeadRow &&
+      other.cash == cash &&
+      other.bank == bank &&
+      other.other == this.other &&
+      other.total == total;
 
   @override
   int get hashCode => Object.hash(cash, bank, other, total);
 
   @override
-  String toString() => '{cash: $cash, bank: $bank, other: $other, total: $total}';
+  String toString() =>
+      '{cash: $cash, bank: $bank, other: $other, total: $total}';
 }
 
 /// One `[head, row]` pair of `receiptByHead` / `expenseByHead`.
@@ -310,14 +334,17 @@ bool isManualOpeningBalanceSetupPeriod(String periodFrom) =>
 
 String clampFinancePeriodFrom(String date) {
   final d = _ymd10(date);
-  return d.compareTo(kFinanceReportingEarliestDate) < 0 ? kFinanceReportingEarliestDate : d;
+  return d.compareTo(kFinanceReportingEarliestDate) < 0
+      ? kFinanceReportingEarliestDate
+      : d;
 }
 
 /// Inclusive `yyyy-MM-dd` range for a reporting month (`yyyy-MM`).
 ({String from, String to}) financeReportingMonthRange(String ym) {
   final prefix = ym.length > 7 ? ym.substring(0, 7) : ym;
   final parts = prefix.split('-');
-  final y = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? DateTime.now().year;
+  final y =
+      int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? DateTime.now().year;
   final mo = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 1;
   final lastDay = DateTime(y, mo + 1, 0).day;
   return (from: '$prefix-01', to: '$prefix-${pad2(lastDay)}');
@@ -361,7 +388,8 @@ class OpeningAnchorFormState {
 }
 
 /// Default form — cash ₹0 as on 28 Feb 2026; bank editable; blank = use transaction totals.
-OpeningAnchorFormState createDefaultOpeningAnchorForm() => const OpeningAnchorFormState(
+OpeningAnchorFormState createDefaultOpeningAnchorForm() =>
+    const OpeningAnchorFormState(
       asOnDate: kDefaultOpeningAnchorDate,
       cashAmount: '0',
       bankAmount: '18145',
@@ -369,12 +397,15 @@ OpeningAnchorFormState createDefaultOpeningAnchorForm() => const OpeningAnchorFo
       notes: '',
     );
 
-OpeningAnchorFormState openingAnchorRowToForm(FinanceOpeningBalanceAnchor row) => OpeningAnchorFormState(
+OpeningAnchorFormState openingAnchorRowToForm(
+        FinanceOpeningBalanceAnchor row) =>
+    OpeningAnchorFormState(
       id: row.id ?? '',
       asOnDate: row.asOnDate,
       cashAmount: row.cashAmount == null ? '' : jsNumberString(row.cashAmount!),
       bankAmount: row.bankAmount == null ? '' : jsNumberString(row.bankAmount!),
-      otherAmount: row.otherAmount == null ? '' : jsNumberString(row.otherAmount!),
+      otherAmount:
+          row.otherAmount == null ? '' : jsNumberString(row.otherAmount!),
       notes: row.notes ?? '',
     );
 
@@ -452,7 +483,8 @@ class FinancePeriodReportResult {
 // ─── Core maths ──────────────────────────────────────────────────────────────
 
 /// Finance entry ids linked from verified maintenance payments (counted once).
-Set<String> collectLinkedFinanceEntryIds(Iterable<FinancePeriodPayment> payments) {
+Set<String> collectLinkedFinanceEntryIds(
+    Iterable<FinancePeriodPayment> payments) {
   final ids = <String>{};
   for (final p in payments) {
     if (!p.isVerified) continue;
@@ -510,7 +542,8 @@ ChannelTotals _computeChannelNetBetween(
   for (final e in ledgerEntries) {
     if (!e.isVerified) continue;
     final ledgerDate = e.ledgerDate;
-    if (ledgerDate.isEmpty || !dateInInclusiveRange(ledgerDate, fromYmd, toYmd)) continue;
+    if (ledgerDate.isEmpty || !dateInInclusiveRange(ledgerDate, fromYmd, toYmd))
+      continue;
     final ch = normalizePaymentChannel(e.paymentMethod);
     if (e.isExpense) {
       expense.add(ch, e.totalAmount);
@@ -522,7 +555,8 @@ ChannelTotals _computeChannelNetBetween(
   return netChannels(receipt, expense);
 }
 
-void _addToHeadRow(Map<String, ChannelByHeadRow> map, String head, PaymentChannel ch, double amt) {
+void _addToHeadRow(Map<String, ChannelByHeadRow> map, String head,
+    PaymentChannel ch, double amt) {
   final trimmed = head.trim();
   final label = trimmed.isEmpty ? 'Uncategorized' : trimmed;
   final cur = map.putIfAbsent(label, ChannelByHeadRow.new);
@@ -560,7 +594,8 @@ FinancePeriodReportResult computeFinancePeriodReport({
 }) {
   final categories = expenseCategoryById ?? const <String, String>{};
   final chargeHeads = chargeMajorHeadById ?? const <String, String>{};
-  final anchors = openingBalanceAnchors ?? const <FinanceOpeningBalanceAnchor>[];
+  final anchors =
+      openingBalanceAnchors ?? const <FinanceOpeningBalanceAnchor>[];
   final allLinkedFeIds = collectLinkedFinanceEntryIds(payments);
 
   final openingReceipt = ChannelTotals();
@@ -603,14 +638,21 @@ FinancePeriodReportResult computeFinancePeriodReport({
     final deltaFrom = addDaysYmd(anchor.asOnDate, 1);
     final deltaTo = addDaysYmd(periodFrom, -1);
     final delta = deltaFrom.compareTo(deltaTo) <= 0
-        ? _computeChannelNetBetween(deltaFrom, deltaTo, payments, ledgerEntries, allLinkedFeIds)
+        ? _computeChannelNetBetween(
+            deltaFrom, deltaTo, payments, ledgerEntries, allLinkedFeIds)
         : ChannelTotals();
     openingCashFromManualAnchor = anchor.cashAmount != null;
     openingBankFromManualAnchor = anchor.bankAmount != null;
     openingOtherFromManualAnchor = anchor.otherAmount != null;
-    openingCash = openingCashFromManualAnchor ? anchor.cashAmount! + delta.cash : openingCashComputed;
-    openingBank = openingBankFromManualAnchor ? anchor.bankAmount! + delta.bank : openingBankComputed;
-    openingOther = openingOtherFromManualAnchor ? anchor.otherAmount! + delta.other : openingOtherComputed;
+    openingCash = openingCashFromManualAnchor
+        ? anchor.cashAmount! + delta.cash
+        : openingCashComputed;
+    openingBank = openingBankFromManualAnchor
+        ? anchor.bankAmount! + delta.bank
+        : openingBankComputed;
+    openingOther = openingOtherFromManualAnchor
+        ? anchor.otherAmount! + delta.other
+        : openingOtherComputed;
   }
 
   final openingBalance = openingCash + openingBank + openingOther;
@@ -627,7 +669,8 @@ FinancePeriodReportResult computeFinancePeriodReport({
     final amt = p.amount;
     final ch = normalizePaymentChannel(p.paymentMethod);
     receiptByMethod.add(ch, amt);
-    _addToHeadRow(receiptByHead, financeReceiptHeadForPayment(p.chargeId, chargeHeads), ch, amt);
+    _addToHeadRow(receiptByHead,
+        financeReceiptHeadForPayment(p.chargeId, chargeHeads), ch, amt);
     maintenanceReceipts += amt;
     verifiedPaymentCount += 1;
   }
@@ -640,14 +683,17 @@ FinancePeriodReportResult computeFinancePeriodReport({
   for (final e in ledgerEntries) {
     if (!e.isVerified) continue;
     final ledgerDate = e.ledgerDate;
-    if (ledgerDate.isEmpty || !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
+    if (ledgerDate.isEmpty ||
+        !dateInInclusiveRange(ledgerDate, periodFrom, periodTo)) continue;
     final amt = e.totalAmount;
     final ch = normalizePaymentChannel(e.paymentMethod);
     if (e.isExpense) {
       expenseByMethod.add(ch, amt);
       final head = financeExpenseHeadFromLedgerEntry(
         e.title,
-        e.expenseId != null && e.expenseId!.isNotEmpty ? categories[e.expenseId] : null,
+        e.expenseId != null && e.expenseId!.isNotEmpty
+            ? categories[e.expenseId]
+            : null,
       );
       _addToHeadRow(expenseByHead, head, ch, amt);
     } else if (e.isInflowDestination) {
@@ -670,8 +716,10 @@ FinancePeriodReportResult computeFinancePeriodReport({
     }
   }
 
-  final totalReceipts = receiptByMethod.cash + receiptByMethod.bank + receiptByMethod.other;
-  final totalExpenses = expenseByMethod.cash + expenseByMethod.bank + expenseByMethod.other;
+  final totalReceipts =
+      receiptByMethod.cash + receiptByMethod.bank + receiptByMethod.other;
+  final totalExpenses =
+      expenseByMethod.cash + expenseByMethod.bank + expenseByMethod.other;
   final cashInHand = receiptByMethod.cash - expenseByMethod.cash;
   final cashInBank = receiptByMethod.bank - expenseByMethod.bank;
   final otherNet = receiptByMethod.other - expenseByMethod.other;
@@ -709,6 +757,7 @@ FinancePeriodReportResult computeFinancePeriodReport({
 
 /// One-line summary used by the send panel and Finance → Totals
 /// (`Receipts ₹… · Expenses ₹… · Net ₹… for {periodLabel}.`).
-String financePeriodSummaryMessage(FinancePeriodReportResult r, String periodLabel) =>
+String financePeriodSummaryMessage(
+        FinancePeriodReportResult r, String periodLabel) =>
     'Receipts ₹${toLocaleIn(r.totalReceipts)} · Expenses ₹${toLocaleIn(r.totalExpenses)} · '
     'Net ₹${toLocaleIn(r.totalBalance)} for $periodLabel.';

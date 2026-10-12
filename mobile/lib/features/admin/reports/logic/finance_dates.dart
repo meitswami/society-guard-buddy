@@ -15,7 +15,9 @@ DateTime? _parseYmdLocal(String ymd) {
   final s = ymd.length >= 10 ? ymd.substring(0, 10) : ymd;
   final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(s);
   if (m == null) return null;
-  final y = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), d = int.parse(m.group(3)!);
+  final y = int.parse(m.group(1)!),
+      mo = int.parse(m.group(2)!),
+      d = int.parse(m.group(3)!);
   final dt = DateTime(y, mo, d);
   if (dt.year != y || dt.month != mo || dt.day != d) return null;
   return dt;
@@ -30,21 +32,26 @@ String billingMonthFromDate(String billingYmd) {
 /// Ledger entry month must contain the billing date.
 bool isBillingDateInEntryMonth(String billingYmd, String entryMonthYm) {
   if (billingYmd.isEmpty || entryMonthYm.isEmpty) return false;
-  final em = entryMonthYm.length > 7 ? entryMonthYm.substring(0, 7) : entryMonthYm;
+  final em =
+      entryMonthYm.length > 7 ? entryMonthYm.substring(0, 7) : entryMonthYm;
   return billingMonthFromDate(billingYmd) == em;
 }
 
 /// `transaction_date` → `${entry_month}-01` → `created_at` (first 10 chars).
-String ledgerTransactionDate({String? transactionDate, String? entryMonth, String? createdAt}) {
+String ledgerTransactionDate(
+    {String? transactionDate, String? entryMonth, String? createdAt}) {
   if (transactionDate != null && transactionDate.isNotEmpty) {
-    return transactionDate.length > 10 ? transactionDate.substring(0, 10) : transactionDate;
+    return transactionDate.length > 10
+        ? transactionDate.substring(0, 10)
+        : transactionDate;
   }
   if (entryMonth != null && entryMonth.isNotEmpty) return '$entryMonth-01';
   final c = createdAt ?? '';
   return c.length > 10 ? c.substring(0, 10) : c;
 }
 
-String ledgerEntryMonthFromBilling(String billingYmd) => billingMonthFromDate(billingYmd);
+String ledgerEntryMonthFromBilling(String billingYmd) =>
+    billingMonthFromDate(billingYmd);
 
 /// `dateInInclusiveRange(iso, fromYmd, toYmd)` — `iso` parsed like JS `new Date(iso)`,
 /// bounds are local start / end of day.

@@ -21,7 +21,8 @@ const List<String> _bankKeys = [
 /// `null` → cash (web `String(method ?? 'cash')`); upi / bank transfer / card / cheque … → bank;
 /// anything else (including `''` and plain `'bank'`) → other.
 PaymentChannel normalizePaymentChannel(Object? method) {
-  final x = (method ?? 'cash').toString().toLowerCase().replaceAll(RegExp(r'\s'), '');
+  final x =
+      (method ?? 'cash').toString().toLowerCase().replaceAll(RegExp(r'\s'), '');
   if (x == 'cash') return PaymentChannel.cash;
   if (_bankKeys.any((k) => x == k || x.contains(k))) return PaymentChannel.bank;
   return PaymentChannel.other;
@@ -60,7 +61,10 @@ class ChannelTotals {
 
   @override
   bool operator ==(Object other) =>
-      other is ChannelTotals && other.cash == cash && other.bank == bank && other.other == this.other;
+      other is ChannelTotals &&
+      other.cash == cash &&
+      other.bank == bank &&
+      other.other == this.other;
 
   @override
   int get hashCode => Object.hash(cash, bank, other);
@@ -72,10 +76,12 @@ class ChannelTotals {
 ChannelTotals emptyChannelTotals() => ChannelTotals();
 
 void addToChannel(ChannelTotals totals, Object? method, num amount) {
-  totals.add(normalizePaymentChannel(method), amount.isNaN ? 0 : amount.toDouble());
+  totals.add(
+      normalizePaymentChannel(method), amount.isNaN ? 0 : amount.toDouble());
 }
 
-ChannelTotals sumByChannel<T>(Iterable<T> items, double Function(T) getAmount, Object? Function(T) getMethod) {
+ChannelTotals sumByChannel<T>(Iterable<T> items, double Function(T) getAmount,
+    Object? Function(T) getMethod) {
   final totals = emptyChannelTotals();
   for (final item in items) {
     addToChannel(totals, getMethod(item), getAmount(item));
@@ -83,7 +89,8 @@ ChannelTotals sumByChannel<T>(Iterable<T> items, double Function(T) getAmount, O
   return totals;
 }
 
-ChannelTotals netChannels(ChannelTotals receipts, ChannelTotals payments) => ChannelTotals(
+ChannelTotals netChannels(ChannelTotals receipts, ChannelTotals payments) =>
+    ChannelTotals(
       cash: receipts.cash - payments.cash,
       bank: receipts.bank - payments.bank,
       other: receipts.other - payments.other,
