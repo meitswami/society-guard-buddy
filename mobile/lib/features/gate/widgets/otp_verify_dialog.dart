@@ -11,7 +11,9 @@ class OtpVerifyDialog extends StatefulWidget {
 
   final String societyId;
 
-  static Future<VerifiedPass?> show(BuildContext context, {required String societyId}) => showDialog<VerifiedPass>(
+  static Future<VerifiedPass?> show(BuildContext context,
+          {required String societyId}) =>
+      showDialog<VerifiedPass>(
         context: context,
         barrierDismissible: false,
         builder: (_) => OtpVerifyDialog(societyId: societyId),
@@ -68,7 +70,9 @@ class _OtpVerifyDialogState extends State<OtpVerifyDialog> {
     final t = context.tokens;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTokens.radiusXl), side: BorderSide(color: t.border)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radiusXl),
+          side: BorderSide(color: t.border)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 384),
         child: SingleChildScrollView(
@@ -79,13 +83,18 @@ class _OtpVerifyDialogState extends State<OtpVerifyDialog> {
               Container(
                 width: 56,
                 height: 56,
-                decoration: BoxDecoration(color: AppTokens.tint(t.primary, 0.1), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                    color: AppTokens.tint(t.primary, 0.1),
+                    shape: BoxShape.circle),
                 child: Icon(Icons.key_rounded, size: 28, color: t.primary),
               ),
               const SizedBox(height: 16),
-              Text(context.t('otp.verifyTitle'), style: AppText.sectionTitle(context).copyWith(fontSize: 16), textAlign: TextAlign.center),
+              Text(context.t('otp.verifyTitle'),
+                  style: AppText.sectionTitle(context).copyWith(fontSize: 16),
+                  textAlign: TextAlign.center),
               const SizedBox(height: 4),
-              Text(context.t('otp.verifySubtitle'), style: AppText.caption(context), textAlign: TextAlign.center),
+              Text(context.t('otp.verifySubtitle'),
+                  style: AppText.caption(context), textAlign: TextAlign.center),
               const SizedBox(height: 16),
               TextField(
                 controller: _ctrl,
@@ -93,18 +102,28 @@ class _OtpVerifyDialogState extends State<OtpVerifyDialog> {
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
                 maxLength: 6,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
-                style: AppText.mono(context, size: 24, weight: FontWeight.w700).copyWith(letterSpacing: 12),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(6)
+                ],
+                style: AppText.mono(context, size: 24, weight: FontWeight.w700)
+                    .copyWith(letterSpacing: 12),
                 decoration: InputDecoration(
                   hintText: '000000',
                   counterText: '',
-                  hintStyle: AppText.mono(context, size: 24, weight: FontWeight.w700, color: t.mutedForeground).copyWith(letterSpacing: 12),
+                  hintStyle: AppText.mono(context,
+                          size: 24,
+                          weight: FontWeight.w700,
+                          color: t.mutedForeground)
+                      .copyWith(letterSpacing: 12),
                 ),
                 onSubmitted: (_) => _verify(),
               ),
               if (_error.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                Text(_error, style: TextStyle(fontSize: 14, color: t.destructive), textAlign: TextAlign.center),
+                Text(_error,
+                    style: TextStyle(fontSize: 14, color: t.destructive),
+                    textAlign: TextAlign.center),
               ],
               const SizedBox(height: 16),
               Row(
@@ -112,7 +131,8 @@ class _OtpVerifyDialogState extends State<OtpVerifyDialog> {
                   Expanded(
                     child: AppButton.secondary(
                       label: context.t('common.cancel'),
-                      onPressed: _loading ? null : () => Navigator.of(context).pop(),
+                      onPressed:
+                          _loading ? null : () => Navigator.of(context).pop(),
                     ),
                   ),
                   const SizedBox(width: 12),

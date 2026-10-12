@@ -104,7 +104,7 @@ class SocietyLetterhead {
 
   /// `normalizeSocietyRow` from a `societies` row.
   factory SocietyLetterhead.fromSocietyRow(Map<String, dynamic> data) {
-    double num(Object? v, double fallback) {
+    double toNum(Object? v, double fallback) {
       if (v == null) return fallback;
       if (v is num) return v.toDouble();
       return double.tryParse(v.toString()) ?? double.nan;
@@ -120,10 +120,10 @@ class SocietyLetterhead {
       letterheadStoragePath: s(data['letterhead_storage_path']),
       // DB null → 'auto'; an unknown value stays null so [brandMode] infers it (web `modeOf`).
       letterheadMode: data['letterhead_mode'] == null ? LetterheadMode.auto : LetterheadMode.parse(data['letterhead_mode']),
-      letterheadTopMm: num(data['letterhead_top_mm'], 40),
-      letterheadBottomMm: num(data['letterhead_bottom_mm'], 18),
-      letterheadLeftMm: num(data['letterhead_left_mm'], kPdfMarginMm),
-      letterheadRightMm: num(data['letterhead_right_mm'], kPdfMarginMm),
+      letterheadTopMm: toNum(data['letterhead_top_mm'], 40),
+      letterheadBottomMm: toNum(data['letterhead_bottom_mm'], 18),
+      letterheadLeftMm: toNum(data['letterhead_left_mm'], kPdfMarginMm),
+      letterheadRightMm: toNum(data['letterhead_right_mm'], kPdfMarginMm),
       defaultReportFormat: ReportPdfMode.parse(data['default_report_format'] ?? 'letterhead'),
       address: s(data['address']),
       city: s(data['city']),

@@ -7,7 +7,13 @@ String? _nonEmpty(Object? v) {
 }
 
 List<String> _stringList(Object? v) {
-  if (v is List) return v.whereType<Object>().map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+  if (v is List) {
+    return v
+        .whereType<Object>()
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
   return const [];
 }
 
@@ -72,7 +78,8 @@ class GateVisitor {
 
   /// Entry time in device local time (null when the stored value is not a date).
   DateTime? get entryAt => DateTime.tryParse(entryTime)?.toLocal();
-  DateTime? get exitAt => exitTime == null ? null : DateTime.tryParse(exitTime!)?.toLocal();
+  DateTime? get exitAt =>
+      exitTime == null ? null : DateTime.tryParse(exitTime!)?.toLocal();
 
   /// Local calendar day of the entry as `yyyy-MM-dd` (empty when unknown).
   String get entryDay {
@@ -111,7 +118,9 @@ class GateVisitor {
         'phone': phone,
         'document_type': documentType,
         'document_number': documentNumber.isEmpty ? null : documentNumber,
-        'document_photo': (documentPhoto == null || documentPhoto!.isEmpty) ? null : documentPhoto,
+        'document_photo': (documentPhoto == null || documentPhoto!.isEmpty)
+            ? null
+            : documentPhoto,
         'visitor_photos': visitorPhotos,
         'flat_number': flatNumber,
         'purpose': purpose,
@@ -120,8 +129,13 @@ class GateVisitor {
         'guard_name': guardName,
         'category': category,
         'company': (company == null || company!.isEmpty) ? null : company,
-        'vehicle_number': (vehicleNumber == null || vehicleNumber!.isEmpty) ? null : vehicleNumber,
-        'vehicle_entry_time': (vehicleEntryTime == null || vehicleEntryTime!.isEmpty) ? null : vehicleEntryTime,
+        'vehicle_number': (vehicleNumber == null || vehicleNumber!.isEmpty)
+            ? null
+            : vehicleNumber,
+        'vehicle_entry_time':
+            (vehicleEntryTime == null || vehicleEntryTime!.isEmpty)
+                ? null
+                : vehicleEntryTime,
       };
 
   GateVisitor copyWith({
@@ -156,7 +170,8 @@ class GateVisitor {
         vehicleNumber: vehicleNumber,
         vehiclePhoto: vehiclePhoto,
         vehicleEntryTime: vehicleEntryTime,
-        vehicleExitTime: clearVehicleExit ? null : (vehicleExitTime ?? this.vehicleExitTime),
+        vehicleExitTime:
+            clearVehicleExit ? null : (vehicleExitTime ?? this.vehicleExitTime),
         isBlacklisted: isBlacklisted,
       );
 }
@@ -199,7 +214,9 @@ class GateFlat {
         ownerPhone: _nonEmpty(f['owner_phone']),
         intercom: _nonEmpty(f['intercom']),
         isOccupied: f['is_occupied'] is bool ? f['is_occupied'] as bool : true,
-        ownerLivesHere: f['owner_lives_here'] is bool ? f['owner_lives_here'] as bool : true,
+        ownerLivesHere: f['owner_lives_here'] is bool
+            ? f['owner_lives_here'] as bool
+            : true,
         tenantHouseholdType: _nonEmpty(f['tenant_household_type']),
       );
 }
@@ -270,7 +287,8 @@ class GateResidentVehicle {
   final String? vehicleColor;
   final String? vehicleDisplayName;
 
-  factory GateResidentVehicle.fromRow(Map<String, dynamic> v) => GateResidentVehicle(
+  factory GateResidentVehicle.fromRow(Map<String, dynamic> v) =>
+      GateResidentVehicle(
         id: asString(v['id']),
         societyId: _nonEmpty(v['society_id']),
         flatNumber: asString(v['flat_number']),

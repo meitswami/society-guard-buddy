@@ -14,12 +14,18 @@ class VisitorEntryService {
     required String phone,
   }) async {
     if (!Env.isConfigured) return false;
-    final rows = await db.from('blacklist').select('id').eq('society_id', societyId).eq('phone', phone).limit(1);
+    final rows = await db
+        .from('blacklist')
+        .select('id')
+        .eq('society_id', societyId)
+        .eq('phone', phone)
+        .limit(1);
     return rowsOf(rows).isNotEmpty;
   }
 
   /// Insert a ready-made entry (see `buildVisitorEntry` / `buildDeliveryEntry`).
-  Future<void> insertEntry(String societyId, GateVisitor entry) => _visitors.insert(societyId, entry);
+  Future<void> insertEntry(String societyId, GateVisitor entry) =>
+      _visitors.insert(societyId, entry);
 
   Future<void> registerVisitor({
     required String societyId,

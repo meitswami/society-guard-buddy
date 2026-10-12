@@ -37,12 +37,14 @@ class _GuardHomeViewState extends State<GuardHomeView> {
 
   Future<void> _resolveGuardDbId() async {
     try {
-      final id = await const GuardDutyService().resolveGuardUuid(widget.session.guard.guardId, widget.session.societyId);
+      final id = await const GuardDutyService().resolveGuardUuid(
+          widget.session.guard.guardId, widget.session.societyId);
       if (mounted) setState(() => _guardDbId = id);
     } catch (_) {}
   }
 
-  void _toggleFilter(DashboardFilter f) => setState(() => _filter = toggleDashboardFilter(_filter, f));
+  void _toggleFilter(DashboardFilter f) =>
+      setState(() => _filter = toggleDashboardFilter(_filter, f));
 
   Future<void> _markExit(GateVisitor v) async {
     final ok = await AppFeedback.confirm(
@@ -56,9 +58,14 @@ class _GuardHomeViewState extends State<GuardHomeView> {
     try {
       await _store.markExit(v.id);
       if (!mounted) return;
-      await AppFeedback.success(context, title: context.gt('gate.exitRecorded'), message: context.gt('gate.exitRecordedText', {'name': v.name}));
+      await AppFeedback.success(context,
+          title: context.gt('gate.exitRecorded'),
+          message: context.gt('gate.exitRecordedText', {'name': v.name}));
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.gt('gate.exitFailed'), tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, context.gt('gate.exitFailed'),
+            tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -77,7 +84,8 @@ class _GuardHomeViewState extends State<GuardHomeView> {
       builder: (context, _) {
         final t = context.tokens;
         final now = DateTime.now();
-        final day = visitorsOnDay(_store.visitors, dayIsoForOffset(now, _dayOffset));
+        final day =
+            visitorsOnDay(_store.visitors, dayIsoForOffset(now, _dayOffset));
         final stats = dashboardStats(day);
         final entries = filterDashboardEntries(day, _filter);
         final alerts = repeatVisitAlerts(day);
@@ -85,7 +93,8 @@ class _GuardHomeViewState extends State<GuardHomeView> {
         final failed = _store.visitorsError != null && _store.visitors.isEmpty;
 
         return PageContainer(
-          onRefresh: () => Future.wait([_store.loadVisitors(), _store.loadBlacklist()]),
+          onRefresh: () =>
+              Future.wait([_store.loadVisitors(), _store.loadBlacklist()]),
           children: [
             GuardHeader(session: widget.session),
             _DaySwitcher(
@@ -161,11 +170,15 @@ class _GuardHomeViewState extends State<GuardHomeView> {
                     Expanded(
                       child: Text(
                         '${_filterLabel(_filter)} (${entries.length})',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.primary),
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: t.primary),
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => setState(() => _filter = DashboardFilter.all),
+                      onTap: () =>
+                          setState(() => _filter = DashboardFilter.all),
                       child: Text(
                         context.t('dashboard.all'),
                         style: TextStyle(
@@ -180,7 +193,8 @@ class _GuardHomeViewState extends State<GuardHomeView> {
                 ),
               ),
             if (alerts.isNotEmpty && _filter == DashboardFilter.all) ...[
-              SectionTitle(context.t('dashboard.alerts'), icon: Icons.gpp_maybe_outlined, iconColor: t.destructive),
+              SectionTitle(context.t('dashboard.alerts'),
+                  icon: Icons.gpp_maybe_outlined, iconColor: t.destructive),
               for (final a in alerts)
                 CardSection(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -190,8 +204,11 @@ class _GuardHomeViewState extends State<GuardHomeView> {
                       Container(
                         width: 32,
                         height: 32,
-                        decoration: BoxDecoration(color: AppTokens.tint(t.destructive, 0.2), shape: BoxShape.circle),
-                        child: Icon(Icons.gpp_maybe_outlined, size: 16, color: t.destructive),
+                        decoration: BoxDecoration(
+                            color: AppTokens.tint(t.destructive, 0.2),
+                            shape: BoxShape.circle),
+                        child: Icon(Icons.gpp_maybe_outlined,
+                            size: 16, color: t.destructive),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -203,12 +220,17 @@ class _GuardHomeViewState extends State<GuardHomeView> {
                               TextSpan(
                                 style: AppText.caption(context),
                                 children: [
-                                  TextSpan(text: '${a.phone} — ${context.t('dashboard.enteredXToday')} '),
+                                  TextSpan(
+                                      text:
+                                          '${a.phone} — ${context.t('dashboard.enteredXToday')} '),
                                   TextSpan(
                                     text: '${a.count}x',
-                                    style: TextStyle(color: t.destructive, fontWeight: FontWeight.w600),
+                                    style: TextStyle(
+                                        color: t.destructive,
+                                        fontWeight: FontWeight.w600),
                                   ),
-                                  TextSpan(text: ' ${context.t('dashboard.today')}'),
+                                  TextSpan(
+                                      text: ' ${context.t('dashboard.today')}'),
                                 ],
                               ),
                             ),
@@ -223,7 +245,8 @@ class _GuardHomeViewState extends State<GuardHomeView> {
             if (_filter == DashboardFilter.all)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(context.t('dashboard.recentEntries'), style: AppText.sectionTitle(context)),
+                child: Text(context.t('dashboard.recentEntries'),
+                    style: AppText.sectionTitle(context)),
               ),
             if (loading)
               const LoadingView()
@@ -235,18 +258,24 @@ class _GuardHomeViewState extends State<GuardHomeView> {
                 child: Text(
                   context.t('dashboard.noEntries'),
                   textAlign: TextAlign.center,
-                  style: AppText.body(context).copyWith(color: t.mutedForeground),
+                  style:
+                      AppText.body(context).copyWith(color: t.mutedForeground),
                 ),
               )
             else
               for (final v in entries)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: _EntryCard(visitor: v, onExit: v.isInside ? () => _markExit(v) : null),
+                  child: _EntryCard(
+                      visitor: v,
+                      onExit: v.isInside ? () => _markExit(v) : null),
                 ),
             if (_guardDbId != null) ...[
               const SizedBox(height: 16),
-              BiometricSetupCard(session: widget.session, role: 'guard', userDbId: _guardDbId!),
+              BiometricSetupCard(
+                  session: widget.session,
+                  role: 'guard',
+                  userDbId: _guardDbId!),
             ],
           ],
         );
@@ -268,20 +297,31 @@ class _DaySwitcher extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconPillButton(icon: Icons.chevron_left, onPressed: () => onChanged(olderDayOffset(offset))),
+          IconPillButton(
+              icon: Icons.chevron_left,
+              onPressed: () => onChanged(olderDayOffset(offset))),
           const SizedBox(width: 12),
-          PillChoice(label: context.t('dashboard.todayLabel'), selected: offset == 0, onTap: () => onChanged(0)),
+          PillChoice(
+              label: context.t('dashboard.todayLabel'),
+              selected: offset == 0,
+              onTap: () => onChanged(0)),
           const SizedBox(width: 6),
-          PillChoice(label: context.t('dashboard.yesterday'), selected: offset == 1, onTap: () => onChanged(1)),
+          PillChoice(
+              label: context.t('dashboard.yesterday'),
+              selected: offset == 1,
+              onTap: () => onChanged(1)),
           const SizedBox(width: 12),
-          IconPillButton(icon: Icons.chevron_right, onPressed: () => onChanged(newerDayOffset(offset))),
+          IconPillButton(
+              icon: Icons.chevron_right,
+              onPressed: () => onChanged(newerDayOffset(offset))),
         ],
       ),
     );
   }
 }
 
-String gateCategoryLabel(BuildContext context, String category) => switch (category) {
+String gateCategoryLabel(BuildContext context, String category) =>
+    switch (category) {
       'visitor' => context.t('blacklist.visitor'),
       'delivery' => context.t('delivery.tab.delivery'),
       'service' => context.t('delivery.tab.service'),
@@ -308,13 +348,23 @@ class _EntryCard extends StatelessWidget {
       onTap: onExit,
       child: Row(
         children: [
-          if (v.isInside) const PulseDot() else Container(width: 8, height: 8, decoration: BoxDecoration(color: t.mutedForeground, shape: BoxShape.circle)),
+          if (v.isInside)
+            const PulseDot()
+          else
+            Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                    color: t.mutedForeground, shape: BoxShape.circle)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(v.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.bodyMedium(context)),
+                Text(v.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.bodyMedium(context)),
                 Text(parts.join(' · '), style: AppText.caption(context)),
               ],
             ),
@@ -323,13 +373,20 @@ class _EntryCard extends StatelessWidget {
           if (v.isInside)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: AppTokens.tint(t.primary, 0.1), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+              decoration: BoxDecoration(
+                  color: AppTokens.tint(t.primary, 0.1),
+                  borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.door_front_door_outlined, size: 12, color: t.primary),
+                  Icon(Icons.door_front_door_outlined,
+                      size: 12, color: t.primary),
                   const SizedBox(width: 4),
-                  Text(context.gt('gate.exitBadge'), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: t.primary)),
+                  Text(context.gt('gate.exitBadge'),
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: t.primary)),
                 ],
               ),
             )
@@ -351,11 +408,13 @@ class PulseDot extends StatefulWidget {
   State<PulseDot> createState() => _PulseDotState();
 }
 
-class _PulseDotState extends State<PulseDot> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+class _PulseDotState extends State<PulseDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1000))
     ..repeat(reverse: true);
-  late final Animation<double> _opacity =
-      Tween<double>(begin: 1, end: 0.5).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
+  late final Animation<double> _opacity = Tween<double>(begin: 1, end: 0.5)
+      .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
 
   @override
   void dispose() {
@@ -370,7 +429,8 @@ class _PulseDotState extends State<PulseDot> with SingleTickerProviderStateMixin
       child: Container(
         width: widget.size,
         height: widget.size,
-        decoration: BoxDecoration(color: context.tokens.success, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+            color: context.tokens.success, shape: BoxShape.circle),
       ),
     );
   }

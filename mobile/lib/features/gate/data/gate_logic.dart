@@ -22,17 +22,20 @@ const int kRepeatVisitAlertThreshold = 3;
 const int kRecentEntriesLimit = 10;
 
 /// `yyyy-MM-dd` of `now` minus [offset] days (web `format(subDays(new Date(), dayOffset), 'yyyy-MM-dd')`).
-String dayIsoForOffset(DateTime now, int offset) => Fmt.isoDate(DateTime(now.year, now.month, now.day - offset));
+String dayIsoForOffset(DateTime now, int offset) =>
+    Fmt.isoDate(DateTime(now.year, now.month, now.day - offset));
 
 /// Clamp helpers for the dashboard date arrows.
-int olderDayOffset(int offset) => offset + 1 > kMaxDashboardDayOffset ? kMaxDashboardDayOffset : offset + 1;
+int olderDayOffset(int offset) =>
+    offset + 1 > kMaxDashboardDayOffset ? kMaxDashboardDayOffset : offset + 1;
 int newerDayOffset(int offset) => offset - 1 < 0 ? 0 : offset - 1;
 
 /// Visitors whose entry falls on the local calendar day [isoDay].
 List<GateVisitor> visitorsOnDay(List<GateVisitor> all, String isoDay) =>
     all.where((v) => v.entryDay == isoDay).toList();
 
-bool isDeliveryCategory(String category) => category == 'delivery' || category == 'service';
+bool isDeliveryCategory(String category) =>
+    category == 'delivery' || category == 'service';
 
 class DashboardStats {
   const DashboardStats({
@@ -55,7 +58,8 @@ DashboardStats dashboardStats(List<GateVisitor> day) => DashboardStats(
       currentlyInside: day.where((v) => v.isInside).length,
     );
 
-bool matchesDashboardFilter(GateVisitor v, DashboardFilter filter) => switch (filter) {
+bool matchesDashboardFilter(GateVisitor v, DashboardFilter filter) =>
+    switch (filter) {
       DashboardFilter.all => true,
       DashboardFilter.visitor => v.category == 'visitor',
       DashboardFilter.vehicle => v.hasVehicle,
@@ -64,15 +68,19 @@ bool matchesDashboardFilter(GateVisitor v, DashboardFilter filter) => switch (fi
     };
 
 /// Web `filteredEntries`: filter then keep the first [limit] (list is newest first).
-List<GateVisitor> filterDashboardEntries(List<GateVisitor> day, DashboardFilter filter, {int limit = kRecentEntriesLimit}) =>
+List<GateVisitor> filterDashboardEntries(
+        List<GateVisitor> day, DashboardFilter filter,
+        {int limit = kRecentEntriesLimit}) =>
     day.where((v) => matchesDashboardFilter(v, filter)).take(limit).toList();
 
 /// Tapping the active filter again clears it (web `toggleFilter`).
-DashboardFilter toggleDashboardFilter(DashboardFilter current, DashboardFilter tapped) =>
+DashboardFilter toggleDashboardFilter(
+        DashboardFilter current, DashboardFilter tapped) =>
     current == tapped ? DashboardFilter.all : tapped;
 
 class RepeatVisitAlert {
-  const RepeatVisitAlert({required this.phone, required this.count, required this.name});
+  const RepeatVisitAlert(
+      {required this.phone, required this.count, required this.name});
 
   final String phone;
   final int count;
@@ -81,7 +89,8 @@ class RepeatVisitAlert {
 
 /// Phones that entered [threshold]+ times on the day (web `alerts`). Order follows the
 /// first appearance in [day] (newest first); the name is from the newest visit.
-List<RepeatVisitAlert> repeatVisitAlerts(List<GateVisitor> day, {int threshold = kRepeatVisitAlertThreshold}) {
+List<RepeatVisitAlert> repeatVisitAlerts(List<GateVisitor> day,
+    {int threshold = kRepeatVisitAlertThreshold}) {
   final counts = <String, int>{};
   for (final v in day) {
     counts[v.phone] = (counts[v.phone] ?? 0) + 1;
@@ -127,13 +136,16 @@ const List<({String value, String en, String hi})> kDocumentTypes = [
 /// Keeps only digits, at most [maxLength] (web `replace(/\D/g, '')` + `maxLength`).
 String digitsOnly(String input, {int? maxLength}) {
   final d = input.replaceAll(RegExp(r'\D'), '');
-  if (maxLength != null && d.length > maxLength) return d.substring(0, maxLength);
+  if (maxLength != null && d.length > maxLength) {
+    return d.substring(0, maxLength);
+  }
   return d;
 }
 
 /// Up to [max] earlier visitors with distinct phones containing [phone]; only while the
 /// guard is typing (4–9 digits), like the web suggestion chips.
-List<GateVisitor> phoneSuggestions(List<GateVisitor> all, String phone, {int max = 3}) {
+List<GateVisitor> phoneSuggestions(List<GateVisitor> all, String phone,
+    {int max = 3}) {
   if (phone.length < 4 || phone.length >= 10) return const [];
   final seen = <String>{};
   final out = <GateVisitor>[];
@@ -159,15 +171,22 @@ GateVisitor? previousVisitFor(List<GateVisitor> all, String phone) {
 }
 
 /// Web `useStore.isBlacklisted(phone, vehicleNumber)`.
-bool isBlacklistedIn(List<BlacklistEntry> list, {String? phone, String? vehicleNumber}) {
+bool isBlacklistedIn(List<BlacklistEntry> list,
+    {String? phone, String? vehicleNumber}) {
   final p = phone ?? '';
   final vn = vehicleNumber ?? '';
-  return list.any((e) => (p.isNotEmpty && e.phone == p) || (vn.isNotEmpty && e.vehicleNumber == vn));
+  return list.any((e) =>
+      (p.isNotEmpty && e.phone == p) ||
+      (vn.isNotEmpty && e.vehicleNumber == vn));
 }
 
 /// Form fields the previous visit pre-fills once a full phone is typed.
 class VisitorPrefill {
-  const VisitorPrefill({required this.name, required this.documentType, required this.documentNumber, required this.flatNumber});
+  const VisitorPrefill(
+      {required this.name,
+      required this.documentType,
+      required this.documentNumber,
+      required this.flatNumber});
 
   final String name;
   final String documentType;
@@ -187,7 +206,8 @@ VisitorPrefill prefillFromPrevious({
     VisitorPrefill(
       name: name.isNotEmpty ? name : prev.name,
       documentType: prev.documentType,
-      documentNumber: documentNumber.isNotEmpty ? documentNumber : prev.documentNumber,
+      documentNumber:
+          documentNumber.isNotEmpty ? documentNumber : prev.documentNumber,
       flatNumber: flatNumber.isNotEmpty ? flatNumber : prev.flatNumber,
     );
 
@@ -195,7 +215,8 @@ VisitorPrefill prefillFromPrevious({
 const String kPassPlaceholderPhone = '0000000000';
 
 /// Current time as stored by the web (`new Date().toISOString()`).
-String nowIsoUtc([DateTime? now]) => (now ?? DateTime.now()).toUtc().toIso8601String();
+String nowIsoUtc([DateTime? now]) =>
+    (now ?? DateTime.now()).toUtc().toIso8601String();
 
 /// Web `registerVisitor` payload (category `visitor`).
 GateVisitor buildVisitorEntry({
@@ -274,7 +295,16 @@ GateVisitor buildDeliveryEntry({
 // Delivery / service (web `DeliveryEntryPage.tsx`)
 // ---------------------------------------------------------------------------
 
-const List<String> kDeliveryCompanies = ['Amazon', 'Flipkart', 'Swiggy', 'Zomato', 'BigBasket', 'Blinkit', 'Dunzo', 'Other'];
+const List<String> kDeliveryCompanies = [
+  'Amazon',
+  'Flipkart',
+  'Swiggy',
+  'Zomato',
+  'BigBasket',
+  'Blinkit',
+  'Dunzo',
+  'Other'
+];
 
 const List<({String value, String hi})> kServiceTypes = [
   (value: 'Housekeeping', hi: 'हाउसकीपिंग'),
@@ -352,7 +382,8 @@ const Set<String> kCapsExemptFields = {
 };
 
 /// Web `normalizeEntryValue(value, { field })`.
-String normalizeEntryValue(String value, {required bool capsMode, String? field}) {
+String normalizeEntryValue(String value,
+    {required bool capsMode, String? field}) {
   if (!capsMode) return value;
   if (field != null && kCapsExemptFields.contains(field)) return value;
   return value.toUpperCase();

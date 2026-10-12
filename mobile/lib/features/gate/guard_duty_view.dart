@@ -40,7 +40,8 @@ class _GuardDutyViewState extends State<GuardDutyView> {
   Future<void> _load() async {
     final s = widget.session;
     try {
-      final guardUuid = await _service.resolveGuardUuid(s.guard.guardId, s.societyId);
+      final guardUuid =
+          await _service.resolveGuardUuid(s.guard.guardId, s.societyId);
       if (guardUuid == null) throw StateError('Guard record not found');
       final bundle = await _service.getOrCreateDutyForShift(
         societyId: s.societyId,
@@ -65,15 +66,22 @@ class _GuardDutyViewState extends State<GuardDutyView> {
   }
 
   /// Runs a write, then refetches the sheet (web: mutation + query invalidation).
-  Future<bool> _mutate(Future<void> Function() action, {String successKey = 'duty.saved'}) async {
+  Future<bool> _mutate(Future<void> Function() action,
+      {String successKey = 'duty.saved'}) async {
     setState(() => _saving = true);
     try {
       await action();
       await _load();
-      if (mounted) AppFeedback.toast(context, context.t(successKey), tone: BadgeTone.success);
+      if (mounted) {
+        AppFeedback.toast(context, context.t(successKey),
+            tone: BadgeTone.success);
+      }
       return true;
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.t('duty.saveFailed'), tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, context.t('duty.saveFailed'),
+            tone: BadgeTone.alert);
+      }
       return false;
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -86,10 +94,13 @@ class _GuardDutyViewState extends State<GuardDutyView> {
     if (attendanceNeedsReason(status)) {
       final reason = await _pickAbsenceReason();
       if (reason == null || !mounted) return;
-      await _mutate(() => _service.updateStaffAttendance(b.duty.id, role, status, absenceReason: reason));
+      await _mutate(() => _service.updateStaffAttendance(
+          b.duty.id, role, status,
+          absenceReason: reason));
       return;
     }
-    await _mutate(() => _service.updateStaffAttendance(b.duty.id, role, status));
+    await _mutate(
+        () => _service.updateStaffAttendance(b.duty.id, role, status));
   }
 
   Future<String?> _pickAbsenceReason() => showModalBottomSheet<String>(
@@ -123,10 +134,14 @@ class _GuardDutyViewState extends State<GuardDutyView> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _CheckSheet(checkKey: key, initialStatus: existing?.status ?? 'not_checked', initialPreset: existing?.problemPreset),
+      builder: (_) => _CheckSheet(
+          checkKey: key,
+          initialStatus: existing?.status ?? 'not_checked',
+          initialPreset: existing?.problemPreset),
     );
     if (res == null || !mounted) return;
-    await _mutate(() => _service.updateSystemCheck(b.duty.id, key, res.status, problemPreset: res.preset));
+    await _mutate(() => _service.updateSystemCheck(b.duty.id, key, res.status,
+        problemPreset: res.preset));
   }
 
   Future<void> _openIncident(String category) async {
@@ -136,7 +151,9 @@ class _GuardDutyViewState extends State<GuardDutyView> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _IncidentSheet(category: category, flats: _store.flats.map((f) => f.flatNumber).toList()),
+      builder: (_) => _IncidentSheet(
+          category: category,
+          flats: _store.flats.map((f) => f.flatNumber).toList()),
     );
     if (res == null || !mounted) return;
     await _mutate(
@@ -163,14 +180,16 @@ class _GuardDutyViewState extends State<GuardDutyView> {
       cancelLabel: context.t('common.cancel'),
     );
     if (!ok || !mounted) return;
-    await _mutate(() => _service.submitDuty(b.duty.id), successKey: 'duty.submitted');
+    await _mutate(() => _service.submitDuty(b.duty.id),
+        successKey: 'duty.submitted');
   }
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     if (_loading && _bundle == null) {
-      return const SizedBox(height: 400, child: Center(child: CircularProgressIndicator()));
+      return const SizedBox(
+          height: 400, child: Center(child: CircularProgressIndicator()));
     }
     final b = _bundle;
     if (_failed || b == null) {
@@ -178,7 +197,9 @@ class _GuardDutyViewState extends State<GuardDutyView> {
         onRefresh: _load,
         children: [
           const SizedBox(height: 40),
-          Text(context.t('duty.loadError'), textAlign: TextAlign.center, style: TextStyle(color: t.destructive)),
+          Text(context.t('duty.loadError'),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: t.destructive)),
           const SizedBox(height: 12),
           Center(
             child: AppButton.secondary(
@@ -204,10 +225,18 @@ class _GuardDutyViewState extends State<GuardDutyView> {
       children: [
         Row(
           children: [
-            Icon(Icons.assignment_turned_in_outlined, size: 24, color: t.primary),
+            Icon(Icons.assignment_turned_in_outlined,
+                size: 24, color: t.primary),
             const SizedBox(width: 8),
-            Expanded(child: Text(context.t('duty.title'), style: AppText.pageTitle(context))),
-            if (_saving) SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: t.primary)),
+            Expanded(
+                child: Text(context.t('duty.title'),
+                    style: AppText.pageTitle(context))),
+            if (_saving)
+              SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: t.primary)),
           ],
         ),
         const SizedBox(height: 4),
@@ -222,7 +251,8 @@ class _GuardDutyViewState extends State<GuardDutyView> {
               children: [
                 Icon(Icons.check_circle_outline, size: 16, color: t.success),
                 const SizedBox(width: 4),
-                Text(context.t('duty.alreadySubmitted'), style: TextStyle(fontSize: 12, color: t.success)),
+                Text(context.t('duty.alreadySubmitted'),
+                    style: TextStyle(fontSize: 12, color: t.success)),
               ],
             ),
           ),
@@ -280,7 +310,10 @@ class _GuardDutyViewState extends State<GuardDutyView> {
               columns: 3,
               children: [
                 for (final cat in kIncidentCategories)
-                  _CategoryTile(item: cat, disabled: disabled, onTap: () => _openIncident(cat.key)),
+                  _CategoryTile(
+                      item: cat,
+                      disabled: disabled,
+                      onTap: () => _openIncident(cat.key)),
               ],
             ),
             if (b.incidents.isNotEmpty) ...[
@@ -289,13 +322,17 @@ class _GuardDutyViewState extends State<GuardDutyView> {
               const SizedBox(height: 12),
               Text(
                 context.t('duty.todayIncidents'),
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.mutedForeground),
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: t.mutedForeground),
               ),
               const SizedBox(height: 8),
               for (final inc in b.incidents)
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: AppTokens.tint(t.muted, 0.4),
                     borderRadius: BorderRadius.circular(AppTokens.radiusSm),
@@ -308,19 +345,27 @@ class _GuardDutyViewState extends State<GuardDutyView> {
                         child: Text(
                           [
                             context.t('duty.incident.${inc.category}'),
-                            if ((inc.flatNumber ?? '').isNotEmpty) inc.flatNumber!,
-                            if ((inc.problemPreset ?? '').isNotEmpty) context.t('duty.preset.${inc.problemPreset}'),
+                            if ((inc.flatNumber ?? '').isNotEmpty)
+                              inc.flatNumber!,
+                            if ((inc.problemPreset ?? '').isNotEmpty)
+                              context.t('duty.preset.${inc.problemPreset}'),
                           ].join(' · '),
                           style: AppText.body(context),
                         ),
                       ),
                       if (inc.photoUrls.isNotEmpty) ...[
-                        Icon(Icons.photo_outlined, size: 14, color: t.mutedForeground),
+                        Icon(Icons.photo_outlined,
+                            size: 14, color: t.mutedForeground),
                         const SizedBox(width: 6),
                       ],
                       Text(
-                        context.t('duty.severity.${inc.severity}').toUpperCase(),
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: t.mutedForeground),
+                        context
+                            .t('duty.severity.${inc.severity}')
+                            .toUpperCase(),
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: t.mutedForeground),
                       ),
                     ],
                   ),
@@ -342,7 +387,12 @@ class _GuardDutyViewState extends State<GuardDutyView> {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.icon, required this.title, required this.hint, required this.children, this.iconColor});
+  const _Section(
+      {required this.icon,
+      required this.title,
+      required this.hint,
+      required this.children,
+      this.iconColor});
 
   final IconData icon;
   final Color? iconColor;
@@ -361,7 +411,12 @@ class _Section extends StatelessWidget {
             children: [
               Icon(icon, size: 20, color: iconColor ?? t.primary),
               const SizedBox(width: 8),
-              Expanded(child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: t.foreground))),
+              Expanded(
+                  child: Text(title,
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: t.foreground))),
             ],
           ),
           const SizedBox(height: 8),
@@ -375,7 +430,11 @@ class _Section extends StatelessWidget {
 }
 
 class _StaffRow extends StatelessWidget {
-  const _StaffRow({required this.role, required this.status, required this.disabled, required this.onTap});
+  const _StaffRow(
+      {required this.role,
+      required this.status,
+      required this.disabled,
+      required this.onTap});
 
   final DutyItem role;
   final String status;
@@ -391,7 +450,10 @@ class _StaffRow extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: tone == DutyTone.none ? null : c.fill,
-        border: Border.all(color: tone == DutyTone.none ? t.border : AppTokens.tint(c.border, 0.5)),
+        border: Border.all(
+            color: tone == DutyTone.none
+                ? t.border
+                : AppTokens.tint(c.border, 0.5)),
         borderRadius: BorderRadius.circular(AppTokens.radius),
       ),
       child: Column(
@@ -401,11 +463,16 @@ class _StaffRow extends StatelessWidget {
             children: [
               Text(role.icon, style: const TextStyle(fontSize: 20)),
               const SizedBox(width: 8),
-              Expanded(child: Text(context.t('duty.staff.${role.key}'), style: AppText.bodyMedium(context))),
+              Expanded(
+                  child: Text(context.t('duty.staff.${role.key}'),
+                      style: AppText.bodyMedium(context))),
               if (status != 'not_marked')
                 Text(
                   context.t('duty.attendance.$status').toUpperCase(),
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.foreground),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: t.foreground),
                 ),
             ],
           ),
@@ -431,7 +498,11 @@ class _StaffRow extends StatelessWidget {
 }
 
 class _CheckTile extends StatelessWidget {
-  const _CheckTile({required this.item, required this.status, required this.disabled, required this.onTap});
+  const _CheckTile(
+      {required this.item,
+      required this.status,
+      required this.disabled,
+      required this.onTap});
 
   final DutyItem item;
   final String status;
@@ -446,7 +517,9 @@ class _CheckTile extends StatelessWidget {
     return _Tile(
       emoji: item.icon,
       label: context.t('duty.check.${item.key}'),
-      sub: status == 'not_checked' ? null : context.t('duty.checkStatus.$status').toUpperCase(),
+      sub: status == 'not_checked'
+          ? null
+          : context.t('duty.checkStatus.$status').toUpperCase(),
       border: tone == DutyTone.none ? t.border : AppTokens.tint(c.border, 0.5),
       fill: tone == DutyTone.none ? t.card : c.fill,
       disabled: disabled,
@@ -456,7 +529,8 @@ class _CheckTile extends StatelessWidget {
 }
 
 class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.item, required this.disabled, required this.onTap});
+  const _CategoryTile(
+      {required this.item, required this.disabled, required this.onTap});
 
   final DutyItem item;
   final bool disabled;
@@ -519,17 +593,26 @@ class _Tile extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(emoji, style: const TextStyle(fontSize: 24, height: 1.1)),
+                  Text(emoji,
+                      style: const TextStyle(fontSize: 24, height: 1.1)),
                   const SizedBox(height: 4),
                   Text(
                     label,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: labelSize, fontWeight: FontWeight.w600, height: 1.15, color: t.foreground),
+                    style: TextStyle(
+                        fontSize: labelSize,
+                        fontWeight: FontWeight.w600,
+                        height: 1.15,
+                        color: t.foreground),
                   ),
                   if (sub != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(sub!, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: t.mutedForeground)),
+                      child: Text(sub!,
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: t.mutedForeground)),
                     ),
                 ],
               ),
@@ -552,14 +635,17 @@ class _SheetBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+        constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85),
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(
+              20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title, style: AppText.pageTitle(context).copyWith(fontSize: 18)),
+              Text(title,
+                  style: AppText.pageTitle(context).copyWith(fontSize: 18)),
               const SizedBox(height: 16),
               ...children,
             ],
@@ -571,7 +657,10 @@ class _SheetBody extends StatelessWidget {
 }
 
 class _CheckSheet extends StatefulWidget {
-  const _CheckSheet({required this.checkKey, required this.initialStatus, this.initialPreset});
+  const _CheckSheet(
+      {required this.checkKey,
+      required this.initialStatus,
+      this.initialPreset});
 
   final String checkKey;
   final String initialStatus;
@@ -613,14 +702,18 @@ class _CheckSheetState extends State<_CheckSheet> {
             runSpacing: 8,
             children: [
               for (final p in presets)
-                PresetChip(label: context.t('duty.preset.$p'), selected: _preset == p, onTap: () => setState(() => _preset = p)),
+                PresetChip(
+                    label: context.t('duty.preset.$p'),
+                    selected: _preset == p,
+                    onTap: () => setState(() => _preset = p)),
             ],
           ),
         ],
         const SizedBox(height: 16),
         AppButton(
           label: context.t('duty.saveCheck'),
-          onPressed: () => Navigator.pop(context, (status: _status, preset: _preset)),
+          onPressed: () =>
+              Navigator.pop(context, (status: _status, preset: _preset)),
         ),
       ],
     );
@@ -628,7 +721,8 @@ class _CheckSheetState extends State<_CheckSheet> {
 }
 
 class _IncidentDraft {
-  const _IncidentDraft({required this.severity, this.preset, this.flat, this.photos = const []});
+  const _IncidentDraft(
+      {required this.severity, this.preset, this.flat, this.photos = const []});
 
   final String severity;
   final String? preset;
@@ -682,7 +776,10 @@ class _IncidentSheetState extends State<_IncidentSheet> {
             runSpacing: 8,
             children: [
               for (final p in presets)
-                PresetChip(label: context.t('duty.preset.$p'), selected: _preset == p, onTap: () => setState(() => _preset = p)),
+                PresetChip(
+                    label: context.t('duty.preset.$p'),
+                    selected: _preset == p,
+                    onTap: () => setState(() => _preset = p)),
             ],
           ),
         ],
@@ -697,9 +794,16 @@ class _IncidentSheetState extends State<_IncidentSheet> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  PresetChip(label: context.t('duty.noFlat'), selected: _flat == null, onTap: () => setState(() => _flat = null)),
+                  PresetChip(
+                      label: context.t('duty.noFlat'),
+                      selected: _flat == null,
+                      onTap: () => setState(() => _flat = null)),
                   for (final f in widget.flats.take(40))
-                    PresetChip(label: f, mono: true, selected: _flat == f, onTap: () => setState(() => _flat = f)),
+                    PresetChip(
+                        label: f,
+                        mono: true,
+                        selected: _flat == f,
+                        onTap: () => setState(() => _flat = f)),
                 ],
               ),
             ),
@@ -717,7 +821,11 @@ class _IncidentSheetState extends State<_IncidentSheet> {
           label: context.t('duty.saveIncident'),
           onPressed: () => Navigator.pop(
             context,
-            _IncidentDraft(severity: _severity, preset: _preset, flat: _flat, photos: _photos),
+            _IncidentDraft(
+                severity: _severity,
+                preset: _preset,
+                flat: _flat,
+                photos: _photos),
           ),
         ),
       ],

@@ -1,5 +1,6 @@
 /// Port of the head helpers in `src/lib/financeExpenseHead.ts` that the period
 /// report, cash-flow statement and Reports page rely on.
+library;
 
 /// Chart-of-accounts major heads for Finance → Record payment.
 const List<String> kSocietyPaymentMajorHeads = [

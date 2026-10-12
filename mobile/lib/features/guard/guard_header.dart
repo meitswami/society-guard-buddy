@@ -9,7 +9,8 @@ import '../../providers/session_provider.dart';
 import '../gate/data/gate_store.dart';
 
 /// Ends the guard shift after the web confirmation (`swal.confirmLogoutGuard`).
-Future<void> confirmGuardLogout(BuildContext context, WidgetRef ref, SessionGuard session) async {
+Future<void> confirmGuardLogout(
+    BuildContext context, WidgetRef ref, SessionGuard session) async {
   final ok = await AppFeedback.confirm(
     context,
     title: context.t('swal.confirmLogoutGuard'),
@@ -20,7 +21,9 @@ Future<void> confirmGuardLogout(BuildContext context, WidgetRef ref, SessionGuar
   );
   if (!ok) return;
   GateStore.clear(session.societyId);
-  await ref.read(sessionProvider.notifier).logout(guardShiftId: session.shiftId);
+  await ref
+      .read(sessionProvider.notifier)
+      .logout(guardShiftId: session.shiftId);
 }
 
 /// Guard header from web `DashboardPage`: app name, tagline, live clock, guard code + name,
@@ -64,7 +67,9 @@ class _GuardHeaderState extends ConsumerState<GuardHeader> {
       children: [
         Text(context.t('app.name'), style: AppText.pageTitle(context)),
         const SizedBox(height: 2),
-        Text(context.t('app.tagline'), style: TextStyle(fontSize: 10, color: AppTokens.tint(t.mutedForeground, 0.8))),
+        Text(context.t('app.tagline'),
+            style: TextStyle(
+                fontSize: 10, color: AppTokens.tint(t.mutedForeground, 0.8))),
         const SizedBox(height: 2),
         Row(
           mainAxisSize: MainAxisSize.min,
@@ -81,10 +86,14 @@ class _GuardHeaderState extends ConsumerState<GuardHeader> {
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(g.guardId, style: AppText.mono(context, size: 12, color: t.primary)),
+        Text(g.guardId,
+            style: AppText.mono(context, size: 12, color: t.primary)),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 110),
-          child: Text(g.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption(context)),
+          child: Text(g.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.caption(context)),
         ),
       ],
     );

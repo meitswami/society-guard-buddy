@@ -8,7 +8,11 @@ class BlacklistService {
   /// All entries of the society, newest first.
   Future<List<BlacklistEntry>> fetchAll(String societyId) async {
     if (!Env.isConfigured) return const [];
-    final rows = await db.from('blacklist').select('*').eq('society_id', societyId).order('added_at', ascending: false);
+    final rows = await db
+        .from('blacklist')
+        .select('*')
+        .eq('society_id', societyId)
+        .order('added_at', ascending: false);
     return rowsOf(rows).map(BlacklistEntry.fromRow).toList();
   }
 
@@ -37,6 +41,10 @@ class BlacklistService {
 
   Future<void> removeEntry(String societyId, String id) async {
     if (!Env.isConfigured) return;
-    await db.from('blacklist').delete().eq('id', id).eq('society_id', societyId);
+    await db
+        .from('blacklist')
+        .delete()
+        .eq('id', id)
+        .eq('society_id', societyId);
   }
 }

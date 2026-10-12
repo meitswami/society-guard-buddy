@@ -59,7 +59,8 @@ class ChannelTotals {
   Map<String, double> toJson() => {'cash': cash, 'bank': bank, 'other': other};
 
   @override
-  bool operator ==(Object o) => o is ChannelTotals && o.cash == cash && o.bank == bank && o.other == other;
+  bool operator ==(Object other) =>
+      other is ChannelTotals && other.cash == cash && other.bank == bank && other.other == this.other;
 
   @override
   int get hashCode => Object.hash(cash, bank, other);

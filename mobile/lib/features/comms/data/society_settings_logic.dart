@@ -60,7 +60,7 @@ class SocietyLetterheadInfo {
 
   /// Web `normalizeSocietyRow`.
   factory SocietyLetterheadInfo.fromRow(Map<String, dynamic> d) {
-    double num(Object? v, double fallback) {
+    double mm(Object? v, double fallback) {
       if (v == null) return fallback;
       if (v is num) return v.toDouble();
       return double.tryParse(v.toString()) ?? fallback;
@@ -73,10 +73,10 @@ class SocietyLetterheadInfo {
       letterheadUrl: d['letterhead_url']?.toString(),
       letterheadStoragePath: d['letterhead_storage_path']?.toString(),
       letterheadMode: (mode == null || mode.isEmpty) ? 'auto' : mode,
-      topMm: num(d['letterhead_top_mm'], 40),
-      bottomMm: num(d['letterhead_bottom_mm'], 18),
-      leftMm: num(d['letterhead_left_mm'], kPdfMarginMm),
-      rightMm: num(d['letterhead_right_mm'], kPdfMarginMm),
+      topMm: mm(d['letterhead_top_mm'], 40),
+      bottomMm: mm(d['letterhead_bottom_mm'], 18),
+      leftMm: mm(d['letterhead_left_mm'], kPdfMarginMm),
+      rightMm: mm(d['letterhead_right_mm'], kPdfMarginMm),
       defaultReportFormat: fmt == 'plain' ? 'plain' : 'letterhead',
     );
   }

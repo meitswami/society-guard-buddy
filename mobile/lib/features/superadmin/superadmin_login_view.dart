@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -757,5 +756,3 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
   }
 }
 
-/// Keeps `services.dart` referenced for the formatter types used above.
-typedef _Formatter = TextInputFormatter;

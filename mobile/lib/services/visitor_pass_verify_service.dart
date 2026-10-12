@@ -56,28 +56,44 @@ bool isWithinPassTimeSlot(String nowHms, String? start, String? end) {
 class VisitorPassVerifyService {
   /// Web `OTPVerifyModal.handleVerify`: today's active pass of a flat in this society, inside its
   /// time slot; marks it `used`.
-  Future<PassVerifyResult> verify({required String societyId, required String otp, DateTime? now}) async {
-    if (otp.length != 6) return const PassVerifyResult.failed(PassVerifyError.enterSixDigit);
-    if (!Env.isConfigured || societyId.isEmpty) return const PassVerifyResult.failed(PassVerifyError.invalid);
+  Future<PassVerifyResult> verify(
+      {required String societyId, required String otp, DateTime? now}) async {
+    if (otp.length != 6) {
+      return const PassVerifyResult.failed(PassVerifyError.enterSixDigit);
+    }
+    if (!Env.isConfigured || societyId.isEmpty) {
+      return const PassVerifyResult.failed(PassVerifyError.invalid);
+    }
 
     final at = now ?? DateTime.now();
     final today = DateFormat('yyyy-MM-dd').format(at);
     final nowHms = DateFormat('HH:mm:ss').format(at);
 
-    final flatIds = rowsOf(await db.from('flats').select('id').eq('society_id', societyId))
-        .map((f) => f['id'] as String)
-        .toSet();
-    if (flatIds.isEmpty) return const PassVerifyResult.failed(PassVerifyError.invalid);
+    final flatIds =
+        rowsOf(await db.from('flats').select('id').eq('society_id', societyId))
+            .map((f) => f['id'] as String)
+            .toSet();
+    if (flatIds.isEmpty) {
+      return const PassVerifyResult.failed(PassVerifyError.invalid);
+    }
 
     // Same rows as the web `.in('flat_id', flatIds).single()`, filtered client-side so large
     // societies do not produce an oversized request URL.
     final candidates = rowsOf(
-      await db.from('visitor_passes').select('*').eq('otp_code', otp).eq('status', 'active').eq('valid_date', today),
+      await db
+          .from('visitor_passes')
+          .select('*')
+          .eq('otp_code', otp)
+          .eq('status', 'active')
+          .eq('valid_date', today),
     ).where((p) => flatIds.contains(p['flat_id'])).toList();
-    if (candidates.length != 1) return const PassVerifyResult.failed(PassVerifyError.invalid);
+    if (candidates.length != 1) {
+      return const PassVerifyResult.failed(PassVerifyError.invalid);
+    }
     final pass = candidates.single;
 
-    if (!isWithinPassTimeSlot(nowHms, pass['time_slot_start'] as String?, pass['time_slot_end'] as String?)) {
+    if (!isWithinPassTimeSlot(nowHms, pass['time_slot_start'] as String?,
+        pass['time_slot_end'] as String?)) {
       return const PassVerifyResult.failed(PassVerifyError.outsideTimeSlot);
     }
 

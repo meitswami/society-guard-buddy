@@ -8,7 +8,12 @@ import 'gate_photo.dart';
 /// Web `PhotoCapture`: label with count, 64px previews with remove, Camera / Upload buttons.
 /// Photos are compressed (max 800px, JPEG q70) and kept as data URLs, exactly like the web.
 class PhotoCapture extends StatefulWidget {
-  const PhotoCapture({super.key, required this.photos, required this.onChanged, this.maxPhotos = 3, this.label});
+  const PhotoCapture(
+      {super.key,
+      required this.photos,
+      required this.onChanged,
+      this.maxPhotos = 3,
+      this.label});
 
   final List<String> photos;
   final ValueChanged<List<String>> onChanged;
@@ -34,7 +39,10 @@ class _PhotoCaptureState extends State<PhotoCapture> {
         out.add(await compressToJpegDataUrl(await f.readAsBytes()));
       }
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.gt('gate.photo.failed'), tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, context.gt('gate.photo.failed'),
+            tone: BadgeTone.alert);
+      }
     }
     if (out.length != widget.photos.length) widget.onChanged(out);
   }
@@ -61,17 +69,29 @@ class _PhotoCaptureState extends State<PhotoCapture> {
           return f == null ? const <XFile>[] : [f];
         } catch (_) {
           // Camera not available — fall back to the gallery like the web file picker.
-          final f = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 90);
+          final f = await _picker.pickImage(
+              source: ImageSource.gallery,
+              maxWidth: 1600,
+              maxHeight: 1600,
+              imageQuality: 90);
           return f == null ? const <XFile>[] : [f];
         }
       });
 
   Future<void> _upload() => _run(() async {
         if (_remaining <= 1) {
-          final f = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 90);
+          final f = await _picker.pickImage(
+              source: ImageSource.gallery,
+              maxWidth: 1600,
+              maxHeight: 1600,
+              imageQuality: 90);
           return f == null ? const <XFile>[] : [f];
         }
-        final files = await _picker.pickMultiImage(maxWidth: 1600, maxHeight: 1600, imageQuality: 90, limit: _remaining);
+        final files = await _picker.pickMultiImage(
+            maxWidth: 1600,
+            maxHeight: 1600,
+            imageQuality: 90,
+            limit: _remaining);
         return files.take(_remaining).toList();
       });
 
@@ -108,18 +128,21 @@ class _PhotoCaptureState extends State<PhotoCapture> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        GatePhoto(src: widget.photos[i], size: 64, round: false),
+                        GatePhoto(
+                            src: widget.photos[i], size: 64, round: false),
                         Positioned(
                           top: 0,
                           right: 0,
                           child: Material(
                             color: t.destructive,
-                            borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(6)),
+                            borderRadius: const BorderRadius.only(
+                                bottomLeft: Radius.circular(6)),
                             child: InkWell(
                               onTap: () => _remove(i),
                               child: Padding(
                                 padding: const EdgeInsets.all(2),
-                                child: Icon(Icons.close, size: 12, color: t.destructiveForeground),
+                                child: Icon(Icons.close,
+                                    size: 12, color: t.destructiveForeground),
                               ),
                             ),
                           ),

@@ -265,41 +265,56 @@ HeadcountPreview headcountPreview({
   return HeadcountPreview(rows: rows, amounts: amounts, adult: adult, child: child);
 }
 
-/// `EventManager.contribLabel`.
-String contributionLabel(EventContribution c) {
+/// Words used in receipt labels (English defaults = web text; the UI passes translations).
+class ContribLabelWords {
+  const ContribLabelWords({
+    this.flat = 'Flat',
+    this.noFlat = 'No flat',
+    this.receipt = 'Receipt',
+    this.headcount = 'headcount',
+    this.lump = 'lump ÷',
+    this.individual = 'individual',
+    this.receiptNoFlat = 'Receipt (no flat)',
+  });
+
+  final String flat;
+  final String noFlat;
+  final String receipt;
+  final String headcount;
+  final String lump;
+  final String individual;
+  final String receiptNoFlat;
+}
+
+String _label(EventContribution c, ContribLabelWords w, {required bool tagIndividual}) {
   if (c.receiptBasis == 'non_flat' || !c.hasFlat) {
-    return 'No flat · ${_firstText([c.batchLabel, c.outsiderName, c.residentName]) ?? 'Receipt'}';
+    return '${w.noFlat} · ${_firstText([c.batchLabel, c.outsiderName, c.residentName]) ?? w.receipt}';
   }
-  final parts = ['Flat ${c.flatNumber}'];
+  final parts = ['${w.flat} ${c.flatNumber}'];
   if ((c.residentName ?? '').isNotEmpty) parts.add(c.residentName!);
   if (c.adultCount != null || c.kidCount != null) parts.add('${c.adultCount ?? 0}A/${c.kidCount ?? 0}K');
-  if (c.splitMode == 'headcount') parts.add('headcount');
-  if (c.splitMode == 'lump_equal') parts.add('lump ÷');
+  if (c.splitMode == 'headcount') parts.add(w.headcount);
+  if (c.splitMode == 'lump_equal') parts.add(w.lump);
+  if (tagIndividual && c.splitMode == 'individual') parts.add(w.individual);
   return parts.join(' · ');
 }
+
+/// `EventManager.contribLabel`.
+String contributionLabel(EventContribution c, [ContribLabelWords w = const ContribLabelWords()]) =>
+    _label(c, w, tagIndividual: false);
 
 /// `EventFoodReconciliation.contribReceiptLabel` (adds the `individual` tag).
-String contributionReceiptLabel(EventContribution c) {
-  if (c.receiptBasis == 'non_flat' || !c.hasFlat) {
-    return 'No flat · ${_firstText([c.batchLabel, c.outsiderName, c.residentName]) ?? 'Receipt'}';
-  }
-  final parts = ['Flat ${c.flatNumber}'];
-  if ((c.residentName ?? '').isNotEmpty) parts.add(c.residentName!);
-  if (c.adultCount != null || c.kidCount != null) parts.add('${c.adultCount ?? 0}A/${c.kidCount ?? 0}K');
-  if (c.splitMode == 'headcount') parts.add('headcount');
-  if (c.splitMode == 'lump_equal') parts.add('lump ÷');
-  if (c.splitMode == 'individual') parts.add('individual');
-  return parts.join(' · ');
-}
+String contributionReceiptLabel(EventContribution c, [ContribLabelWords w = const ContribLabelWords()]) =>
+    _label(c, w, tagIndividual: true);
 
 /// `financeLedgerDisplay.eventContribRefLabel` (Finance → receipts reference list).
-String eventContribRefLabel(EventContribution c) {
+String eventContribRefLabel(EventContribution c, [ContribLabelWords w = const ContribLabelWords()]) {
   if (c.receiptBasis == 'non_flat' || !c.hasFlat) {
-    return _firstText([c.batchLabel, c.outsiderName, c.residentName]) ?? 'Receipt (no flat)';
+    return _firstText([c.batchLabel, c.outsiderName, c.residentName]) ?? w.receiptNoFlat;
   }
-  final parts = ['Flat ${c.flatNumber}'];
+  final parts = ['${w.flat} ${c.flatNumber}'];
   if ((c.residentName ?? '').isNotEmpty) parts.add(c.residentName!);
-  if (c.splitMode == 'headcount') parts.add('headcount');
+  if (c.splitMode == 'headcount') parts.add(w.headcount);
   return parts.join(' · ');
 }
 

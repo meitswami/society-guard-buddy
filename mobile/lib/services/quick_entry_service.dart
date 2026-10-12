@@ -63,7 +63,8 @@ class QuickEntryService {
   }
 
   /// Legacy: open visit of [row] among [visitors] (same phone, else same name + flat).
-  VisitorEntry? findActiveVisit(List<VisitorEntry> visitors, QuickEntryRow row) {
+  VisitorEntry? findActiveVisit(
+      List<VisitorEntry> visitors, QuickEntryRow row) {
     final inside = visitors.where((v) => v.isInside).toList();
     for (final v in inside) {
       if (v.phone == row.phone) return v;
@@ -71,7 +72,10 @@ class QuickEntryService {
     final nameLc = row.name.trim().toLowerCase();
     final flatLc = row.flatNumber.trim().toLowerCase();
     for (final v in inside) {
-      if (v.flatNumber.trim().toLowerCase() == flatLc && v.name.trim().toLowerCase() == nameLc) return v;
+      if (v.flatNumber.trim().toLowerCase() == flatLc &&
+          v.name.trim().toLowerCase() == nameLc) {
+        return v;
+      }
     }
     return null;
   }

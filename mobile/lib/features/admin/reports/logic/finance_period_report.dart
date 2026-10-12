@@ -264,8 +264,8 @@ class ChannelByHeadRow {
   double total;
 
   @override
-  bool operator ==(Object o) =>
-      o is ChannelByHeadRow && o.cash == cash && o.bank == bank && o.other == other && o.total == total;
+  bool operator ==(Object other) =>
+      other is ChannelByHeadRow && other.cash == cash && other.bank == bank && other.other == this.other && other.total == total;
 
   @override
   int get hashCode => Object.hash(cash, bank, other, total);
@@ -282,7 +282,8 @@ class HeadAmount {
   final ChannelByHeadRow row;
 
   @override
-  bool operator ==(Object o) => o is HeadAmount && o.head == head && o.row == row;
+  bool operator ==(Object other) =>
+      other is HeadAmount && other.head == head && other.row == row;
 
   @override
   int get hashCode => Object.hash(head, row);

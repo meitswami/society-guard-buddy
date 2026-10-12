@@ -23,8 +23,8 @@ class MonthlyAmountTotal {
   final int count;
 
   @override
-  bool operator ==(Object o) =>
-      o is MonthlyAmountTotal && o.monthKey == monthKey && o.label == label && o.total == total && o.count == count;
+  bool operator ==(Object other) =>
+      other is MonthlyAmountTotal && other.monthKey == monthKey && other.label == label && other.total == total && other.count == count;
 
   @override
   int get hashCode => Object.hash(monthKey, label, total, count);

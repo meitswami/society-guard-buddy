@@ -79,7 +79,8 @@ class GuardDutyStaffAttendance {
   final String? absenceReason;
   final String updatedAt;
 
-  factory GuardDutyStaffAttendance.fromRow(Map<String, dynamic> r) => GuardDutyStaffAttendance(
+  factory GuardDutyStaffAttendance.fromRow(Map<String, dynamic> r) =>
+      GuardDutyStaffAttendance(
         id: asString(r['id']),
         dutyId: asString(r['duty_id']),
         staffRole: asString(r['staff_role']),
@@ -107,7 +108,8 @@ class GuardDutySystemCheck {
   final String? problemPreset;
   final String updatedAt;
 
-  factory GuardDutySystemCheck.fromRow(Map<String, dynamic> r) => GuardDutySystemCheck(
+  factory GuardDutySystemCheck.fromRow(Map<String, dynamic> r) =>
+      GuardDutySystemCheck(
         id: asString(r['id']),
         dutyId: asString(r['duty_id']),
         checkKey: asString(r['check_key']),
@@ -147,14 +149,19 @@ class GuardDutyIncident {
       severity: r['severity']?.toString() ?? 'medium',
       flatNumber: r['flat_number']?.toString(),
       problemPreset: r['problem_preset']?.toString(),
-      photoUrls: photos is List ? photos.map((e) => e.toString()).toList() : const [],
+      photoUrls:
+          photos is List ? photos.map((e) => e.toString()).toList() : const [],
       createdAt: asString(r['created_at']),
     );
   }
 }
 
 class GuardDutyBundle {
-  const GuardDutyBundle({required this.duty, required this.staff, required this.checks, required this.incidents});
+  const GuardDutyBundle(
+      {required this.duty,
+      required this.staff,
+      required this.checks,
+      required this.incidents});
 
   final GuardDailyDuty duty;
   final List<GuardDutyStaffAttendance> staff;
@@ -205,11 +212,23 @@ const List<DutyItem> kIncidentCategories = [
   DutyItem('other', '📝'),
 ];
 
-const List<String> kAbsenceReasons = ['sick', 'leave', 'not_informed', 'holiday', 'unknown'];
+const List<String> kAbsenceReasons = [
+  'sick',
+  'leave',
+  'not_informed',
+  'holiday',
+  'unknown'
+];
 
 const Map<String, List<String>> kProblemPresets = {
   'lift': ['stuck', 'not_working', 'noise', 'door_issue'],
-  'water': ['no_supply', 'low_pressure', 'tank_empty', 'leakage', 'dirty_water'],
+  'water': [
+    'no_supply',
+    'low_pressure',
+    'tank_empty',
+    'leakage',
+    'dirty_water'
+  ],
   'cctv': ['camera_down', 'no_recording', 'blur_image', 'monitor_off'],
   'power': ['outage', 'partial_cut', 'meter_issue'],
   'generator': ['not_starting', 'low_diesel', 'auto_fail'],
@@ -241,7 +260,8 @@ const List<({String status, String icon, DutyTone tone})> kAttendanceOptions = [
 ];
 
 /// Building check status buttons.
-const List<({String status, String icon, DutyTone tone})> kCheckStatusOptions = [
+const List<({String status, String icon, DutyTone tone})> kCheckStatusOptions =
+    [
   (status: 'ok', icon: '✅', tone: DutyTone.success),
   (status: 'problem', icon: '⚠️', tone: DutyTone.warning),
   (status: 'not_working', icon: '🚫', tone: DutyTone.danger),
@@ -266,16 +286,20 @@ DutyTone dutyStatusTone(String status) {
 }
 
 /// Absent / late need a reason first (web opens the reason dialog).
-bool attendanceNeedsReason(String status) => status == 'absent' || status == 'late';
+bool attendanceNeedsReason(String status) =>
+    status == 'absent' || status == 'late';
 
 /// Reason saved with an attendance row (cleared unless absent / late).
-String? attendanceReasonToSave(String status, String? reason) => attendanceNeedsReason(status) ? reason : null;
+String? attendanceReasonToSave(String status, String? reason) =>
+    attendanceNeedsReason(status) ? reason : null;
 
 /// Problem preset saved with a check (cleared for `ok` / `not_checked`).
-String? checkPresetToSave(String status, String? preset) => (status == 'ok' || status == 'not_checked') ? null : preset;
+String? checkPresetToSave(String status, String? preset) =>
+    (status == 'ok' || status == 'not_checked') ? null : preset;
 
 /// Problem presets are offered for `problem` / `not_working`.
-bool checkNeedsPreset(String status) => status == 'problem' || status == 'not_working';
+bool checkNeedsPreset(String status) =>
+    status == 'problem' || status == 'not_working';
 
 String findIcon(List<DutyItem> items, String key) {
   for (final i in items) {
@@ -299,23 +323,29 @@ GuardDutySystemCheck? checkRowFor(GuardDutyBundle b, String key) {
 }
 
 /// Checks reported as `problem` / `not_working` (admin review "issues").
-List<GuardDutySystemCheck> dutyProblemChecks(GuardDutyBundle b) =>
-    b.checks.where((c) => c.status == 'problem' || c.status == 'not_working').toList();
+List<GuardDutySystemCheck> dutyProblemChecks(GuardDutyBundle b) => b.checks
+    .where((c) => c.status == 'problem' || c.status == 'not_working')
+    .toList();
 
 /// Staff marked absent / late (admin review).
 List<GuardDutyStaffAttendance> dutyAbsentStaff(GuardDutyBundle b) =>
     b.staff.where((s) => s.status == 'absent' || s.status == 'late').toList();
 
 /// Seed rows inserted with a new duty sheet.
-List<Map<String, dynamic>> staffSeedRows(String dutyId) =>
-    [for (final r in kStaffRoles) {'duty_id': dutyId, 'staff_role': r.key, 'status': 'not_marked'}];
+List<Map<String, dynamic>> staffSeedRows(String dutyId) => [
+      for (final r in kStaffRoles)
+        {'duty_id': dutyId, 'staff_role': r.key, 'status': 'not_marked'}
+    ];
 
-List<Map<String, dynamic>> checkSeedRows(String dutyId) =>
-    [for (final c in kSystemChecks) {'duty_id': dutyId, 'check_key': c.key, 'status': 'not_checked'}];
+List<Map<String, dynamic>> checkSeedRows(String dutyId) => [
+      for (final c in kSystemChecks)
+        {'duty_id': dutyId, 'check_key': c.key, 'status': 'not_checked'}
+    ];
 
 /// `yyyy-MM-dd` → local date (avoids the UTC shift of `new Date('yyyy-MM-dd')`).
 DateTime? parseDutyDate(String iso) {
   final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(iso);
   if (m == null) return null;
-  return DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
+  return DateTime(
+      int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
 }

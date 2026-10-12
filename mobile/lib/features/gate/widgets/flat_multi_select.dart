@@ -15,7 +15,12 @@ class FlatOption {
 
 /// Web `FlatMultiSelect`: searchable grid of flat toggles with "All visible" / "Clear visible".
 class FlatMultiSelect extends StatefulWidget {
-  const FlatMultiSelect({super.key, required this.flats, required this.selected, required this.onChanged, this.label});
+  const FlatMultiSelect(
+      {super.key,
+      required this.flats,
+      required this.selected,
+      required this.onChanged,
+      this.label});
 
   final List<FlatOption> flats;
 
@@ -35,17 +40,24 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
     final s = _q.trim().toLowerCase();
     if (s.isEmpty) return widget.flats;
     return widget.flats
-        .where((f) => f.flatNumber.toLowerCase().contains(s) || (f.subtitle ?? '').toLowerCase().contains(s))
+        .where((f) =>
+            f.flatNumber.toLowerCase().contains(s) ||
+            (f.subtitle ?? '').toLowerCase().contains(s))
         .toList();
   }
 
   void _toggle(String num) {
     final on = widget.selected.contains(num);
-    widget.onChanged(on ? widget.selected.where((x) => x != num).toList() : [...widget.selected, num]);
+    widget.onChanged(on
+        ? widget.selected.where((x) => x != num).toList()
+        : [...widget.selected, num]);
   }
 
   void _selectAll(List<FlatOption> filtered) {
-    final merged = <String>{...widget.selected, ...filtered.map((f) => f.flatNumber)};
+    final merged = <String>{
+      ...widget.selected,
+      ...filtered.map((f) => f.flatNumber)
+    };
     widget.onChanged(merged.toList());
   }
 
@@ -72,16 +84,23 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
             runSpacing: 4,
             children: [
               Text(
-                context.gt('gate.flats.selected', {'label': label, 'count': widget.selected.length}),
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.mutedForeground),
+                context.gt('gate.flats.selected',
+                    {'label': label, 'count': widget.selected.length}),
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: t.mutedForeground),
               ),
               if (filtered.isNotEmpty)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _LinkText(context.gt('gate.flats.allVisible'), color: t.primary, onTap: () => _selectAll(filtered)),
+                    _LinkText(context.gt('gate.flats.allVisible'),
+                        color: t.primary, onTap: () => _selectAll(filtered)),
                     Text(' · ', style: AppText.tiny(context)),
-                    _LinkText(context.gt('gate.flats.clearVisible'), color: t.mutedForeground, onTap: () => _clear(filtered)),
+                    _LinkText(context.gt('gate.flats.clearVisible'),
+                        color: t.mutedForeground,
+                        onTap: () => _clear(filtered)),
                   ],
                 ),
             ],
@@ -99,7 +118,8 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
           child: filtered.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(context.gt('gate.flats.empty'), style: AppText.caption(context)),
+                  child: Text(context.gt('gate.flats.empty'),
+                      style: AppText.caption(context)),
                 )
               : GridView.builder(
                   shrinkWrap: true,
@@ -124,7 +144,8 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
                         borderRadius: BorderRadius.circular(AppTokens.radiusSm),
                         onTap: () => _toggle(f.flatNumber),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 4),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -133,7 +154,11 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: AppText.mono(context,
-                                    size: 12, weight: FontWeight.w600, color: on ? t.primaryForeground : t.foreground),
+                                    size: 12,
+                                    weight: FontWeight.w600,
+                                    color: on
+                                        ? t.primaryForeground
+                                        : t.foreground),
                               ),
                               if (f.subtitle != null && f.subtitle!.isNotEmpty)
                                 Text(
@@ -144,7 +169,10 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
                                   style: TextStyle(
                                     fontSize: 9,
                                     height: 1.15,
-                                    color: on ? AppTokens.tint(t.primaryForeground, 0.9) : t.mutedForeground,
+                                    color: on
+                                        ? AppTokens.tint(
+                                            t.primaryForeground, 0.9)
+                                        : t.mutedForeground,
                                   ),
                                 ),
                             ],

@@ -87,13 +87,16 @@ class _ApprovalRequestDialogState extends State<ApprovalRequestDialog> {
       );
     } catch (_) {
       if (!mounted) return;
-      AppFeedback.toast(context, context.gt('gate.approval.failed'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.gt('gate.approval.failed'),
+          tone: BadgeTone.alert);
       _close(ApprovalOutcome.failed);
       return;
     }
     if (!mounted) return;
     if (id == null) {
-      AppFeedback.toast(context, context.gt('gate.approval.flatNotFound', {'flat': widget.flatNumber}), tone: BadgeTone.alert);
+      AppFeedback.toast(context,
+          context.gt('gate.approval.flatNotFound', {'flat': widget.flatNumber}),
+          tone: BadgeTone.alert);
       _close(ApprovalOutcome.failed);
       return;
     }
@@ -110,7 +113,8 @@ class _ApprovalRequestDialogState extends State<ApprovalRequestDialog> {
       if (!mounted || _stage != _Stage.waiting) return;
       setState(() => _left -= 1);
       if (_left <= 0) {
-        AppFeedback.toast(context, context.t('approval.timeout'), tone: BadgeTone.warning);
+        AppFeedback.toast(context, context.t('approval.timeout'),
+            tone: BadgeTone.warning);
         _close(ApprovalOutcome.timeout);
       }
     });
@@ -120,9 +124,12 @@ class _ApprovalRequestDialogState extends State<ApprovalRequestDialog> {
     if (!mounted || _stage != _Stage.waiting) return;
     if (status != 'approved' && status != 'rejected') return;
     _stopWatching();
-    setState(() => _stage = status == 'approved' ? _Stage.approved : _Stage.rejected);
+    setState(() =>
+        _stage = status == 'approved' ? _Stage.approved : _Stage.rejected);
     Future.delayed(const Duration(milliseconds: 1500), () {
-      _close(status == 'approved' ? ApprovalOutcome.approved : ApprovalOutcome.rejected);
+      _close(status == 'approved'
+          ? ApprovalOutcome.approved
+          : ApprovalOutcome.rejected);
     });
   }
 
@@ -156,15 +163,20 @@ class _ApprovalRequestDialogState extends State<ApprovalRequestDialog> {
     Widget circle(IconData icon, Color color, {double size = 64}) => Container(
           width: size,
           height: size,
-          decoration: BoxDecoration(color: AppTokens.tint(color, 0.15), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+              color: AppTokens.tint(color, 0.15), shape: BoxShape.circle),
           child: Icon(icon, size: size * 0.45, color: color),
         );
 
     final body = switch (_stage) {
       _Stage.sending => [
-          SizedBox(width: 40, height: 40, child: CircularProgressIndicator(color: t.primary)),
+          SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(color: t.primary)),
           const SizedBox(height: 16),
-          Text(context.t('approval.sending'), style: AppText.body(context).copyWith(color: t.mutedForeground)),
+          Text(context.t('approval.sending'),
+              style: AppText.body(context).copyWith(color: t.mutedForeground)),
         ],
       _Stage.waiting => [
           Stack(
@@ -175,42 +187,60 @@ class _ApprovalRequestDialogState extends State<ApprovalRequestDialog> {
                 top: -4,
                 right: -10,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: t.warning, borderRadius: BorderRadius.circular(99)),
-                  child: Text('$mm:$ss', style: AppText.mono(context, size: 12, color: t.warningForeground)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: t.warning,
+                      borderRadius: BorderRadius.circular(99)),
+                  child: Text('$mm:$ss',
+                      style: AppText.mono(context,
+                          size: 12, color: t.warningForeground)),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Text(context.t('approval.waitingTitle'), style: AppText.sectionTitle(context).copyWith(fontSize: 16)),
+          Text(context.t('approval.waitingTitle'),
+              style: AppText.sectionTitle(context).copyWith(fontSize: 16)),
           const SizedBox(height: 4),
-          Text('${context.t('approval.waitingFor')} ${widget.flatNumber}', style: AppText.caption(context), textAlign: TextAlign.center),
+          Text('${context.t('approval.waitingFor')} ${widget.flatNumber}',
+              style: AppText.caption(context), textAlign: TextAlign.center),
           const SizedBox(height: 4),
-          Text('${widget.visitorName} · ${widget.purpose}', style: AppText.caption(context), textAlign: TextAlign.center),
+          Text('${widget.visitorName} · ${widget.purpose}',
+              style: AppText.caption(context), textAlign: TextAlign.center),
           const SizedBox(height: 16),
-          AppButton.secondary(label: context.t('common.cancel'), onPressed: () => _close(ApprovalOutcome.cancelled)),
+          AppButton.secondary(
+              label: context.t('common.cancel'),
+              onPressed: () => _close(ApprovalOutcome.cancelled)),
         ],
       _Stage.approved => [
           circle(Icons.check_rounded, t.success),
           const SizedBox(height: 16),
-          Text(context.t('approval.approved'), style: AppText.sectionTitle(context).copyWith(fontSize: 16, color: t.success)),
+          Text(context.t('approval.approved'),
+              style: AppText.sectionTitle(context)
+                  .copyWith(fontSize: 16, color: t.success)),
         ],
       _Stage.rejected => [
           circle(Icons.close_rounded, t.destructive),
           const SizedBox(height: 16),
-          Text(context.t('approval.rejected'), style: AppText.sectionTitle(context).copyWith(fontSize: 16, color: t.destructive)),
+          Text(context.t('approval.rejected'),
+              style: AppText.sectionTitle(context)
+                  .copyWith(fontSize: 16, color: t.destructive)),
         ],
     };
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _stage != _Stage.approved && _stage != _Stage.rejected) _close(ApprovalOutcome.cancelled);
+        if (!didPop && _stage != _Stage.approved && _stage != _Stage.rejected) {
+          _close(ApprovalOutcome.cancelled);
+        }
       },
       child: Dialog(
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTokens.radiusXl), side: BorderSide(color: t.border)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTokens.radiusXl),
+            side: BorderSide(color: t.border)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 384),
           child: Padding(

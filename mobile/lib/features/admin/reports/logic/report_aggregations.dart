@@ -14,7 +14,8 @@ class StatusBucket {
   String get paymentStatus => status;
 
   @override
-  bool operator ==(Object o) => o is StatusBucket && o.status == status && o.count == count && o.total == total;
+  bool operator ==(Object other) =>
+      other is StatusBucket && other.status == status && other.count == count && other.total == total;
 
   @override
   int get hashCode => Object.hash(status, count, total);
@@ -85,13 +86,13 @@ class LedgerInflowGroup {
   final int count;
 
   @override
-  bool operator ==(Object o) =>
-      o is LedgerInflowGroup &&
-      o.recordMode == recordMode &&
-      o.destination == destination &&
-      o.total == total &&
-      o.flatUnits == flatUnits &&
-      o.count == count;
+  bool operator ==(Object other) =>
+      other is LedgerInflowGroup &&
+      other.recordMode == recordMode &&
+      other.destination == destination &&
+      other.total == total &&
+      other.flatUnits == flatUnits &&
+      other.count == count;
 
   @override
   int get hashCode => Object.hash(recordMode, destination, total, flatUnits, count);

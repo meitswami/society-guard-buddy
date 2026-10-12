@@ -58,7 +58,8 @@ String quickEntryPhoneForMember(GateMember m) {
 }
 
 /// Title-cases each word like JS `replace(/\b\w/g, c => c.toUpperCase())`.
-String titleCaseWords(String s) => s.replaceAllMapped(RegExp(r'\b\w'), (m) => m[0]!.toUpperCase());
+String titleCaseWords(String s) =>
+    s.replaceAllMapped(RegExp(r'\b\w'), (m) => m[0]!.toUpperCase());
 
 /// Web `memberToQuickVisitorTemplate`.
 GateVisitor memberToQuickVisitorTemplate(GateMember m, String flatNumber) {
@@ -69,7 +70,8 @@ GateVisitor memberToQuickVisitorTemplate(GateMember m, String flatNumber) {
     phone: quickEntryPhoneForMember(m),
     documentType: 'other',
     documentNumber: '',
-    visitorPhotos: m.photo != null && m.photo!.isNotEmpty ? [m.photo!] : const [],
+    visitorPhotos:
+        m.photo != null && m.photo!.isNotEmpty ? [m.photo!] : const [],
     flatNumber: flatNumber,
     purpose: '$rel · Registered staff',
     entryTime: '',
@@ -79,7 +81,11 @@ GateVisitor memberToQuickVisitorTemplate(GateMember m, String flatNumber) {
 
 /// One person on the Quick Entry list.
 class QuickRow {
-  const QuickRow({required this.key, required this.visitor, required this.visitCount, required this.isStaff});
+  const QuickRow(
+      {required this.key,
+      required this.visitor,
+      required this.visitCount,
+      required this.isStaff});
 
   final String key;
 
@@ -97,7 +103,8 @@ class _RowBuilder {
   int visitCount;
   final bool isStaff;
 
-  QuickRow build() => QuickRow(key: key, visitor: visitor, visitCount: visitCount, isStaff: isStaff);
+  QuickRow build() => QuickRow(
+      key: key, visitor: visitor, visitCount: visitCount, isStaff: isStaff);
 }
 
 int _localeCompare(String a, String b) {
@@ -115,13 +122,16 @@ List<QuickRow> buildQuickRows({
   for (final v in visitors) {
     final existing = phoneMap[v.phone];
     if (existing != null) {
-      final latest = v.entryTime.compareTo(existing.visitor.entryTime) > 0 ? v : existing.visitor;
+      final latest = v.entryTime.compareTo(existing.visitor.entryTime) > 0
+          ? v
+          : existing.visitor;
       phoneMap[v.phone] = (visitor: latest, count: existing.count + 1);
     } else {
       phoneMap[v.phone] = (visitor: v, count: 1);
     }
   }
-  final frequent = phoneMap.values.where((e) => e.count >= 2).toList()..sort((a, b) => b.count.compareTo(a.count));
+  final frequent = phoneMap.values.where((e) => e.count >= 2).toList()
+    ..sort((a, b) => b.count.compareTo(a.count));
 
   final flatNumberById = {for (final f in flats) f.id: f.flatNumber};
   final byPhone = <String, _RowBuilder>{};
@@ -139,8 +149,10 @@ List<QuickRow> buildQuickRows({
     final existing = byPhone[v.phone];
     if (existing != null) {
       existing.visitCount = e.count;
-      if (existing.visitor.visitorPhotos.isEmpty && v.visitorPhotos.isNotEmpty) {
-        existing.visitor = existing.visitor.copyWith(visitorPhotos: v.visitorPhotos);
+      if (existing.visitor.visitorPhotos.isEmpty &&
+          v.visitorPhotos.isNotEmpty) {
+        existing.visitor =
+            existing.visitor.copyWith(visitorPhotos: v.visitorPhotos);
       }
     } else {
       byPhone[v.phone] = _RowBuilder('freq-${v.phone}', v, e.count, false);
@@ -176,7 +188,10 @@ GateVisitor? findActiveVisit(List<GateVisitor> visitors, GateVisitor template) {
   final nameLc = template.name.trim().toLowerCase();
   final flat = template.flatNumber.trim().toLowerCase();
   for (final v in inside) {
-    if (v.flatNumber.trim().toLowerCase() == flat && v.name.trim().toLowerCase() == nameLc) return v;
+    if (v.flatNumber.trim().toLowerCase() == flat &&
+        v.name.trim().toLowerCase() == nameLc) {
+      return v;
+    }
   }
   return null;
 }

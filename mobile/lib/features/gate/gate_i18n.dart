@@ -11,7 +11,8 @@ extension GateI18nX on BuildContext {
     if (v != key) return v;
     final row = kGateStrings[key];
     if (row == null) return key;
-    final text = (lang == AppLang.hi ? row['hi'] : row['en']) ?? row['en'] ?? key;
+    final text =
+        (lang == AppLang.hi ? row['hi'] : row['en']) ?? row['en'] ?? key;
     return applyVars(text, vars);
   }
 }

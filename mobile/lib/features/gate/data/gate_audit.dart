@@ -11,9 +11,14 @@ abstract final class GateAudit {
   static Future<String> _clientIp() async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
     try {
-      final req = await client.getUrl(Uri.parse('https://api.ipify.org?format=json')).timeout(const Duration(seconds: 3));
+      final req = await client
+          .getUrl(Uri.parse('https://api.ipify.org?format=json'))
+          .timeout(const Duration(seconds: 3));
       final res = await req.close().timeout(const Duration(seconds: 3));
-      final body = await res.transform(utf8.decoder).join().timeout(const Duration(seconds: 3));
+      final body = await res
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 3));
       final ip = (jsonDecode(body) as Map)['ip'];
       return ip is String && ip.isNotEmpty ? ip : 'unknown';
     } catch (_) {
@@ -38,7 +43,9 @@ abstract final class GateAudit {
         'isMobile': true,
       };
 
-  static String get _userAgent => kIsWeb ? 'Kutumbika app' : 'Kutumbika app ($_os ${Platform.operatingSystemVersion})';
+  static String get _userAgent => kIsWeb
+      ? 'Kutumbika app'
+      : 'Kutumbika app ($_os ${Platform.operatingSystemVersion})';
 
   static Future<void> log({
     required String? societyId,

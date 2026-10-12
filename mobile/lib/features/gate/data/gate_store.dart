@@ -18,7 +18,8 @@ class GateStore extends ChangeNotifier {
   static final Map<String, GateStore> _stores = {};
 
   /// The store of [societyId] (created on first use).
-  static GateStore of(String societyId) => _stores.putIfAbsent(societyId, () => GateStore._(societyId));
+  static GateStore of(String societyId) =>
+      _stores.putIfAbsent(societyId, () => GateStore._(societyId));
 
   /// Drops cached data of a society (logout) — web `setSocietyId(null)`.
   static void clear(String societyId) => _stores.remove(societyId)?._reset();
@@ -62,13 +63,21 @@ class GateStore extends ChangeNotifier {
   Future<void> ensureLoaded() => _initial ??= loadAll();
 
   Future<void> loadAll() async {
-    await Future.wait([loadVisitors(), loadResidentVehicles(), loadBlacklist(), loadDirectory()]);
+    await Future.wait([
+      loadVisitors(),
+      loadResidentVehicles(),
+      loadBlacklist(),
+      loadDirectory()
+    ]);
   }
 
   /// Reload visitors when the cached copy is older than [maxAge] (app resume / tab return).
-  Future<void> refreshVisitorsIfStale({Duration maxAge = const Duration(seconds: 60)}) async {
+  Future<void> refreshVisitorsIfStale(
+      {Duration maxAge = const Duration(seconds: 60)}) async {
     final at = visitorsLoadedAt;
-    if (at == null || DateTime.now().difference(at) > maxAge) await loadVisitors();
+    if (at == null || DateTime.now().difference(at) > maxAge) {
+      await loadVisitors();
+    }
   }
 
   Future<void> loadVisitors() async {
@@ -154,10 +163,17 @@ class GateStore extends ChangeNotifier {
       }
     }
     final hadVehicle = visitor?.hasVehicle ?? false;
-    final now = await _visitorService.markExitFor(societyId: societyId, visitorId: visitorId, hadVehicle: hadVehicle);
+    final now = await _visitorService.markExitFor(
+        societyId: societyId, visitorId: visitorId, hadVehicle: hadVehicle);
     visitors = [
       for (final v in visitors)
-        if (v.id == visitorId) v.copyWith(exitTime: now, vehicleExitTime: v.hasVehicle ? now : null, clearVehicleExit: !v.hasVehicle) else v,
+        if (v.id == visitorId)
+          v.copyWith(
+              exitTime: now,
+              vehicleExitTime: v.hasVehicle ? now : null,
+              clearVehicleExit: !v.hasVehicle)
+        else
+          v,
     ];
     _notify();
   }
@@ -165,7 +181,8 @@ class GateStore extends ChangeNotifier {
   // ---------------------------------------------------------------- blacklist
 
   /// Web `isBlacklisted(phone, vehicleNumber)`.
-  bool isBlacklisted({String? phone, String? vehicleNumber}) => isBlacklistedIn(blacklist, phone: phone, vehicleNumber: vehicleNumber);
+  bool isBlacklisted({String? phone, String? vehicleNumber}) =>
+      isBlacklistedIn(blacklist, phone: phone, vehicleNumber: vehicleNumber);
 
   Future<void> addToBlacklist({
     required String type,
@@ -236,7 +253,8 @@ class GateStore extends ChangeNotifier {
     blacklist = const [];
     flats = const [];
     members = const [];
-    visitorsLoaded = vehiclesLoaded = blacklistLoaded = flatsLoaded = membersLoaded = false;
+    visitorsLoaded =
+        vehiclesLoaded = blacklistLoaded = flatsLoaded = membersLoaded = false;
     _initial = null;
     _notify();
   }
