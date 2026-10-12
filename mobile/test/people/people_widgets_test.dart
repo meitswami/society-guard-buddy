@@ -11,6 +11,7 @@ import 'package:kutumbika_mobile/features/admin/people/admin_parking_module.dart
 import 'package:kutumbika_mobile/features/admin/people/admin_residents_module.dart';
 import 'package:kutumbika_mobile/features/admin/people/export/residents_pdf.dart';
 import 'package:kutumbika_mobile/features/admin/people/export/society_letterhead.dart';
+import 'package:kutumbika_mobile/features/admin/people/flat360/flat360_models.dart';
 import 'package:kutumbika_mobile/features/admin/people/flat360/flat360_panel.dart';
 import 'package:kutumbika_mobile/features/shared/directory/directory_models.dart';
 import 'package:kutumbika_mobile/features/shared/directory/directory_view.dart';
