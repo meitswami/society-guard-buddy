@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ArrowRight, Building2, Shield, Sparkles } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { LoginFooter } from '@/components/LoginFooter';
-import { fetchActiveSocietiesByName, type LoginSocietyRow } from '@/lib/societiesLogin';
+import type { LoginSocietyRow } from '@/lib/societiesLogin';
+import { useLoginSocieties } from '@/hooks/useLoginSocieties';
+import SocietyListStatus from '@/components/SocietyListStatus';
 import { Link } from 'react-router-dom';
 
 interface Props {
@@ -15,24 +17,8 @@ interface Props {
 
 const SocietyLoginGate = ({ onContinue, onSuperadmin }: Props) => {
   const { t } = useLanguage();
-  const [societies, setSocieties] = useState<LoginSocietyRow[]>([]);
+  const { societies, loading, error, reload } = useLoginSocieties();
   const [selectedId, setSelectedId] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const list = await fetchActiveSocietiesByName();
-      if (!cancelled) {
-        setSocieties(list);
-        setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const selected = societies.find((s) => s.id === selectedId);
 
@@ -72,6 +58,7 @@ const SocietyLoginGate = ({ onContinue, onSuperadmin }: Props) => {
               ))}
             </select>
           </div>
+          <SocietyListStatus loading={loading} error={error} count={societies.length} onRetry={() => void reload()} />
           <button
             type="button"
             className="btn-primary mt-1"

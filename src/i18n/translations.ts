@@ -61,6 +61,12 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.footerAbout': { en: 'About', hi: 'परिचय' },
   'login.selectSociety': { en: 'Select your society', hi: 'अपनी सोसाइटी चुनें' },
   'login.societyPlaceholder': { en: 'Choose society…', hi: 'सोसाइटी चुनें…' },
+  'login.societiesLoadFailed': {
+    en: 'Could not load societies. Check your internet connection and try again.',
+    hi: 'सोसाइटी सूची लोड नहीं हो पाई। इंटरनेट जाँचें और फिर से कोशिश करें।',
+  },
+  'login.societiesEmpty': { en: 'No active societies found.', hi: 'कोई सक्रिय सोसाइटी नहीं मिली।' },
+  'login.retry': { en: 'Retry', hi: 'फिर से' },
   'login.continueToLogin': { en: 'Continue to login', hi: 'प्रवेश पर जाएँ' },
   'login.superadminPlatform': { en: 'Platform superadmin login', hi: 'मंच मुख्य प्रशासक प्रवेश' },
   'login.createSocietyCta': { en: 'New society? Create & pay ₹8,500', hi: 'नई सोसाइटी? बनाएँ और ₹8,500 भुगतान करें' },
