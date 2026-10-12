@@ -67,7 +67,9 @@ class _MandatoryPasswordFormState extends State<_MandatoryPasswordForm> {
       return err(context.tr('Enter new password and confirmation', 'नया कूटशब्द और पुष्टि दर्ज करें'));
     }
     if (_new.text != _confirm.text) return err(context.tr('Passwords do not match', 'कूटशब्द मेल नहीं खाते'));
-    if (_new.text.length < 4) return err(context.tr('Password must be at least 4 characters', 'कूटशब्द कम से कम 4 अक्षर का होना चाहिए'));
+    if (_new.text.length < 4) {
+      return err(context.tr('Password must be at least 4 characters', 'कूटशब्द कम से कम 4 अक्षर का होना चाहिए'));
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -75,7 +77,9 @@ class _MandatoryPasswordFormState extends State<_MandatoryPasswordForm> {
     try {
       await const ResidentRepository().setFlatPassword(flatId: widget.session.resident.flatId, password: _new.text);
       if (!mounted) return;
-      AppFeedback.toast(context, context.tr('Password set for all flatmates', 'सभी फ्लैट सदस्यों के लिए कूटशब्द सेट हुआ'), tone: BadgeTone.success);
+      AppFeedback.toast(
+          context, context.tr('Password set for all flatmates', 'सभी फ्लैट सदस्यों के लिए कूटशब्द सेट हुआ'),
+          tone: BadgeTone.success);
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
@@ -98,17 +102,24 @@ class _MandatoryPasswordFormState extends State<_MandatoryPasswordForm> {
             child: CardSection(
               padding: const EdgeInsets.all(20),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-                Text(context.t('resident.mandatoryPasswordTitle'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                Text(context.t('resident.mandatoryPasswordTitle'),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 Text(context.t('resident.mandatoryPasswordSubtitle'), style: AppText.caption(context)),
                 const SizedBox(height: 8),
-                Text(context.t('resident.mandatoryPasswordNoCurrent'), style: AppText.tiny(context).copyWith(fontSize: 11)),
+                Text(context.t('resident.mandatoryPasswordNoCurrent'),
+                    style: AppText.tiny(context).copyWith(fontSize: 11)),
                 const SizedBox(height: 4),
-                Text(context.t('resident.mandatoryPasswordBioHint'), style: AppText.tiny(context).copyWith(fontSize: 11)),
+                Text(context.t('resident.mandatoryPasswordBioHint'),
+                    style: AppText.tiny(context).copyWith(fontSize: 11)),
                 const SizedBox(height: 16),
                 AppTextField(controller: _new, label: context.t('resident.mandatoryPasswordNew'), obscure: true),
                 const SizedBox(height: 12),
-                AppTextField(controller: _confirm, label: context.t('resident.mandatoryPasswordConfirm'), obscure: true, onSubmitted: (_) => _save()),
+                AppTextField(
+                    controller: _confirm,
+                    label: context.t('resident.mandatoryPasswordConfirm'),
+                    obscure: true,
+                    onSubmitted: (_) => _save()),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
                   Text(_error!, style: TextStyle(fontSize: 12, color: context.tokens.destructive)),

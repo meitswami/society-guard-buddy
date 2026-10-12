@@ -64,7 +64,8 @@ class ResidentVehiclesTabState extends State<ResidentVehiclesTab> {
       return;
     }
     if (_type.isEmpty) {
-      AppFeedback.toast(context, context.tr('Please select a vehicle type', 'कृपया वाहन का प्रकार चुनें'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.tr('Please select a vehicle type', 'कृपया वाहन का प्रकार चुनें'),
+          tone: BadgeTone.alert);
       return;
     }
     final r = widget.session.resident;
@@ -107,7 +108,9 @@ class ResidentVehiclesTabState extends State<ResidentVehiclesTab> {
     try {
       await _repo.deleteVehicle(id: v.id, flatId: widget.session.resident.flatId);
       if (!mounted) return;
-      await AppFeedback.success(context, title: context.tr('Removed!', 'हटा दिया!'), message: context.tr('Vehicle removed successfully', 'वाहन सफलतापूर्वक हटाया गया'));
+      await AppFeedback.success(context,
+          title: context.tr('Removed!', 'हटा दिया!'),
+          message: context.tr('Vehicle removed successfully', 'वाहन सफलतापूर्वक हटाया गया'));
       await reload();
     } catch (e) {
       if (mounted) AppFeedback.toast(context, '$e', tone: BadgeTone.alert);
@@ -134,7 +137,8 @@ class ResidentVehiclesTabState extends State<ResidentVehiclesTab> {
         ),
         ListLabel(
           context.tr('My Vehicles (${_vehicles.length})', 'मेरे वाहन (${_vehicles.length})'),
-          trailing: TintAddButton(label: context.tr('Add', 'जोड़ें'), solid: true, onTap: () => setState(() => _showForm = true)),
+          trailing: TintAddButton(
+              label: context.tr('Add', 'जोड़ें'), solid: true, onTap: () => setState(() => _showForm = true)),
         ),
         if (_showForm)
           CardSection(
@@ -158,9 +162,14 @@ class ResidentVehiclesTabState extends State<ResidentVehiclesTab> {
               ),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: AppButton(label: context.tr('Add Vehicle', 'वाहन जोड़ें'), loading: _saving, onPressed: _add)),
+                Expanded(
+                    child:
+                        AppButton(label: context.tr('Add Vehicle', 'वाहन जोड़ें'), loading: _saving, onPressed: _add)),
                 const SizedBox(width: 8),
-                AppButton.secondary(label: context.t('common.cancel'), expand: false, onPressed: () => setState(() => _showForm = false)),
+                AppButton.secondary(
+                    label: context.t('common.cancel'),
+                    expand: false,
+                    onPressed: () => setState(() => _showForm = false)),
               ]),
             ]),
           ),
@@ -176,7 +185,8 @@ class ResidentVehiclesTabState extends State<ResidentVehiclesTab> {
               Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(color: AppTokens.tint(t.primary, 0.1), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+                decoration: BoxDecoration(
+                    color: AppTokens.tint(t.primary, 0.1), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
                 child: Icon(Icons.directions_car, size: 20, color: t.primary),
               ),
               const SizedBox(width: 12),

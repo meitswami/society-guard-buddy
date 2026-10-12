@@ -35,23 +35,38 @@ void main() {
   group('storage key (web tourStorageKey)', () {
     test('role + encodeURIComponent(userId)', () {
       expect(tourStorageKey('guard', 'G001'), 'sgb.tour.v1.done:guard:G001');
-      expect(tourStorageKey('resident', 'a b/c'), 'sgb.tour.v1.done:resident:a%20b%2Fc');
-      expect(tourStorageKey('admin', "x!~*'()"), "sgb.tour.v1.done:admin:x!~*'()");
+      expect(tourStorageKey('resident', 'a b/c'),
+          'sgb.tour.v1.done:resident:a%20b%2Fc');
+      expect(
+          tourStorageKey('admin', "x!~*'()"), "sgb.tour.v1.done:admin:x!~*'()");
     });
   });
 
   group('chapters per role', () {
     test('guard / resident / superadmin chapters', () {
-      expect(getTourChapters('guard').map((c) => c.id), ['welcome', 'entries', 'safety']);
+      expect(getTourChapters('guard').map((c) => c.id),
+          ['welcome', 'entries', 'safety']);
       expect(flattenChapters(getTourChapters('guard')), hasLength(9));
-      expect(getTourChapters('resident').map((c) => c.id), ['welcome', 'gate', 'household', 'community']);
+      expect(getTourChapters('resident').map((c) => c.id),
+          ['welcome', 'gate', 'household', 'community']);
       expect(flattenChapters(getTourChapters('resident')), hasLength(10));
-      expect(getTourChapters('superadmin').map((c) => c.id), ['welcome', 'access']);
+      expect(getTourChapters('superadmin').map((c) => c.id),
+          ['welcome', 'access']);
     });
 
     test('full admin sees every admin chapter', () {
       final ch = getTourChapters('admin', AdminPanelPermissions.full);
-      expect(ch.map((c) => c.id), ['welcome', 'guards', 'residents', 'geofence', 'finance', 'community', 'ops', 'reports', 'security']);
+      expect(ch.map((c) => c.id), [
+        'welcome',
+        'guards',
+        'residents',
+        'geofence',
+        'finance',
+        'community',
+        'ops',
+        'reports',
+        'security'
+      ]);
       expect(ch.firstWhere((c) => c.id == 'community').steps, hasLength(6));
     });
 
@@ -65,9 +80,11 @@ void main() {
       final ch = getTourChapters('admin', p);
       expect(ch.map((c) => c.id), ['welcome', 'finance', 'ops', 'security']);
       final finance = ch.firstWhere((c) => c.id == 'finance');
-      expect(finance.steps.map((s) => s.titleKey), ['tour.admin.fn1.title'], reason: 'donations step hidden');
+      expect(finance.steps.map((s) => s.titleKey), ['tour.admin.fn1.title'],
+          reason: 'donations step hidden');
       final ops = ch.firstWhere((c) => c.id == 'ops');
-      expect(ops.steps.map((s) => s.titleKey), ['tour.admin.op5.title'], reason: 'only the directory step');
+      expect(ops.steps.map((s) => s.titleKey), ['tour.admin.op5.title'],
+          reason: 'only the directory step');
       final sec = ch.firstWhere((c) => c.id == 'security');
       expect(sec.steps, hasLength(2));
     });
@@ -86,7 +103,8 @@ void main() {
       expect(tourAdminTabAllowed('overview', none), isTrue);
       expect(tourAdminTabAllowed('tour', none), isTrue);
       expect(tourAdminTabAllowed('guards', none), isFalse);
-      expect(tourAdminTabAllowed('nonsense', AdminPanelPermissions.full), isFalse);
+      expect(
+          tourAdminTabAllowed('nonsense', AdminPanelPermissions.full), isFalse);
     });
 
     test('splits allowed by events or splits', () {
@@ -106,11 +124,14 @@ void main() {
   group('first-login steps', () {
     test('guard / resident / superadmin: welcome step + explore step', () {
       final g = getFirstLoginSteps('guard');
-      expect(g.map((s) => s.titleKey), ['tour.guard.w1.title', 'tour.first.guard.more.title']);
+      expect(g.map((s) => s.titleKey),
+          ['tour.guard.w1.title', 'tour.first.guard.more.title']);
       final r = getFirstLoginSteps('resident');
-      expect(r.map((s) => s.titleKey), ['tour.res.r1.title', 'tour.first.res.more.title']);
+      expect(r.map((s) => s.titleKey),
+          ['tour.res.r1.title', 'tour.first.res.more.title']);
       final s = getFirstLoginSteps('superadmin');
-      expect(s.map((x) => x.titleKey), ['tour.super.s1.title', 'tour.first.super.more.title']);
+      expect(s.map((x) => x.titleKey),
+          ['tour.super.s1.title', 'tour.first.super.more.title']);
     });
 
     test('admin: the whole welcome chapter + explore', () {

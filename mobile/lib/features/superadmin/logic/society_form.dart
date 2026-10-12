@@ -4,7 +4,8 @@ import 'js_compat.dart';
 /// Web `TriState` (`'' | 'yes' | 'no'`) for optional yes/no society facts.
 enum TriState { unset, yes, no }
 
-TriState boolToTri(bool? v) => v == null ? TriState.unset : (v ? TriState.yes : TriState.no);
+TriState boolToTri(bool? v) =>
+    v == null ? TriState.unset : (v ? TriState.yes : TriState.no);
 
 bool? triToBool(TriState v) => v == TriState.unset ? null : v == TriState.yes;
 
@@ -139,9 +140,14 @@ SocietyFormData societyToForm(SocietyFormSource s) => SocietyFormData(
       contactPhone: s.contactPhone ?? '',
       logoUrl: s.logoUrl ?? '',
       letterheadUrl: s.letterheadUrl ?? '',
-      letterheadMode: s.letterheadMode == 'image' || s.letterheadMode == 'stationery' ? s.letterheadMode! : 'auto',
-      letterheadTopMm: s.letterheadTopMm != null ? _numText(s.letterheadTopMm!) : '40',
-      letterheadBottomMm: s.letterheadBottomMm != null ? _numText(s.letterheadBottomMm!) : '18',
+      letterheadMode:
+          s.letterheadMode == 'image' || s.letterheadMode == 'stationery'
+              ? s.letterheadMode!
+              : 'auto',
+      letterheadTopMm:
+          s.letterheadTopMm != null ? _numText(s.letterheadTopMm!) : '40',
+      letterheadBottomMm:
+          s.letterheadBottomMm != null ? _numText(s.letterheadBottomMm!) : '18',
       totalFlats: s.totalFlats != null ? '${s.totalFlats}' : '',
       totalFloors: s.totalFloors != null ? '${s.totalFloors}' : '',
       blocksCsv: (s.blockNames ?? const []).join(', '),
@@ -199,7 +205,8 @@ Map<String, dynamic> buildSocietyBaseRow(SocietyFormData sf) {
     'block_names': blockNamesFromCsv(sf.blocksCsv),
     'terrace_accessible': triToBool(sf.terrace),
     'has_basement': triToBool(sf.basement),
-    'basement_usable_for_residents': hasBasement ? triToBool(sf.basementUsable) : null,
+    'basement_usable_for_residents':
+        hasBasement ? triToBool(sf.basementUsable) : null,
     'flats_per_floor': parseIntOrNull(sf.flatsPerFloor),
     'flat_series_start': _blankToNull(sf.flatSeriesFrom),
     'flat_series_end': _blankToNull(sf.flatSeriesTo),
@@ -231,6 +238,7 @@ String makeReferralCode(String name, String societyId) {
       .join();
   final letters = words.length > 6 ? words.substring(0, 6) : words;
   final compact = societyId.replaceAll('-', '');
-  final suffix = (compact.length > 6 ? compact.substring(0, 6) : compact).toUpperCase();
+  final suffix =
+      (compact.length > 6 ? compact.substring(0, 6) : compact).toUpperCase();
   return '${letters.isEmpty ? 'SOC' : letters}-$suffix';
 }

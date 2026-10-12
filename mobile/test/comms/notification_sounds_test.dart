@@ -3,12 +3,14 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kutumbika_mobile/features/comms/data/notification_sounds.dart';
 
-String _ascii(Uint8List b, int start, int len) => String.fromCharCodes(b.sublist(start, start + len));
+String _ascii(Uint8List b, int start, int len) =>
+    String.fromCharCodes(b.sublist(start, start + len));
 
 void main() {
   group('presets (web NOTIFICATION_SOUND_PRESETS)', () {
     test('ids in web order', () {
-      expect(kNotificationSoundPresets.map((p) => p.id), ['digital', 'chime', 'melody', 'bell', 'siren', 'custom']);
+      expect(kNotificationSoundPresets.map((p) => p.id),
+          ['digital', 'chime', 'melody', 'bell', 'siren', 'custom']);
     });
 
     test('tone schedules match playPresetNotificationSound', () {
@@ -17,8 +19,10 @@ void main() {
         ToneSpec(70, 900, 90, ToneWave.square, 0.06),
       ]);
       expect(presetTones('chime').map((t) => t.startMs), [0, 90]);
-      expect(presetTones('melody').map((t) => t.frequency), [523, 659, 784, 1047]);
-      expect(presetTones('bell').every((t) => t.wave == ToneWave.triangle), isTrue);
+      expect(
+          presetTones('melody').map((t) => t.frequency), [523, 659, 784, 1047]);
+      expect(presetTones('bell').every((t) => t.wave == ToneWave.triangle),
+          isTrue);
       expect(presetTones('siren').map((t) => t.startMs), [0, 90, 180, 270]);
       expect(presetTones('custom'), isEmpty);
       expect(presetTones('unknown-key'), presetTones('digital'));
@@ -41,7 +45,8 @@ void main() {
       expect(planNotificationAlert('CHIME').preset, 'chime');
       expect(planNotificationAlert(null).preset, 'digital');
       expect(planNotificationAlert('').preset, 'digital');
-      expect(planNotificationAlert('siren', 'https://ignored').customUrl, isNull);
+      expect(
+          planNotificationAlert('siren', 'https://ignored').customUrl, isNull);
     });
   });
 
@@ -64,7 +69,8 @@ void main() {
       expect(bd.getUint16(22, Endian.little), 1, reason: 'mono');
       expect(bd.getUint32(24, Endian.little), sr);
       expect(bd.getUint16(34, Endian.little), 16);
-      final frames = (toneScheduleLengthMs(presetTones('chime')) * sr / 1000).ceil();
+      final frames =
+          (toneScheduleLengthMs(presetTones('chime')) * sr / 1000).ceil();
       expect(bd.getUint32(40, Endian.little), frames * 2);
       expect(wav.length, 44 + frames * 2);
       expect(bd.getUint32(4, Endian.little), wav.length - 8);
@@ -88,7 +94,8 @@ void main() {
     });
 
     test('encodeWav16 wraps raw samples', () {
-      final wav = encodeWav16(Int16List.fromList([0, 1000, -1000]), sampleRate: 16000);
+      final wav =
+          encodeWav16(Int16List.fromList([0, 1000, -1000]), sampleRate: 16000);
       final bd = ByteData.sublistView(wav);
       expect(wav.length, 44 + 6);
       expect(bd.getInt16(46, Endian.little), 1000);

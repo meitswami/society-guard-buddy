@@ -14,9 +14,30 @@ const int kMaxNotificationVideoBytes = 50 * 1024 * 1024;
 /// Society alert sound upload limit (web: 2 MB, `audio/*`).
 const int kMaxSocietySoundBytes = 2 * 1024 * 1024;
 
-const _imageExt = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic', 'heif', 'svg'};
+const _imageExt = {
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+  'bmp',
+  'heic',
+  'heif',
+  'svg'
+};
 const _videoExt = {'mp4', 'webm', 'mov', 'm4v', '3gp', 'mkv', 'avi', 'qt'};
-const _audioExt = {'mp3', 'wav', 'ogg', 'oga', 'm4a', 'aac', 'flac', 'opus', 'amr', 'weba'};
+const _audioExt = {
+  'mp3',
+  'wav',
+  'ogg',
+  'oga',
+  'm4a',
+  'aac',
+  'flac',
+  'opus',
+  'amr',
+  'weba'
+};
 
 String _ext(String name) {
   final i = name.lastIndexOf('.');
@@ -107,7 +128,8 @@ String? mediaSizeViolation(String kind, int bytes) {
 }
 
 /// Name shown on attachment chips: first 18 characters + `…` (web).
-String attachmentChipLabel(String name, {int max = 18}) => name.length > max ? '${name.substring(0, max)}…' : name;
+String attachmentChipLabel(String name, {int max = 18}) =>
+    name.length > max ? '${name.substring(0, max)}…' : name;
 
 /// Web compose validation. Returns a comms string key for the error, or null when ok.
 String? validateCompose({
@@ -120,16 +142,20 @@ String? validateCompose({
   String? societyCustomSoundUrl,
 }) {
   if (title.isEmpty || message.isEmpty) return 'comms.notif.fillTitleMessage';
-  if (mode == NotificationTargetMode.flat && selectedFlats == 0) return 'comms.notif.selectOneFlat';
-  if (mode == NotificationTargetMode.user && selectedResidents == 0) return 'comms.notif.selectOneResident';
-  if (alertSoundKey == 'custom' && (societyCustomSoundUrl ?? '').trim().isEmpty) {
+  if (mode == NotificationTargetMode.flat && selectedFlats == 0)
+    return 'comms.notif.selectOneFlat';
+  if (mode == NotificationTargetMode.user && selectedResidents == 0)
+    return 'comms.notif.selectOneResident';
+  if (alertSoundKey == 'custom' &&
+      (societyCustomSoundUrl ?? '').trim().isEmpty) {
     return 'comms.notif.customSoundMissing';
   }
   return null;
 }
 
 class SelectedResident {
-  const SelectedResident({required this.id, required this.name, required this.flatNumber});
+  const SelectedResident(
+      {required this.id, required this.name, required this.flatNumber});
 
   final String id;
   final String name;
@@ -176,7 +202,8 @@ NotificationSendPlan buildNotificationSendPlan({
     targetType = 'flat';
     flats = List.of(selectedFlats);
     targetId = selectedFlats.join(',');
-  } else if (mode == NotificationTargetMode.user && selectedResidents.isNotEmpty) {
+  } else if (mode == NotificationTargetMode.user &&
+      selectedResidents.isNotEmpty) {
     targetType = 'user';
     userIds = selectedResidents.map((r) => r.id).toList();
     targetId = selectedResidents.map((r) => r.name).join(',');
@@ -216,7 +243,8 @@ NotificationSendPlan buildNotificationSendPlan({
     'media_items': mediaJson,
     'society_id': societyId,
     'sound_key': effectiveSoundKey,
-    'sound_custom_url': (effectiveSoundKey == 'custom' ? soundCustomUrl : null) ?? '',
+    'sound_custom_url':
+        (effectiveSoundKey == 'custom' ? soundCustomUrl : null) ?? '',
   };
 
   return NotificationSendPlan(
@@ -229,11 +257,14 @@ NotificationSendPlan buildNotificationSendPlan({
 }
 
 /// Directory despatch target (web `dispatchDirectoryChannels` `target`).
-Map<String, dynamic> directoryTargetFields(NotificationTargetMode mode, {List<String> flats = const [], List<String> userIds = const []}) {
+Map<String, dynamic> directoryTargetFields(NotificationTargetMode mode,
+    {List<String> flats = const [], List<String> userIds = const []}) {
   return {
     'target_type': mode.name,
-    'target_flat_numbers': mode == NotificationTargetMode.flat ? flats : const <String>[],
-    'target_ids': mode == NotificationTargetMode.user ? userIds : const <String>[],
+    'target_flat_numbers':
+        mode == NotificationTargetMode.flat ? flats : const <String>[],
+    'target_ids':
+        mode == NotificationTargetMode.user ? userIds : const <String>[],
   };
 }
 
@@ -263,7 +294,9 @@ NotificationSendPlan? buildRecordNotificationPlan({
   String? soundCustomUrl,
 }) {
   if (audience == RecordNotifyAudience.none) return null;
-  final media = (mediaItemsFromReceiptUrl(billUrl) ?? const []).map((m) => m.toJson()).toList();
+  final media = (mediaItemsFromReceiptUrl(billUrl) ?? const [])
+      .map((m) => m.toJson())
+      .toList();
   final rowBase = <String, dynamic>{
     'title': title,
     'message': message,
@@ -299,10 +332,17 @@ NotificationSendPlan? buildRecordNotificationPlan({
   for (final f in selectedFlatNumbers) {
     if (f.isNotEmpty && !flats.contains(f)) flats.add(f);
   }
-  if (flats.isEmpty) return const NotificationSendPlan(rows: [], pushBody: {}, targetFlatNumbers: [], targetUserIds: [], effectiveSoundKey: 'digital');
+  if (flats.isEmpty)
+    return const NotificationSendPlan(
+        rows: [],
+        pushBody: {},
+        targetFlatNumbers: [],
+        targetUserIds: [],
+        effectiveSoundKey: 'digital');
   return NotificationSendPlan(
     rows: [
-      for (final flat in flats) {...rowBase, 'target_type': 'flat', 'target_id': flat},
+      for (final flat in flats)
+        {...rowBase, 'target_type': 'flat', 'target_id': flat},
     ],
     pushBody: {
       'title': title,

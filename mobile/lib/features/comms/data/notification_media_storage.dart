@@ -10,7 +10,8 @@ import '../../../core/supabase/db.dart';
 const String kNotificationMediaBucket = 'notification-media';
 
 /// Web `sanitizeStorageFileName`: every character outside `[A-Za-z0-9_.-]` becomes `_`.
-String sanitizeStorageFileName(String name) => name.replaceAll(RegExp(r'[^\w.-]'), '_');
+String sanitizeStorageFileName(String name) =>
+    name.replaceAll(RegExp(r'[^\w.-]'), '_');
 
 /// Upload bytes to `notification-media` and return the public URL (web
 /// `uploadToNotificationMedia`). Throws [StorageException] on failure.
@@ -25,7 +26,8 @@ Future<String> uploadToNotificationMedia(
   await bucket.uploadBinary(
     path,
     bytes,
-    fileOptions: FileOptions(cacheControl: cacheControl, upsert: upsert, contentType: contentType),
+    fileOptions: FileOptions(
+        cacheControl: cacheControl, upsert: upsert, contentType: contentType),
   );
   return bucket.getPublicUrl(path);
 }

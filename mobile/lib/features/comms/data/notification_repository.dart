@@ -12,7 +12,10 @@ import 'notification_models.dart';
 
 /// Recipients for the compose form (flats + residents + primary member names).
 class NotificationTargets {
-  const NotificationTargets({this.flats = const [], this.residents = const [], this.primaryByFlatId = const {}});
+  const NotificationTargets(
+      {this.flats = const [],
+      this.residents = const [],
+      this.primaryByFlatId = const {}});
 
   /// `{id, flat_number, owner_name}` ordered by flat number.
   final List<Map<String, dynamic>> flats;
@@ -37,36 +40,52 @@ class NotificationRepository {
   Future<List<AppNotification>> loadNotifications({String? societyId}) async {
     if (!dbReady) return const [];
     var q = db.from('notifications').select('*');
-    if (societyId != null && societyId.isNotEmpty) q = q.eq('society_id', societyId);
+    if (societyId != null && societyId.isNotEmpty)
+      q = q.eq('society_id', societyId);
     final data = await q.order('created_at', ascending: false).limit(150);
     return rowsOf(data).map(AppNotification.fromRow).toList();
   }
 
   Future<Set<String>> loadDismissedIds(String residentId) async {
     if (!dbReady || residentId.isEmpty) return <String>{};
-    final data = await db.from('notification_dismissals').select('notification_id').eq('resident_id', residentId);
-    return rowsOf(data).map((r) => r['notification_id']?.toString() ?? '').where((s) => s.isNotEmpty).toSet();
+    final data = await db
+        .from('notification_dismissals')
+        .select('notification_id')
+        .eq('resident_id', residentId);
+    return rowsOf(data)
+        .map((r) => r['notification_id']?.toString() ?? '')
+        .where((s) => s.isNotEmpty)
+        .toSet();
   }
 
   Future<void> markRead(String id) async {
-    await db.from('notifications').update({'is_read': true, 'read_at': DateTime.now().toUtc().toIso8601String()}).eq('id', id);
+    await db.from('notifications').update({
+      'is_read': true,
+      'read_at': DateTime.now().toUtc().toIso8601String()
+    }).eq('id', id);
   }
 
   /// Resident / no-society "mark all": the visible unread ids, with `read_at`.
   Future<void> markIdsRead(List<String> ids) async {
     if (ids.isEmpty) return;
-    await db
-        .from('notifications')
-        .update({'is_read': true, 'read_at': DateTime.now().toUtc().toIso8601String()}).inFilter('id', ids);
+    await db.from('notifications').update({
+      'is_read': true,
+      'read_at': DateTime.now().toUtc().toIso8601String()
+    }).inFilter('id', ids);
   }
 
   /// Admin "Mark all read": every unread row of the society (web sets only `is_read`).
   Future<void> markSocietyRead(String societyId) async {
-    await db.from('notifications').update({'is_read': true}).eq('society_id', societyId).eq('is_read', false);
+    await db
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('society_id', societyId)
+        .eq('is_read', false);
   }
 
   /// Rows on or before [cutoffIso] for "Clear till date".
-  Future<List<Map<String, dynamic>>> loadForClear(String societyId, String cutoffIso) async {
+  Future<List<Map<String, dynamic>>> loadForClear(
+      String societyId, String cutoffIso) async {
     final data = await db
         .from('notifications')
         .select('id, target_type, target_id, created_at')
@@ -80,7 +99,8 @@ class NotificationRepository {
     if (ids.isEmpty) return;
     await db.from('notification_dismissals').upsert(
       [
-        for (final id in ids) {'notification_id': id, 'resident_id': residentId},
+        for (final id in ids)
+          {'notification_id': id, 'resident_id': residentId},
       ],
       onConflict: 'notification_id,resident_id',
       ignoreDuplicates: true,
@@ -102,34 +122,59 @@ class NotificationRepository {
 
   Future<String?> fetchSocietySoundUrl(String societyId) async {
     if (!dbReady || societyId.isEmpty) return null;
-    final row = await db.from('societies').select('admin_push_sound_url').eq('id', societyId).maybeSingle();
+    final row = await db
+        .from('societies')
+        .select('admin_push_sound_url')
+        .eq('id', societyId)
+        .maybeSingle();
     final url = row?['admin_push_sound_url']?.toString().trim() ?? '';
     return url.isEmpty ? null : url;
   }
 
   /// Web `fetchSocietyNotificationSound`.
-  Future<SocietyNotificationSound> fetchSocietyNotificationSound(String? societyId) async {
-    if (societyId == null || societyId.isEmpty) return const SocietyNotificationSound(soundKey: 'digital');
+  Future<SocietyNotificationSound> fetchSocietyNotificationSound(
+      String? societyId) async {
+    if (societyId == null || societyId.isEmpty)
+      return const SocietyNotificationSound(soundKey: 'digital');
     try {
       final url = await fetchSocietySoundUrl(societyId);
-      if (url != null) return SocietyNotificationSound(soundKey: 'custom', soundCustomUrl: url);
+      if (url != null)
+        return SocietyNotificationSound(
+            soundKey: 'custom', soundCustomUrl: url);
     } catch (_) {}
     return const SocietyNotificationSound(soundKey: 'digital');
   }
 
   Future<void> updateSocietySoundUrl(String societyId, String? url) async {
-    await db.from('societies').update({'admin_push_sound_url': url}).eq('id', societyId);
+    await db
+        .from('societies')
+        .update({'admin_push_sound_url': url}).eq('id', societyId);
   }
 
   /// Compose recipients (web effect after `loadNotifications`).
   Future<NotificationTargets> loadTargets(String societyId) async {
-    final flatsData = await db.from('flats').select('id, flat_number, owner_name').eq('society_id', societyId).order('flat_number');
+    final flatsData = await db
+        .from('flats')
+        .select('id, flat_number, owner_name')
+        .eq('society_id', societyId)
+        .order('flat_number');
     final flats = rowsOf(flatsData);
-    final flatIds = flats.map((f) => f['id']?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+    final flatIds = flats
+        .map((f) => f['id']?.toString() ?? '')
+        .where((s) => s.isNotEmpty)
+        .toList();
     if (flatIds.isEmpty) return NotificationTargets(flats: flats);
     final results = await Future.wait([
-      db.from('resident_users').select('id, name, flat_number, flat_id').inFilter('flat_id', flatIds).order('name'),
-      db.from('members').select('flat_id, name').eq('is_primary', true).inFilter('flat_id', flatIds),
+      db
+          .from('resident_users')
+          .select('id, name, flat_number, flat_id')
+          .inFilter('flat_id', flatIds)
+          .order('name'),
+      db
+          .from('members')
+          .select('flat_id, name')
+          .eq('is_primary', true)
+          .inFilter('flat_id', flatIds),
     ]);
     final primary = <String, String>{};
     for (final r in rowsOf(results[1])) {
@@ -137,7 +182,8 @@ class NotificationRepository {
       final name = r['name']?.toString().trim() ?? '';
       if (fid != null && name.isNotEmpty) primary[fid] = name;
     }
-    return NotificationTargets(flats: flats, residents: rowsOf(results[0]), primaryByFlatId: primary);
+    return NotificationTargets(
+        flats: flats, residents: rowsOf(results[0]), primaryByFlatId: primary);
   }
 
   /// Inserts rows one at a time (web inserts each flat row separately).
@@ -148,7 +194,8 @@ class NotificationRepository {
   }
 
   /// `send-push-notification` (errors are returned in the map or rethrown for the caller).
-  Future<Map<String, dynamic>?> invokePush(Map<String, dynamic> body) => invokeFunction('send-push-notification', body);
+  Future<Map<String, dynamic>?> invokePush(Map<String, dynamic> body) =>
+      invokeFunction('send-push-notification', body);
 
   /// Best-effort push (web `invokePushNotification`): fills the society sound when the
   /// caller did not pass one; never throws.
@@ -156,7 +203,9 @@ class NotificationRepository {
     try {
       final hasSound = body['sound_key'] != null;
       final sound = hasSound
-          ? SocietyNotificationSound(soundKey: body['sound_key'].toString(), soundCustomUrl: body['sound_custom_url']?.toString())
+          ? SocietyNotificationSound(
+              soundKey: body['sound_key'].toString(),
+              soundCustomUrl: body['sound_custom_url']?.toString())
           : await fetchSocietyNotificationSound(body['society_id']?.toString());
       await invokePush({
         'target_flat_numbers': const <String>[],
@@ -190,7 +239,8 @@ class NotificationRepository {
         'title': title,
         'message': message,
         'channels': {'whatsapp': whatsapp, 'email': email},
-        ...directoryTargetFields(target, flats: flatNumbers, userIds: residentUserIds),
+        ...directoryTargetFields(target,
+            flats: flatNumbers, userIds: residentUserIds),
         'image_url': imageUrl,
       });
     } catch (e) {
@@ -201,8 +251,13 @@ class NotificationRepository {
 
   /// Latest FCM token of this admin (push health check).
   Future<String?> latestAdminToken(String adminId, {String? societyId}) async {
-    var q = db.from('fcm_web_tokens').select('token, updated_at').eq('user_type', 'admin').eq('app_user_id', adminId);
-    if (societyId != null && societyId.isNotEmpty) q = q.eq('society_id', societyId);
+    var q = db
+        .from('fcm_web_tokens')
+        .select('token, updated_at')
+        .eq('user_type', 'admin')
+        .eq('app_user_id', adminId);
+    if (societyId != null && societyId.isNotEmpty)
+      q = q.eq('society_id', societyId);
     final data = await q.order('updated_at', ascending: false).limit(1);
     final rows = rowsOf(data);
     if (rows.isEmpty) return null;
@@ -254,7 +309,9 @@ class NotificationRepository {
           message: message,
           whatsapp: whatsapp,
           email: email,
-          target: audience == RecordNotifyAudience.all ? NotificationTargetMode.all : NotificationTargetMode.flat,
+          target: audience == RecordNotifyAudience.all
+              ? NotificationTargetMode.all
+              : NotificationTargetMode.flat,
           flatNumbers: plan.targetFlatNumbers,
           imageUrl: (media == null || media.isEmpty) ? null : media.first.url,
         );
@@ -268,7 +325,8 @@ class NotificationRepository {
 
   /// Realtime INSERTs on `notifications` for a society (web `useNotificationsRealtimeRevision`).
   /// Remove the returned channel with `db.removeChannel` in `dispose`.
-  RealtimeChannel? subscribeInserts(String channelName, String? societyId, void Function(Map<String, dynamic> row) onInsert) {
+  RealtimeChannel? subscribeInserts(String channelName, String? societyId,
+      void Function(Map<String, dynamic> row) onInsert) {
     if (!dbReady) return null;
     return db
         .channel(channelName)
@@ -278,14 +336,18 @@ class NotificationRepository {
           table: 'notifications',
           filter: (societyId == null || societyId.isEmpty)
               ? null
-              : PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'society_id', value: societyId),
+              : PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'society_id',
+                  value: societyId),
           callback: (payload) => onInsert(payload.newRecord),
         )
         .subscribe();
   }
 
   /// Realtime INSERTs on `notification_comments` for one notification.
-  RealtimeChannel? subscribeComments(String notificationId, VoidCallback onInsert) {
+  RealtimeChannel? subscribeComments(
+      String notificationId, VoidCallback onInsert) {
     if (!dbReady) return null;
     return db
         .channel('notif-comments-$notificationId')
@@ -293,7 +355,10 @@ class NotificationRepository {
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'notification_comments',
-          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'notification_id', value: notificationId),
+          filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'notification_id',
+              value: notificationId),
           callback: (_) => onInsert(),
         )
         .subscribe();

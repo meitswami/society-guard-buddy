@@ -29,7 +29,8 @@ enum ToneWave { sine, square, triangle, sawtooth }
 
 /// One oscillator burst: starts [startMs] after the alert begins (web `setTimeout`).
 class ToneSpec {
-  const ToneSpec(this.startMs, this.frequency, this.durationMs, this.wave, this.gain);
+  const ToneSpec(
+      this.startMs, this.frequency, this.durationMs, this.wave, this.gain);
 
   final int startMs;
   final double frequency;
@@ -50,7 +51,8 @@ class ToneSpec {
   int get hashCode => Object.hash(startMs, frequency, durationMs, wave, gain);
 
   @override
-  String toString() => 'ToneSpec($startMs, $frequency, $durationMs, $wave, $gain)';
+  String toString() =>
+      'ToneSpec($startMs, $frequency, $durationMs, $wave, $gain)';
 }
 
 /// Web `playPresetNotificationSound` schedule. `custom` → no tones (handled by URL playback);
@@ -103,15 +105,19 @@ class NotificationAlertPlan {
   final String preset;
 
   @override
-  String toString() => 'NotificationAlertPlan(customUrl: $customUrl, preset: $preset)';
+  String toString() =>
+      'NotificationAlertPlan(customUrl: $customUrl, preset: $preset)';
 }
 
 /// Web `playNotificationAlert` decision: `custom` + URL → URL; `custom` without URL →
 /// `digital`; anything else → that preset (case-insensitive, default `digital`).
-NotificationAlertPlan planNotificationAlert(String? soundKey, [String? soundCustomUrl]) {
-  final key = ((soundKey == null || soundKey.isEmpty) ? 'digital' : soundKey).toLowerCase();
+NotificationAlertPlan planNotificationAlert(String? soundKey,
+    [String? soundCustomUrl]) {
+  final key = ((soundKey == null || soundKey.isEmpty) ? 'digital' : soundKey)
+      .toLowerCase();
   final url = soundCustomUrl?.trim() ?? '';
-  if (key == 'custom' && url.isNotEmpty) return NotificationAlertPlan(customUrl: url, preset: 'digital');
+  if (key == 'custom' && url.isNotEmpty)
+    return NotificationAlertPlan(customUrl: url, preset: 'digital');
   if (key == 'custom') return const NotificationAlertPlan(preset: 'digital');
   return NotificationAlertPlan(preset: key);
 }
@@ -146,7 +152,8 @@ int toneScheduleLengthMs(List<ToneSpec> tones) {
 /// Mixes [tones] into a mono 16-bit PCM WAV. Each tone decays exponentially from its gain
 /// to 0.001 over its duration (web `exponentialRampToValueAtTime(0.001, t0 + d)`).
 /// [masterGain] lifts the quiet WebAudio levels to something audible on phone speakers.
-Uint8List synthesizeToneWav(List<ToneSpec> tones, {int sampleRate = 22050, double masterGain = 2.5}) {
+Uint8List synthesizeToneWav(List<ToneSpec> tones,
+    {int sampleRate = 22050, double masterGain = 2.5}) {
   final totalMs = toneScheduleLengthMs(tones);
   final frames = (totalMs * sampleRate / 1000).ceil();
   final mix = Float64List(frames);
@@ -180,7 +187,8 @@ Uint8List synthesizeToneWav(List<ToneSpec> tones, {int sampleRate = 22050, doubl
 }
 
 /// Wraps mono 16-bit samples in a RIFF/WAVE container.
-Uint8List encodeWav16(Int16List samples, {required int sampleRate, int channels = 1}) {
+Uint8List encodeWav16(Int16List samples,
+    {required int sampleRate, int channels = 1}) {
   final dataBytes = samples.length * 2;
   final out = ByteData(44 + dataBytes);
   void ascii(int offset, String s) {

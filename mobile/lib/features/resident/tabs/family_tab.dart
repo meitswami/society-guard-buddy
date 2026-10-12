@@ -20,6 +20,7 @@ class ResidentFamilyTab extends StatefulWidget {
 
   final SessionResident session;
   final ResidentHousehold household;
+
   /// Called after a save / delete (vehicles may have changed).
   final VoidCallback? onChanged;
 
@@ -89,7 +90,8 @@ class ResidentFamilyTabState extends State<ResidentFamilyTab> {
 
   Future<void> _delete(HouseholdMember m) async {
     if (m.isPrimary) {
-      AppFeedback.toast(context, context.tr('Cannot delete primary member', 'प्राथमिक सदस्य को हटाया नहीं जा सकता'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.tr('Cannot delete primary member', 'प्राथमिक सदस्य को हटाया नहीं जा सकता'),
+          tone: BadgeTone.alert);
       return;
     }
     if (_h.onCommittee(m)) {
@@ -113,7 +115,9 @@ class ResidentFamilyTabState extends State<ResidentFamilyTab> {
     try {
       await _repo.deleteMember(m, widget.session.resident.flatId);
       if (!mounted) return;
-      await AppFeedback.success(context, title: context.tr('Removed!', 'हटा दिया!'), message: context.tr('Member removed successfully', 'सदस्य सफलतापूर्वक हटाया गया'));
+      await AppFeedback.success(context,
+          title: context.tr('Removed!', 'हटा दिया!'),
+          message: context.tr('Member removed successfully', 'सदस्य सफलतापूर्वक हटाया गया'));
       await _h.loadMembers();
       widget.onChanged?.call();
     } catch (e) {
@@ -131,13 +135,18 @@ class ResidentFamilyTabState extends State<ResidentFamilyTab> {
       hindi: context.lang == AppLang.hi,
     );
     final ok = await ExportKit.openWhatsApp(msg, phone: m.phone);
-    if (!ok && mounted) AppFeedback.toast(context, context.tr('WhatsApp is not available', 'व्हाट्सऐप उपलब्ध नहीं है'), tone: BadgeTone.alert);
+    if (!ok && mounted) {
+      AppFeedback.toast(context, context.tr('WhatsApp is not available', 'व्हाट्सऐप उपलब्ध नहीं है'),
+          tone: BadgeTone.alert);
+    }
   }
 
   Widget _member(HouseholdMember m) {
     final t = context.tokens;
     final onCommittee = _h.onCommittee(m);
-    final canInvite = allowsResidentLogin(m.relation) && (m.phone ?? '').isNotEmpty && digitsOnly(m.phone!) != digitsOnly(widget.session.resident.phone);
+    final canInvite = allowsResidentLogin(m.relation) &&
+        (m.phone ?? '').isNotEmpty &&
+        digitsOnly(m.phone!) != digitsOnly(widget.session.resident.phone);
     final avatarProvider = residentImageProvider(m.photo);
     return CardSection(
       margin: const EdgeInsets.only(bottom: 8),
@@ -158,7 +167,10 @@ class ResidentFamilyTabState extends State<ResidentFamilyTab> {
             Text.rich(
               TextSpan(children: [
                 TextSpan(text: m.name),
-                if (m.isPrimary) TextSpan(text: '  ★ ${context.tr('Primary', 'प्राथमिक')}', style: TextStyle(fontSize: 10, color: t.primary)),
+                if (m.isPrimary)
+                  TextSpan(
+                      text: '  ★ ${context.tr('Primary', 'प्राथमिक')}',
+                      style: TextStyle(fontSize: 10, color: t.primary)),
               ]),
               style: AppText.bodyMedium(context),
               maxLines: 1,
@@ -183,7 +195,9 @@ class ResidentFamilyTabState extends State<ResidentFamilyTab> {
               onPressed: () => _invite(m),
             ),
           IconButton(
-            tooltip: m.isPrimary ? context.tr('Edit primary profile & photo', 'प्राथमिक प्रोफ़ाइल व फ़ोटो संपादित करें') : context.tr('Edit member', 'सदस्य संपादित करें'),
+            tooltip: m.isPrimary
+                ? context.tr('Edit primary profile & photo', 'प्राथमिक प्रोफ़ाइल व फ़ोटो संपादित करें')
+                : context.tr('Edit member', 'सदस्य संपादित करें'),
             visualDensity: VisualDensity.compact,
             icon: Icon(Icons.edit_outlined, size: 16, color: t.mutedForeground),
             onPressed: () => startEdit(m),
@@ -205,8 +219,12 @@ class ResidentFamilyTabState extends State<ResidentFamilyTab> {
       listenable: _h,
       builder: (context, _) {
         final members = _h.members;
-        final owners = members.where((m) => memberHouseholdGroup(householdGroup: m.householdGroup, relation: m.relation) == 'owner').toList();
-        final tenants = members.where((m) => memberHouseholdGroup(householdGroup: m.householdGroup, relation: m.relation) == 'tenant').toList();
+        final owners = members
+            .where((m) => memberHouseholdGroup(householdGroup: m.householdGroup, relation: m.relation) == 'owner')
+            .toList();
+        final tenants = members
+            .where((m) => memberHouseholdGroup(householdGroup: m.householdGroup, relation: m.relation) == 'tenant')
+            .toList();
         return PageContainer(
           onRefresh: () async {
             await Future.wait([_h.loadMembers(), _h.loadRoster()]);
@@ -214,13 +232,17 @@ class ResidentFamilyTabState extends State<ResidentFamilyTab> {
           children: [
             PageHeader(
               title: context.t('resident.family'),
-              subtitle: context.tr('Family, tenants and household staff of your flat', 'आपके फ्लैट का परिवार, किरायेदार और घरेलू कर्मचारी'),
+              subtitle: context.tr('Family, tenants and household staff of your flat',
+                  'आपके फ्लैट का परिवार, किरायेदार और घरेलू कर्मचारी'),
               icon: Icons.groups_outlined,
             ),
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(context.tr('My Family & Staff (${members.length})', 'मेरा परिवार व कर्मचारी (${members.length})').toUpperCase(),
+                  Text(
+                      context
+                          .tr('My Family & Staff (${members.length})', 'मेरा परिवार व कर्मचारी (${members.length})')
+                          .toUpperCase(),
                       style: AppText.fieldLabel(context)),
                   const SizedBox(height: 2),
                   Text(
@@ -238,7 +260,8 @@ class ResidentFamilyTabState extends State<ResidentFamilyTab> {
             if (_opening) const LinearProgressIndicator(minHeight: 2),
             if (_h.loading && members.isEmpty) const LoadingView(),
             if (_h.failed) ErrorView(onRetry: _h.loadMembers),
-            if (!_h.loading && !_h.failed && members.isEmpty) EmptyView(message: context.tr('No members added yet', 'अभी तक कोई सदस्य नहीं जोड़ा गया')),
+            if (!_h.loading && !_h.failed && members.isEmpty)
+              EmptyView(message: context.tr('No members added yet', 'अभी तक कोई सदस्य नहीं जोड़ा गया')),
             if (members.isNotEmpty) ...[
               Text(context.tr('Owner group (${owners.length})', 'मालिक समूह (${owners.length})').toUpperCase(),
                   style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.8)),

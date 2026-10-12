@@ -73,7 +73,8 @@ class ResidentThumb extends StatelessWidget {
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: onRemove,
-              child: Padding(padding: const EdgeInsets.all(3), child: Icon(Icons.close, size: 12, color: t.destructiveForeground)),
+              child: Padding(
+                  padding: const EdgeInsets.all(3), child: Icon(Icons.close, size: 12, color: t.destructiveForeground)),
             ),
           ),
         ),
@@ -96,7 +97,8 @@ class OutlineChipButton extends StatelessWidget {
     final t = context.tokens;
     return Material(
       color: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTokens.radiusSm), side: BorderSide(color: t.border)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radiusSm), side: BorderSide(color: t.border)),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTokens.radiusSm),
         onTap: onTap,
@@ -149,7 +151,8 @@ class TintAddButton extends StatelessWidget {
 
 /// Date input showing `dd/MM/yyyy`, emitting `yyyy-MM-dd` (web `DateInput`).
 class ResidentDateField extends StatelessWidget {
-  const ResidentDateField({super.key, required this.value, required this.onChanged, this.label, this.clearable = false});
+  const ResidentDateField(
+      {super.key, required this.value, required this.onChanged, this.label, this.clearable = false});
 
   final String value;
   final ValueChanged<String> onChanged;
@@ -186,7 +189,10 @@ class ResidentDateField extends StatelessWidget {
       ),
     );
     if (label == null) return field;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [FieldLabel(label!), field]);
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [FieldLabel(label!), field]);
   }
 }
 
@@ -206,7 +212,8 @@ class ResidentTimeField extends StatelessWidget {
     final picked = await showTimePicker(
       context: context,
       initialTime: initial,
-      builder: (ctx, child) => MediaQuery(data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true), child: child!),
+      builder: (ctx, child) =>
+          MediaQuery(data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true), child: child!),
     );
     if (picked != null) {
       onChanged('${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
@@ -225,7 +232,10 @@ class ResidentTimeField extends StatelessWidget {
       ),
     );
     if (label == null) return field;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [FieldLabel(label!), field]);
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [FieldLabel(label!), field]);
   }
 }
 
@@ -250,7 +260,8 @@ class ToneBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(uppercase ? label.toUpperCase() : label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: fg)),
+      child: Text(uppercase ? label.toUpperCase() : label,
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: fg)),
     );
   }
 }
@@ -274,6 +285,7 @@ class DocDraftsEditor extends StatelessWidget {
   final String title;
   final String addLabel;
   final String? emptyText;
+
   /// Tenant docs have one "Upload" (front) image.
   final bool singleSide;
 
@@ -290,12 +302,16 @@ class DocDraftsEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final indexes = [for (var i = 0; i < docs.length; i++) if (docs[i].kind == kind) i];
+    final indexes = [
+      for (var i = 0; i < docs.length; i++)
+        if (docs[i].kind == kind) i
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(children: [
-          Expanded(child: Text(title.toUpperCase(), style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w600))),
+          Expanded(
+              child: Text(title.toUpperCase(), style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w600))),
           TintAddButton(
             label: addLabel,
             onTap: () => onChanged([
@@ -391,7 +407,10 @@ Future<void> showPdfActions(
               try {
                 await ExportKit.sharePdf(bytes, filename, text: message);
               } catch (_) {
-                if (context.mounted) AppFeedback.toast(context, context.tr('Could not share PDF', 'PDF साझा नहीं हो सकी'), tone: BadgeTone.alert);
+                if (context.mounted) {
+                  AppFeedback.toast(context, context.tr('Could not share PDF', 'PDF साझा नहीं हो सकी'),
+                      tone: BadgeTone.alert);
+                }
               }
             },
           ),
@@ -403,7 +422,10 @@ Future<void> showPdfActions(
               try {
                 await ExportKit.printPdf(bytes, name: filename);
               } catch (_) {
-                if (context.mounted) AppFeedback.toast(context, context.tr('Could not open PDF', 'PDF नहीं खुल सकी'), tone: BadgeTone.alert);
+                if (context.mounted) {
+                  AppFeedback.toast(context, context.tr('Could not open PDF', 'PDF नहीं खुल सकी'),
+                      tone: BadgeTone.alert);
+                }
               }
             },
           ),

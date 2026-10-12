@@ -58,19 +58,22 @@ class SocietyLetterhead {
   final String? pincode;
   final String? contactPhone;
   final String? contactEmail;
+
   /// `letterhead_url` or `letterhead_storage_path` is set.
   final bool hasAssetReference;
   final Uint8List? logoBytes;
   final Uint8List? letterheadBytes;
 
   /// Web `letterheadAddressLine`.
-  String get addressLine => [address, [city, state].where((p) => (p ?? '').trim().isNotEmpty).join(', '), pincode]
-      .map((p) => (p ?? '').trim())
-      .where((p) => p.isNotEmpty)
-      .join(' · ');
+  String get addressLine => [
+        address,
+        [city, state].where((p) => (p ?? '').trim().isNotEmpty).join(', '),
+        pincode
+      ].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
 
   /// Web `letterheadContactLine`.
-  String get contactLine => [contactPhone, contactEmail].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
+  String get contactLine =>
+      [contactPhone, contactEmail].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty).join(' · ');
 
   double get _top => topMm > 0 ? topMm : 40;
   double get _bottom => bottomMm > 0 ? (bottomMm < 16 ? 16 : bottomMm) : 18;
@@ -182,7 +185,8 @@ Future<SocietyLetterhead?> fetchSocietyLetterhead(String societyId) async {
 Future<LetterheadContext> resolveLetterheadReportContext(String societyId, {ReportPdfMode? preferred}) async {
   final lh = await fetchSocietyLetterhead(societyId);
   if (lh == null) {
-    return const LetterheadContext(letterhead: null, mode: ReportPdfMode.plain, warning: kLetterheadNotConfiguredWarning);
+    return const LetterheadContext(
+        letterhead: null, mode: ReportPdfMode.plain, warning: kLetterheadNotConfiguredWarning);
   }
   final requested = preferred ?? lh.defaultReportFormat;
   if (requested == ReportPdfMode.letterhead && !lh.hasAssetReference && lh.mode != LetterheadMode.stationery) {
@@ -204,7 +208,8 @@ Future<Uint8List> buildLetterheadPdf({
   final plain = ctx.mode == ReportPdfMode.plain || lh == null;
   final format = PdfPageFormat.letter;
 
-  pw.Widget pageNo(pw.Context c) => pw.Text('${c.pageNumber}/${c.pagesCount}', style: const pw.TextStyle(fontSize: 8, color: _metaColor));
+  pw.Widget pageNo(pw.Context c) =>
+      pw.Text('${c.pageNumber}/${c.pagesCount}', style: const pw.TextStyle(fontSize: 8, color: _metaColor));
 
   if (plain) {
     doc.addPage(pw.MultiPage(
@@ -261,7 +266,8 @@ Future<Uint8List> buildLetterheadPdf({
   final address = lh.addressLine, contact = lh.contactLine;
   final logoImage = logo;
   doc.addPage(pw.MultiPage(
-    pageTheme: pw.PageTheme(pageFormat: format, margin: pw.EdgeInsets.fromLTRB(left, _mm(kPdfMarginMm - 4), right, _mm(8))),
+    pageTheme:
+        pw.PageTheme(pageFormat: format, margin: pw.EdgeInsets.fromLTRB(left, _mm(kPdfMarginMm - 4), right, _mm(8))),
     header: (_) => pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
@@ -276,7 +282,8 @@ Future<Uint8List> buildLetterheadPdf({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text(lh.name, style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: _nameColor)),
+                  pw.Text(lh.name,
+                      style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: _nameColor)),
                   if (address.isNotEmpty) pw.Text(address, style: const pw.TextStyle(fontSize: 8, color: _metaColor)),
                   if (contact.isNotEmpty) pw.Text(contact, style: const pw.TextStyle(fontSize: 8, color: _metaColor)),
                 ],
@@ -308,7 +315,8 @@ Future<Uint8List> buildLetterheadPdf({
 }
 
 /// Web `drawReportHeader`: bold title + only the non-empty meta rows.
-pw.Widget reportHeaderBlock({required String title, String? reportNo, String? date, String? society, String? period, String? generatedBy}) {
+pw.Widget reportHeaderBlock(
+    {required String title, String? reportNo, String? date, String? society, String? period, String? generatedBy}) {
   final rows = <(String, String)>[
     if ((reportNo ?? '').trim().isNotEmpty) ('Report No.', reportNo!.trim()),
     if ((date ?? '').trim().isNotEmpty) ('Date', date!.trim()),
@@ -327,7 +335,8 @@ pw.Widget reportHeaderBlock({required String title, String? reportNo, String? da
           child: pw.Row(children: [
             pw.SizedBox(
               width: _mm(28),
-              child: pw.Text('${r.$1}:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _metaColor)),
+              child: pw.Text('${r.$1}:',
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _metaColor)),
             ),
             pw.Expanded(child: pw.Text(r.$2, style: const pw.TextStyle(fontSize: 9, color: _metaColor))),
           ]),
@@ -345,9 +354,11 @@ pw.Widget reportField(String label, String value) => pw.Padding(
         children: [
           pw.SizedBox(
             width: _mm(38),
-            child: pw.Text('$label:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _metaColor)),
+            child:
+                pw.Text('$label:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _metaColor)),
           ),
-          pw.Expanded(child: pw.Text(value.isEmpty ? '—' : value, style: const pw.TextStyle(fontSize: 9, color: _nameColor))),
+          pw.Expanded(
+              child: pw.Text(value.isEmpty ? '—' : value, style: const pw.TextStyle(fontSize: 9, color: _nameColor))),
         ],
       ),
     );

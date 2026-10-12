@@ -85,18 +85,30 @@ class _VoiceNotePlayerState extends State<VoiceNotePlayer> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final playing = _state == PlayerState.playing;
-    final max = _duration.inMilliseconds > 0 ? _duration.inMilliseconds.toDouble() : 1.0;
+    final max = _duration.inMilliseconds > 0
+        ? _duration.inMilliseconds.toDouble()
+        : 1.0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(color: t.secondary, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+          color: t.secondary, borderRadius: BorderRadius.circular(999)),
       child: Row(
         children: [
           IconButton(
             visualDensity: VisualDensity.compact,
             onPressed: _loading ? null : _toggle,
             icon: _loading
-                ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: t.primary))
-                : Icon(_failed ? Icons.error_outline : (playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: t.primary))
+                : Icon(
+                    _failed
+                        ? Icons.error_outline
+                        : (playing
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded),
                     color: _failed ? t.destructive : t.primary),
           ),
           Expanded(

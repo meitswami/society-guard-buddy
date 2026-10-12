@@ -49,25 +49,31 @@ enum AdminPerm {
 
 /// Immutable permission set (every key always present).
 class RolePermissions {
-  RolePermissions._(Map<AdminPerm, bool> values) : _values = Map.unmodifiable(values);
+  RolePermissions._(Map<AdminPerm, bool> values)
+      : _values = Map.unmodifiable(values);
 
   factory RolePermissions.fromMap(Map<AdminPerm, bool> values) =>
-      RolePermissions._({for (final p in AdminPerm.values) p: values[p] ?? false});
+      RolePermissions._(
+          {for (final p in AdminPerm.values) p: values[p] ?? false});
 
-  factory RolePermissions.all(bool value) => RolePermissions._({for (final p in AdminPerm.values) p: value});
+  factory RolePermissions.all(bool value) =>
+      RolePermissions._({for (final p in AdminPerm.values) p: value});
 
   final Map<AdminPerm, bool> _values;
 
   bool operator [](AdminPerm p) => _values[p] ?? false;
 
-  RolePermissions withValue(AdminPerm p, bool value) => RolePermissions._({..._values, p: value});
+  RolePermissions withValue(AdminPerm p, bool value) =>
+      RolePermissions._({..._values, p: value});
 
   /// Explicit JSON with every key (what the matrix editor writes to the DB).
-  Map<String, bool> toJson() => {for (final p in AdminPerm.values) p.key: this[p]};
+  Map<String, bool> toJson() =>
+      {for (final p in AdminPerm.values) p.key: this[p]};
 
   int get enabledCount => AdminPerm.values.where((p) => this[p]).length;
 
-  bool sameAs(RolePermissions other) => AdminPerm.values.every((p) => this[p] == other[p]);
+  bool sameAs(RolePermissions other) =>
+      AdminPerm.values.every((p) => this[p] == other[p]);
 
   /// Web `FULL_ADMIN_PERMISSIONS`.
   static final RolePermissions full = RolePermissions.all(true);
@@ -157,7 +163,11 @@ List<String> allowedAdminTabs(RolePermissions p) =>
 
 /// A preset shown in the permission matrix editor.
 class RoleTemplate {
-  const RoleTemplate({required this.slug, required this.nameEn, required this.nameHi, required this.keys});
+  const RoleTemplate(
+      {required this.slug,
+      required this.nameEn,
+      required this.nameHi,
+      required this.keys});
 
   final String slug;
   final String nameEn;
@@ -166,75 +176,130 @@ class RoleTemplate {
   /// Keys that are `true` (all others `false`).
   final Set<AdminPerm> keys;
 
-  RolePermissions get permissions => RolePermissions.fromMap({for (final k in keys) k: true});
+  RolePermissions get permissions =>
+      RolePermissions.fromMap({for (final k in keys) k: true});
 }
 
 /// Seeded roles exactly as `supabase/functions/phonepe-callback` provisions them.
 final List<RoleTemplate> kSeededRoleTemplates = [
-  RoleTemplate(slug: 'admin', nameEn: 'Admin', nameHi: 'प्रशासक', keys: AdminPerm.values.toSet()),
-  const RoleTemplate(slug: 'treasurer', nameEn: 'Treasurer', nameHi: 'कोषाध्यक्ष', keys: {
+  RoleTemplate(
+      slug: 'admin',
+      nameEn: 'Admin',
+      nameHi: 'प्रशासक',
+      keys: AdminPerm.values.toSet()),
+  const RoleTemplate(
+      slug: 'treasurer',
+      nameEn: 'Treasurer',
+      nameHi: 'कोषाध्यक्ष',
+      keys: {
+        AdminPerm.finance,
+        AdminPerm.fixedAssets,
+        AdminPerm.donations,
+        AdminPerm.splits,
+        AdminPerm.events,
+        AdminPerm.notifications,
+        AdminPerm.directory,
+        AdminPerm.report,
+        AdminPerm.password,
+        AdminPerm.biometric,
+      }),
+  const RoleTemplate(
+      slug: 'president',
+      nameEn: 'President',
+      nameHi: 'अध्यक्ष',
+      keys: {
+        AdminPerm.events,
+        AdminPerm.meetings,
+        AdminPerm.documents,
+        AdminPerm.committee,
+        AdminPerm.polls,
+        AdminPerm.notifications,
+        AdminPerm.parking,
+        AdminPerm.directory,
+        AdminPerm.report,
+        AdminPerm.logs,
+        AdminPerm.audit,
+        AdminPerm.password,
+        AdminPerm.biometric,
+      }),
+  const RoleTemplate(
+      slug: 'vice_president',
+      nameEn: 'Vice-President',
+      nameHi: 'उपाध्यक्ष',
+      keys: {
+        AdminPerm.events,
+        AdminPerm.meetings,
+        AdminPerm.documents,
+        AdminPerm.committee,
+        AdminPerm.polls,
+        AdminPerm.notifications,
+        AdminPerm.parking,
+        AdminPerm.directory,
+        AdminPerm.report,
+        AdminPerm.logs,
+        AdminPerm.password,
+        AdminPerm.biometric,
+      }),
+  const RoleTemplate(
+      slug: 'secretary',
+      nameEn: 'Secretary',
+      nameHi: 'सचिव',
+      keys: {
+        AdminPerm.events,
+        AdminPerm.meetings,
+        AdminPerm.documents,
+        AdminPerm.committee,
+        AdminPerm.polls,
+        AdminPerm.notifications,
+        AdminPerm.directory,
+        AdminPerm.password,
+        AdminPerm.biometric,
+      }),
+];
+
+/// Matrix sections (labels resolved in the UI).
+enum PermGroup {
+  people,
+  finance,
+  governance,
+  community,
+  gate,
+  reports,
+  account
+}
+
+const Map<PermGroup, List<AdminPerm>> kPermGroups = {
+  PermGroup.people: [
+    AdminPerm.residentsRw,
+    AdminPerm.guardsRw,
+    AdminPerm.geofenceRw
+  ],
+  PermGroup.finance: [
     AdminPerm.finance,
     AdminPerm.fixedAssets,
     AdminPerm.donations,
     AdminPerm.splits,
-    AdminPerm.events,
-    AdminPerm.notifications,
-    AdminPerm.directory,
-    AdminPerm.report,
-    AdminPerm.password,
-    AdminPerm.biometric,
-  }),
-  const RoleTemplate(slug: 'president', nameEn: 'President', nameHi: 'अध्यक्ष', keys: {
-    AdminPerm.events,
+    AdminPerm.events
+  ],
+  PermGroup.governance: [
     AdminPerm.meetings,
     AdminPerm.documents,
     AdminPerm.committee,
-    AdminPerm.polls,
-    AdminPerm.notifications,
-    AdminPerm.parking,
-    AdminPerm.directory,
-    AdminPerm.report,
-    AdminPerm.logs,
-    AdminPerm.audit,
-    AdminPerm.password,
-    AdminPerm.biometric,
-  }),
-  const RoleTemplate(slug: 'vice_president', nameEn: 'Vice-President', nameHi: 'उपाध्यक्ष', keys: {
-    AdminPerm.events,
-    AdminPerm.meetings,
-    AdminPerm.documents,
-    AdminPerm.committee,
-    AdminPerm.polls,
-    AdminPerm.notifications,
-    AdminPerm.parking,
-    AdminPerm.directory,
-    AdminPerm.report,
-    AdminPerm.logs,
-    AdminPerm.password,
-    AdminPerm.biometric,
-  }),
-  const RoleTemplate(slug: 'secretary', nameEn: 'Secretary', nameHi: 'सचिव', keys: {
-    AdminPerm.events,
-    AdminPerm.meetings,
-    AdminPerm.documents,
-    AdminPerm.committee,
-    AdminPerm.polls,
-    AdminPerm.notifications,
-    AdminPerm.directory,
-    AdminPerm.password,
-    AdminPerm.biometric,
-  }),
-];
-
-/// Matrix sections (labels resolved in the UI).
-enum PermGroup { people, finance, governance, community, gate, reports, account }
-
-const Map<PermGroup, List<AdminPerm>> kPermGroups = {
-  PermGroup.people: [AdminPerm.residentsRw, AdminPerm.guardsRw, AdminPerm.geofenceRw],
-  PermGroup.finance: [AdminPerm.finance, AdminPerm.fixedAssets, AdminPerm.donations, AdminPerm.splits, AdminPerm.events],
-  PermGroup.governance: [AdminPerm.meetings, AdminPerm.documents, AdminPerm.committee, AdminPerm.polls],
+    AdminPerm.polls
+  ],
   PermGroup.community: [AdminPerm.notifications, AdminPerm.parking],
-  PermGroup.gate: [AdminPerm.visitor, AdminPerm.delivery, AdminPerm.vehicle, AdminPerm.blacklist, AdminPerm.directory, AdminPerm.quick],
+  PermGroup.gate: [
+    AdminPerm.visitor,
+    AdminPerm.delivery,
+    AdminPerm.vehicle,
+    AdminPerm.blacklist,
+    AdminPerm.directory,
+    AdminPerm.quick
+  ],
   PermGroup.reports: [AdminPerm.report, AdminPerm.logs, AdminPerm.audit],
-  PermGroup.account: [AdminPerm.settings, AdminPerm.password, AdminPerm.biometric],
+  PermGroup.account: [
+    AdminPerm.settings,
+    AdminPerm.password,
+    AdminPerm.biometric
+  ],
 };

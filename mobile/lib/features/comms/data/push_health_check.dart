@@ -24,7 +24,12 @@ class HealthStep {
 }
 
 class PushHealthOutcome {
-  const PushHealthOutcome({required this.steps, required this.summary, required this.passed, required this.okNotes, required this.issues});
+  const PushHealthOutcome(
+      {required this.steps,
+      required this.summary,
+      required this.passed,
+      required this.okNotes,
+      required this.issues});
 
   final List<HealthStep> steps;
   final String summary;
@@ -54,7 +59,8 @@ String buildPushHealthReport({
     '',
     'Summary: ${summary.isEmpty ? 'N/A' : summary}',
     '',
-    for (var i = 0; i < steps.length; i++) '${i + 1}. ${steps[i].ok ? 'PASS' : 'FAIL'} - ${steps[i].label}: ${steps[i].detail}',
+    for (var i = 0; i < steps.length; i++)
+      '${i + 1}. ${steps[i].ok ? 'PASS' : 'FAIL'} - ${steps[i].label}: ${steps[i].detail}',
   ];
   return lines.join('\n');
 }
@@ -63,13 +69,16 @@ String buildPushHealthReport({
 /// `channel == fcm && sent > 0` → delivered).
 HealthStep interpretPushResponse(Map<String, dynamic>? data) {
   final err = data?['error'];
-  if (err != null) return HealthStep('Edge secret/config', false, err.toString());
+  if (err != null)
+    return HealthStep('Edge secret/config', false, err.toString());
   final sent = data?['sent'];
   final sentN = sent is num ? sent.toInt() : int.tryParse('${sent ?? 0}') ?? 0;
   if (data?['channel'] == 'fcm' && sentN > 0) {
-    return const HealthStep('Push delivery', true, 'Accepted by FCM for this device token');
+    return const HealthStep(
+        'Push delivery', true, 'Accepted by FCM for this device token');
   }
-  return HealthStep('Push delivery', false, 'Not confirmed: ${jsonEncode(data)}');
+  return HealthStep(
+      'Push delivery', false, 'Not confirmed: ${jsonEncode(data)}');
 }
 
 class PushHealthCheck {
@@ -77,7 +86,8 @@ class PushHealthCheck {
 
   final NotificationRepository repo;
 
-  Future<PushHealthOutcome> run(SessionAdmin session, {required void Function(List<HealthStep> steps) onStep}) async {
+  Future<PushHealthOutcome> run(SessionAdmin session,
+      {required void Function(List<HealthStep> steps) onStep}) async {
     final steps = <HealthStep>[];
     final issues = <String>[];
     final ok = <String>[];
@@ -93,7 +103,8 @@ class PushHealthCheck {
     try {
       if (!firebase) {
         issues.add('Env config: missing Firebase keys in the app .env');
-        step('Environment', false, 'Missing Firebase API key / project / app id in the app .env');
+        step('Environment', false,
+            'Missing Firebase API key / project / app id in the app .env');
       } else {
         ok.add('Env config: Firebase keys present');
         step('Environment', true, 'Firebase project + app id found');
@@ -108,8 +119,10 @@ class PushHealthCheck {
         }
       }
       if (!supported) {
-        issues.add('Device support: Firebase messaging unavailable on this device/build');
-        step('Device support', false, 'Firebase messaging unavailable on this device/build');
+        issues.add(
+            'Device support: Firebase messaging unavailable on this device/build');
+        step('Device support', false,
+            'Firebase messaging unavailable on this device/build');
       } else {
         ok.add('Device support: supported');
         step('Device support', true, 'Firebase messaging is supported');
@@ -117,14 +130,17 @@ class PushHealthCheck {
 
       if (firebase) {
         try {
-          final settings = await FirebaseMessaging.instance.getNotificationSettings();
+          final settings =
+              await FirebaseMessaging.instance.getNotificationSettings();
           switch (settings.authorizationStatus) {
             case AuthorizationStatus.denied:
               issues.add('Permission: blocked in device settings');
-              step('Notification permission', false, 'Blocked in device settings');
+              step('Notification permission', false,
+                  'Blocked in device settings');
             case AuthorizationStatus.notDetermined:
               issues.add('Permission: not granted yet (prompt not accepted)');
-              step('Notification permission', false, 'Not granted yet (prompt not accepted)');
+              step('Notification permission', false,
+                  'Not granted yet (prompt not accepted)');
             case AuthorizationStatus.authorized:
             case AuthorizationStatus.provisional:
               ok.add('Permission: granted');
@@ -132,7 +148,8 @@ class PushHealthCheck {
           }
         } catch (e) {
           issues.add('Permission: could not read ($e)');
-          step('Notification permission', false, 'Could not read notification settings: $e');
+          step('Notification permission', false,
+              'Could not read notification settings: $e');
         }
       }
 
@@ -145,7 +162,8 @@ class PushHealthCheck {
         if (token == null || token.isEmpty) {
           token = null;
           issues.add('Token DB: no FCM token found for this admin/device');
-          step('Token in database', false, 'No FCM token found for this admin/device');
+          step('Token in database', false,
+              'No FCM token found for this admin/device');
         } else {
           ok.add('Token DB: token present');
           step('Token in database', true, 'Token found');
@@ -159,7 +177,8 @@ class PushHealthCheck {
         try {
           final data = await repo.invokePush({
             'title': 'Push Health Check',
-            'message': 'Test push from $adminName (${Fmt.time(DateTime.now())})',
+            'message':
+                'Test push from $adminName (${Fmt.time(DateTime.now())})',
             'target_tokens': [token],
             'target_type': 'user',
             'society_id': societyId,
@@ -198,7 +217,12 @@ class PushHealthCheck {
       );
     } catch (e) {
       step('Unexpected error', false, commsErrorMessage(e));
-      return PushHealthOutcome(steps: steps, summary: kHealthSummaryCrash, passed: false, okNotes: ok, issues: [...issues, '$e']);
+      return PushHealthOutcome(
+          steps: steps,
+          summary: kHealthSummaryCrash,
+          passed: false,
+          okNotes: ok,
+          issues: [...issues, '$e']);
     }
   }
 }

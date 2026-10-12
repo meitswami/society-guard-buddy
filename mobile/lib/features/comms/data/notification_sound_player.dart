@@ -62,5 +62,6 @@ class NotificationSoundPlayer {
 }
 
 /// Shorthand for [NotificationSoundPlayer.play].
-Future<void> playNotificationAlert(String? soundKey, [String? soundCustomUrl]) =>
+Future<void> playNotificationAlert(String? soundKey,
+        [String? soundCustomUrl]) =>
     NotificationSoundPlayer.instance.play(soundKey, soundCustomUrl);

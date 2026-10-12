@@ -8,7 +8,8 @@ import 'superadmin_models.dart';
 
 /// Result of the web `upsertSocietyFlatsFromLayout`.
 class FlatGenerateResult {
-  const FlatGenerateResult({required this.created, required this.skipped, this.error});
+  const FlatGenerateResult(
+      {required this.created, required this.skipped, this.error});
 
   final int created;
   final int skipped;
@@ -31,7 +32,9 @@ class WriteResult {
 }
 
 WriteResult _fail(Object e) {
-  if (e is PostgrestException) return WriteResult.fail(e.code ?? 'error', e.message);
+  if (e is PostgrestException) {
+    return WriteResult.fail(e.code ?? 'error', e.message);
+  }
   return WriteResult.fail('error', '$e');
 }
 
@@ -84,7 +87,9 @@ class SocietyDetails {
   int get walletBalance {
     var sum = 0;
     for (final w in wallet) {
-      final amt = w['amount_inr'] is num ? (w['amount_inr'] as num).toInt() : int.tryParse('${w['amount_inr']}') ?? 0;
+      final amt = w['amount_inr'] is num
+          ? (w['amount_inr'] as num).toInt()
+          : int.tryParse('${w['amount_inr']}') ?? 0;
       sum += w['entry_type'] == 'debit' ? -amt : amt;
     }
     return sum;
@@ -110,7 +115,9 @@ class SuperadminRepository {
   // Console bootstrap (web `loadAll`)
 
   Future<ConsoleData> loadAll() async {
-    if (!dbReady) return const ConsoleData(societies: [], roles: [], admins: []);
+    if (!dbReady) {
+      return const ConsoleData(societies: [], roles: [], admins: []);
+    }
     Future<List<Map<String, dynamic>>?> q(Future<Object?> f) async {
       try {
         return rowsOf(await f);
@@ -142,7 +149,8 @@ class SuperadminRepository {
   Future<void> updateSociety(String id, Map<String, dynamic> patch) =>
       db.from('societies').update(patch).eq('id', id);
 
-  Future<void> deleteSociety(String id) => db.from('societies').delete().eq('id', id);
+  Future<void> deleteSociety(String id) =>
+      db.from('societies').delete().eq('id', id);
 
   Future<void> setSocietyActive(String id, bool active) =>
       db.from('societies').update({'is_active': active}).eq('id', id);
@@ -156,10 +164,12 @@ class SuperadminRepository {
     }
   }
 
-  Future<List<ExistingFlat>> _flats(String societyId, {bool withMeta = true}) async {
+  Future<List<ExistingFlat>> _flats(String societyId,
+      {bool withMeta = true}) async {
     final rows = rowsOf(await db
         .from('flats')
-        .select(withMeta ? 'id, flat_number, wing, flat_type' : 'flat_number, wing')
+        .select(
+            withMeta ? 'id, flat_number, wing, flat_type' : 'flat_number, wing')
         .eq('society_id', societyId));
     return [
       for (final r in rows)
@@ -173,7 +183,8 @@ class SuperadminRepository {
   }
 
   /// Web `trimSocietyFlatsToConfiguredRange` → number of flats removed (0 on any error).
-  Future<int> trimFlatsToConfiguredRange(String societyId, SocietyLayoutInput row) async {
+  Future<int> trimFlatsToConfiguredRange(
+      String societyId, SocietyLayoutInput row) async {
     if (canTrimFlatsFromSocietyRow(row) == null) return 0;
     try {
       final flats = await _flats(societyId);
@@ -190,10 +201,15 @@ class SuperadminRepository {
   }
 
   /// Web `upsertSocietyFlatsFromLayout`.
-  Future<FlatGenerateResult> upsertFlatsFromLayout(String societyId, SocietyLayoutInput row) async {
-    if (societyId.isEmpty) return const FlatGenerateResult(created: 0, skipped: 0, error: 'Missing society id');
+  Future<FlatGenerateResult> upsertFlatsFromLayout(
+      String societyId, SocietyLayoutInput row) async {
+    if (societyId.isEmpty) {
+      return const FlatGenerateResult(
+          created: 0, skipped: 0, error: 'Missing society id');
+    }
     if (canTrimFlatsFromSocietyRow(row) == null) {
-      return const FlatGenerateResult(created: 0, skipped: 0, error: kInvalidFlatLayoutError);
+      return const FlatGenerateResult(
+          created: 0, skipped: 0, error: kInvalidFlatLayoutError);
     }
     List<ExistingFlat> existing;
     try {
@@ -202,14 +218,19 @@ class SuperadminRepository {
       return FlatGenerateResult(created: 0, skipped: 0, error: e.message);
     }
     final plan = planFlatsFromLayout(societyId, row, existing);
-    if (plan.error != null) return FlatGenerateResult(created: 0, skipped: 0, error: plan.error);
-    if (plan.rows.isEmpty) return FlatGenerateResult(created: 0, skipped: plan.skipped);
+    if (plan.error != null) {
+      return FlatGenerateResult(created: 0, skipped: 0, error: plan.error);
+    }
+    if (plan.rows.isEmpty) {
+      return FlatGenerateResult(created: 0, skipped: plan.skipped);
+    }
     var created = 0;
     for (final part in chunked(plan.rows, 250)) {
       try {
         await db.from('flats').insert(part);
       } on PostgrestException catch (e) {
-        return FlatGenerateResult(created: created, skipped: plan.skipped, error: e.message);
+        return FlatGenerateResult(
+            created: created, skipped: plan.skipped, error: e.message);
       }
       created += part.length;
     }
@@ -225,7 +246,11 @@ class SuperadminRepository {
 
   Future<int?> _count(String table, String column, String value) async {
     try {
-      final res = await db.from(table).select('id').eq(column, value).count(CountOption.exact);
+      final res = await db
+          .from(table)
+          .select('id')
+          .eq(column, value)
+          .count(CountOption.exact);
       return res.count;
     } catch (_) {
       return null;
@@ -251,7 +276,8 @@ class SuperadminRepository {
     final lists = await Future.wait([
       rows(db
           .from('society_referrals')
-          .select('id, created_at, referral_code_used, referrer_reward_inr, referred_reward_inr, reward_percent, referred_society_id, referrer_society_id')
+          .select(
+              'id, created_at, referral_code_used, referrer_reward_inr, referred_reward_inr, reward_percent, referred_society_id, referrer_society_id')
           .or('referrer_society_id.eq.$societyId,referred_society_id.eq.$societyId')
           .order('created_at', ascending: false)),
       rows(db
@@ -274,7 +300,8 @@ class SuperadminRepository {
   // Roles
 
   /// Web `addRole` insert (permissions = `NEW_CUSTOM_ROLE_PERMISSIONS`).
-  Future<WriteResult> insertRole(String societyId, String roleName, {RolePermissions? permissions}) async {
+  Future<WriteResult> insertRole(String societyId, String roleName,
+      {RolePermissions? permissions}) async {
     try {
       await db.from('society_roles').insert({
         'society_id': societyId,
@@ -287,9 +314,11 @@ class SuperadminRepository {
     }
   }
 
-  Future<void> deleteRole(String id) => db.from('society_roles').delete().eq('id', id);
+  Future<void> deleteRole(String id) =>
+      db.from('society_roles').delete().eq('id', id);
 
-  Future<WriteResult> updateRole(String id, {String? roleName, RolePermissions? permissions}) async {
+  Future<WriteResult> updateRole(String id,
+      {String? roleName, RolePermissions? permissions}) async {
     try {
       await db.from('society_roles').update({
         if (roleName != null) 'role_name': roleName,
@@ -337,25 +366,35 @@ class SuperadminRepository {
     }
   }
 
-  Future<void> deleteAdmin(String id) => db.from('admins').delete().eq('id', id);
+  Future<void> deleteAdmin(String id) =>
+      db.from('admins').delete().eq('id', id);
 
   // ---------------------------------------------------------------------------
   // Superadmin login + security settings
 
   /// Web login: match by username only, compare the password in-app.
-  Future<Map<String, dynamic>?> fetchSuperAdminByUsername(String username) async {
-    final row = await db.from('super_admins').select('*').eq('username', username).maybeSingle();
+  Future<Map<String, dynamic>?> fetchSuperAdminByUsername(
+      String username) async {
+    final row = await db
+        .from('super_admins')
+        .select('*')
+        .eq('username', username)
+        .maybeSingle();
     return row == null ? null : Map<String, dynamic>.from(row);
   }
 
   Future<Map<String, dynamic>?> fetchSuperAdminById(String id) async {
-    final row = await db.from('super_admins').select('*').eq('id', id).maybeSingle();
+    final row =
+        await db.from('super_admins').select('*').eq('id', id).maybeSingle();
     return row == null ? null : Map<String, dynamic>.from(row);
   }
 
   Future<Map<String, dynamic>?> fetchSecurity(String id) async {
-    final row =
-        await db.from('super_admins').select('recovery_email, totp_enabled, totp_secret').eq('id', id).maybeSingle();
+    final row = await db
+        .from('super_admins')
+        .select('recovery_email, totp_enabled, totp_secret')
+        .eq('id', id)
+        .maybeSingle();
     return row == null ? null : Map<String, dynamic>.from(row);
   }
 
@@ -366,21 +405,27 @@ class SuperadminRepository {
     try {
       final res = await db.functions.invoke(fn, body: body);
       final data = res.data;
-      return RecoveryResponse(data: data is Map ? Map<String, dynamic>.from(data) : null, status: res.status);
+      return RecoveryResponse(
+          data: data is Map ? Map<String, dynamic>.from(data) : null,
+          status: res.status);
     } on FunctionException catch (e) {
-      return RecoveryResponse(errorMessage: _functionError(e.details) ?? '', status: e.status);
+      return RecoveryResponse(
+          errorMessage: _functionError(e.details) ?? '', status: e.status);
     } catch (e) {
       return RecoveryResponse(errorMessage: '$e');
     }
   }
 
   /// Edge function `superadmin-recovery-send`.
-  Future<RecoveryResponse> sendRecoveryCode(String username, String recoveryEmail) =>
-      _invoke('superadmin-recovery-send', {'username': username, 'recovery_email': recoveryEmail});
+  Future<RecoveryResponse> sendRecoveryCode(
+          String username, String recoveryEmail) =>
+      _invoke('superadmin-recovery-send',
+          {'username': username, 'recovery_email': recoveryEmail});
 
   /// Edge function `superadmin-recovery-verify`.
   Future<RecoveryResponse> verifyRecoveryCode(String username, String code) =>
-      _invoke('superadmin-recovery-verify', {'username': username, 'code': code});
+      _invoke(
+          'superadmin-recovery-verify', {'username': username, 'code': code});
 
   // ---------------------------------------------------------------------------
   // Platform branding (Flutter app)
@@ -388,34 +433,44 @@ class SuperadminRepository {
   Future<Map<String, dynamic>?> fetchBranding() async {
     final row = await db
         .from('platform_branding')
-        .select('app_name, tagline, logo_url, primary_color, primary_dark_color, background_color')
+        .select(
+            'app_name, tagline, logo_url, primary_color, primary_dark_color, background_color')
         .eq('id', 'default')
         .maybeSingle();
     return row == null ? null : Map<String, dynamic>.from(row);
   }
 
-  Future<void> upsertBranding(Map<String, dynamic> row) => db.from('platform_branding').upsert({'id': 'default', ...row});
+  Future<void> upsertBranding(Map<String, dynamic> row) =>
+      db.from('platform_branding').upsert({'id': 'default', ...row});
 
   // ---------------------------------------------------------------------------
   // Maintenance
 
   /// Edge function `backup-export` (JSON envelope `{ backup, filename }` or e-mail result).
-  Future<BackupResponse> backupExport({String? societyId, bool completeDb = false, bool sendEmail = false}) async {
+  Future<BackupResponse> backupExport(
+      {String? societyId,
+      bool completeDb = false,
+      bool sendEmail = false}) async {
     try {
       final res = await db.functions.invoke(
         'backup-export',
-        body: backupExportBody(societyId: societyId, completeDb: completeDb, sendEmail: sendEmail),
+        body: backupExportBody(
+            societyId: societyId, completeDb: completeDb, sendEmail: sendEmail),
       );
       final data = res.data;
       if (data is Map) {
         final map = Map<String, dynamic>.from(data);
         final err = map['error'];
-        if (err != null && '$err'.isNotEmpty) return BackupResponse(error: '$err');
+        if (err != null && '$err'.isNotEmpty) {
+          return BackupResponse(error: '$err');
+        }
         return BackupResponse(data: map);
       }
       return const BackupResponse(data: {});
     } on FunctionException catch (e) {
-      return BackupResponse(error: describeBackupExportHttpError(e.status, serverMessage: _functionError(e.details)));
+      return BackupResponse(
+          error: describeBackupExportHttpError(e.status,
+              serverMessage: _functionError(e.details)));
     } catch (e) {
       return BackupResponse(error: describeBackupExportNetworkError('$e'));
     }
@@ -424,7 +479,15 @@ class SuperadminRepository {
   /// Web store `clearAllData()` — deletes every row of these tables (all societies).
   Future<void> clearAllData() async {
     const none = '00000000-0000-0000-0000-000000000000';
-    for (final table in const ['meetings', 'visitors', 'blacklist', 'resident_vehicles', 'members', 'flats', 'guard_shifts']) {
+    for (final table in const [
+      'meetings',
+      'visitors',
+      'blacklist',
+      'resident_vehicles',
+      'members',
+      'flats',
+      'guard_shifts'
+    ]) {
       await db.from(table).delete().neq('id', none);
     }
   }
@@ -436,7 +499,8 @@ class SuperadminRepository {
   Future<List<OnboardingRow>> loadOnboarding() async {
     final orders = rowsOf(await db
         .from('society_orders')
-        .select('id, signup_id, status, amount_inr, currency, provider, merchant_transaction_id, created_at')
+        .select(
+            'id, signup_id, status, amount_inr, currency, provider, merchant_transaction_id, created_at')
         .order('created_at', ascending: false)
         .limit(200));
     final ids = distinctSignupIds(orders);
@@ -444,7 +508,8 @@ class SuperadminRepository {
     if (ids.isNotEmpty) {
       signups = rowsOf(await db
           .from('society_signups')
-          .select('id, status, society_name, contact_phone, contact_person, referral_code_used, created_at')
+          .select(
+              'id, status, society_name, contact_phone, contact_person, referral_code_used, created_at')
           .inFilter('id', ids));
     }
     return joinOnboarding(orders, signups);
@@ -454,7 +519,10 @@ class SuperadminRepository {
   // Support tickets
 
   Future<List<SupportTicket>> loadTickets() async {
-    final rows = rowsOf(await db.from('support_tickets').select('*').order('ticket_number', ascending: false));
+    final rows = rowsOf(await db
+        .from('support_tickets')
+        .select('*')
+        .order('ticket_number', ascending: false));
     return rows.map(SupportTicket.fromJson).toList();
   }
 
@@ -462,12 +530,21 @@ class SuperadminRepository {
       db.from('support_tickets').update({'status': status}).eq('id', id);
 
   /// Web `fetchSocietyNotificationSound(societyId)`.
-  Future<({String soundKey, String? soundCustomUrl})> societyNotificationSound(String? societyId) async {
-    if (societyId == null || societyId.isEmpty) return (soundKey: 'digital', soundCustomUrl: null);
+  Future<({String soundKey, String? soundCustomUrl})> societyNotificationSound(
+      String? societyId) async {
+    if (societyId == null || societyId.isEmpty) {
+      return (soundKey: 'digital', soundCustomUrl: null);
+    }
     try {
-      final row = await db.from('societies').select('admin_push_sound_url').eq('id', societyId).maybeSingle();
+      final row = await db
+          .from('societies')
+          .select('admin_push_sound_url')
+          .eq('id', societyId)
+          .maybeSingle();
       final url = (row?['admin_push_sound_url'] as String?)?.trim();
-      if (url != null && url.isNotEmpty) return (soundKey: 'custom', soundCustomUrl: url);
+      if (url != null && url.isNotEmpty) {
+        return (soundKey: 'custom', soundCustomUrl: url);
+      }
     } catch (_) {}
     return (soundKey: 'digital', soundCustomUrl: null);
   }

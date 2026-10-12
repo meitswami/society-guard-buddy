@@ -16,13 +16,18 @@ Color? colorFromHex(String? hex) {
 
 /// [Color] → lowercase `#rrggbb` (what the web `<input type="color">` produces).
 String hexFromColor(Color c) {
-  String h(double v) => (v * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+  String h(double v) =>
+      (v * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
   return '#${h(c.r)}${h(c.g)}${h(c.b)}';
 }
 
 /// Labelled colour swatch that opens [showHexColorPicker] (web `<input type="color">`).
 class ColorSwatchField extends StatelessWidget {
-  const ColorSwatchField({super.key, required this.label, required this.value, required this.onChanged});
+  const ColorSwatchField(
+      {super.key,
+      required this.label,
+      required this.value,
+      required this.onChanged});
 
   final String label;
   final String value;
@@ -35,7 +40,10 @@ class ColorSwatchField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(label, style: AppText.caption(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+        Text(label,
+            style: AppText.caption(context),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis),
         const SizedBox(height: 4),
         Material(
           color: t.input,
@@ -43,7 +51,8 @@ class ColorSwatchField extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(AppTokens.radiusSm),
             onTap: () async {
-              final picked = await showHexColorPicker(context, initial: value, title: label);
+              final picked = await showHexColorPicker(context,
+                  initial: value, title: label);
               if (picked != null) onChanged(picked);
             },
             child: Container(
@@ -64,14 +73,17 @@ class ColorSwatchField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        Text(value, textAlign: TextAlign.center, style: AppText.mono(context, size: 10, color: t.mutedForeground)),
+        Text(value,
+            textAlign: TextAlign.center,
+            style: AppText.mono(context, size: 10, color: t.mutedForeground)),
       ],
     );
   }
 }
 
 /// Bottom sheet with hue / saturation / brightness sliders, hex input and presets.
-Future<String?> showHexColorPicker(BuildContext context, {required String initial, required String title}) {
+Future<String?> showHexColorPicker(BuildContext context,
+    {required String initial, required String title}) {
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
@@ -105,7 +117,8 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   @override
   void initState() {
     super.initState();
-    _hsv = HSVColor.fromColor(colorFromHex(widget.initial) ?? const Color(0xFF14B8A6));
+    _hsv = HSVColor.fromColor(
+        colorFromHex(widget.initial) ?? const Color(0xFF14B8A6));
     _hex = TextEditingController(text: hexFromColor(_hsv.toColor()));
   }
 
@@ -153,7 +166,8 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
     final color = _hsv.toColor();
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 0, 20, 16 + MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.fromLTRB(
+            20, 0, 20, 16 + MediaQuery.of(context).viewInsets.bottom),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -178,13 +192,16 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                       controller: _hex,
                       style: AppText.mono(context, size: 14),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[#0-9a-fA-F]')),
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'[#0-9a-fA-F]')),
                         LengthLimitingTextInputFormatter(7),
                       ],
                       decoration: const InputDecoration(hintText: '#14b8a6'),
                       onChanged: (v) {
                         final c = colorFromHex(v);
-                        if (c != null && v.replaceFirst('#', '').length == 6) setState(() => _hsv = HSVColor.fromColor(c));
+                        if (c != null && v.replaceFirst('#', '').length == 6) {
+                          setState(() => _hsv = HSVColor.fromColor(c));
+                        }
                       },
                     ),
                   ),
@@ -195,21 +212,30 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                 label: context.st('sa.color.hue'),
                 value: _hsv.hue,
                 max: 360,
-                track: [for (var h = 0; h <= 360; h += 60) HSVColor.fromAHSV(1, h.toDouble(), 1, 1).toColor()],
+                track: [
+                  for (var h = 0; h <= 360; h += 60)
+                    HSVColor.fromAHSV(1, h.toDouble(), 1, 1).toColor()
+                ],
                 onChanged: (v) => _set(_hsv.withHue(v)),
               ),
               _slider(
                 label: context.st('sa.color.saturation'),
                 value: _hsv.saturation * 100,
                 max: 100,
-                track: [_hsv.withSaturation(0).toColor(), _hsv.withSaturation(1).toColor()],
+                track: [
+                  _hsv.withSaturation(0).toColor(),
+                  _hsv.withSaturation(1).toColor()
+                ],
                 onChanged: (v) => _set(_hsv.withSaturation(v / 100)),
               ),
               _slider(
                 label: context.st('sa.color.brightness'),
                 value: _hsv.value * 100,
                 max: 100,
-                track: [_hsv.withValue(0).toColor(), _hsv.withValue(1).toColor()],
+                track: [
+                  _hsv.withValue(0).toColor(),
+                  _hsv.withValue(1).toColor()
+                ],
                 onChanged: (v) => _set(_hsv.withValue(v / 100)),
               ),
               Wrap(
@@ -227,7 +253,8 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                           color: colorFromHex(p),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: hexFromColor(color) == p ? t.primary : t.border,
+                            color:
+                                hexFromColor(color) == p ? t.primary : t.border,
                             width: hexFromColor(color) == p ? 3 : 1,
                           ),
                         ),
@@ -239,13 +266,16 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: AppButton.secondary(label: context.t('common.cancel'), onPressed: () => Navigator.pop(context)),
+                    child: AppButton.secondary(
+                        label: context.t('common.cancel'),
+                        onPressed: () => Navigator.pop(context)),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: AppButton(
                       label: context.st('sa.color.use'),
-                      onPressed: () => Navigator.pop(context, hexFromColor(_hsv.toColor())),
+                      onPressed: () =>
+                          Navigator.pop(context, hexFromColor(_hsv.toColor())),
                     ),
                   ),
                 ],

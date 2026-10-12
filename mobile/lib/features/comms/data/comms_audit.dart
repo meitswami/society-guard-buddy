@@ -10,7 +10,13 @@ import 'package:flutter/foundation.dart';
 import '../../../core/supabase/db.dart';
 
 Map<String, dynamic> _deviceInfo() {
-  if (kIsWeb) return {'browser': 'Kutumbika app', 'os': 'web', 'platform': 'web', 'isMobile': false};
+  if (kIsWeb)
+    return {
+      'browser': 'Kutumbika app',
+      'os': 'web',
+      'platform': 'web',
+      'isMobile': false
+    };
   return {
     'browser': 'Kutumbika app',
     'os': Platform.operatingSystem,
@@ -30,9 +36,14 @@ Future<String> _clientIp() async {
   if (kIsWeb) return 'unknown';
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
   try {
-    final req = await client.getUrl(Uri.parse('https://api.ipify.org?format=json')).timeout(const Duration(seconds: 3));
+    final req = await client
+        .getUrl(Uri.parse('https://api.ipify.org?format=json'))
+        .timeout(const Duration(seconds: 3));
     final res = await req.close().timeout(const Duration(seconds: 3));
-    final body = await res.transform(utf8.decoder).join().timeout(const Duration(seconds: 3));
+    final body = await res
+        .transform(utf8.decoder)
+        .join()
+        .timeout(const Duration(seconds: 3));
     final ip = (jsonDecode(body) as Map)['ip']?.toString();
     return (ip == null || ip.isEmpty) ? 'unknown' : ip;
   } catch (_) {

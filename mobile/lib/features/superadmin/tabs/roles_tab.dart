@@ -38,7 +38,8 @@ String permLabel(BuildContext context, AdminPerm p) => switch (p) {
       AdminPerm.biometric => context.t('adminNav.biometric'),
     };
 
-String permGroupLabel(BuildContext context, PermGroup g) => context.st('sa.permGroup.${g.name}');
+String permGroupLabel(BuildContext context, PermGroup g) =>
+    context.st('sa.permGroup.${g.name}');
 
 /// Web Roles tab: per-society role list, add (locked-down defaults), delete — plus
 /// rename and the permission matrix (`society_roles.permissions`).
@@ -64,11 +65,13 @@ class _RolesTabState extends State<RolesTab> {
   Future<void> _addRole(SuperadminConsole console) async {
     final name = _newRole.text.trim();
     if (name.isEmpty) {
-      AppFeedback.toast(context, context.t('superadmin.roleNameRequired'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('superadmin.roleNameRequired'),
+          tone: BadgeTone.alert);
       return;
     }
     if (console.selectedSocietyId.isEmpty) {
-      AppFeedback.toast(context, context.t('superadmin.selectSocietyFirst'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('superadmin.selectSocietyFirst'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _adding = true);
@@ -80,13 +83,16 @@ class _RolesTabState extends State<RolesTab> {
         context,
         res.duplicate
             ? context.t('superadmin.roleDuplicate')
-            : ((res.message ?? '').isNotEmpty ? res.message! : context.t('superadmin.roleAddFailed')),
+            : ((res.message ?? '').isNotEmpty
+                ? res.message!
+                : context.t('superadmin.roleAddFailed')),
         tone: BadgeTone.alert,
       );
       return;
     }
     _newRole.clear();
-    AppFeedback.toast(context, context.t('superadmin.roleAdded'), tone: BadgeTone.success);
+    AppFeedback.toast(context, context.t('superadmin.roleAdded'),
+        tone: BadgeTone.success);
     await console.loadAll();
   }
 
@@ -107,9 +113,16 @@ class _RolesTabState extends State<RolesTab> {
     if (!ok || !mounted) return;
     try {
       await console.repo.deleteRole(r.id);
-      if (mounted) await AppFeedback.success(context, title: context.t('swal.success'), message: context.st('sa.roles.deleted'));
+      if (mounted) {
+        await AppFeedback.success(context,
+            title: context.t('swal.success'),
+            message: context.st('sa.roles.deleted'));
+      }
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.st('sa.roles.deleteFailed'), tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, context.st('sa.roles.deleteFailed'),
+            tone: BadgeTone.alert);
+      }
     }
     await console.loadAll();
   }
@@ -125,7 +138,9 @@ class _RolesTabState extends State<RolesTab> {
       children: [
         SaTabTitle(context.t('superadmin.roles')),
         if (console.selectedSocietyId.isEmpty)
-          Text(context.t('superadmin.selectSociety'), style: AppText.body(context).copyWith(color: context.tokens.mutedForeground))
+          Text(context.t('superadmin.selectSociety'),
+              style: AppText.body(context)
+                  .copyWith(color: context.tokens.mutedForeground))
         else ...[
           Row(
             children: [
@@ -147,7 +162,8 @@ class _RolesTabState extends State<RolesTab> {
               ),
             ],
           ),
-          SaHint(context.st('sa.roles.newRoleHint'), padding: const EdgeInsets.only(top: 6, bottom: 12)),
+          SaHint(context.st('sa.roles.newRoleHint'),
+              padding: const EdgeInsets.only(top: 6, bottom: 12)),
           for (final r in roles)
             CardSection(
               margin: const EdgeInsets.only(bottom: 8),
@@ -172,8 +188,10 @@ class _RolesTabState extends State<RolesTab> {
                               }),
                               primary: true,
                             ),
-                            if (r.slug != null && r.slug!.isNotEmpty) SaTag(r.slug!),
-                            SaTag(context.st('sa.roles.adminsCount', {'count': console.adminsUsingRole(r.id)})),
+                            if (r.slug != null && r.slug!.isNotEmpty)
+                              SaTag(r.slug!),
+                            SaTag(context.st('sa.roles.adminsCount',
+                                {'count': console.adminsUsingRole(r.id)})),
                           ],
                         ),
                       ],
@@ -181,18 +199,22 @@ class _RolesTabState extends State<RolesTab> {
                   ),
                   IconButton(
                     tooltip: context.st('sa.roles.editPermissions'),
-                    icon: Icon(Icons.tune, size: 18, color: context.tokens.primary),
-                    onPressed: () => RolePermissionsPage.open(context, console, r),
+                    icon: Icon(Icons.tune,
+                        size: 18, color: context.tokens.primary),
+                    onPressed: () =>
+                        RolePermissionsPage.open(context, console, r),
                   ),
                   IconButton(
                     tooltip: context.t('common.delete'),
-                    icon: Icon(Icons.delete_outline, size: 18, color: context.tokens.destructive),
+                    icon: Icon(Icons.delete_outline,
+                        size: 18, color: context.tokens.destructive),
                     onPressed: () => _deleteRole(console, r),
                   ),
                 ],
               ),
             ),
-          if (roles.isEmpty) EmptyView(message: context.t('superadmin.noRoles')),
+          if (roles.isEmpty)
+            EmptyView(message: context.t('superadmin.noRoles')),
         ],
       ],
     );
@@ -202,13 +224,16 @@ class _RolesTabState extends State<RolesTab> {
 /// Permission matrix for one role (web `AdminPanelPermissions` keys incl. fixed_assets /
 /// documents), with presets from the seeded roles, rename, and the resulting admin tabs.
 class RolePermissionsPage extends StatefulWidget {
-  const RolePermissionsPage({super.key, required this.console, required this.role});
+  const RolePermissionsPage(
+      {super.key, required this.console, required this.role});
 
   final SuperadminConsole console;
   final SocietyRoleRow role;
 
-  static Future<void> open(BuildContext context, SuperadminConsole console, SocietyRoleRow role) =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => RolePermissionsPage(console: console, role: role)));
+  static Future<void> open(BuildContext context, SuperadminConsole console,
+          SocietyRoleRow role) =>
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => RolePermissionsPage(console: console, role: role)));
 
   @override
   State<RolePermissionsPage> createState() => _RolePermissionsPageState();
@@ -217,7 +242,8 @@ class RolePermissionsPage extends StatefulWidget {
 class _RolePermissionsPageState extends State<RolePermissionsPage> {
   late RolePermissions _perms = widget.role.permissions;
   late final RolePermissions _initial = widget.role.permissions;
-  late final TextEditingController _name = TextEditingController(text: widget.role.roleName);
+  late final TextEditingController _name =
+      TextEditingController(text: widget.role.roleName);
   bool _saving = false;
 
   @override
@@ -226,12 +252,14 @@ class _RolePermissionsPageState extends State<RolePermissionsPage> {
     super.dispose();
   }
 
-  bool get _dirty => !_perms.sameAs(_initial) || _name.text.trim() != widget.role.roleName;
+  bool get _dirty =>
+      !_perms.sameAs(_initial) || _name.text.trim() != widget.role.roleName;
 
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.isEmpty) {
-      AppFeedback.toast(context, context.t('superadmin.roleNameRequired'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('superadmin.roleNameRequired'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _saving = true);
@@ -245,12 +273,15 @@ class _RolePermissionsPageState extends State<RolePermissionsPage> {
     if (!res.ok) {
       AppFeedback.toast(
         context,
-        res.duplicate ? context.t('superadmin.roleDuplicate') : (res.message ?? context.st('sa.roles.saveFailed')),
+        res.duplicate
+            ? context.t('superadmin.roleDuplicate')
+            : (res.message ?? context.st('sa.roles.saveFailed')),
         tone: BadgeTone.alert,
       );
       return;
     }
-    AppFeedback.toast(context, context.st('sa.roles.saved'), tone: BadgeTone.success);
+    AppFeedback.toast(context, context.st('sa.roles.saved'),
+        tone: BadgeTone.success);
     await widget.console.loadAll();
     if (mounted) Navigator.of(context).pop();
   }
@@ -338,7 +369,8 @@ class _RolePermissionsPageState extends State<RolePermissionsPage> {
         body: PageContainer(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            if (society != null) Text(society.name, style: AppText.caption(context)),
+            if (society != null)
+              Text(society.name, style: AppText.caption(context)),
             const SizedBox(height: 8),
             AppTextField(
               label: context.st('sa.roles.roleName'),
@@ -350,7 +382,10 @@ class _RolePermissionsPageState extends State<RolePermissionsPage> {
             NoticeBanner(
               tone: BadgeTone.info,
               icon: Icons.info_outline,
-              message: context.st('sa.roles.matrixHint', {'on': _perms.enabledCount, 'total': AdminPerm.values.length}),
+              message: context.st('sa.roles.matrixHint', {
+                'on': _perms.enabledCount,
+                'total': AdminPerm.values.length
+              }),
             ),
             const SizedBox(height: 12),
             for (final entry in kPermGroups.entries) ...[
@@ -362,7 +397,9 @@ class _RolePermissionsPageState extends State<RolePermissionsPage> {
                   children: [
                     Row(
                       children: [
-                        Expanded(child: Text(permGroupLabel(context, entry.key), style: AppText.sectionTitle(context))),
+                        Expanded(
+                            child: Text(permGroupLabel(context, entry.key),
+                                style: AppText.sectionTitle(context))),
                         TextButton(
                           onPressed: () {
                             final allOn = entry.value.every((p) => _perms[p]);
@@ -372,7 +409,9 @@ class _RolePermissionsPageState extends State<RolePermissionsPage> {
                               }
                             });
                           },
-                          child: Text(entry.value.every((p) => _perms[p]) ? context.st('sa.roles.noneInGroup') : context.st('sa.roles.allInGroup')),
+                          child: Text(entry.value.every((p) => _perms[p])
+                              ? context.st('sa.roles.noneInGroup')
+                              : context.st('sa.roles.allInGroup')),
                         ),
                       ],
                     ),
@@ -380,27 +419,37 @@ class _RolePermissionsPageState extends State<RolePermissionsPage> {
                       ToggleRow(
                         label: permLabel(context, p),
                         subtitle: switch (p) {
-                          AdminPerm.residentsRw || AdminPerm.guardsRw || AdminPerm.geofenceRw => context.st('sa.perm.rwHint'),
+                          AdminPerm.residentsRw ||
+                          AdminPerm.guardsRw ||
+                          AdminPerm.geofenceRw =>
+                            context.st('sa.perm.rwHint'),
                           AdminPerm.splits => context.st('sa.perm.splitsHint'),
                           _ => p.key,
                         },
                         value: _perms[p],
-                        onChanged: (v) => setState(() => _perms = _perms.withValue(p, v)),
+                        onChanged: (v) =>
+                            setState(() => _perms = _perms.withValue(p, v)),
                       ),
                   ],
                 ),
               ),
             ],
             const SizedBox(height: 4),
-            Text(context.st('sa.roles.visibleTabs'), style: AppText.fieldLabel(context)),
+            Text(context.st('sa.roles.visibleTabs'),
+                style: AppText.fieldLabel(context)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: [for (final tab in tabs) SaTag(tab, primary: tab != 'overview' && tab != 'tour')],
+              children: [
+                for (final tab in tabs)
+                  SaTag(tab, primary: tab != 'overview' && tab != 'tour')
+              ],
             ),
             const SizedBox(height: 8),
-            Text(context.st('sa.roles.appliesNextLogin'), style: AppText.tiny(context).copyWith(color: t.mutedForeground)),
+            Text(context.st('sa.roles.appliesNextLogin'),
+                style:
+                    AppText.tiny(context).copyWith(color: t.mutedForeground)),
           ],
         ),
       ),

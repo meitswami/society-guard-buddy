@@ -19,7 +19,8 @@ import 'superadmin_models.dart';
 /// (and can be removed from) the web and mobile device lists, and removing it there
 /// revokes the phone's quick login.
 class SuperadminBiometric {
-  SuperadminBiometric({LocalAuthentication? auth, FlutterSecureStorage? storage})
+  SuperadminBiometric(
+      {LocalAuthentication? auth, FlutterSecureStorage? storage})
       : _auth = auth ?? LocalAuthentication(),
         _storage = storage ?? const FlutterSecureStorage();
 
@@ -44,7 +45,8 @@ class SuperadminBiometric {
     try {
       return await _auth.authenticate(
         localizedReason: reason,
-        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+        options:
+            const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
       );
     } catch (_) {
       return false;
@@ -61,7 +63,10 @@ class SuperadminBiometric {
       return [
         for (final e in list)
           if (e is Map && e['credentialId'] is String && e['userId'] is String)
-            {'credentialId': e['credentialId'] as String, 'userId': e['userId'] as String},
+            {
+              'credentialId': e['credentialId'] as String,
+              'userId': e['userId'] as String
+            },
       ];
     } catch (_) {
       return [];
@@ -97,7 +102,8 @@ class SuperadminBiometric {
     final ok = await _verifyUser('Confirm to enable fingerprint login');
     if (!ok) return false;
     try {
-      final credentialId = await _localCredentialFor(userId) ?? _newCredentialId();
+      final credentialId =
+          await _localCredentialFor(userId) ?? _newCredentialId();
       final existing = rowsOf(await db
           .from('biometric_credentials')
           .select('id, credential_id, created_at')
@@ -109,16 +115,21 @@ class SuperadminBiometric {
         if (existing.length >= maxCredentialsPerUser) {
           final toDelete = existing.length - maxCredentialsPerUser + 1;
           final ids = existing.take(toDelete).map((c) => '${c['id']}').toList();
-          if (ids.isNotEmpty) await db.from('biometric_credentials').delete().inFilter('id', ids);
+          if (ids.isNotEmpty) {
+            await db.from('biometric_credentials').delete().inFilter('id', ids);
+          }
         }
         await db.from('biometric_credentials').insert({
           'user_type': userType,
           'user_id': userId,
           'credential_id': credentialId,
-          'public_key': 'native-local-auth:${kIsWeb ? 'web' : Platform.operatingSystem}',
+          'public_key':
+              'native-local-auth:${kIsWeb ? 'web' : Platform.operatingSystem}',
         });
       }
-      final local = (await _local()).where((e) => e['userId'] != userId).toList()
+      final local = (await _local())
+          .where((e) => e['userId'] != userId)
+          .toList()
         ..add({'credentialId': credentialId, 'userId': userId});
       await _saveLocal(local);
       return true;
@@ -142,9 +153,12 @@ class SuperadminBiometric {
           .select('credential_id, user_id')
           .eq('user_type', userType)
           .inFilter('credential_id', ids));
-      final valid = {for (final r in rows) '${r['credential_id']}': '${r['user_id']}'};
+      final valid = {
+        for (final r in rows) '${r['credential_id']}': '${r['user_id']}'
+      };
       // Credentials removed on the server (web or another phone) no longer unlock this device.
-      final kept = local.where((e) => valid.containsKey(e['credentialId'])).toList();
+      final kept =
+          local.where((e) => valid.containsKey(e['credentialId'])).toList();
       if (kept.length != local.length) await _saveLocal(kept);
       for (final e in kept) {
         final userId = valid[e['credentialId']];
@@ -183,7 +197,8 @@ class SuperadminBiometric {
     try {
       await db.from('biometric_credentials').delete().eq('id', device.id);
       if (device.thisDevice) {
-        await _saveLocal((await _local()).where((e) => e['userId'] != userId).toList());
+        await _saveLocal(
+            (await _local()).where((e) => e['userId'] != userId).toList());
       }
       return true;
     } catch (_) {

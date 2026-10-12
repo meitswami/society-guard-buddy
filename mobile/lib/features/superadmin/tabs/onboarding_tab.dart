@@ -8,7 +8,8 @@ import '../widgets/sa_widgets.dart';
 import 'tab_page.dart';
 
 /// Badge tone for `society_orders.status` / `society_signups.status`.
-BadgeTone onboardingTone(String? status) => switch ((status ?? '').toLowerCase()) {
+BadgeTone onboardingTone(String? status) =>
+    switch ((status ?? '').toLowerCase()) {
       'success' || 'paid' || 'provisioned' => BadgeTone.success,
       'failed' || 'cancelled' => BadgeTone.alert,
       'created' || 'redirected' || 'pending' => BadgeTone.warning,
@@ -38,7 +39,11 @@ class _OnboardingTabState extends State<OnboardingTab> {
   @override
   void initState() {
     super.initState();
-    if (widget.active) _load();
+    if (widget.active) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _load();
+      });
+    }
   }
 
   @override
@@ -78,14 +83,22 @@ class _OnboardingTabState extends State<OnboardingTab> {
               const SizedBox(height: 12),
               KeyValueRow(ctx.st('sa.pay.signupStatus'), r.signupStatus ?? '—'),
               KeyValueRow(ctx.st('sa.pay.orderStatus'), r.orderStatus),
-              KeyValueRow(ctx.st('sa.pay.amount'), '${Fmt.inr(r.amountInr)} ${r.currency}'),
+              KeyValueRow(ctx.st('sa.pay.amount'),
+                  '${Fmt.inr(r.amountInr)} ${r.currency}'),
               KeyValueRow(ctx.st('sa.pay.provider'), r.provider),
-              KeyValueRow(ctx.t('superadmin.contactPerson'), r.contactPerson ?? ''),
-              KeyValueRow(ctx.t('common.phone'), r.contactPhone ?? '', mono: true),
-              KeyValueRow(ctx.st('sa.pay.referralUsed'), r.referralCodeUsed ?? ''),
-              KeyValueRow(ctx.st('sa.pay.merchantOrder'), r.merchantTransactionId, mono: true),
-              KeyValueRow(ctx.st('sa.details.created'), Fmt.dateTimeFull(r.createdAt)),
-              KeyValueRow(ctx.st('sa.pay.signupCreated'), Fmt.dateTimeFull(r.signup?['created_at'])),
+              KeyValueRow(
+                  ctx.t('superadmin.contactPerson'), r.contactPerson ?? ''),
+              KeyValueRow(ctx.t('common.phone'), r.contactPhone ?? '',
+                  mono: true),
+              KeyValueRow(
+                  ctx.st('sa.pay.referralUsed'), r.referralCodeUsed ?? ''),
+              KeyValueRow(
+                  ctx.st('sa.pay.merchantOrder'), r.merchantTransactionId,
+                  mono: true),
+              KeyValueRow(
+                  ctx.st('sa.details.created'), Fmt.dateTimeFull(r.createdAt)),
+              KeyValueRow(ctx.st('sa.pay.signupCreated'),
+                  Fmt.dateTimeFull(r.signup?['created_at'])),
               const SizedBox(height: 12),
               AppButton.secondary(
                 label: ctx.st('sa.pay.copyOrder'),
@@ -103,7 +116,10 @@ class _OnboardingTabState extends State<OnboardingTab> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final statuses = {for (final r in _rows) r.orderStatus};
-    final list = _rows.where((r) => (_status == 'all' || r.orderStatus == _status) && r.matches(_query)).toList();
+    final list = _rows
+        .where((r) =>
+            (_status == 'all' || r.orderStatus == _status) && r.matches(_query))
+        .toList();
     final paid = _rows.where((r) => r.orderStatus == 'success').toList();
     final collected = paid.fold<num>(0, (sum, r) => sum + r.amountInr);
     return SuperadminTabPage(
@@ -155,8 +171,15 @@ class _OnboardingTabState extends State<OnboardingTab> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              PillChoice(label: context.st('sa.filter.all'), selected: _status == 'all', onTap: () => setState(() => _status = 'all')),
-              for (final s in statuses) PillChoice(label: s, selected: _status == s, onTap: () => setState(() => _status = s)),
+              PillChoice(
+                  label: context.st('sa.filter.all'),
+                  selected: _status == 'all',
+                  onTap: () => setState(() => _status = 'all')),
+              for (final s in statuses)
+                PillChoice(
+                    label: s,
+                    selected: _status == s,
+                    onTap: () => setState(() => _status = s)),
             ],
           ),
           const SizedBox(height: 12),
@@ -166,7 +189,9 @@ class _OnboardingTabState extends State<OnboardingTab> {
         else if (_error != null && _rows.isEmpty)
           ErrorView(onRetry: _load)
         else if (_rows.isEmpty)
-          EmptyView(message: context.st('sa.pay.empty'), icon: Icons.credit_card_outlined)
+          EmptyView(
+              message: context.st('sa.pay.empty'),
+              icon: Icons.credit_card_outlined)
         else if (list.isEmpty)
           EmptyView(message: context.st('sa.noMatches'))
         else
@@ -179,8 +204,12 @@ class _OnboardingTabState extends State<OnboardingTab> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text(r.societyName ?? '—', style: AppText.bodyMedium(context))),
-                      Text(Fmt.inr(r.amountInr), style: AppText.mono(context, size: 14, weight: FontWeight.w600)),
+                      Expanded(
+                          child: Text(r.societyName ?? '—',
+                              style: AppText.bodyMedium(context))),
+                      Text(Fmt.inr(r.amountInr),
+                          style: AppText.mono(context,
+                              size: 14, weight: FontWeight.w600)),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -188,16 +217,23 @@ class _OnboardingTabState extends State<OnboardingTab> {
                     spacing: 6,
                     runSpacing: 4,
                     children: [
-                      StatusBadge('${context.st('sa.pay.signup')}: ${r.signupStatus ?? '—'}', tone: onboardingTone(r.signupStatus)),
-                      StatusBadge('${context.st('sa.pay.order')}: ${r.orderStatus}', tone: onboardingTone(r.orderStatus)),
+                      StatusBadge(
+                          '${context.st('sa.pay.signup')}: ${r.signupStatus ?? '—'}',
+                          tone: onboardingTone(r.signupStatus)),
+                      StatusBadge(
+                          '${context.st('sa.pay.order')}: ${r.orderStatus}',
+                          tone: onboardingTone(r.orderStatus)),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
                     '${r.contactPhone ?? '—'} · ${Fmt.dateTime(r.createdAt)}',
-                    style: AppText.mono(context, size: 11, color: t.mutedForeground),
+                    style: AppText.mono(context,
+                        size: 11, color: t.mutedForeground),
                   ),
-                  Text(r.merchantTransactionId, style: AppText.mono(context, size: 10, color: t.mutedForeground)),
+                  Text(r.merchantTransactionId,
+                      style: AppText.mono(context,
+                          size: 10, color: t.mutedForeground)),
                 ],
               ),
             ),

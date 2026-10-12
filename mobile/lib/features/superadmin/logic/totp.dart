@@ -102,7 +102,11 @@ String? generateTotpCode(String secret, {int? epochSeconds}) {
 
 Uint8List? _secretKey(String secret) {
   final key = Base32.decode(secret);
-  if (key == null || key.length < kTotpMinSecretBytes || key.length > kTotpMaxSecretBytes) return null;
+  if (key == null ||
+      key.length < kTotpMinSecretBytes ||
+      key.length > kTotpMaxSecretBytes) {
+    return null;
+  }
   return key;
 }
 
@@ -123,8 +127,10 @@ bool verifyTotpCode(String secret, String token, {int? epochSeconds}) {
   final key = _secretKey(secret);
   if (key == null) return false;
   final epoch = epochSeconds ?? _nowEpochSeconds();
-  final minCounter = max(0, _floorDiv(epoch - kTotpEpochToleranceSeconds, kTotpPeriodSeconds));
-  final maxCounter = _floorDiv(epoch + kTotpEpochToleranceSeconds, kTotpPeriodSeconds);
+  final minCounter =
+      max(0, _floorDiv(epoch - kTotpEpochToleranceSeconds, kTotpPeriodSeconds));
+  final maxCounter =
+      _floorDiv(epoch + kTotpEpochToleranceSeconds, kTotpPeriodSeconds);
   var valid = false;
   for (var c = minCounter; c <= maxCounter; c++) {
     // Check every step (no early exit) like a constant-time comparison loop.
@@ -136,7 +142,8 @@ bool verifyTotpCode(String secret, String token, {int? epochSeconds}) {
 /// Web `generateTotpSecret()` (otplib `generateSecret()`): 20 random bytes, Base32.
 String generateTotpSecret([Random? random]) {
   final r = random ?? Random.secure();
-  return Base32.encode(List<int>.generate(kTotpSecretBytes, (_) => r.nextInt(256)));
+  return Base32.encode(
+      List<int>.generate(kTotpSecretBytes, (_) => r.nextInt(256)));
 }
 
 /// JS `encodeURIComponent` — Dart's `Uri.encodeComponent` keeps the same

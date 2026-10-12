@@ -18,7 +18,16 @@ import 'tabs/tab_page.dart';
 import 'tabs/tour_tab.dart';
 
 /// Web `Tab` ids of `SuperadminDashboard.tsx`, in bottom-nav order.
-enum SuperTab { societies, roles, admins, maintenance, onboarding, settings, support, tour }
+enum SuperTab {
+  societies,
+  roles,
+  admins,
+  maintenance,
+  onboarding,
+  settings,
+  support,
+  tour
+}
 
 /// Superadmin console — port of `SuperadminDashboard.tsx`: header (crown, name, logout),
 /// shared society selection, the eight tabs and the bottom navigation with footer.
@@ -74,12 +83,16 @@ class _SuperadminShellState extends ConsumerState<SuperadminShell> {
       return;
     }
     final now = DateTime.now();
-    if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 2)) {
+    if (_lastBack != null &&
+        now.difference(_lastBack!) < const Duration(seconds: 2)) {
       SystemNavigator.pop();
       return;
     }
     _lastBack = now;
-    AppFeedback.toast(context, context.tr('Press back again to exit', 'बाहर जाने के लिए फिर से बैक दबाएँ'));
+    AppFeedback.toast(
+        context,
+        context.tr(
+            'Press back again to exit', 'बाहर जाने के लिए फिर से बैक दबाएँ'));
   }
 
   String _label(SuperTab tab) => switch (tab) {
@@ -109,9 +122,12 @@ class _SuperadminShellState extends ConsumerState<SuperadminShell> {
         SuperTab.roles => RolesTab(ctx: ctx),
         SuperTab.admins => AdminsTab(ctx: ctx),
         SuperTab.maintenance => MaintenanceTab(ctx: ctx),
-        SuperTab.onboarding => OnboardingTab(ctx: ctx, active: _tab == SuperTab.onboarding),
-        SuperTab.settings => SettingsTab(ctx: ctx, active: _tab == SuperTab.settings),
-        SuperTab.support => SupportTicketsTab(ctx: ctx, active: _tab == SuperTab.support),
+        SuperTab.onboarding =>
+          OnboardingTab(ctx: ctx, active: _tab == SuperTab.onboarding),
+        SuperTab.settings =>
+          SettingsTab(ctx: ctx, active: _tab == SuperTab.settings),
+        SuperTab.support =>
+          SupportTicketsTab(ctx: ctx, active: _tab == SuperTab.support),
         SuperTab.tour => SuperadminTourTab(ctx: ctx),
       };
 
@@ -143,12 +159,17 @@ class _SuperadminShellState extends ConsumerState<SuperadminShell> {
               index: _tab.index,
               children: [
                 for (final tab in SuperTab.values)
-                  _visited.contains(tab) ? KeyedSubtree(key: ValueKey(tab), child: _body(tab, ctx)) : const SizedBox.shrink(),
+                  _visited.contains(tab)
+                      ? KeyedSubtree(key: ValueKey(tab), child: _body(tab, ctx))
+                      : const SizedBox.shrink(),
               ],
             ),
           ),
           bottomNavigationBar: ScrollableBottomNav<SuperTab>(
-            items: [for (final tab in SuperTab.values) NavItem(id: tab, label: _label(tab), icon: _icon(tab))],
+            items: [
+              for (final tab in SuperTab.values)
+                NavItem(id: tab, label: _label(tab), icon: _icon(tab))
+            ],
             active: _tab,
             onTap: _go,
           ),

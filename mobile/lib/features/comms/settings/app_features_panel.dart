@@ -43,7 +43,8 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
         _soundUrl = f.soundUrl;
       });
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
@@ -53,37 +54,47 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
       await _repo.setSelfIdUpload(widget.societyId, on);
       if (!mounted) return;
       setState(() => _selfId = on);
-      AppFeedback.toast(context, context.t(on ? 'settings.selfIdOn' : 'settings.selfIdOff'), tone: BadgeTone.success);
+      AppFeedback.toast(
+          context, context.t(on ? 'settings.selfIdOn' : 'settings.selfIdOff'),
+          tone: BadgeTone.success);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _selfIdSaving = false);
     }
   }
 
   Future<void> _upload() async {
-    final res = await FilePicker.pickFiles(type: FileType.audio, withData: true);
+    final res =
+        await FilePicker.pickFiles(type: FileType.audio, withData: true);
     final f = res?.files.firstOrNull;
     if (f == null || !mounted) return;
     if (!isAudioFile(fileName: f.name)) {
-      AppFeedback.toast(context, context.t('settings.signatureTuneInvalid'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('settings.signatureTuneInvalid'),
+          tone: BadgeTone.alert);
       return;
     }
     if (f.size > kMaxSocietySoundBytes) {
-      AppFeedback.toast(context, context.t('settings.signatureTuneTooLarge'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('settings.signatureTuneTooLarge'),
+          tone: BadgeTone.alert);
       return;
     }
     final bytes = f.bytes;
     if (bytes == null) return;
     setState(() => _uploading = true);
     try {
-      final url = await _repo.uploadSocietySound(widget.societyId, bytes, f.name, contentType: guessContentType(f.name));
+      final url = await _repo.uploadSocietySound(
+          widget.societyId, bytes, f.name,
+          contentType: guessContentType(f.name));
       if (!mounted) return;
       setState(() => _soundUrl = url);
       unawaited(playNotificationAlert('custom', url));
-      AppFeedback.toast(context, context.t('settings.signatureTuneSaved'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.t('settings.signatureTuneSaved'),
+          tone: BadgeTone.success);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -94,9 +105,11 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
       await _repo.clearSocietySound(widget.societyId);
       if (!mounted) return;
       setState(() => _soundUrl = null);
-      AppFeedback.toast(context, context.t('settings.signatureTuneRemoved'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.t('settings.signatureTuneRemoved'),
+          tone: BadgeTone.success);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
@@ -109,9 +122,11 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(context.t('settings.appFeatures'), style: AppText.sectionTitle(context)),
+          Text(context.t('settings.appFeatures'),
+              style: AppText.sectionTitle(context)),
           const SizedBox(height: 4),
-          Text(context.t('settings.appFeaturesHint'), style: AppText.tiny(context).copyWith(height: 1.4)),
+          Text(context.t('settings.appFeaturesHint'),
+              style: AppText.tiny(context).copyWith(height: 1.4)),
           const SizedBox(height: 12),
           MutedBox(
             color: AppTokens.tint(t.card, 0.5),
@@ -124,12 +139,17 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(context.t('settings.selfId'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                      Text(context.t('settings.selfIdHint'), style: AppText.tiny(context)),
+                      Text(context.t('settings.selfId'),
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w500)),
+                      Text(context.t('settings.selfIdHint'),
+                          style: AppText.tiny(context)),
                     ],
                   ),
                 ),
-                Switch(value: _selfId, onChanged: _selfIdSaving ? null : _toggleSelfId),
+                Switch(
+                    value: _selfId,
+                    onChanged: _selfIdSaving ? null : _toggleSelfId),
               ],
             ),
           ),
@@ -149,8 +169,11 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(context.t('settings.signatureTune'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                          Text(context.t('settings.signatureTuneHint'), style: AppText.tiny(context)),
+                          Text(context.t('settings.signatureTune'),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500)),
+                          Text(context.t('settings.signatureTuneHint'),
+                              style: AppText.tiny(context)),
                         ],
                       ),
                     ),
@@ -165,7 +188,9 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
                     OutlinePill(
                       icon: Icons.upload_outlined,
                       busy: _uploading,
-                      label: _uploading ? context.t('settings.bannerUploading') : context.t('settings.signatureTuneUpload'),
+                      label: _uploading
+                          ? context.t('settings.bannerUploading')
+                          : context.t('settings.signatureTuneUpload'),
                       onTap: _upload,
                     ),
                     if (url != null) ...[
@@ -174,13 +199,18 @@ class _AppFeaturesPanelState extends State<AppFeaturesPanel> {
                         label: context.t('settings.signatureTunePreview'),
                         onTap: () => playNotificationAlert('custom', url),
                       ),
-                      LinkText(context.t('settings.signatureTuneRemove'), color: t.destructive, onTap: _clear),
+                      LinkText(context.t('settings.signatureTuneRemove'),
+                          color: t.destructive, onTap: _clear),
                     ],
                   ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  url == null ? context.t('settings.signatureTuneEmpty') : (url.length > 56 ? url.substring(url.length - 56) : url),
+                  url == null
+                      ? context.t('settings.signatureTuneEmpty')
+                      : (url.length > 56
+                          ? url.substring(url.length - 56)
+                          : url),
                   style: AppText.tiny(context),
                 ),
               ],

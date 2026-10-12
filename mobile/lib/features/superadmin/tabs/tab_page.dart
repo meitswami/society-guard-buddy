@@ -33,7 +33,8 @@ class SuperadminTabPage extends StatelessWidget {
     return PageContainer(
       onRefresh: onRefresh,
       children: [
-        SuperadminHeader(name: ctx.session.name, onLogout: ctx.onLogout, bottomSpacing: 24),
+        SuperadminHeader(
+            name: ctx.session.name, onLogout: ctx.onLogout, bottomSpacing: 24),
         if (showSocietySelector) const SocietySelector(),
         ...children,
       ],
@@ -56,8 +57,13 @@ class SaTabTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          if (icon != null) ...[Icon(icon, size: 18, color: t.primary), const SizedBox(width: 8)],
-          Expanded(child: Text(title, style: AppText.sectionTitle(context).copyWith(fontSize: 16))),
+          if (icon != null) ...[
+            Icon(icon, size: 18, color: t.primary),
+            const SizedBox(width: 8)
+          ],
+          Expanded(
+              child: Text(title,
+                  style: AppText.sectionTitle(context).copyWith(fontSize: 16))),
           ...actions,
         ],
       ),
@@ -67,7 +73,12 @@ class SaTabTitle extends StatelessWidget {
 
 /// Web `p-2 rounded-lg bg-primary/10 text-primary` icon button.
 class SaTintButton extends StatelessWidget {
-  const SaTintButton({super.key, required this.icon, required this.onPressed, this.tooltip, this.color});
+  const SaTintButton(
+      {super.key,
+      required this.icon,
+      required this.onPressed,
+      this.tooltip,
+      this.color});
 
   final IconData icon;
   final VoidCallback? onPressed;
@@ -77,6 +88,11 @@ class SaTintButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = color ?? context.tokens.primary;
-    return IconPillButton(icon: icon, onPressed: onPressed, tooltip: tooltip, color: c, background: AppTokens.tint(c, 0.10));
+    return IconPillButton(
+        icon: icon,
+        onPressed: onPressed,
+        tooltip: tooltip,
+        color: c,
+        background: AppTokens.tint(c, 0.10));
   }
 }

@@ -9,7 +9,8 @@ import '../data/settings_repository.dart';
 /// Port of web `AdminPasswordChange` form (current / new / confirm, show toggle,
 /// min 4 characters, current password verified against `admins`, audit `password_change`).
 class AdminPasswordForm extends StatefulWidget {
-  const AdminPasswordForm({super.key, required this.adminId, required this.societyId});
+  const AdminPasswordForm(
+      {super.key, required this.adminId, required this.societyId});
 
   final String adminId;
   final String societyId;
@@ -39,15 +40,18 @@ class _AdminPasswordFormState extends State<AdminPasswordForm> {
     final next = _new.text;
     final confirm = _confirm.text;
     if (current.isEmpty || next.isEmpty || confirm.isEmpty) {
-      AppFeedback.toast(context, context.t('admin.fillAllFields'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('admin.fillAllFields'),
+          tone: BadgeTone.alert);
       return;
     }
     if (next != confirm) {
-      AppFeedback.toast(context, context.t('admin.passwordMismatch'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('admin.passwordMismatch'),
+          tone: BadgeTone.alert);
       return;
     }
     if (next.length < 4) {
-      AppFeedback.toast(context, context.t('admin.passwordTooShort'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('admin.passwordTooShort'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _loading = true);
@@ -55,19 +59,26 @@ class _AdminPasswordFormState extends State<AdminPasswordForm> {
       final ok = await _repo.currentPasswordMatches(widget.adminId, current);
       if (!mounted) return;
       if (!ok) {
-        AppFeedback.toast(context, context.t('admin.currentPasswordWrong'), tone: BadgeTone.alert);
+        AppFeedback.toast(context, context.t('admin.currentPasswordWrong'),
+            tone: BadgeTone.alert);
         return;
       }
       await _repo.setAdminPassword(widget.adminId, next);
       // Web: auditPasswordChange('admin', adminId, 'admin').
-      await auditPasswordChange(societyId: widget.societyId, userType: 'admin', userId: widget.adminId, userName: 'admin');
+      await auditPasswordChange(
+          societyId: widget.societyId,
+          userType: 'admin',
+          userId: widget.adminId,
+          userName: 'admin');
       if (!mounted) return;
-      AppFeedback.toast(context, context.t('admin.passwordChanged'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.t('admin.passwordChanged'),
+          tone: BadgeTone.success);
       _current.clear();
       _new.clear();
       _confirm.clear();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -86,8 +97,14 @@ class _AdminPasswordFormState extends State<AdminPasswordForm> {
           decoration: InputDecoration(
             hintText: context.t('admin.currentPassword'),
             suffixIcon: IconButton(
-              tooltip: context.ct(_show ? 'comms.password.hide' : 'comms.password.show'),
-              icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18, color: t.mutedForeground),
+              tooltip: context
+                  .ct(_show ? 'comms.password.hide' : 'comms.password.show'),
+              icon: Icon(
+                  _show
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  size: 18,
+                  color: t.mutedForeground),
               onPressed: () => setState(() => _show = !_show),
             ),
           ),
@@ -105,12 +122,15 @@ class _AdminPasswordFormState extends State<AdminPasswordForm> {
           obscureText: !_show,
           style: const TextStyle(fontSize: 14),
           onSubmitted: (_) => _change(),
-          decoration: InputDecoration(hintText: context.t('admin.confirmPassword')),
+          decoration:
+              InputDecoration(hintText: context.t('admin.confirmPassword')),
         ),
         const SizedBox(height: 12),
         AppButton(
           loading: _loading,
-          label: _loading ? context.t('login.loggingIn') : context.t('admin.changePassword'),
+          label: _loading
+              ? context.t('login.loggingIn')
+              : context.t('admin.changePassword'),
           onPressed: _loading ? null : _change,
         ),
       ],

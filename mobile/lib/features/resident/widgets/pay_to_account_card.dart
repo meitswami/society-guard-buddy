@@ -15,7 +15,8 @@ Future<void> launchUpi(BuildContext context, String url) async {
     ok = false;
   }
   if (!ok && context.mounted) {
-    AppFeedback.toast(context, context.tr('No UPI app found on this phone', 'इस फोन पर कोई यूपीआई ऐप नहीं मिला'), tone: BadgeTone.alert);
+    AppFeedback.toast(context, context.tr('No UPI app found on this phone', 'इस फोन पर कोई यूपीआई ऐप नहीं मिला'),
+        tone: BadgeTone.alert);
   }
 }
 
@@ -30,9 +31,13 @@ class SocietyPayToAccountCard extends StatelessWidget {
   Future<void> _copy(BuildContext context, String label, String value) async {
     try {
       await Clipboard.setData(ClipboardData(text: value));
-      if (context.mounted) AppFeedback.toast(context, context.tr('$label copied', '$label कॉपी हुआ'), tone: BadgeTone.success);
+      if (context.mounted) {
+        AppFeedback.toast(context, context.tr('$label copied', '$label कॉपी हुआ'), tone: BadgeTone.success);
+      }
     } catch (_) {
-      if (context.mounted) AppFeedback.toast(context, context.tr('Could not copy', 'कॉपी नहीं हो सका'), tone: BadgeTone.alert);
+      if (context.mounted) {
+        AppFeedback.toast(context, context.tr('Could not copy', 'कॉपी नहीं हो सका'), tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -50,7 +55,8 @@ class SocietyPayToAccountCard extends StatelessWidget {
       AppFeedback.toast(context, context.tr('Enter amount first', 'पहले राशि दर्ज करें'), tone: BadgeTone.alert);
       return;
     }
-    launchUpi(context, buildUpiPayUrl(upiVpa: account.upiVpa!, payeeName: account.accountHolderName, amount: amount, note: note));
+    launchUpi(context,
+        buildUpiPayUrl(upiVpa: account.upiVpa!, payeeName: account.accountHolderName, amount: amount, note: note));
   }
 
   @override
@@ -66,7 +72,8 @@ class SocietyPayToAccountCard extends StatelessWidget {
               ]),
             ),
             TextButton(
-              style: TextButton.styleFrom(visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 11)),
+              style:
+                  TextButton.styleFrom(visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 11)),
               onPressed: () => _copy(context, label, value),
               child: Text(context.tr('Copy', 'कॉपी')),
             ),
@@ -96,7 +103,8 @@ class SocietyPayToAccountCard extends StatelessWidget {
             icon: Icons.copy,
             dense: true,
             expand: false,
-            onPressed: () => _copy(context, context.tr('All bank details', 'सभी बैंक विवरण'), copyableBankDetails(account)),
+            onPressed: () =>
+                _copy(context, context.tr('All bank details', 'सभी बैंक विवरण'), copyableBankDetails(account)),
           ),
         ]),
         const SizedBox(height: 10),

@@ -89,7 +89,12 @@ class ResidentRepository {
   /// Mobile addition: an active pass can be withdrawn (guard verification only accepts `active`).
   Future<void> cancelPass({required String id, required String flatId}) async {
     if (!dbReady) return;
-    await db.from('visitor_passes').update({'status': 'cancelled'}).eq('id', id).eq('flat_id', flatId).eq('status', 'active');
+    await db
+        .from('visitor_passes')
+        .update({'status': 'cancelled'})
+        .eq('id', id)
+        .eq('flat_id', flatId)
+        .eq('status', 'active');
   }
 
   // ---------------------------------------------------------------------------
@@ -169,7 +174,8 @@ class ResidentRepository {
     required String? societyId,
   }) async {
     final name = form.name.trim();
-    for (final phone in loginPhonesToRemove(previousPhone: editing?.phone, newPhone: form.phone, restricted: plan.restricted)) {
+    for (final phone
+        in loginPhonesToRemove(previousPhone: editing?.phone, newPhone: form.phone, restricted: plan.restricted)) {
       await db.from('resident_users').delete().eq('phone', phone).eq('flat_id', flatId);
     }
 
@@ -208,7 +214,8 @@ class ResidentRepository {
     await propagateMemberPhoto(memberId, form.photo);
 
     if (plan.restricted) {
-      await _syncStaffVehicle(form: form, memberId: memberId, societyId: societyId, flatId: flatId, flatNumber: flatNumber);
+      await _syncStaffVehicle(
+          form: form, memberId: memberId, societyId: societyId, flatId: flatId, flatNumber: flatNumber);
     } else {
       await db.from('resident_vehicles').delete().eq('member_id', memberId);
     }
@@ -223,7 +230,8 @@ class ResidentRepository {
     required String flatNumber,
   }) async {
     final existing = await db.from('resident_vehicles').select('id').eq('member_id', memberId).limit(1).maybeSingle();
-    final row = staffVehicleRow(form: form, societyId: societyId, flatId: flatId, flatNumber: flatNumber, memberId: memberId);
+    final row =
+        staffVehicleRow(form: form, societyId: societyId, flatId: flatId, flatNumber: flatNumber, memberId: memberId);
     if (row == null) {
       if (existing != null) await db.from('resident_vehicles').delete().eq('id', existing['id']);
       return;
@@ -404,7 +412,8 @@ class ResidentRepository {
   }
 
   Future<bool> verifyPassword({required String residentId, required String password}) async {
-    final row = await db.from('resident_users').select('id').eq('id', residentId).eq('password', password).maybeSingle();
+    final row =
+        await db.from('resident_users').select('id').eq('id', residentId).eq('password', password).maybeSingle();
     return row != null;
   }
 
@@ -479,7 +488,8 @@ class ResidentRepository {
   static Future<String> _clientIp() async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
     try {
-      final req = await client.getUrl(Uri.parse('https://api.ipify.org?format=json')).timeout(const Duration(seconds: 3));
+      final req =
+          await client.getUrl(Uri.parse('https://api.ipify.org?format=json')).timeout(const Duration(seconds: 3));
       final res = await req.close().timeout(const Duration(seconds: 3));
       final body = await res.transform(utf8.decoder).join().timeout(const Duration(seconds: 3));
       final decoded = jsonDecode(body);

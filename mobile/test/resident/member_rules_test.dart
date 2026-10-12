@@ -4,7 +4,18 @@ import 'package:kutumbika_mobile/features/resident/data/member_rules.dart';
 void main() {
   group('memberCategories (web memberCategories.ts)', () {
     test('household relations may log in; staff may not', () {
-      for (final r in ['owner', 'Spouse', ' son ', 'DAUGHTER', 'father', 'mother', 'family', 'brother', 'sister', 'tenant']) {
+      for (final r in [
+        'owner',
+        'Spouse',
+        ' son ',
+        'DAUGHTER',
+        'father',
+        'mother',
+        'family',
+        'brother',
+        'sister',
+        'tenant'
+      ]) {
         expect(allowsResidentLogin(r), isTrue, reason: r);
       }
       for (final r in ['cook', 'maid', 'driver', 'others', 'other', 'plumber', '', null]) {
@@ -47,7 +58,8 @@ void main() {
       expect(planMemberSave(form: const MemberFormData(name: 'Asha'), docs: const [], flatId: flat).error,
           MemberSaveError.relationRequired);
       expect(
-          planMemberSave(form: const MemberFormData(name: 'Ramu', isServiceman: true), docs: const [], flatId: flat).error,
+          planMemberSave(form: const MemberFormData(name: 'Ramu', isServiceman: true), docs: const [], flatId: flat)
+              .error,
           MemberSaveError.serviceTypeRequired);
     });
 
@@ -65,7 +77,11 @@ void main() {
     test('primary must stay an owner-household relation', () {
       const primary = {'id': 'm1', 'is_primary': true};
       expect(
-        planMemberSave(form: const MemberFormData(name: 'A', relation: 'Tenant'), docs: const [], flatId: flat, editing: primary)
+        planMemberSave(
+                form: const MemberFormData(name: 'A', relation: 'Tenant'),
+                docs: const [],
+                flatId: flat,
+                editing: primary)
             .error,
         MemberSaveError.primaryMustStayOwner,
       );
@@ -78,7 +94,8 @@ void main() {
             .error,
         MemberSaveError.primaryMustStayOwner,
       );
-      final ok = planMemberSave(form: const MemberFormData(name: 'A', relation: 'Owner'), docs: const [], flatId: flat, editing: primary);
+      final ok = planMemberSave(
+          form: const MemberFormData(name: 'A', relation: 'Owner'), docs: const [], flatId: flat, editing: primary);
       expect(ok.ok, isTrue);
       expect(ok.payload['is_primary'], isTrue);
     });
@@ -100,7 +117,8 @@ void main() {
     test('restricted categories need a photo ID (profile photo counts)', () {
       const cook = MemberFormData(name: 'Ramu', isServiceman: true, serviceType: 'Cook');
       expect(planMemberSave(form: cook, docs: const [], flatId: flat).error, MemberSaveError.restrictedPhotoIdRequired);
-      final plan = planMemberSave(form: cook.copyWith(photo: 'data:face', policeVerification: 'pending'), docs: const [], flatId: flat);
+      final plan = planMemberSave(
+          form: cook.copyWith(photo: 'data:face', policeVerification: 'pending'), docs: const [], flatId: flat);
       expect(plan.ok, isTrue);
       expect(plan.restricted, isTrue);
       expect(plan.payload['relation'], 'cook');
@@ -126,7 +144,8 @@ void main() {
       );
       expect(others.payload['relation'], 'others');
       final custom = planMemberSave(
-        form: const MemberFormData(name: 'P', isServiceman: true, serviceType: 'Others', customServiceType: 'Plumber', photo: 'data:p'),
+        form: const MemberFormData(
+            name: 'P', isServiceman: true, serviceType: 'Others', customServiceType: 'Plumber', photo: 'data:p'),
         docs: const [],
         flatId: flat,
       );
@@ -141,7 +160,8 @@ void main() {
 
     test('family members clear the restricted columns and parse age', () {
       final plan = planMemberSave(
-        form: const MemberFormData(name: ' Asha ', relation: 'Daughter', age: '12', gender: 'female', phone: '9876543210', spouseName: 'x'),
+        form: const MemberFormData(
+            name: ' Asha ', relation: 'Daughter', age: '12', gender: 'female', phone: '9876543210', spouseName: 'x'),
         docs: const [],
         flatId: flat,
         myHouseholdGroup: 'owner',
@@ -180,7 +200,8 @@ void main() {
 
     test('staff vehicle row (web syncResidentStaffVehicle)', () {
       expect(
-        staffVehicleRow(form: const MemberFormData(name: 'R'), societyId: 's', flatId: 'f', flatNumber: '101', memberId: 'm'),
+        staffVehicleRow(
+            form: const MemberFormData(name: 'R'), societyId: 's', flatId: 'f', flatNumber: '101', memberId: 'm'),
         isNull,
       );
       final row = staffVehicleRow(
@@ -237,7 +258,8 @@ void main() {
       MemberDocDraft(kind: 'tenant_doc', type: 'rental_agreement', back: 'b'),
     ]);
     expect(rows.length, 2);
-    expect(rows.first, {'member_id': 'm', 'doc_kind': 'photo_id', 'doc_type': 'aadhaar', 'front_url': 'f', 'back_url': null});
+    expect(rows.first,
+        {'member_id': 'm', 'doc_kind': 'photo_id', 'doc_type': 'aadhaar', 'front_url': 'f', 'back_url': null});
     expect(MemberDocDraft.fromRow(const {'doc_kind': null, 'doc_type': null}).kind, 'photo_id');
     expect(MemberDocDraft.fromRow(const {'doc_kind': 'photo_id'}, defaultType: 'aadhaar').type, 'aadhaar');
   });

@@ -65,11 +65,13 @@ void main() {
       expect(msg, contains('OTP: 482913'));
       expect(msg, contains('Hi Ravi,'));
       expect(msg, contains('12/10/2026 · 09:00 – 18:00'));
-      expect(passShareMessage(otp: '1', flatNumber: 'A', societyName: 'S', validDate: '2026-01-01', hindi: true), contains('ओटीपी: 1'));
+      expect(passShareMessage(otp: '1', flatNumber: 'A', societyName: 'S', validDate: '2026-01-01', hindi: true),
+          contains('ओटीपी: 1'));
     });
 
     test('member invite text never contains a password', () {
-      final msg = memberInviteMessage(memberName: 'Asha', phone: '9876543210', flatNumber: 'A-101', societyName: 'Green Park', invitedBy: 'Ravi');
+      final msg = memberInviteMessage(
+          memberName: 'Asha', phone: '9876543210', flatNumber: 'A-101', societyName: 'Green Park', invitedBy: 'Ravi');
       expect(msg, contains('9876543210'));
       expect(msg.toLowerCase(), contains('flat password'));
     });

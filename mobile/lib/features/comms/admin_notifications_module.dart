@@ -34,11 +34,13 @@ class AdminNotificationsModule extends StatefulWidget {
   final AdminModuleContext ctx;
 
   @override
-  State<AdminNotificationsModule> createState() => _AdminNotificationsModuleState();
+  State<AdminNotificationsModule> createState() =>
+      _AdminNotificationsModuleState();
 }
 
 class _PendingMedia {
-  const _PendingMedia({required this.file, required this.kind, required this.size});
+  const _PendingMedia(
+      {required this.file, required this.kind, required this.size});
 
   final XFile file;
   final String kind;
@@ -81,7 +83,10 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
     _load();
     _loadTargets();
     _loadSound();
-    _channel = _repo.subscribeInserts('notifications-dashboard-admin-${widget.ctx.adminId}', _sid, (_) => _load(silent: true));
+    _channel = _repo.subscribeInserts(
+        'notifications-dashboard-admin-${widget.ctx.adminId}',
+        _sid,
+        (_) => _load(silent: true));
   }
 
   @override
@@ -142,48 +147,60 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
     try {
       await _repo.markSocietyRead(_sid);
       if (!mounted) return;
-      AppFeedback.toast(context, context.ct('comms.notif.allMarkedRead'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.ct('comms.notif.allMarkedRead'),
+          tone: BadgeTone.success);
       await _load(silent: true);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
   Future<void> _open(AppNotification n) async {
     if (!n.isRead) {
-      unawaited(_repo.markRead(n.id).then((_) => _load(silent: true)).catchError((_) {}));
+      unawaited(_repo
+          .markRead(n.id)
+          .then((_) => _load(silent: true))
+          .catchError((_) {}));
     }
-    await NotificationDetailSheet.show(context, notification: n, isResident: false, adminName: widget.ctx.adminName);
+    await NotificationDetailSheet.show(context,
+        notification: n, isResident: false, adminName: widget.ctx.adminName);
   }
 
   // ---- Sound ------------------------------------------------------------------------
 
   Future<void> _uploadSound() async {
-    final res = await FilePicker.pickFiles(type: FileType.audio, withData: true);
+    final res =
+        await FilePicker.pickFiles(type: FileType.audio, withData: true);
     final f = res?.files.firstOrNull;
     if (f == null || !mounted) return;
     if (!isAudioFile(fileName: f.name)) {
-      AppFeedback.toast(context, context.t('settings.signatureTuneInvalid'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('settings.signatureTuneInvalid'),
+          tone: BadgeTone.alert);
       return;
     }
     if (f.size > kMaxSocietySoundBytes) {
-      AppFeedback.toast(context, context.t('settings.signatureTuneTooLarge'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('settings.signatureTuneTooLarge'),
+          tone: BadgeTone.alert);
       return;
     }
     final bytes = f.bytes;
     if (bytes == null) return;
     setState(() => _uploadingSound = true);
     try {
-      final url = await _settings.uploadSocietySound(_sid, bytes, f.name, contentType: guessContentType(f.name));
+      final url = await _settings.uploadSocietySound(_sid, bytes, f.name,
+          contentType: guessContentType(f.name));
       if (!mounted) return;
       setState(() {
         _societySoundUrl = url;
         _soundKey = 'custom';
       });
       unawaited(playNotificationAlert('custom', url));
-      AppFeedback.toast(context, context.t('settings.signatureTuneSaved'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.t('settings.signatureTuneSaved'),
+          tone: BadgeTone.success);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _uploadingSound = false);
     }
@@ -194,7 +211,11 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
   Future<void> _pickMedia() async {
     final room = kMaxNotificationAttachments - _pending.length;
     if (room <= 0) {
-      AppFeedback.toast(context, context.ct('comms.notif.maxAttachments', {'max': kMaxNotificationAttachments}), tone: BadgeTone.alert);
+      AppFeedback.toast(
+          context,
+          context.ct('comms.notif.maxAttachments',
+              {'max': kMaxNotificationAttachments}),
+          tone: BadgeTone.alert);
       return;
     }
     List<XFile> picked;
@@ -214,11 +235,17 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
       final kind = fileMediaKind(mimeType: f.mimeType, fileName: f.name);
       if (!mounted) return;
       if (kind == null) {
-        AppFeedback.toast(context, context.ct('comms.notif.mediaInvalid', {'name': f.name}), tone: BadgeTone.alert);
+        AppFeedback.toast(
+            context, context.ct('comms.notif.mediaInvalid', {'name': f.name}),
+            tone: BadgeTone.alert);
         continue;
       }
       if (_pending.length + next.length >= kMaxNotificationAttachments) {
-        AppFeedback.toast(context, context.ct('comms.notif.maxAttachments', {'max': kMaxNotificationAttachments}), tone: BadgeTone.alert);
+        AppFeedback.toast(
+            context,
+            context.ct('comms.notif.maxAttachments',
+                {'max': kMaxNotificationAttachments}),
+            tone: BadgeTone.alert);
         break;
       }
       next.add(_PendingMedia(file: f, kind: kind, size: await f.length()));
@@ -237,20 +264,31 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
           AppFeedback.toast(
             context,
             violation == 'image'
-                ? context.ct('comms.notif.imageTooLarge', {'mb': kMaxNotificationImageBytes ~/ (1024 * 1024), 'name': name})
-                : context.ct('comms.notif.videoTooLarge', {'mb': kMaxNotificationVideoBytes ~/ (1024 * 1024), 'name': name}),
+                ? context.ct('comms.notif.imageTooLarge', {
+                    'mb': kMaxNotificationImageBytes ~/ (1024 * 1024),
+                    'name': name
+                  })
+                : context.ct('comms.notif.videoTooLarge', {
+                    'mb': kMaxNotificationVideoBytes ~/ (1024 * 1024),
+                    'name': name
+                  }),
             tone: BadgeTone.alert,
           );
         }
         continue;
       }
-      final path = '${const Uuid().v4()}/${DateTime.now().millisecondsSinceEpoch}_${sanitizeStorageFileName(name)}';
+      final path =
+          '${const Uuid().v4()}/${DateTime.now().millisecondsSinceEpoch}_${sanitizeStorageFileName(name)}';
       try {
-        final url = await uploadToNotificationMedia(path, await p.file.readAsBytes(),
+        final url = await uploadToNotificationMedia(
+            path, await p.file.readAsBytes(),
             contentType: guessContentType(name, mimeType: p.file.mimeType));
         items.add(NotificationMediaItem(url: url, kind: p.kind));
       } catch (_) {
-        if (mounted) AppFeedback.toast(context, context.ct('comms.notif.uploadFailed', {'name': name}), tone: BadgeTone.alert);
+        if (mounted)
+          AppFeedback.toast(
+              context, context.ct('comms.notif.uploadFailed', {'name': name}),
+              tone: BadgeTone.alert);
       }
     }
     return items;
@@ -283,7 +321,10 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
         try {
           media = await _uploadMedia();
         } catch (_) {
-          if (mounted) AppFeedback.toast(context, context.ct('comms.notif.mediaUploadFailed'), tone: BadgeTone.alert);
+          if (mounted)
+            AppFeedback.toast(
+                context, context.ct('comms.notif.mediaUploadFailed'),
+                tone: BadgeTone.alert);
           return;
         }
       }
@@ -303,7 +344,12 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
       try {
         await _repo.insertNotifications(plan.rows);
       } catch (e) {
-        if (mounted) AppFeedback.toast(context, context.ct('comms.notif.sendFailed', {'error': commsErrorMessage(e)}), tone: BadgeTone.alert);
+        if (mounted)
+          AppFeedback.toast(
+              context,
+              context.ct(
+                  'comms.notif.sendFailed', {'error': commsErrorMessage(e)}),
+              tone: BadgeTone.alert);
         return;
       }
       try {
@@ -312,7 +358,8 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
         debugPrint('Push notification failed (may not be configured): $e');
       }
       if (whatsapp || email) {
-        final image = media.where((m) => m.isImage).map((m) => m.url).firstOrNull;
+        final image =
+            media.where((m) => m.isImage).map((m) => m.url).firstOrNull;
         await _repo.dispatchDirectoryChannels(
           societyId: _sid,
           title: title,
@@ -341,7 +388,9 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
       });
       AppFeedback.toast(
         context,
-        context.ct(whatsapp || email ? 'comms.notif.sentPushDirectory' : 'comms.notif.sentPush'),
+        context.ct(whatsapp || email
+            ? 'comms.notif.sentPushDirectory'
+            : 'comms.notif.sentPush'),
         tone: BadgeTone.success,
       );
       await _load(silent: true);
@@ -354,14 +403,18 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
 
   Future<void> _runHealthCheck() async {
     if (widget.ctx.adminId.isEmpty) {
-      AppFeedback.toast(context, 'Admin ID missing for health check', tone: BadgeTone.alert);
+      AppFeedback.toast(context, 'Admin ID missing for health check',
+          tone: BadgeTone.alert);
       return;
     }
     final steps = ValueNotifier<List<HealthStep>>(const []);
     final summary = ValueNotifier<String>('');
     setState(() => _checkingHealth = true);
-    final sheet = showCommsSheet<void>(context, builder: (ctx) => _HealthSheet(steps: steps, summary: summary, ctx: widget.ctx));
-    final outcome = await const PushHealthCheck().run(widget.ctx.session, onStep: (s) => steps.value = s);
+    final sheet = showCommsSheet<void>(context,
+        builder: (ctx) =>
+            _HealthSheet(steps: steps, summary: summary, ctx: widget.ctx));
+    final outcome = await const PushHealthCheck()
+        .run(widget.ctx.session, onStep: (s) => steps.value = s);
     steps.value = outcome.steps;
     summary.value = outcome.summary;
     if (mounted) {
@@ -395,19 +448,29 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
           subtitle: context.ct('comms.notif.subtitleAdmin', {'count': _unread}),
           icon: Icons.notifications_none,
           badge: _unread,
-          trailing: _unread > 0 ? LinkText(context.ct('comms.notif.markAllRead'), onTap: _markAllRead) : null,
+          trailing: _unread > 0
+              ? LinkText(context.ct('comms.notif.markAllRead'),
+                  onTap: _markAllRead)
+              : null,
         ),
-        EmergencyAlertButton(societyId: _sid, senderName: widget.ctx.adminName, senderRole: 'admin'),
+        EmergencyAlertButton(
+            societyId: _sid,
+            senderName: widget.ctx.adminName,
+            senderRole: 'admin'),
         AppButton(
           icon: _showForm ? Icons.close : Icons.add,
-          label: _showForm ? context.ct('comms.notif.closeForm') : context.ct('comms.notif.sendPush'),
+          label: _showForm
+              ? context.ct('comms.notif.closeForm')
+              : context.ct('comms.notif.sendPush'),
           onPressed: () => setState(() => _showForm = !_showForm),
         ),
         const SizedBox(height: 12),
         AppButton.secondary(
           dense: true,
           icon: Icons.health_and_safety_outlined,
-          label: _checkingHealth ? context.ct('comms.notif.healthRunning') : context.ct('comms.notif.healthCheck'),
+          label: _checkingHealth
+              ? context.ct('comms.notif.healthRunning')
+              : context.ct('comms.notif.healthCheck'),
           loading: _checkingHealth,
           onPressed: _checkingHealth ? null : _runHealthCheck,
         ),
@@ -418,10 +481,15 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
         else if (_failed)
           ErrorView(onRetry: _load)
         else if (_items.isEmpty)
-          EmptyView(message: context.ct('comms.notif.empty'), icon: Icons.notifications_off_outlined)
+          EmptyView(
+              message: context.ct('comms.notif.empty'),
+              icon: Icons.notifications_off_outlined)
         else
-          for (final n in _items) NotificationCard(notification: n, isResident: false, onTap: () => _open(n)),
-        if (_loading && _items.isNotEmpty) LinearProgressIndicator(minHeight: 2, color: t.primary),
+          for (final n in _items)
+            NotificationCard(
+                notification: n, isResident: false, onTap: () => _open(n)),
+        if (_loading && _items.isNotEmpty)
+          LinearProgressIndicator(minHeight: 2, color: t.primary),
       ],
     );
   }
@@ -435,15 +503,24 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
         : residents
             .where((r) =>
                 (r['name']?.toString().toLowerCase().contains(q) ?? false) ||
-                (r['flat_number']?.toString().toLowerCase().contains(q) ?? false))
+                (r['flat_number']?.toString().toLowerCase().contains(q) ??
+                    false))
             .toList();
     return CardSection(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppTextField(controller: _title, hint: context.ct('comms.notif.titlePh'), caps: false),
+          AppTextField(
+              controller: _title,
+              hint: context.ct('comms.notif.titlePh'),
+              caps: false),
           const SizedBox(height: 12),
-          AppTextField(controller: _message, hint: context.ct('comms.notif.messagePh'), caps: false, minLines: 3, maxLines: 8),
+          AppTextField(
+              controller: _message,
+              hint: context.ct('comms.notif.messagePh'),
+              caps: false,
+              minLines: 3,
+              maxLines: 8),
           const SizedBox(height: 12),
           AppDropdown<String>(
             items: kComposeNotificationTypes,
@@ -456,14 +533,19 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(context.ct('comms.notif.soundTitle'), style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500)),
+                Text(context.ct('comms.notif.soundTitle'),
+                    style: AppText.caption(context)
+                        .copyWith(fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
-                Text(context.ct('comms.notif.soundHint'), style: AppText.tiny(context).copyWith(height: 1.4)),
+                Text(context.ct('comms.notif.soundHint'),
+                    style: AppText.tiny(context).copyWith(height: 1.4)),
                 const SizedBox(height: 8),
                 AppDropdown<String>(
                   items: [for (final p in kNotificationSoundPresets) p.id],
                   value: _soundKey,
-                  labelOf: (id) => context.ct(kNotificationSoundPresets.firstWhere((p) => p.id == id).labelKey),
+                  labelOf: (id) => context.ct(kNotificationSoundPresets
+                      .firstWhere((p) => p.id == id)
+                      .labelKey),
                   onChanged: (v) {
                     if (v == null) return;
                     setState(() => _soundKey = v);
@@ -478,14 +560,17 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
                     OutlinePill(
                       icon: Icons.music_note_outlined,
                       busy: _uploadingSound,
-                      label: _uploadingSound ? context.ct('comms.notif.uploading') : context.ct('comms.notif.uploadSound'),
+                      label: _uploadingSound
+                          ? context.ct('comms.notif.uploading')
+                          : context.ct('comms.notif.uploadSound'),
                       onTap: _uploadSound,
                     ),
                     if (_societySoundUrl != null)
                       OutlinePill(
                         icon: Icons.volume_up_outlined,
                         label: context.ct('comms.notif.preview'),
-                        onTap: () => playNotificationAlert('custom', _societySoundUrl),
+                        onTap: () =>
+                            playNotificationAlert('custom', _societySoundUrl),
                       ),
                   ],
                 ),
@@ -493,7 +578,10 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
                   const SizedBox(height: 6),
                   Text(
                     context.ct('comms.notif.currentFile', {
-                      'file': _societySoundUrl!.length > 48 ? _societySoundUrl!.substring(_societySoundUrl!.length - 48) : _societySoundUrl
+                      'file': _societySoundUrl!.length > 48
+                          ? _societySoundUrl!
+                              .substring(_societySoundUrl!.length - 48)
+                          : _societySoundUrl
                     }),
                     style: AppText.tiny(context),
                   ),
@@ -502,42 +590,68 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
             ),
           ),
           const SizedBox(height: 12),
-          Text(context.ct('comms.notif.attachments'), style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500)),
+          Text(context.ct('comms.notif.attachments'),
+              style: AppText.caption(context)
+                  .copyWith(fontWeight: FontWeight.w500)),
           const SizedBox(height: 2),
-          Text(context.ct('comms.notif.attachmentsHint', {'max': kMaxNotificationAttachments}), style: AppText.tiny(context)),
+          Text(
+              context.ct('comms.notif.attachmentsHint',
+                  {'max': kMaxNotificationAttachments}),
+              style: AppText.tiny(context)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              OutlinePill(icon: Icons.attach_file, label: context.ct('comms.notif.addMedia'), onTap: _pickMedia),
+              OutlinePill(
+                  icon: Icons.attach_file,
+                  label: context.ct('comms.notif.addMedia'),
+                  onTap: _pickMedia),
               for (var i = 0; i < _pending.length; i++)
                 FileChip(
-                  label: '${_pending[i].kind == 'video' ? '🎬 ' : ''}${attachmentChipLabel(_pending[i].file.name)}',
+                  label:
+                      '${_pending[i].kind == 'video' ? '🎬 ' : ''}${attachmentChipLabel(_pending[i].file.name)}',
                   onRemove: () => setState(() => _pending.removeAt(i)),
                 ),
             ],
           ),
           const SizedBox(height: 14),
-          Text(context.ct('comms.notif.sendTo'), style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500)),
+          Text(context.ct('comms.notif.sendTo'),
+              style: AppText.caption(context)
+                  .copyWith(fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           Row(
             children: [
               for (final (mode, icon, key) in [
-                (NotificationTargetMode.all, Icons.groups_outlined, 'comms.notif.target.all'),
-                (NotificationTargetMode.flat, Icons.home_outlined, 'comms.notif.target.flat'),
-                (NotificationTargetMode.user, Icons.person_outline, 'comms.notif.target.user'),
+                (
+                  NotificationTargetMode.all,
+                  Icons.groups_outlined,
+                  'comms.notif.target.all'
+                ),
+                (
+                  NotificationTargetMode.flat,
+                  Icons.home_outlined,
+                  'comms.notif.target.flat'
+                ),
+                (
+                  NotificationTargetMode.user,
+                  Icons.person_outline,
+                  'comms.notif.target.user'
+                ),
               ]) ...[
-                if (mode != NotificationTargetMode.all) const SizedBox(width: 8),
-                Expanded(child: _targetOption(context, mode, icon, context.ct(key))),
+                if (mode != NotificationTargetMode.all)
+                  const SizedBox(width: 8),
+                Expanded(
+                    child: _targetOption(context, mode, icon, context.ct(key))),
               ],
             ],
           ),
           if (_mode == NotificationTargetMode.flat) ...[
             const SizedBox(height: 12),
             if (_targets == null)
-              Text(context.ct('comms.notif.flatsLoading'), style: AppText.caption(context))
+              Text(context.ct('comms.notif.flatsLoading'),
+                  style: AppText.caption(context))
             else
               FlatMultiSelect(
                 flats: _flatOptions,
@@ -548,7 +662,10 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
           ],
           if (_mode == NotificationTargetMode.user) ...[
             const SizedBox(height: 12),
-            Text(context.ct('comms.notif.selectResidents', {'count': _selectedResidents.length}), style: AppText.caption(context)),
+            Text(
+                context.ct('comms.notif.selectResidents',
+                    {'count': _selectedResidents.length}),
+                style: AppText.caption(context)),
             const SizedBox(height: 6),
             TextField(
               onChanged: (v) => setState(() => _residentQuery = v),
@@ -556,14 +673,16 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
               decoration: InputDecoration(
                 isDense: true,
                 hintText: context.ct('comms.notif.searchResidents'),
-                prefixIcon: Icon(Icons.search, size: 18, color: t.mutedForeground),
+                prefixIcon:
+                    Icon(Icons.search, size: 18, color: t.mutedForeground),
               ),
             ),
             const SizedBox(height: 6),
             SizedBox(
               height: 200,
               child: visibleResidents.isEmpty
-                  ? Text(context.ct('comms.notif.noResidents'), style: AppText.caption(context))
+                  ? Text(context.ct('comms.notif.noResidents'),
+                      style: AppText.caption(context))
                   : ListView.builder(
                       itemCount: visibleResidents.length,
                       itemBuilder: (context, i) {
@@ -573,21 +692,25 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Material(
-                            color: on ? AppTokens.tint(t.primary, 0.10) : t.card,
+                            color:
+                                on ? AppTokens.tint(t.primary, 0.10) : t.card,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(6),
-                              side: BorderSide(color: on ? t.primary : t.border),
+                              side:
+                                  BorderSide(color: on ? t.primary : t.border),
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(6),
                               onTap: () => setState(() {
                                 if (on) {
-                                  _selectedResidents.removeWhere((s) => s.id == id);
+                                  _selectedResidents
+                                      .removeWhere((s) => s.id == id);
                                 } else {
                                   _selectedResidents.add(SelectedResident(
                                     id: id,
                                     name: r['name']?.toString() ?? '',
-                                    flatNumber: r['flat_number']?.toString() ?? '',
+                                    flatNumber:
+                                        r['flat_number']?.toString() ?? '',
                                   ));
                                 }
                               }),
@@ -595,8 +718,13 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
                                 padding: const EdgeInsets.all(8),
                                 child: Row(
                                   children: [
-                                    Expanded(child: Text(r['name']?.toString() ?? '', style: const TextStyle(fontSize: 12))),
-                                    Text('${context.t('common.flat')} ${r['flat_number'] ?? ''}', style: AppText.caption(context)),
+                                    Expanded(
+                                        child: Text(r['name']?.toString() ?? '',
+                                            style:
+                                                const TextStyle(fontSize: 12))),
+                                    Text(
+                                        '${context.t('common.flat')} ${r['flat_number'] ?? ''}',
+                                        style: AppText.caption(context)),
                                   ],
                                 ),
                               ),
@@ -613,14 +741,17 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(context.ct('comms.notif.directoryTitle'), style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500)),
+                Text(context.ct('comms.notif.directoryTitle'),
+                    style: AppText.caption(context)
+                        .copyWith(fontWeight: FontWeight.w500)),
                 CheckboxListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,
                   value: _whatsapp,
                   onChanged: (v) => setState(() => _whatsapp = v ?? false),
-                  title: Text(context.ct('comms.notif.channelWhatsapp'), style: const TextStyle(fontSize: 12)),
+                  title: Text(context.ct('comms.notif.channelWhatsapp'),
+                      style: const TextStyle(fontSize: 12)),
                 ),
                 CheckboxListTile(
                   dense: true,
@@ -628,7 +759,8 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
                   controlAffinity: ListTileControlAffinity.leading,
                   value: _email,
                   onChanged: (v) => setState(() => _email = v ?? false),
-                  title: Text(context.ct('comms.notif.channelEmail'), style: const TextStyle(fontSize: 12)),
+                  title: Text(context.ct('comms.notif.channelEmail'),
+                      style: const TextStyle(fontSize: 12)),
                 ),
               ],
             ),
@@ -637,7 +769,9 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
           AppButton(
             icon: Icons.send,
             loading: _sending,
-            label: _sending ? context.ct('comms.notif.sending') : context.ct('comms.notif.send'),
+            label: _sending
+                ? context.ct('comms.notif.sending')
+                : context.ct('comms.notif.send'),
             onPressed: _sending ? null : _send,
           ),
         ],
@@ -645,13 +779,16 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
     );
   }
 
-  Widget _targetOption(BuildContext context, NotificationTargetMode mode, IconData icon, String label) {
+  Widget _targetOption(BuildContext context, NotificationTargetMode mode,
+      IconData icon, String label) {
     final t = context.tokens;
     final on = _mode == mode;
     final fg = on ? t.primary : t.mutedForeground;
     return Material(
       color: on ? AppTokens.tint(t.primary, 0.10) : Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTokens.radiusSm), side: BorderSide(color: on ? t.primary : t.border)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radiusSm),
+          side: BorderSide(color: on ? t.primary : t.border)),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTokens.radiusSm),
         onTap: () => setState(() => _mode = mode),
@@ -661,7 +798,9 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
             children: [
               Icon(icon, size: 16, color: fg),
               const SizedBox(height: 4),
-              Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: fg)),
+              Text(label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: fg)),
             ],
           ),
         ),
@@ -671,7 +810,8 @@ class _AdminNotificationsModuleState extends State<AdminNotificationsModule> {
 }
 
 class _HealthSheet extends StatelessWidget {
-  const _HealthSheet({required this.steps, required this.summary, required this.ctx});
+  const _HealthSheet(
+      {required this.steps, required this.summary, required this.ctx});
 
   final ValueNotifier<List<HealthStep>> steps;
   final ValueNotifier<String> summary;
@@ -695,7 +835,8 @@ class _HealthSheet extends StatelessWidget {
     );
     final ok = await copyToClipboard(report);
     if (!context.mounted) return;
-    AppFeedback.toast(context, context.ct(ok ? 'comms.health.copied' : 'comms.health.copyFailed'),
+    AppFeedback.toast(context,
+        context.ct(ok ? 'comms.health.copied' : 'comms.health.copyFailed'),
         tone: ok ? BadgeTone.success : BadgeTone.alert);
   }
 
@@ -703,7 +844,8 @@ class _HealthSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
+      constraints:
+          BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: AnimatedBuilder(
@@ -712,37 +854,50 @@ class _HealthSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(context.ct('comms.health.title'), style: AppText.pageTitle(context)),
+              Text(context.ct('comms.health.title'),
+                  style: AppText.pageTitle(context)),
               const SizedBox(height: 4),
-              Text(_summaryText(context, summary.value), style: AppText.caption(context)),
+              Text(_summaryText(context, summary.value),
+                  style: AppText.caption(context)),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                   onPressed: steps.value.isEmpty ? null : () => _copy(context),
                   icon: const Icon(Icons.copy, size: 14),
-                  label: Text(context.ct('comms.health.copy'), style: const TextStyle(fontSize: 12)),
+                  label: Text(context.ct('comms.health.copy'),
+                      style: const TextStyle(fontSize: 12)),
                 ),
               ),
               Flexible(
                 child: ListView(
                   shrinkWrap: true,
                   children: [
-                    if (steps.value.isEmpty) Text(context.ct('comms.health.checking'), style: AppText.body(context).copyWith(color: t.mutedForeground)),
+                    if (steps.value.isEmpty)
+                      Text(context.ct('comms.health.checking'),
+                          style: AppText.body(context)
+                              .copyWith(color: t.mutedForeground)),
                     for (final s in steps.value)
                       Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(border: Border.all(color: t.border), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+                        decoration: BoxDecoration(
+                            border: Border.all(color: t.border),
+                            borderRadius:
+                                BorderRadius.circular(AppTokens.radiusSm)),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${s.ok ? '✅' : '❌'} ${s.label}', style: AppText.bodyMedium(context)),
+                            Text('${s.ok ? '✅' : '❌'} ${s.label}',
+                                style: AppText.bodyMedium(context)),
                             const SizedBox(height: 2),
                             Text(s.detail, style: AppText.caption(context)),
                           ],
                         ),
                       ),
-                    if (summary.value.isEmpty) const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator(minHeight: 2)),
+                    if (summary.value.isEmpty)
+                      const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: LinearProgressIndicator(minHeight: 2)),
                   ],
                 ),
               ),

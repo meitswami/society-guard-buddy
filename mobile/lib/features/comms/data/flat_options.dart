@@ -29,7 +29,8 @@ int compareFlatNumbers(String a, String b) {
   return a.compareTo(b);
 }
 
-bool _isDigits(String s) => s.isNotEmpty && s.codeUnits.every((c) => c >= 48 && c <= 57);
+bool _isDigits(String s) =>
+    s.isNotEmpty && s.codeUnits.every((c) => c >= 48 && c <= 57);
 
 int _compareNumeric(String x, String y) {
   final a = x.replaceFirst(RegExp(r'^0+(?=\d)'), '');
@@ -60,7 +61,8 @@ List<FlatOption> flatOptionsWithPrimaryLabel(
   List<Map<String, dynamic>> flats,
   Map<String, String> primaryNameByFlatId,
 ) {
-  final sorted = sortFlatsByNumber(flats, (f) => f['flat_number']?.toString() ?? '');
+  final sorted =
+      sortFlatsByNumber(flats, (f) => f['flat_number']?.toString() ?? '');
   return [
     for (final f in sorted)
       () {
@@ -70,7 +72,10 @@ List<FlatOption> flatOptionsWithPrimaryLabel(
         final subtitle = (primary != null && primary.isNotEmpty)
             ? primary
             : ((owner != null && owner.isNotEmpty) ? owner : null);
-        return FlatOption(id: id, flatNumber: f['flat_number']?.toString() ?? '', subtitle: subtitle);
+        return FlatOption(
+            id: id,
+            flatNumber: f['flat_number']?.toString() ?? '',
+            subtitle: subtitle);
       }(),
   ];
 }
@@ -80,13 +85,17 @@ List<FlatOption> filterFlatOptions(List<FlatOption> flats, String query) {
   final s = query.trim().toLowerCase();
   if (s.isEmpty) return flats;
   return flats
-      .where((f) => f.flatNumber.toLowerCase().contains(s) || (f.subtitle?.toLowerCase().contains(s) ?? false))
+      .where((f) =>
+          f.flatNumber.toLowerCase().contains(s) ||
+          (f.subtitle?.toLowerCase().contains(s) ?? false))
       .toList();
 }
 
 /// Toggle one flat (web `toggle`).
 List<String> toggleFlat(List<String> selected, String flat) =>
-    selected.contains(flat) ? selected.where((x) => x != flat).toList() : [...selected, flat];
+    selected.contains(flat)
+        ? selected.where((x) => x != flat).toList()
+        : [...selected, flat];
 
 /// "All visible" (web `selectAllFiltered`): union of selected + visible, keeping order.
 List<String> selectAllVisible(List<String> selected, List<FlatOption> visible) {

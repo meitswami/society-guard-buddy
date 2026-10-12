@@ -3,8 +3,14 @@ import 'package:kutumbika_mobile/features/comms/data/notification_audience.dart'
 import 'package:kutumbika_mobile/features/comms/data/notification_models.dart';
 
 void main() {
-  bool visible(String? type, String? id, {String rid = 'r-1', String name = 'ASHA', String flat = '101'}) =>
-      notificationVisibleToResident(targetType: type, targetId: id, residentId: rid, residentName: name, flatNumber: flat);
+  bool visible(String? type, String? id,
+          {String rid = 'r-1', String name = 'ASHA', String flat = '101'}) =>
+      notificationVisibleToResident(
+          targetType: type,
+          targetId: id,
+          residentId: rid,
+          residentName: name,
+          flatNumber: flat);
 
   group('notificationVisibleToResident (web notificationAudience.ts)', () {
     test('society-wide rows are visible to everyone', () {
@@ -27,7 +33,8 @@ void main() {
       expect(visible('user', 'RAVI, ASHA'), isTrue);
       expect(visible('user', 'x-9, r-1'), isTrue);
       expect(visible('user', 'RAVI'), isFalse);
-      expect(visible('user', 'asha'), isFalse, reason: 'names compare case-sensitively like the web');
+      expect(visible('user', 'asha'), isFalse,
+          reason: 'names compare case-sensitively like the web');
     });
 
     test('unknown or missing target types are hidden', () {
@@ -36,14 +43,17 @@ void main() {
       expect(visible('', '101'), isFalse);
     });
 
-    test('a resident without a flat sees flat rows with an empty target (web quirk)', () {
+    test(
+        'a resident without a flat sees flat rows with an empty target (web quirk)',
+        () {
       expect(visible('flat', null, flat: ''), isTrue);
       expect(visible('flat', '101', flat: ''), isFalse);
     });
 
     test('row helper reads target_type / target_id', () {
       expect(
-        notificationRowVisibleToResident({'target_type': 'flat', 'target_id': '101,205'},
+        notificationRowVisibleToResident(
+            {'target_type': 'flat', 'target_id': '101,205'},
             residentId: 'a', residentName: 'b', flatNumber: '205'),
         isTrue,
       );
@@ -63,7 +73,8 @@ void main() {
 
     test('labels follow NOTIFICATION_TYPE_LABELS with Notice fallback', () {
       expect(notificationTypeLabelKey('general'), 'comms.type.notice');
-      expect(notificationTypeLabelKey('payment_reminder'), 'comms.type.payment');
+      expect(
+          notificationTypeLabelKey('payment_reminder'), 'comms.type.payment');
       expect(notificationTypeLabelKey('event_reminder'), 'comms.type.reminder');
       expect(notificationTypeLabelKey('poll'), 'comms.type.poll');
       expect(notificationTypeLabelKey('alert'), 'comms.type.alert');
@@ -71,9 +82,18 @@ void main() {
     });
 
     test('admin target tag', () {
-      expect(notificationTargetTag(targetType: 'all', targetId: null, flatWord: 'Flat'), isNull);
-      expect(notificationTargetTag(targetType: 'flat', targetId: '101', flatWord: 'Flat'), '→ Flat 101');
-      expect(notificationTargetTag(targetType: 'user', targetId: 'ASHA,RAVI', flatWord: 'Flat'), '→ ASHA,RAVI');
+      expect(
+          notificationTargetTag(
+              targetType: 'all', targetId: null, flatWord: 'Flat'),
+          isNull);
+      expect(
+          notificationTargetTag(
+              targetType: 'flat', targetId: '101', flatWord: 'Flat'),
+          '→ Flat 101');
+      expect(
+          notificationTargetTag(
+              targetType: 'user', targetId: 'ASHA,RAVI', flatWord: 'Flat'),
+          '→ ASHA,RAVI');
     });
   });
 
@@ -90,7 +110,11 @@ void main() {
         {'id': 'n3', 'target_type': 'flat', 'target_id': '101'},
         {'id': 'n4', 'target_type': 'user', 'target_id': 'ASHA'},
       ];
-      final ids = idsToDismiss(rows, alreadyDismissed: {'n3'}, residentId: 'r-1', residentName: 'ASHA', flatNumber: '101');
+      final ids = idsToDismiss(rows,
+          alreadyDismissed: {'n3'},
+          residentId: 'r-1',
+          residentName: 'ASHA',
+          flatNumber: '101');
       expect(ids, ['n1', 'n4']);
     });
   });
@@ -136,7 +160,11 @@ void main() {
     });
 
     test('admin comment', () {
-      final row = buildCommentRow(notificationId: 'n1', body: 'Tomorrow', isResident: false, adminName: 'SECRETARY');
+      final row = buildCommentRow(
+          notificationId: 'n1',
+          body: 'Tomorrow',
+          isResident: false,
+          adminName: 'SECRETARY');
       expect(row['author_role'], 'admin');
       expect(row['author_resident_id'], isNull);
       expect(row['author_flat_number'], isNull);

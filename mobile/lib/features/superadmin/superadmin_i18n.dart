@@ -12,7 +12,8 @@ extension SuperadminText on BuildContext {
     if (v != key) return v;
     final row = kSuperadminStrings[key];
     if (row == null) return key;
-    final raw = (lang == AppLang.hi ? row['hi'] : row['en']) ?? row['en'] ?? key;
+    final raw =
+        (lang == AppLang.hi ? row['hi'] : row['en']) ?? row['en'] ?? key;
     return applyVars(raw.isEmpty ? (row['en'] ?? key) : raw, vars);
   }
 }

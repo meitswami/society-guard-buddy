@@ -3,7 +3,9 @@
 library;
 
 /// Request body the web sends to `backup-export`.
-Map<String, dynamic> backupExportBody({String? societyId, bool completeDb = false, bool sendEmail = false}) => {
+Map<String, dynamic> backupExportBody(
+        {String? societyId, bool completeDb = false, bool sendEmail = false}) =>
+    {
       'society_id': societyId,
       'complete_db': completeDb,
       'send_email': sendEmail,
@@ -18,11 +20,16 @@ String backupDownloadFileName({
   Object? serverFilename,
   DateTime? now,
 }) {
-  if (serverFilename is String && serverFilename.endsWith('.json')) return serverFilename;
+  if (serverFilename is String && serverFilename.endsWith('.json')) {
+    return serverFilename;
+  }
   final socName = completeDb
       ? 'CompleteDatabase'
-      : ((societyName != null && societyName.isNotEmpty) ? societyName : 'AllSocieties');
-  final date = (now ?? DateTime.now()).toUtc().toIso8601String().split('T').first;
+      : ((societyName != null && societyName.isNotEmpty)
+          ? societyName
+          : 'AllSocieties');
+  final date =
+      (now ?? DateTime.now()).toUtc().toIso8601String().split('T').first;
   final prefix = completeDb ? 'complete_database' : 'backup';
   return '${prefix}_${socName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}_$date.json';
 }
@@ -35,7 +42,9 @@ String describeBackupExportHttpError(int status, {String? serverMessage}) {
   if (status == 401 || status == 403) {
     return 'Calling backup-export was rejected (401/403). Ensure supabase/config.toml has [functions.backup-export] verify_jwt = false, then run `supabase link` and `supabase functions deploy backup-export`.';
   }
-  if (serverMessage != null && serverMessage.trim().isNotEmpty) return serverMessage.trim();
+  if (serverMessage != null && serverMessage.trim().isNotEmpty) {
+    return serverMessage.trim();
+  }
   return 'Edge function error ($status)';
 }
 
@@ -55,7 +64,12 @@ String describeBackupExportNetworkError(String message) {
 
 /// Short summary of `backup.metadata` for the result card.
 class BackupSummary {
-  const BackupSummary({this.societyName, this.totalTables, this.totalRecords, this.exportedAt, this.bytes});
+  const BackupSummary(
+      {this.societyName,
+      this.totalTables,
+      this.totalRecords,
+      this.exportedAt,
+      this.bytes});
 
   final String? societyName;
   final int? totalTables;
@@ -63,7 +77,8 @@ class BackupSummary {
   final String? exportedAt;
   final int? bytes;
 
-  static int? _int(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
+  static int? _int(Object? v) =>
+      v is num ? v.toInt() : int.tryParse('${v ?? ''}');
 
   factory BackupSummary.fromMetadata(Object? metadata, {int? bytes}) {
     final m = metadata is Map ? metadata : const {};

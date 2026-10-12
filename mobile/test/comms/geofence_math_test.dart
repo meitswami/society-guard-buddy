@@ -30,7 +30,8 @@ void main() {
   });
 
   group('evaluateGeofence (web checkSocietyGeofence)', () {
-    const fence = GeofenceFence(latitude: 28.6139, longitude: 77.2090, radiusMeters: 500);
+    const fence =
+        GeofenceFence(latitude: 28.6139, longitude: 77.2090, radiusMeters: 500);
 
     test('no fence → allowed', () {
       final r = evaluateGeofence(fence: null, policy: GeofencePolicy.strict);
@@ -38,25 +39,57 @@ void main() {
     });
 
     test('inside the radius → allowed (boundary inclusive)', () {
-      expect(evaluateGeofence(fence: fence, policy: GeofencePolicy.strict, latitude: 28.6139, longitude: 77.2090).ok, isTrue);
-      final edge = GeofenceFence(latitude: 0, longitude: 0, radiusMeters: getDistanceMeters(0, 0, 0, 0.001));
-      expect(evaluateGeofence(fence: edge, policy: GeofencePolicy.strict, latitude: 0, longitude: 0.001).ok, isTrue);
+      expect(
+          evaluateGeofence(
+                  fence: fence,
+                  policy: GeofencePolicy.strict,
+                  latitude: 28.6139,
+                  longitude: 77.2090)
+              .ok,
+          isTrue);
+      final edge = GeofenceFence(
+          latitude: 0,
+          longitude: 0,
+          radiusMeters: getDistanceMeters(0, 0, 0, 0.001));
+      expect(
+          evaluateGeofence(
+                  fence: edge,
+                  policy: GeofencePolicy.strict,
+                  latitude: 0,
+                  longitude: 0.001)
+              .ok,
+          isTrue);
     });
 
     test('outside → outside with distance', () {
-      final r = evaluateGeofence(fence: fence, policy: GeofencePolicy.permissive, latitude: 28.70, longitude: 77.2090);
+      final r = evaluateGeofence(
+          fence: fence,
+          policy: GeofencePolicy.permissive,
+          latitude: 28.70,
+          longitude: 77.2090);
       expect(r.ok, isFalse);
       expect(r.reason, GeofenceFailReason.outside);
       expect(r.distanceM, greaterThan(9000));
     });
 
     test('position errors: strict blocks, permissive allows', () {
-      final strict = evaluateGeofence(fence: fence, policy: GeofencePolicy.strict, positionFailed: true);
+      final strict = evaluateGeofence(
+          fence: fence, policy: GeofencePolicy.strict, positionFailed: true);
       expect(strict.ok, isFalse);
       expect(strict.reason, GeofenceFailReason.positionUnavailable);
-      final noGeo = evaluateGeofence(fence: fence, policy: GeofencePolicy.strict, positionFailed: true, geolocationAvailable: false);
+      final noGeo = evaluateGeofence(
+          fence: fence,
+          policy: GeofencePolicy.strict,
+          positionFailed: true,
+          geolocationAvailable: false);
       expect(noGeo.reason, GeofenceFailReason.noGeolocation);
-      expect(evaluateGeofence(fence: fence, policy: GeofencePolicy.permissive, positionFailed: true).ok, isTrue);
+      expect(
+          evaluateGeofence(
+                  fence: fence,
+                  policy: GeofencePolicy.permissive,
+                  positionFailed: true)
+              .ok,
+          isTrue);
     });
   });
 

@@ -16,9 +16,14 @@ abstract final class SuperadminAudit {
   static Future<String> _clientIp() async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
     try {
-      final req = await client.getUrl(Uri.parse('https://api.ipify.org?format=json')).timeout(const Duration(seconds: 3));
+      final req = await client
+          .getUrl(Uri.parse('https://api.ipify.org?format=json'))
+          .timeout(const Duration(seconds: 3));
       final res = await req.close().timeout(const Duration(seconds: 3));
-      final body = await res.transform(utf8.decoder).join().timeout(const Duration(seconds: 3));
+      final body = await res
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 3));
       final data = jsonDecode(body);
       final ip = data is Map ? data['ip'] : null;
       return ip is String && ip.isNotEmpty ? ip : 'unknown';
@@ -47,7 +52,8 @@ abstract final class SuperadminAudit {
       version = '${info.version}+${info.buildNumber}';
     } catch (_) {}
     final osVersion = kIsWeb ? '' : Platform.operatingSystemVersion;
-    _userAgent = 'KutumbikaMobile/$version (Flutter; ${_os()} $osVersion)'.trim();
+    _userAgent =
+        'KutumbikaMobile/$version (Flutter; ${_os()} $osVersion)'.trim();
     return _userAgent!;
   }
 
@@ -93,7 +99,8 @@ abstract final class SuperadminAudit {
   }
 
   /// Web `auditLoginSuccess('superadmin', id, name, method)`.
-  static void loginSuccess(String userId, String userName, String method) => unawaited(log(
+  static void loginSuccess(String userId, String userName, String method) =>
+      unawaited(log(
         eventType: 'login_success',
         userId: userId,
         userName: userName,
@@ -101,7 +108,9 @@ abstract final class SuperadminAudit {
       ));
 
   /// Web `auditLoginFailed('superadmin', attemptedId, reason)`.
-  static void loginFailed(String attemptedId, [String reason = 'invalid_credentials']) => unawaited(log(
+  static void loginFailed(String attemptedId,
+          [String reason = 'invalid_credentials']) =>
+      unawaited(log(
         eventType: 'login_failed',
         userId: attemptedId,
         details: {'reason': reason},

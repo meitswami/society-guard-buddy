@@ -46,11 +46,14 @@ Future<GeneratedPdf> buildPaymentStatementPdf({
         generatedBy: generatedBy,
       ),
       pw.Text('Flat $flatNumber · $residentName', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-      pw.Text('Generated: ${Fmt.dateTimeFull(DateTime.now())}', style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
+      pw.Text('Generated: ${Fmt.dateTimeFull(DateTime.now())}',
+          style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
       pw.SizedBox(height: 6),
-      pw.Text('Total (verified): ${receiptMoney(total)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+      pw.Text('Total (verified): ${receiptMoney(total)}',
+          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
       if (pending.isNotEmpty)
-        pw.Text('Awaiting verification: ${receiptMoney(pendingTotal)} (${pending.length})', style: const pw.TextStyle(fontSize: 9)),
+        pw.Text('Awaiting verification: ${receiptMoney(pendingTotal)} (${pending.length})',
+            style: const pw.TextStyle(fontSize: 9)),
       pw.SizedBox(height: 8),
       if (rows.isEmpty)
         pw.Text('No payments in this period.', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700))
@@ -81,7 +84,8 @@ Future<GeneratedPdf> buildPaymentStatementPdf({
       ],
       if (verified.isNotEmpty) ...[
         pw.SizedBox(height: 8),
-        pw.Text('Transaction total: ${receiptMoney(total)}', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+        pw.Text('Transaction total: ${receiptMoney(total)}',
+            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
       ],
     ],
   );

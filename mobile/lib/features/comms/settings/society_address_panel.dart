@@ -55,7 +55,8 @@ class _SocietyAddressPanelState extends State<SocietyAddressPanel> {
       _state.text = a.state;
       _pincode.text = a.pincode;
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -66,13 +67,19 @@ class _SocietyAddressPanelState extends State<SocietyAddressPanel> {
     try {
       await _repo.saveAddress(
         widget.societyId,
-        buildAddressPatch(address: _address.text, city: _city.text, state: _state.text, pincode: _pincode.text),
+        buildAddressPatch(
+            address: _address.text,
+            city: _city.text,
+            state: _state.text,
+            pincode: _pincode.text),
       );
       if (!mounted) return;
-      AppFeedback.toast(context, context.t('settings.societyAddressSaved'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.t('settings.societyAddressSaved'),
+          tone: BadgeTone.success);
       await _reload();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -81,19 +88,30 @@ class _SocietyAddressPanelState extends State<SocietyAddressPanel> {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final preview = letterheadAddressLine(address: _address.text, city: _city.text, state: _state.text, pincode: _pincode.text);
+    final preview = letterheadAddressLine(
+        address: _address.text,
+        city: _city.text,
+        state: _state.text,
+        pincode: _pincode.text);
     return CardSection(
       margin: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SectionTitle(context.t('settings.societyAddress'), icon: Icons.location_on_outlined, padding: const EdgeInsets.only(bottom: 4)),
-          Text(context.t('settings.societyAddressHint'), style: AppText.tiny(context).copyWith(height: 1.4)),
+          SectionTitle(context.t('settings.societyAddress'),
+              icon: Icons.location_on_outlined,
+              padding: const EdgeInsets.only(bottom: 4)),
+          Text(context.t('settings.societyAddressHint'),
+              style: AppText.tiny(context).copyWith(height: 1.4)),
           const SizedBox(height: 12),
           if (_loading)
             Text('…', style: AppText.caption(context))
           else ...[
-            if (_name.isNotEmpty) ...[Text(_name, style: AppText.bodyMedium(context).copyWith(fontSize: 12)), const SizedBox(height: 12)],
+            if (_name.isNotEmpty) ...[
+              Text(_name,
+                  style: AppText.bodyMedium(context).copyWith(fontSize: 12)),
+              const SizedBox(height: 12)
+            ],
             AppTextField(
               label: context.t('superadmin.address'),
               controller: _address,
@@ -105,9 +123,17 @@ class _SocietyAddressPanelState extends State<SocietyAddressPanel> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: AppTextField(label: context.t('superadmin.city'), controller: _city, hint: context.t('superadmin.city'))),
+                Expanded(
+                    child: AppTextField(
+                        label: context.t('superadmin.city'),
+                        controller: _city,
+                        hint: context.t('superadmin.city'))),
                 const SizedBox(width: 8),
-                Expanded(child: AppTextField(label: context.t('superadmin.state'), controller: _state, hint: context.t('superadmin.state'))),
+                Expanded(
+                    child: AppTextField(
+                        label: context.t('superadmin.state'),
+                        controller: _state,
+                        hint: context.t('superadmin.state'))),
               ],
             ),
             const SizedBox(height: 12),
@@ -122,16 +148,19 @@ class _SocietyAddressPanelState extends State<SocietyAddressPanel> {
             const SizedBox(height: 12),
             if (preview.isNotEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppTokens.tint(t.secondary, 0.3),
                   border: Border.all(color: t.border),
                   borderRadius: BorderRadius.circular(AppTokens.radiusSm),
                 ),
-                child: Text(preview, style: AppText.caption(context).copyWith(fontSize: 11)),
+                child: Text(preview,
+                    style: AppText.caption(context).copyWith(fontSize: 11)),
               )
             else
-              Text(context.t('settings.societyAddressEmpty'), style: AppText.caption(context).copyWith(fontSize: 11)),
+              Text(context.t('settings.societyAddressEmpty'),
+                  style: AppText.caption(context).copyWith(fontSize: 11)),
             const SizedBox(height: 12),
             AppButton(
               loading: _saving,

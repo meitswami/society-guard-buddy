@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kutumbika_mobile/features/resident/data/committee_roster.dart';
 
-CommitteeRosterRow row(String name, String position, {String? from, String? to, int sort = 0, bool active = true, String? flatId, String? owner, String? phone}) =>
+CommitteeRosterRow row(String name, String position,
+        {String? from, String? to, int sort = 0, bool active = true, String? flatId, String? owner, String? phone}) =>
     CommitteeRosterRow(
       id: name,
       name: name,
@@ -70,7 +71,8 @@ void main() {
       expect(isMemberOnCommitteeRoster(name: ' suresh pareek ', flatId: 'f1', roster: roster), isTrue);
       expect(isMemberOnCommitteeRoster(name: 'Flat Owner', flatId: 'f2', roster: roster), isTrue);
       expect(isMemberOnCommitteeRoster(name: 'Someone', phone: '9876543210', flatId: 'f9', roster: roster), isFalse);
-      expect(isMemberOnCommitteeRoster(name: 'Someone', phone: '+91 98765 43210', flatId: 'f9', roster: roster), isTrue);
+      expect(
+          isMemberOnCommitteeRoster(name: 'Someone', phone: '+91 98765 43210', flatId: 'f9', roster: roster), isTrue);
     });
 
     test('other flats and other names are editable', () {

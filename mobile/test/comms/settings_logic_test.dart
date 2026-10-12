@@ -36,8 +36,10 @@ void main() {
         FlatOption(id: '2', flatNumber: '102', subtitle: 'RAVI'),
         FlatOption(id: '3', flatNumber: '201'),
       ];
-      expect(filterFlatOptions(options, 'ravi').map((o) => o.flatNumber), ['102']);
-      expect(filterFlatOptions(options, '10').map((o) => o.flatNumber), ['101', '102']);
+      expect(
+          filterFlatOptions(options, 'ravi').map((o) => o.flatNumber), ['102']);
+      expect(filterFlatOptions(options, '10').map((o) => o.flatNumber),
+          ['101', '102']);
       expect(filterFlatOptions(options, '  '), options);
       expect(toggleFlat(['101'], '102'), ['101', '102']);
       expect(toggleFlat(['101', '102'], '101'), ['102']);
@@ -58,7 +60,11 @@ void main() {
   group('letterhead + address', () {
     test('address line joins non-empty parts with ·', () {
       expect(
-        letterheadAddressLine(address: ' Plot 4, MG Road ', city: 'PUNE', state: 'MAHARASHTRA', pincode: '411001'),
+        letterheadAddressLine(
+            address: ' Plot 4, MG Road ',
+            city: 'PUNE',
+            state: 'MAHARASHTRA',
+            pincode: '411001'),
         'Plot 4, MG Road · PUNE, MAHARASHTRA · 411001',
       );
       expect(letterheadAddressLine(city: 'PUNE'), 'PUNE');
@@ -67,12 +73,15 @@ void main() {
     });
 
     test('address patch trims and nulls blanks', () {
-      expect(buildAddressPatch(address: ' A ', city: '', state: '  ', pincode: '411001'), {
-        'address': 'A',
-        'city': null,
-        'state': null,
-        'pincode': '411001',
-      });
+      expect(
+          buildAddressPatch(
+              address: ' A ', city: '', state: '  ', pincode: '411001'),
+          {
+            'address': 'A',
+            'city': null,
+            'state': null,
+            'pincode': '411001',
+          });
     });
 
     test('layout inputs fall back when not positive numbers', () {
@@ -85,7 +94,8 @@ void main() {
     });
 
     test('row normalisation defaults (web normalizeSocietyRow)', () {
-      final lh = SocietyLetterheadInfo.fromRow(const {'name': 'GREEN HEIGHTS', 'default_report_format': 'plain'});
+      final lh = SocietyLetterheadInfo.fromRow(
+          const {'name': 'GREEN HEIGHTS', 'default_report_format': 'plain'});
       expect(lh.topMm, 40);
       expect(lh.bottomMm, 18);
       expect(lh.leftMm, 19.05);
@@ -93,11 +103,19 @@ void main() {
       expect(lh.defaultReportFormat, 'plain');
       expect(lh.letterheadMode, 'auto');
       expect(lh.hasLetterhead, isFalse);
-      expect(SocietyLetterheadInfo.fromRow(const {'letterhead_storage_path': 's/letterhead/x.png'}).hasLetterhead, isTrue);
+      expect(
+          SocietyLetterheadInfo.fromRow(
+                  const {'letterhead_storage_path': 's/letterhead/x.png'})
+              .hasLetterhead,
+          isTrue);
     });
 
     test('report settings patch', () {
-      final current = SocietyLetterheadInfo.fromRow(const {'name': 'X', 'letterhead_storage_path': 'p.png', 'letterhead_mode': 'auto'});
+      final current = SocietyLetterheadInfo.fromRow(const {
+        'name': 'X',
+        'letterhead_storage_path': 'p.png',
+        'letterhead_mode': 'auto'
+      });
       final patch = buildReportSettingsPatch(
         defaultFormat: 'letterhead',
         top: '50',
@@ -125,7 +143,11 @@ void main() {
     test('required fields', () {
       expect(bankAccountInputComplete(const BankAccountInput()), isFalse);
       expect(
-        bankAccountInputComplete(const BankAccountInput(bankName: 'HDFC', accountHolderName: 'SOC', accountNumber: '1', ifsc: 'X')),
+        bankAccountInputComplete(const BankAccountInput(
+            bankName: 'HDFC',
+            accountHolderName: 'SOC',
+            accountNumber: '1',
+            ifsc: 'X')),
         isTrue,
       );
     });
@@ -166,13 +188,15 @@ void main() {
         ifsc: 'HDFC0001',
         branchName: 'MG ROAD',
       );
-      expect(copyableBankDetails(a), 'Account name: SOC\nBank: HDFC\nAccount number: 123456789\nIFSC: HDFC0001\nBranch: MG ROAD');
+      expect(copyableBankDetails(a),
+          'Account name: SOC\nBank: HDFC\nAccount number: 123456789\nIFSC: HDFC0001\nBranch: MG ROAD');
       expect(maskAccountNumber('1234 5678 9'), '•••••6789');
       expect(maskAccountNumber('123'), '123');
     });
 
     test('form from account keeps the date part of effective_from', () {
-      final input = BankAccountInput.fromAccount(SocietyBankAccountRow.fromRow(const {
+      final input =
+          BankAccountInput.fromAccount(SocietyBankAccountRow.fromRow(const {
         'id': '1',
         'society_id': 's1',
         'bank_name': 'B',

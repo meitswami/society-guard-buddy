@@ -21,16 +21,23 @@ class SuperadminTourTab extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 512),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: SuperadminHeader(name: ctx.session.name, onLogout: ctx.onLogout, bottomSpacing: 0),
+              child: SuperadminHeader(
+                  name: ctx.session.name,
+                  onLogout: ctx.onLogout,
+                  bottomSpacing: 0),
             ),
           ),
         ),
-        Expanded(child: TourGuideHubView(role: 'superadmin', userId: ctx.session.id)),
+        Expanded(
+            child:
+                TourGuideHubView(role: 'superadmin', userId: ctx.session.id)),
       ],
     );
   }
 }
 
 /// Web `<TourGuideFirstLogin role="superadmin" userId={superadmin.id} />`.
-Future<void> maybeShowSuperadminFirstTour(BuildContext context, String superadminId) =>
-    TourGuideFirstLogin.maybeShow(context, role: 'superadmin', userId: superadminId);
+Future<void> maybeShowSuperadminFirstTour(
+        BuildContext context, String superadminId) =>
+    TourGuideFirstLogin.maybeShow(context,
+        role: 'superadmin', userId: superadminId);

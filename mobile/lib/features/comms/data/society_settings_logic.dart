@@ -7,12 +7,17 @@ library;
 const double kPdfMarginMm = 19.05;
 
 /// Web `LETTERHEAD_NOT_CONFIGURED_WARNING`.
-const String kLetterheadNotConfiguredWarning = 'Official society letterhead has not been configured.';
+const String kLetterheadNotConfiguredWarning =
+    'Official society letterhead has not been configured.';
 
 /// Web `letterheadAddressLine`: `address · city, state · pincode` (blank parts dropped).
-String letterheadAddressLine({String? address, String? city, String? state, String? pincode}) {
-  final cityState = [city, state].where((p) => p != null && p.isNotEmpty).join(', ');
-  final parts = [address, cityState, pincode].map((p) => (p ?? '').trim()).where((p) => p.isNotEmpty);
+String letterheadAddressLine(
+    {String? address, String? city, String? state, String? pincode}) {
+  final cityState =
+      [city, state].where((p) => p != null && p.isNotEmpty).join(', ');
+  final parts = [address, cityState, pincode]
+      .map((p) => (p ?? '').trim())
+      .where((p) => p.isNotEmpty);
   return parts.join(' · ');
 }
 
@@ -24,8 +29,10 @@ double parseLayoutMm(String raw, double fallback) {
 }
 
 /// Mode saved with the report settings (web `onSaveSettings`).
-String letterheadModeForSave({String? letterheadUrl, String? storagePath, String? currentMode}) {
-  final hasAsset = (letterheadUrl ?? '').isNotEmpty || (storagePath ?? '').isNotEmpty;
+String letterheadModeForSave(
+    {String? letterheadUrl, String? storagePath, String? currentMode}) {
+  final hasAsset =
+      (letterheadUrl ?? '').isNotEmpty || (storagePath ?? '').isNotEmpty;
   if (hasAsset) return 'image';
   return (currentMode ?? '').isNotEmpty ? currentMode! : 'auto';
 }
@@ -56,7 +63,9 @@ class SocietyLetterheadInfo {
   /// `letterhead` | `plain`
   final String defaultReportFormat;
 
-  bool get hasLetterhead => (letterheadUrl ?? '').isNotEmpty || (letterheadStoragePath ?? '').isNotEmpty;
+  bool get hasLetterhead =>
+      (letterheadUrl ?? '').isNotEmpty ||
+      (letterheadStoragePath ?? '').isNotEmpty;
 
   /// Web `normalizeSocietyRow`.
   factory SocietyLetterheadInfo.fromRow(Map<String, dynamic> d) {
@@ -69,7 +78,9 @@ class SocietyLetterheadInfo {
     final fmt = (d['default_report_format'] ?? 'letterhead').toString();
     final mode = d['letterhead_mode']?.toString();
     return SocietyLetterheadInfo(
-      name: (d['name']?.toString().isNotEmpty ?? false) ? d['name'].toString() : 'Society',
+      name: (d['name']?.toString().isNotEmpty ?? false)
+          ? d['name'].toString()
+          : 'Society',
       letterheadUrl: d['letterhead_url']?.toString(),
       letterheadStoragePath: d['letterhead_storage_path']?.toString(),
       letterheadMode: (mode == null || mode.isEmpty) ? 'auto' : mode,
@@ -173,7 +184,8 @@ class SocietyBankAccountRow {
   final String? effectiveTo;
   final String? notes;
 
-  factory SocietyBankAccountRow.fromRow(Map<String, dynamic> r) => SocietyBankAccountRow(
+  factory SocietyBankAccountRow.fromRow(Map<String, dynamic> r) =>
+      SocietyBankAccountRow(
         id: r['id']?.toString() ?? '',
         societyId: r['society_id']?.toString() ?? '',
         bankName: r['bank_name']?.toString() ?? '',
@@ -184,7 +196,9 @@ class SocietyBankAccountRow {
         branchAddress: r['branch_address']?.toString(),
         micr: r['micr']?.toString(),
         accountType: r['account_type']?.toString(),
-        currency: (r['currency']?.toString().isNotEmpty ?? false) ? r['currency'].toString() : 'INR',
+        currency: (r['currency']?.toString().isNotEmpty ?? false)
+            ? r['currency'].toString()
+            : 'INR',
         upiVpa: r['upi_vpa']?.toString(),
         customerId: r['customer_id']?.toString(),
         isPrimary: r['is_primary'] == true,
@@ -234,7 +248,8 @@ class BankAccountInput {
   final String notes;
 
   /// Web `load()` → form from the primary account.
-  factory BankAccountInput.fromAccount(SocietyBankAccountRow a) => BankAccountInput(
+  factory BankAccountInput.fromAccount(SocietyBankAccountRow a) =>
+      BankAccountInput(
         bankName: a.bankName,
         accountHolderName: a.accountHolderName,
         accountNumber: a.accountNumber,
@@ -248,7 +263,9 @@ class BankAccountInput {
         customerId: a.customerId ?? '',
         isPrimary: a.isPrimary,
         isActive: a.isActive,
-        effectiveFrom: (a.effectiveFrom ?? '').length >= 10 ? a.effectiveFrom!.substring(0, 10) : (a.effectiveFrom ?? ''),
+        effectiveFrom: (a.effectiveFrom ?? '').length >= 10
+            ? a.effectiveFrom!.substring(0, 10)
+            : (a.effectiveFrom ?? ''),
         notes: a.notes ?? '',
       );
 }
@@ -261,7 +278,8 @@ bool bankAccountInputComplete(BankAccountInput i) =>
     i.ifsc.trim().isNotEmpty;
 
 /// Web `upsertSocietyBankAccount` payload.
-Map<String, dynamic> buildBankAccountPayload(String societyId, BankAccountInput i) {
+Map<String, dynamic> buildBankAccountPayload(
+    String societyId, BankAccountInput i) {
   String? opt(String v) => v.trim().isEmpty ? null : v.trim();
   return {
     'society_id': societyId,

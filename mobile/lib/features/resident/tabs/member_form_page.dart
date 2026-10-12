@@ -117,7 +117,9 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
       if (!mounted) return;
       AppFeedback.toast(
         context,
-        editing != null ? context.tr('Member updated', 'सदस्य अपडेट किया गया') : context.tr('Member added', 'सदस्य जोड़ा गया'),
+        editing != null
+            ? context.tr('Member updated', 'सदस्य अपडेट किया गया')
+            : context.tr('Member added', 'सदस्य जोड़ा गया'),
         tone: BadgeTone.success,
       );
       Navigator.of(context).pop(true);
@@ -171,7 +173,8 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
                 selected: f.isServiceman,
                 onTap: () {
                   if (_isPrimary) {
-                    _toast(context.tr('Primary member cannot be changed to staff', 'प्राथमिक सदस्य को कर्मचारी में नहीं बदला जा सकता'));
+                    _toast(context.tr('Primary member cannot be changed to staff',
+                        'प्राथमिक सदस्य को कर्मचारी में नहीं बदला जा सकता'));
                     return;
                   }
                   setState(() => _form = _form.copyWith(isServiceman: true));
@@ -203,7 +206,8 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
               onChanged: (v) {
                 if (v == null) return;
                 if (_isPrimary && !allowsPrimaryMember(v)) {
-                  _toast(context.tr('Primary member cannot use Tenant or Others', 'प्राथमिक सदस्य किरायेदार या अन्य नहीं हो सकता'));
+                  _toast(context.tr(
+                      'Primary member cannot use Tenant or Others', 'प्राथमिक सदस्य किरायेदार या अन्य नहीं हो सकता'));
                   return;
                 }
                 setState(() => _form = _form.copyWith(relation: v));
@@ -256,7 +260,9 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
             tint: 0.10,
             children: [
               Text(
-                context.tr('Profile photo (shown beside nominees & elected members)', 'प्रोफ़ाइल फ़ोटो (नामांकितों व निर्वाचित सदस्यों के पास दिखती है)')
+                context
+                    .tr('Profile photo (shown beside nominees & elected members)',
+                        'प्रोफ़ाइल फ़ोटो (नामांकितों व निर्वाचित सदस्यों के पास दिखती है)')
                     .toUpperCase(),
                 style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w600),
               ),
@@ -279,7 +285,11 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
                   },
                 ),
                 if (f.photo.isNotEmpty)
-                  ResidentThumb(src: f.photo, size: 48, circle: true, onRemove: () => setState(() => _form = _form.copyWith(photo: ''))),
+                  ResidentThumb(
+                      src: f.photo,
+                      size: 48,
+                      circle: true,
+                      onRemove: () => setState(() => _form = _form.copyWith(photo: ''))),
               ]),
             ],
           ),
@@ -289,7 +299,8 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
               tint: 0.20,
               children: [
                 Text(
-                  context.tr('Tenant, other, and staff are not given resident app login. Add ID and optional details below.',
+                  context.tr(
+                      'Tenant, other, and staff are not given resident app login. Add ID and optional details below.',
                       'किरायेदार, अन्य और कर्मचारियों को निवासी ऐप प्रवेश नहीं मिलता। नीचे पहचान पत्र और वैकल्पिक विवरण जोड़ें।'),
                   style: AppText.tiny(context),
                 ),
@@ -327,13 +338,16 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
                   onChanged: (v) => setState(() => _form = _form.copyWith(policeVerification: v ?? '')),
                 ),
                 const SizedBox(height: 8),
-                AppTextField(controller: _spouse, hint: context.tr('Spouse / husband name (optional)', 'पति / पत्नी का नाम (वैकल्पिक)')),
+                AppTextField(
+                    controller: _spouse,
+                    hint: context.tr('Spouse / husband name (optional)', 'पति / पत्नी का नाम (वैकल्पिक)')),
                 Divider(height: 24, color: t.border),
                 Text(context.tr('Service dates (optional)', 'सेवा तिथियाँ (वैकल्पिक)').toUpperCase(),
                     style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Text(
-                  context.tr('When this person started / finished working for your flat (e.g. staff start date, last working day).',
+                  context.tr(
+                      'When this person started / finished working for your flat (e.g. staff start date, last working day).',
                       'यह व्यक्ति आपके फ्लैट के लिए कब से / कब तक काम करता रहा (जैसे कर्मचारी की आरंभ तिथि, अंतिम कार्य दिवस)।'),
                   style: AppText.tiny(context),
                 ),
@@ -379,7 +393,9 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
                   ]),
                   const SizedBox(height: 8),
                   Row(children: [
-                    Expanded(child: AppTextField(controller: _vNumber, hint: context.tr('Registration no.', 'पंजीकरण संख्या'), mono: true)),
+                    Expanded(
+                        child: AppTextField(
+                            controller: _vNumber, hint: context.tr('Registration no.', 'पंजीकरण संख्या'), mono: true)),
                     const SizedBox(width: 8),
                     Expanded(child: AppTextField(controller: _vColor, hint: context.tr('Color', 'रंग'))),
                   ]),
@@ -387,7 +403,8 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
                     child: Text(
-                      context.tr('Tenant vehicles: add them from the Vehicles tab.', 'किरायेदार के वाहन: वाहन टैब से जोड़ें।'),
+                      context.tr(
+                          'Tenant vehicles: add them from the Vehicles tab.', 'किरायेदार के वाहन: वाहन टैब से जोड़ें।'),
                       style: AppText.tiny(context),
                     ),
                   ),
@@ -404,7 +421,8 @@ class _ResidentMemberFormPageState extends State<ResidentMemberFormPage> {
               ),
             ),
             const SizedBox(width: 8),
-            AppButton.secondary(label: context.t('common.cancel'), expand: false, onPressed: () => Navigator.of(context).pop(false)),
+            AppButton.secondary(
+                label: context.t('common.cancel'), expand: false, onPressed: () => Navigator.of(context).pop(false)),
           ]),
         ],
       ),

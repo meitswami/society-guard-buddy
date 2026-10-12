@@ -36,7 +36,18 @@ class _BankAccountPanelState extends State<BankAccountPanel> {
   bool _loading = true;
   bool _saving = false;
 
-  List<TextEditingController> get _all => [_holder, _bank, _ifsc, _number, _branch, _upi, _branchAddress, _micr, _type, _notes];
+  List<TextEditingController> get _all => [
+        _holder,
+        _bank,
+        _ifsc,
+        _number,
+        _branch,
+        _upi,
+        _branchAddress,
+        _micr,
+        _type,
+        _notes
+      ];
 
   @override
   void initState() {
@@ -88,16 +99,22 @@ class _BankAccountPanelState extends State<BankAccountPanel> {
     setState(() => _loading = true);
     try {
       final rows = await _repo.loadBankAccounts(widget.societyId);
-      final primary = rows.where((r) => r.isPrimary && r.isActive).firstOrNull ?? rows.firstOrNull;
+      final primary =
+          rows.where((r) => r.isPrimary && r.isActive).firstOrNull ??
+              rows.firstOrNull;
       if (!mounted) return;
       setState(() {
         _accounts = rows;
         _editingId = primary?.id;
-        _fill(primary == null ? const BankAccountInput() : BankAccountInput.fromAccount(primary));
+        _fill(primary == null
+            ? const BankAccountInput()
+            : BankAccountInput.fromAccount(primary));
       });
     } catch (e) {
       if (mounted) {
-        AppFeedback.toast(context, '${context.ct('comms.bank.loadFailed')}: ${commsErrorMessage(e)}', tone: BadgeTone.alert);
+        AppFeedback.toast(context,
+            '${context.ct('comms.bank.loadFailed')}: ${commsErrorMessage(e)}',
+            tone: BadgeTone.alert);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -107,36 +124,51 @@ class _BankAccountPanelState extends State<BankAccountPanel> {
   Future<void> _save() async {
     final input = _input;
     if (!bankAccountInputComplete(input)) {
-      AppFeedback.toast(context, context.ct('comms.bank.required'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.ct('comms.bank.required'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _saving = true);
     final wasEditing = _editingId != null;
     try {
-      await _repo.upsertBankAccount(widget.societyId, input, existingId: _editingId);
+      await _repo.upsertBankAccount(widget.societyId, input,
+          existingId: _editingId);
       if (!mounted) return;
-      AppFeedback.toast(context, context.ct(wasEditing ? 'comms.bank.updated' : 'comms.bank.saved'), tone: BadgeTone.success);
+      AppFeedback.toast(context,
+          context.ct(wasEditing ? 'comms.bank.updated' : 'comms.bank.saved'),
+          tone: BadgeTone.success);
       await _load();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, '${context.ct('comms.bank.saveFailed')}: ${commsErrorMessage(e)}', tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context,
+            '${context.ct('comms.bank.saveFailed')}: ${commsErrorMessage(e)}',
+            tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   Future<void> _copy() async {
-    final active = _accounts.where((a) => a.id == _editingId).firstOrNull ?? _accounts.where((a) => a.isPrimary && a.isActive).firstOrNull;
+    final active = _accounts.where((a) => a.id == _editingId).firstOrNull ??
+        _accounts.where((a) => a.isPrimary && a.isActive).firstOrNull;
     if (active == null) {
-      AppFeedback.toast(context, context.ct('comms.bank.saveFirst'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.ct('comms.bank.saveFirst'),
+          tone: BadgeTone.alert);
       return;
     }
     final ok = await copyToClipboard(copyableBankDetails(active));
     if (!mounted) return;
-    AppFeedback.toast(context, context.ct(ok ? 'comms.bank.copied' : 'comms.bank.copyFailed'), tone: ok ? BadgeTone.success : BadgeTone.alert);
+    AppFeedback.toast(
+        context, context.ct(ok ? 'comms.bank.copied' : 'comms.bank.copyFailed'),
+        tone: ok ? BadgeTone.success : BadgeTone.alert);
   }
 
   Widget _field(BuildContext context, String labelKey, TextEditingController c,
-      {bool required = false, String? hint, bool mono = false, bool upper = false, int maxLines = 1}) {
+      {bool required = false,
+      String? hint,
+      bool mono = false,
+      bool upper = false,
+      int maxLines = 1}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppTextField(
@@ -167,22 +199,32 @@ class _BankAccountPanelState extends State<BankAccountPanel> {
               Container(
                 width: 36,
                 height: 36,
-                decoration: BoxDecoration(color: AppTokens.tint(t.primary, 0.1), borderRadius: BorderRadius.circular(12)),
-                child: Icon(Icons.account_balance_outlined, size: 16, color: t.primary),
+                decoration: BoxDecoration(
+                    color: AppTokens.tint(t.primary, 0.1),
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.account_balance_outlined,
+                    size: 16, color: t.primary),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(context.ct('comms.bank.title'), style: AppText.sectionTitle(context)),
+                    Text(context.ct('comms.bank.title'),
+                        style: AppText.sectionTitle(context)),
                     const SizedBox(height: 2),
-                    Text(context.ct('comms.bank.hint'), style: AppText.tiny(context).copyWith(height: 1.4)),
+                    Text(context.ct('comms.bank.hint'),
+                        style: AppText.tiny(context).copyWith(height: 1.4)),
                   ],
                 ),
               ),
               if (_accounts.any((a) => a.isActive))
-                AppButton.secondary(expand: false, dense: true, icon: Icons.copy, label: context.ct('comms.bank.copy'), onPressed: _copy),
+                AppButton.secondary(
+                    expand: false,
+                    dense: true,
+                    icon: Icons.copy,
+                    label: context.ct('comms.bank.copy'),
+                    onPressed: _copy),
             ],
           ),
           const SizedBox(height: 12),
@@ -196,7 +238,8 @@ class _BankAccountPanelState extends State<BankAccountPanel> {
                 children: [
                   for (final a in _accounts)
                     PillChoice(
-                      label: '${a.bankName} ${maskAccountNumber(a.accountNumber)}'
+                      label:
+                          '${a.bankName} ${maskAccountNumber(a.accountNumber)}'
                           '${a.isPrimary ? ' · ${context.ct('comms.bank.primary')}' : ''}'
                           '${a.isActive ? '' : ' · ${context.ct('comms.bank.inactive')}'}',
                       selected: a.id == _editingId,
@@ -209,22 +252,32 @@ class _BankAccountPanelState extends State<BankAccountPanel> {
               ),
               const SizedBox(height: 12),
             ],
-            _field(context, 'comms.bank.holder', _holder, required: true, hint: context.ct('comms.bank.holderPh')),
+            _field(context, 'comms.bank.holder', _holder,
+                required: true, hint: context.ct('comms.bank.holderPh')),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _field(context, 'comms.bank.bank', _bank, required: true, hint: context.ct('comms.bank.bankPh'))),
+                Expanded(
+                    child: _field(context, 'comms.bank.bank', _bank,
+                        required: true, hint: context.ct('comms.bank.bankPh'))),
                 const SizedBox(width: 8),
-                Expanded(child: _field(context, 'comms.bank.ifsc', _ifsc, required: true, hint: 'HDFC0000000', upper: true)),
+                Expanded(
+                    child: _field(context, 'comms.bank.ifsc', _ifsc,
+                        required: true, hint: 'HDFC0000000', upper: true)),
               ],
             ),
-            _field(context, 'comms.bank.accountNumber', _number, required: true, hint: context.ct('comms.bank.accountNumber'), mono: true),
+            _field(context, 'comms.bank.accountNumber', _number,
+                required: true,
+                hint: context.ct('comms.bank.accountNumber'),
+                mono: true),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(child: _field(context, 'comms.bank.branch', _branch)),
                 const SizedBox(width: 8),
-                Expanded(child: _field(context, 'comms.bank.upi', _upi, hint: 'society@okhdfcbank')),
+                Expanded(
+                    child: _field(context, 'comms.bank.upi', _upi,
+                        hint: 'society@okhdfcbank')),
               ],
             ),
             _field(context, 'comms.bank.branchAddress', _branchAddress),
@@ -233,7 +286,8 @@ class _BankAccountPanelState extends State<BankAccountPanel> {
               children: [
                 Expanded(child: _field(context, 'comms.bank.micr', _micr)),
                 const SizedBox(width: 8),
-                Expanded(child: _field(context, 'comms.bank.accountType', _type)),
+                Expanded(
+                    child: _field(context, 'comms.bank.accountType', _type)),
               ],
             ),
             _field(context, 'comms.bank.notes', _notes, maxLines: 4),
@@ -245,7 +299,9 @@ class _BankAccountPanelState extends State<BankAccountPanel> {
                   expand: false,
                   icon: Icons.save_outlined,
                   loading: _saving,
-                  label: context.ct(_editingId != null ? 'comms.bank.update' : 'comms.bank.save'),
+                  label: context.ct(_editingId != null
+                      ? 'comms.bank.update'
+                      : 'comms.bank.save'),
                   onPressed: _saving ? null : _save,
                 ),
                 if (_editingId != null)

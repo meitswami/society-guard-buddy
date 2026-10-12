@@ -87,9 +87,11 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       final sec = await repo.fetchSecurity(_id);
       if (mounted) {
         setState(() {
-          _recoveryEmail.text = (sec?['recovery_email'] as String?)?.trim() ?? '';
+          _recoveryEmail.text =
+              (sec?['recovery_email'] as String?)?.trim() ?? '';
           _totpEnabled = sec?['totp_enabled'] == true;
-          _totpConfigured = (sec?['totp_secret'] as String?)?.isNotEmpty ?? false;
+          _totpConfigured =
+              (sec?['totp_secret'] as String?)?.isNotEmpty ?? false;
         });
       }
     } catch (_) {}
@@ -97,12 +99,17 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       final b = await repo.fetchBranding();
       if (b != null && mounted) {
         setState(() {
-          _appName.text = (b['app_name'] as String?) ?? _kDefaultBranding['app_name']!;
-          _tagline.text = (b['tagline'] as String?) ?? _kDefaultBranding['tagline']!;
+          _appName.text =
+              (b['app_name'] as String?) ?? _kDefaultBranding['app_name']!;
+          _tagline.text =
+              (b['tagline'] as String?) ?? _kDefaultBranding['tagline']!;
           _logoUrl = (b['logo_url'] as String?) ?? '';
-          _primary = (b['primary_color'] as String?) ?? _kDefaultBranding['primary_color']!;
-          _primaryDark = (b['primary_dark_color'] as String?) ?? _kDefaultBranding['primary_dark_color']!;
-          _background = (b['background_color'] as String?) ?? _kDefaultBranding['background_color']!;
+          _primary = (b['primary_color'] as String?) ??
+              _kDefaultBranding['primary_color']!;
+          _primaryDark = (b['primary_dark_color'] as String?) ??
+              _kDefaultBranding['primary_dark_color']!;
+          _background = (b['background_color'] as String?) ??
+              _kDefaultBranding['background_color']!;
           _pendingLogo = null;
         });
       }
@@ -144,7 +151,9 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     try {
       await SuperadminScope.read(context).repo.updateSuperAdmin(
             _id,
-            on ? {'totp_enabled': true} : {'totp_enabled': false, 'totp_secret': null},
+            on
+                ? {'totp_enabled': true}
+                : {'totp_enabled': false, 'totp_secret': null},
           );
     } catch (e) {
       err = '$e';
@@ -152,26 +161,35 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     if (!mounted) return;
     setState(() => _totpSaving = false);
     if (err != null) {
-      AppFeedback.toast(context, context.st('sa.set.totpUpdateFailed'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.st('sa.set.totpUpdateFailed'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() {
       _totpEnabled = on;
       if (!on) _totpConfigured = false;
     });
-    AppFeedback.toast(context, on ? context.st('sa.set.totpEnabled') : context.st('sa.set.totpDisabled'), tone: BadgeTone.success);
+    AppFeedback.toast(
+        context,
+        on
+            ? context.st('sa.set.totpEnabled')
+            : context.st('sa.set.totpDisabled'),
+        tone: BadgeTone.success);
   }
 
   Future<void> _saveRecovery() async {
     final em = _recoveryEmail.text.trim().toLowerCase();
     if (em.isEmpty || !isValidEmail(em)) {
-      AppFeedback.toast(context, context.t('superadmin.invalidRecoveryEmail'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('superadmin.invalidRecoveryEmail'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _recoverySaving = true);
     var ok = true;
     try {
-      await SuperadminScope.read(context).repo.updateSuperAdmin(_id, {'recovery_email': em});
+      await SuperadminScope.read(context)
+          .repo
+          .updateSuperAdmin(_id, {'recovery_email': em});
     } catch (_) {
       ok = false;
     }
@@ -179,7 +197,9 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     setState(() => _recoverySaving = false);
     AppFeedback.toast(
       context,
-      ok ? context.t('superadmin.recoveryEmailSaved') : context.t('superadmin.couldNotSaveRecovery'),
+      ok
+          ? context.t('superadmin.recoveryEmailSaved')
+          : context.t('superadmin.couldNotSaveRecovery'),
       tone: ok ? BadgeTone.success : BadgeTone.alert,
     );
   }
@@ -191,7 +211,9 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     setState(() => _bioLoading = false);
     AppFeedback.toast(
       context,
-      ok ? context.t('biometric.registered') : context.t('biometric.registerFailed'),
+      ok
+          ? context.t('biometric.registered')
+          : context.t('biometric.registerFailed'),
       tone: ok ? BadgeTone.success : BadgeTone.alert,
     );
     await _loadBiometric();
@@ -204,7 +226,9 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     setState(() => _removingId = null);
     AppFeedback.toast(
       context,
-      ok ? context.st('sa.set.deviceRemoved') : context.st('sa.set.deviceRemoveFailed'),
+      ok
+          ? context.st('sa.set.deviceRemoved')
+          : context.st('sa.set.deviceRemoveFailed'),
       tone: ok ? BadgeTone.success : BadgeTone.alert,
     );
     await _loadBiometric();
@@ -212,10 +236,14 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
 
   Future<void> _pickAppLogo() async {
     try {
-      final f = await SuperadminImagePicker.pickOne(source: ImageSource.gallery);
+      final f =
+          await SuperadminImagePicker.pickOne(source: ImageSource.gallery);
       if (f != null && mounted) setState(() => _pendingLogo = f);
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.st('sa.pick.failed'), tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, context.st('sa.pick.failed'),
+            tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -233,7 +261,8 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         if (uploaded != null) logoUrl = uploaded;
       }
       await repo.upsertBranding({
-        'app_name': _appName.text.trim().isEmpty ? 'Kutumbika' : _appName.text.trim(),
+        'app_name':
+            _appName.text.trim().isEmpty ? 'Kutumbika' : _appName.text.trim(),
         'tagline': _tagline.text.trim().isEmpty ? null : _tagline.text.trim(),
         'logo_url': logoUrl,
         'primary_color': _primary,
@@ -255,7 +284,8 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     }
   }
 
-  Widget _card(IconData icon, String title, List<Widget> children) => CardSection(
+  Widget _card(IconData icon, String title, List<Widget> children) =>
+      CardSection(
         margin: const EdgeInsets.only(bottom: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -290,31 +320,48 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_totpEnabled ? context.st('sa.set.enabled') : context.st('sa.set.disabled'), style: AppText.bodyMedium(context)),
                       Text(
-                        _totpConfigured ? context.st('sa.set.totpConfigured') : context.st('sa.set.totpNotConfigured'),
+                          _totpEnabled
+                              ? context.st('sa.set.enabled')
+                              : context.st('sa.set.disabled'),
+                          style: AppText.bodyMedium(context)),
+                      Text(
+                        _totpConfigured
+                            ? context.st('sa.set.totpConfigured')
+                            : context.st('sa.set.totpNotConfigured'),
                         style: AppText.tiny(context),
                       ),
                     ],
                   ),
                 ),
-                Switch(value: _totpEnabled, onChanged: _totpSaving ? null : _toggleTotp),
+                Switch(
+                    value: _totpEnabled,
+                    onChanged: _totpSaving ? null : _toggleTotp),
               ],
             ),
           ),
           if (_totpEnabled && !_totpConfigured)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(context.st('sa.set.totpPending'), style: TextStyle(fontSize: 10, color: t.warning)),
+              child: Text(context.st('sa.set.totpPending'),
+                  style: TextStyle(fontSize: 10, color: t.warning)),
             ),
         ]),
-        _card(Icons.mail_outline, context.t('superadmin.recoveryEmailSettings'), [
-          Text(context.t('superadmin.recoveryEmailStepHelp'), style: AppText.caption(context)),
+        _card(
+            Icons.mail_outline, context.t('superadmin.recoveryEmailSettings'), [
+          Text(context.t('superadmin.recoveryEmailStepHelp'),
+              style: AppText.caption(context)),
           const SizedBox(height: 12),
-          AppTextField(controller: _recoveryEmail, hint: 'you@example.com', keyboardType: TextInputType.emailAddress, caps: false),
+          AppTextField(
+              controller: _recoveryEmail,
+              hint: 'you@example.com',
+              keyboardType: TextInputType.emailAddress,
+              caps: false),
           const SizedBox(height: 12),
           AppButton(
-            label: _recoverySaving ? '…' : context.t('superadmin.saveRecoveryEmail'),
+            label: _recoverySaving
+                ? '…'
+                : context.t('superadmin.saveRecoveryEmail'),
             onPressed: _recoverySaving ? null : _saveRecovery,
           ),
         ]),
@@ -330,25 +377,32 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                 children: [
                   Icon(Icons.check, size: 16, color: t.success),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(context.t('biometric.enabled'), style: TextStyle(fontSize: 14, color: t.success))),
+                  Expanded(
+                      child: Text(context.t('biometric.enabled'),
+                          style: TextStyle(fontSize: 14, color: t.success))),
                 ],
               )
             else
               AppButton(
-                label: _bioLoading ? context.t('biometric.registering') : context.t('biometric.enable'),
+                label: _bioLoading
+                    ? context.t('biometric.registering')
+                    : context.t('biometric.enable'),
                 loading: _bioLoading,
                 onPressed: _bioLoading ? null : _registerBio,
               ),
             if (_devices.isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
-                decoration: BoxDecoration(border: Border.all(color: t.border), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+                decoration: BoxDecoration(
+                    border: Border.all(color: t.border),
+                    borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
                 child: Column(
                   children: [
                     for (var i = 0; i < _devices.length; i++) ...[
                       if (i > 0) Divider(height: 1, color: t.border),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         child: Row(
                           children: [
                             Expanded(
@@ -358,16 +412,24 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                                   Text(
                                     '${context.st('sa.set.device')} ${i + 1} (${_devices[i].shortId}...)'
                                     '${_devices[i].thisDevice ? ' · ${context.st('sa.set.thisDevice')}' : ''}',
-                                    style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500, color: t.foreground),
+                                    style: AppText.caption(context).copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        color: t.foreground),
                                   ),
-                                  Text('${context.st('sa.set.added')} ${Fmt.dateTimeFull(_devices[i].createdAt)}', style: AppText.tiny(context)),
+                                  Text(
+                                      '${context.st('sa.set.added')} ${Fmt.dateTimeFull(_devices[i].createdAt)}',
+                                      style: AppText.tiny(context)),
                                 ],
                               ),
                             ),
                             SaLinkButton(
-                              label: _removingId == _devices[i].id ? context.st('sa.set.removing') : context.st('sa.set.remove'),
+                              label: _removingId == _devices[i].id
+                                  ? context.st('sa.set.removing')
+                                  : context.st('sa.set.remove'),
                               color: t.destructive,
-                              onTap: _removingId == null ? () => _removeDevice(_devices[i]) : null,
+                              onTap: _removingId == null
+                                  ? () => _removeDevice(_devices[i])
+                                  : null,
                             ),
                           ],
                         ),
@@ -378,10 +440,13 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               ),
             ],
             if (_devices.length >= SuperadminBiometric.maxCredentialsPerUser)
-              SaHint(context.st('sa.set.maxDevices', {'max': SuperadminBiometric.maxCredentialsPerUser})),
+              SaHint(context.st('sa.set.maxDevices',
+                  {'max': SuperadminBiometric.maxCredentialsPerUser})),
           ]),
-        _card(Icons.smartphone_outlined, context.t('superadmin.mobileBranding'), [
-          Text(context.t('superadmin.mobileBrandingHelp'), style: AppText.caption(context)),
+        _card(
+            Icons.smartphone_outlined, context.t('superadmin.mobileBranding'), [
+          Text(context.t('superadmin.mobileBrandingHelp'),
+              style: AppText.caption(context)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -397,7 +462,8 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                   ),
                   child: _pendingLogo != null
                       ? Image.memory(_pendingLogo!.bytes, fit: BoxFit.contain)
-                      : SaNetImage(_logoUrl, width: 48, height: 48, fit: BoxFit.contain),
+                      : SaNetImage(_logoUrl,
+                          width: 48, height: 48, fit: BoxFit.contain),
                 ),
                 const SizedBox(width: 12),
               ],
@@ -410,11 +476,21 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               ),
             ],
           ),
-          if (_pendingLogo != null) SaHint('${_pendingLogo!.name} — ${context.t('superadmin.logoUploadOnSave')}'),
+          if (_pendingLogo != null)
+            SaHint(
+                '${_pendingLogo!.name} — ${context.t('superadmin.logoUploadOnSave')}'),
           const SizedBox(height: 12),
-          AppTextField(controller: _appName, hint: context.t('superadmin.appName'), label: context.t('superadmin.appName'), caps: false),
+          AppTextField(
+              controller: _appName,
+              hint: context.t('superadmin.appName'),
+              label: context.t('superadmin.appName'),
+              caps: false),
           const SizedBox(height: 12),
-          AppTextField(controller: _tagline, hint: context.t('superadmin.appTagline'), label: context.t('superadmin.appTagline'), caps: false),
+          AppTextField(
+              controller: _tagline,
+              hint: context.t('superadmin.appTagline'),
+              label: context.t('superadmin.appTagline'),
+              caps: false),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,7 +522,9 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
           const SizedBox(height: 12),
           AppButton(
-            label: _brandingSaving ? '…' : context.t('superadmin.saveMobileBranding'),
+            label: _brandingSaving
+                ? '…'
+                : context.t('superadmin.saveMobileBranding'),
             loading: _brandingSaving,
             onPressed: _brandingSaving ? null : _saveBranding,
           ),
@@ -454,14 +532,18 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         _card(Icons.tune, context.st('sa.set.appPrefs'), [
           Row(
             children: [
-              Expanded(child: Text(context.st('sa.set.language'), style: AppText.body(context))),
+              Expanded(
+                  child: Text(context.st('sa.set.language'),
+                      style: AppText.body(context))),
               const LanguageToggle(),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: Text(context.st('sa.set.theme'), style: AppText.body(context))),
+              Expanded(
+                  child: Text(context.st('sa.set.theme'),
+                      style: AppText.body(context))),
               const ThemeToggle(),
             ],
           ),

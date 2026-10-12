@@ -16,7 +16,8 @@ class SocietyContentEditor extends ConsumerStatefulWidget {
   final String societyId;
 
   @override
-  ConsumerState<SocietyContentEditor> createState() => _SocietyContentEditorState();
+  ConsumerState<SocietyContentEditor> createState() =>
+      _SocietyContentEditorState();
 }
 
 class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
@@ -61,9 +62,13 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
     setState(() => _loading = true);
     try {
       final rows = await _repo.loadContentTranslations(widget.societyId);
-      _apply(mergeContentDrafts(keys: kAllEditableContentKeys, defaultsFor: _defaults, savedRows: rows));
+      _apply(mergeContentDrafts(
+          keys: kAllEditableContentKeys,
+          defaultsFor: _defaults,
+          savedRows: rows));
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -73,7 +78,8 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
     setState(() => _saving = true);
     try {
       final drafts = {
-        for (final k in kAllEditableContentKeys) k: ContentDraft(en: _en[k]!.text, hi: _hi[k]!.text),
+        for (final k in kAllEditableContentKeys)
+          k: ContentDraft(en: _en[k]!.text, hi: _hi[k]!.text),
       };
       await _repo.upsertContentTranslations(buildContentUpsertRows(
         societyId: widget.societyId,
@@ -82,9 +88,12 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
         defaultsFor: _defaults,
       ));
       ref.invalidate(contentOverridesProvider);
-      if (mounted) AppFeedback.toast(context, context.t('contentEditor.saved'), tone: BadgeTone.success);
+      if (mounted)
+        AppFeedback.toast(context, context.t('contentEditor.saved'),
+            tone: BadgeTone.success);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -100,12 +109,16 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
     );
     if (!ok || !mounted) return;
     try {
-      await _repo.deleteContentTranslations(widget.societyId, kAllEditableContentKeys);
+      await _repo.deleteContentTranslations(
+          widget.societyId, kAllEditableContentKeys);
       _apply({for (final k in kAllEditableContentKeys) k: _defaults(k)});
       ref.invalidate(contentOverridesProvider);
-      if (mounted) AppFeedback.toast(context, context.t('contentEditor.saved'), tone: BadgeTone.success);
+      if (mounted)
+        AppFeedback.toast(context, context.t('contentEditor.saved'),
+            tone: BadgeTone.success);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
@@ -121,7 +134,8 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final hindi = context.lang == AppLang.hi;
-    final group = kContentTranslationGroups.firstWhere((g) => g.id == _group, orElse: () => kContentTranslationGroups.first);
+    final group = kContentTranslationGroups.firstWhere((g) => g.id == _group,
+        orElse: () => kContentTranslationGroups.first);
     return CardSection(
       margin: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -133,7 +147,9 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
               Container(
                 width: 36,
                 height: 36,
-                decoration: BoxDecoration(color: AppTokens.tint(t.primary, 0.1), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                    color: AppTokens.tint(t.primary, 0.1),
+                    borderRadius: BorderRadius.circular(12)),
                 child: Icon(Icons.translate, size: 16, color: t.primary),
               ),
               const SizedBox(width: 8),
@@ -141,9 +157,11 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(context.t('contentEditor.title'), style: AppText.sectionTitle(context)),
+                    Text(context.t('contentEditor.title'),
+                        style: AppText.sectionTitle(context)),
                     const SizedBox(height: 2),
-                    Text(context.t('contentEditor.subtitle'), style: AppText.tiny(context).copyWith(height: 1.4)),
+                    Text(context.t('contentEditor.subtitle'),
+                        style: AppText.tiny(context).copyWith(height: 1.4)),
                   ],
                 ),
               ),
@@ -155,14 +173,21 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
             runSpacing: 6,
             children: [
               for (final g in kContentTranslationGroups)
-                PillChoice(label: hindi ? g.titleHi : g.titleEn, selected: g.id == group.id, onTap: () => setState(() => _group = g.id)),
+                PillChoice(
+                    label: hindi ? g.titleHi : g.titleEn,
+                    selected: g.id == group.id,
+                    onTap: () => setState(() => _group = g.id)),
             ],
           ),
           const SizedBox(height: 12),
           if (_loading)
-            Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text(context.t('app.loading'), style: AppText.caption(context)))
+            Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(context.t('app.loading'),
+                    style: AppText.caption(context)))
           else ...[
-            Text(hindi ? group.descriptionHi : group.descriptionEn, style: AppText.tiny(context).copyWith(height: 1.4)),
+            Text(hindi ? group.descriptionHi : group.descriptionEn,
+                style: AppText.tiny(context).copyWith(height: 1.4)),
             const SizedBox(height: 10),
             for (final f in group.fields)
               Container(
@@ -175,13 +200,19 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(hindi ? f.labelHi : f.labelEn, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                    Text(hindi ? f.labelHi : f.labelEn,
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
-                    Text(context.t('contentEditor.english').toUpperCase(), style: AppText.tiny(context).copyWith(fontSize: 9, letterSpacing: 0.8)),
+                    Text(context.t('contentEditor.english').toUpperCase(),
+                        style: AppText.tiny(context)
+                            .copyWith(fontSize: 9, letterSpacing: 0.8)),
                     const SizedBox(height: 4),
                     _input(_en[f.key]!, f.multiline),
                     const SizedBox(height: 8),
-                    Text(context.t('contentEditor.hindi').toUpperCase(), style: AppText.tiny(context).copyWith(fontSize: 9, letterSpacing: 0.8)),
+                    Text(context.t('contentEditor.hindi').toUpperCase(),
+                        style: AppText.tiny(context)
+                            .copyWith(fontSize: 9, letterSpacing: 0.8)),
                     const SizedBox(height: 4),
                     _input(_hi[f.key]!, f.multiline),
                     const SizedBox(height: 6),
@@ -189,7 +220,9 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
                       '${context.t('contentEditor.defaultHint')}: ${contentDefaultHint(_defaults(f.key), hindi: hindi)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppText.mono(context, size: 9, color: AppTokens.tint(t.mutedForeground, 0.8)),
+                      style: AppText.mono(context,
+                          size: 9,
+                          color: AppTokens.tint(t.mutedForeground, 0.8)),
                     ),
                   ],
                 ),
@@ -205,7 +238,9 @@ class _SocietyContentEditorState extends ConsumerState<SocietyContentEditor> {
                 dense: true,
                 icon: Icons.save_outlined,
                 loading: _saving,
-                label: _saving ? context.t('app.loading') : context.t('contentEditor.save'),
+                label: _saving
+                    ? context.t('app.loading')
+                    : context.t('contentEditor.save'),
                 onPressed: _saving ? null : _save,
               ),
               AppButton.secondary(

@@ -180,8 +180,10 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
         switch (err) {
           ResidentPaymentError.chargeRequired => context.tr('Select maintenance charge', 'रखरखाव शुल्क चुनें'),
           ResidentPaymentError.amountInvalid => context.tr('Enter valid amount', 'मान्य राशि दर्ज करें'),
-          ResidentPaymentError.datesRequired => context.tr('Select paid date and due date', 'भुगतान तिथि व देय तिथि चुनें'),
-          ResidentPaymentError.fileTooLarge => context.tr('Receipt file must be 8MB or smaller', 'रसीद फ़ाइल 8MB या छोटी होनी चाहिए'),
+          ResidentPaymentError.datesRequired =>
+            context.tr('Select paid date and due date', 'भुगतान तिथि व देय तिथि चुनें'),
+          ResidentPaymentError.fileTooLarge =>
+            context.tr('Receipt file must be 8MB or smaller', 'रसीद फ़ाइल 8MB या छोटी होनी चाहिए'),
         },
         tone: BadgeTone.alert,
       );
@@ -195,7 +197,8 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
       if (!mounted) return;
       setState(() => _uploading = false);
       if (url == null) {
-        AppFeedback.toast(context, context.tr('Could not upload receipt', 'रसीद अपलोड नहीं हो सकी'), tone: BadgeTone.alert);
+        AppFeedback.toast(context, context.tr('Could not upload receipt', 'रसीद अपलोड नहीं हो सकी'),
+            tone: BadgeTone.alert);
         return;
       }
       screenshot = url;
@@ -222,7 +225,8 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
         _showForm = false;
         _resetForm();
       });
-      AppFeedback.toast(context, context.tr('Payment submitted for admin verification', 'भुगतान व्यवस्थापक सत्यापन के लिए जमा किया गया'),
+      AppFeedback.toast(context,
+          context.tr('Payment submitted for admin verification', 'भुगतान व्यवस्थापक सत्यापन के लिए जमा किया गया'),
           tone: BadgeTone.success);
       await _load();
     } catch (e) {
@@ -250,12 +254,14 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
         bytes: pdf.bytes,
         filename: pdf.filename,
         warning: pdf.warning,
-        message: '${context.tr('Maintenance receipt', 'रखरखाव रसीद')} ${p.receiptNumber} · ${context.t('common.flat')} ${p.flatNumber}',
+        message:
+            '${context.tr('Maintenance receipt', 'रखरखाव रसीद')} ${p.receiptNumber} · ${context.t('common.flat')} ${p.flatNumber}',
       );
     } catch (_) {
       if (!mounted) return;
       setState(() => _busyReceiptId = null);
-      AppFeedback.toast(context, context.tr('Could not create the receipt PDF', 'रसीद PDF नहीं बन सकी'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.tr('Could not create the receipt PDF', 'रसीद PDF नहीं बन सकी'),
+          tone: BadgeTone.alert);
     }
   }
 
@@ -276,13 +282,17 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
             child: Text(ctx.rt('resident.m.statementTitle'), style: AppText.sectionTitle(ctx)),
           ),
           for (final e in labels.entries)
-            ListTile(leading: const Icon(Icons.date_range_outlined), title: Text(e.value), onTap: () => Navigator.pop(ctx, e.key)),
+            ListTile(
+                leading: const Icon(Icons.date_range_outlined),
+                title: Text(e.value),
+                onTap: () => Navigator.pop(ctx, e.key)),
         ]),
       ),
     );
     if (period == null || !mounted) return;
     final range = statementRange(period, DateTime.now());
-    final periodLabel = range == null ? labels[period]! : '${Fmt.isoToDisplay(range.from)} – ${Fmt.isoToDisplay(range.to)}';
+    final periodLabel =
+        range == null ? labels[period]! : '${Fmt.isoToDisplay(range.from)} – ${Fmt.isoToDisplay(range.to)}';
     try {
       final pdf = await buildPaymentStatementPdf(
         societyId: _s.societyId,
@@ -299,10 +309,14 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
         bytes: pdf.bytes,
         filename: pdf.filename,
         warning: pdf.warning,
-        message: '${context.rt('resident.m.statementTitle')} · ${context.t('common.flat')} ${_s.resident.flatNumber} · $periodLabel',
+        message:
+            '${context.rt('resident.m.statementTitle')} · ${context.t('common.flat')} ${_s.resident.flatNumber} · $periodLabel',
       );
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.tr('Could not create the statement', 'विवरण पत्र नहीं बन सका'), tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, context.tr('Could not create the statement', 'विवरण पत्र नहीं बन सका'),
+            tone: BadgeTone.alert);
+      }
     }
   }
 
@@ -324,8 +338,11 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
           context.rt('resident.m.dues'),
           icon: Icons.receipt_long_outlined,
           trailing: Text(
-            outstanding > 0 ? '${context.tr('Due', 'देय')}: ${receiptMoney(outstanding)}' : context.tr('All clear', 'कोई बकाया नहीं'),
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: outstanding > 0 ? t.destructive : t.success),
+            outstanding > 0
+                ? '${context.tr('Due', 'देय')}: ${receiptMoney(outstanding)}'
+                : context.tr('All clear', 'कोई बकाया नहीं'),
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w600, color: outstanding > 0 ? t.destructive : t.success),
           ),
         ),
         for (final d in dues)
@@ -334,7 +351,8 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
             child: Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(d.charge.title, style: AppText.bodyMedium(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(d.charge.title,
+                      style: AppText.bodyMedium(context), maxLines: 1, overflow: TextOverflow.ellipsis),
                   Text('${receiptMoney(d.charge.amount)} · ${d.periodLabel}', style: AppText.tiny(context)),
                 ]),
               ),
@@ -342,7 +360,9 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
                 DueState.paid => ToneBadge(context.tr('Paid', 'भुगतान हुआ'), tone: BadgeTone.success),
                 DueState.pending => ToneBadge(context.tr('Verifying', 'सत्यापन में'), tone: BadgeTone.warning),
                 DueState.rejected || DueState.due => AppButton(
-                    label: d.state == DueState.rejected ? context.tr('Pay again', 'फिर से भुगतान') : context.tr('Pay', 'भुगतान करें'),
+                    label: d.state == DueState.rejected
+                        ? context.tr('Pay again', 'फिर से भुगतान')
+                        : context.tr('Pay', 'भुगतान करें'),
                     dense: true,
                     expand: false,
                     onPressed: () => _payDue(d),
@@ -379,7 +399,10 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
           },
         ),
         const SizedBox(height: 8),
-        AppTextField(controller: _amount, hint: context.tr('Amount (₹)', 'राशि (₹)'), keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+        AppTextField(
+            controller: _amount,
+            hint: context.tr('Amount (₹)', 'राशि (₹)'),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true)),
         const SizedBox(height: 8),
         AppDropdown<String>(
           items: const ['bank_transfer', 'upi', 'cash', 'razorpay'],
@@ -395,13 +418,20 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
         if (_method == 'upi') ...[
           if (!hasUpiOnFile) ...[
             const SizedBox(height: 8),
-            AppTextField(controller: _upi, hint: context.tr('Society UPI ID (if shared separately)', 'सोसाइटी यूपीआई आईडी (यदि अलग से दी गई हो)'), caps: false),
+            AppTextField(
+                controller: _upi,
+                hint: context.tr('Society UPI ID (if shared separately)', 'सोसाइटी यूपीआई आईडी (यदि अलग से दी गई हो)'),
+                caps: false),
           ],
           const SizedBox(height: 8),
-          AppButton.secondary(label: context.tr('Open UPI app with amount', 'राशि के साथ यूपीआई ऐप खोलें'), icon: Icons.smartphone, onPressed: _openUpiFromForm),
+          AppButton.secondary(
+              label: context.tr('Open UPI app with amount', 'राशि के साथ यूपीआई ऐप खोलें'),
+              icon: Icons.smartphone,
+              onPressed: _openUpiFromForm),
           const SizedBox(height: 4),
           Text(
-            context.tr('After paying to the society account, enter the UTR / UPI reference and upload screenshot below.',
+            context.tr(
+                'After paying to the society account, enter the UTR / UPI reference and upload screenshot below.',
                 'सोसाइटी खाते में भुगतान के बाद नीचे UTR / यूपीआई संदर्भ दर्ज करें और स्क्रीनशॉट अपलोड करें।'),
             style: AppText.tiny(context),
           ),
@@ -415,15 +445,29 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
           ),
         ],
         const SizedBox(height: 8),
-        AppTextField(controller: _txn, hint: context.tr('Transaction / UPI / UTR reference ID', 'लेन-देन / यूपीआई / UTR संदर्भ आईडी'), mono: true),
+        AppTextField(
+            controller: _txn,
+            hint: context.tr('Transaction / UPI / UTR reference ID', 'लेन-देन / यूपीआई / UTR संदर्भ आईडी'),
+            mono: true),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: ResidentDateField(label: context.tr('Paid on', 'भुगतान तिथि'), value: _paidOn, onChanged: (v) => setState(() => _paidOn = v))),
+          Expanded(
+              child: ResidentDateField(
+                  label: context.tr('Paid on', 'भुगतान तिथि'),
+                  value: _paidOn,
+                  onChanged: (v) => setState(() => _paidOn = v))),
           const SizedBox(width: 8),
-          Expanded(child: ResidentDateField(label: context.tr('Due date', 'देय तिथि'), value: _dueDate, onChanged: (v) => setState(() => _dueDate = v))),
+          Expanded(
+              child: ResidentDateField(
+                  label: context.tr('Due date', 'देय तिथि'),
+                  value: _dueDate,
+                  onChanged: (v) => setState(() => _dueDate = v))),
         ]),
         const SizedBox(height: 8),
-        AppTextField(controller: _shotUrl, hint: context.tr('Screenshot URL (optional)', 'स्क्रीनशॉट URL (वैकल्पिक)'), keyboardType: TextInputType.url),
+        AppTextField(
+            controller: _shotUrl,
+            hint: context.tr('Screenshot URL (optional)', 'स्क्रीनशॉट URL (वैकल्पिक)'),
+            keyboardType: TextInputType.url),
         const SizedBox(height: 8),
         Text(context.tr('Or upload payment screenshot', 'या भुगतान का स्क्रीनशॉट अपलोड करें').toUpperCase(),
             style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w600)),
@@ -476,22 +520,31 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(receiptMoney(p.amount), style: AppText.bodyMedium(context)),
             if ((p.receiptNumber ?? '').isNotEmpty)
-              Text('${context.tr('Receipt', 'रसीद')} ${p.receiptNumber}', style: AppText.mono(context, size: 10, color: t.mutedForeground)),
+              Text('${context.tr('Receipt', 'रसीद')} ${p.receiptNumber}',
+                  style: AppText.mono(context, size: 10, color: t.mutedForeground)),
             if (_chargeTitle(p.chargeId) != null) Text(_chargeTitle(p.chargeId)!, style: AppText.caption(context)),
             for (final l in lines) Text(l, style: AppText.caption(context)),
-            Text('${context.tr('Paid on', 'भुगतान तिथि')}: ${(p.paymentDate ?? '').isEmpty ? '-' : Fmt.date(p.paymentDate)}', style: AppText.tiny(context)),
-            Text('${context.tr('Due date', 'देय तिथि')}: ${p.dueDate.isEmpty ? '-' : Fmt.isoToDisplay(p.dueDate)}', style: AppText.tiny(context)),
-            if ((p.transactionId ?? '').isNotEmpty) Text('${context.tr('Ref', 'संदर्भ')}: ${p.transactionId}', style: AppText.tiny(context)),
+            Text(
+                '${context.tr('Paid on', 'भुगतान तिथि')}: ${(p.paymentDate ?? '').isEmpty ? '-' : Fmt.date(p.paymentDate)}',
+                style: AppText.tiny(context)),
+            Text('${context.tr('Due date', 'देय तिथि')}: ${p.dueDate.isEmpty ? '-' : Fmt.isoToDisplay(p.dueDate)}',
+                style: AppText.tiny(context)),
+            if ((p.transactionId ?? '').isNotEmpty)
+              Text('${context.tr('Ref', 'संदर्भ')}: ${p.transactionId}', style: AppText.tiny(context)),
             if ((p.notes ?? '').isNotEmpty) Text(p.notes!, style: AppText.tiny(context)),
             if ((p.rejectionReason ?? '').isNotEmpty)
-              Text('${context.tr('Reason', 'कारण')}: ${p.rejectionReason}', style: TextStyle(fontSize: 10, color: t.destructive)),
+              Text('${context.tr('Reason', 'कारण')}: ${p.rejectionReason}',
+                  style: TextStyle(fontSize: 10, color: t.destructive)),
             if ((p.screenshotUrl ?? '').isNotEmpty)
               _Link(label: context.tr('View receipt', 'रसीद देखें'), onTap: () => ExportKit.openUrl(p.screenshotUrl!)),
             if (p.isVerified && (p.receiptNumber ?? '').isNotEmpty && _s.societyId.isNotEmpty)
               _busyReceiptId == p.id
-                  ? const Padding(padding: EdgeInsets.only(top: 6), child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)))
+                  ? const Padding(
+                      padding: EdgeInsets.only(top: 6),
+                      child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)))
                   : _Link(
-                      label: context.tr('Download official receipt (letterhead)', 'आधिकारिक रसीद डाउनलोड करें (लेटरहेड)'),
+                      label:
+                          context.tr('Download official receipt (letterhead)', 'आधिकारिक रसीद डाउनलोड करें (लेटरहेड)'),
                       onTap: () => _receipt(p),
                     ),
           ]),
@@ -536,7 +589,8 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
                   borderRadius: BorderRadius.circular(AppTokens.radiusSm),
                 ),
                 child: Text(
-                  context.tr('Society bank account is not published yet. Ask the treasurer / admin to add it under Settings.',
+                  context.tr(
+                      'Society bank account is not published yet. Ask the treasurer / admin to add it under Settings.',
                       'सोसाइटी बैंक खाता अभी प्रकाशित नहीं है। कोषाध्यक्ष / व्यवस्थापक से सेटिंग्स में जोड़ने को कहें।'),
                   style: TextStyle(fontSize: 12, color: t.warning),
                 ),
@@ -544,7 +598,9 @@ class _ResidentPaymentsTabState extends State<ResidentPaymentsTab> {
             ),
           _dues(),
           AppButton(
-            label: _showForm ? context.tr('Close payment form', 'भुगतान फ़ॉर्म बंद करें') : context.tr('Add maintenance payment', 'रखरखाव भुगतान जोड़ें'),
+            label: _showForm
+                ? context.tr('Close payment form', 'भुगतान फ़ॉर्म बंद करें')
+                : context.tr('Add maintenance payment', 'रखरखाव भुगतान जोड़ें'),
             onPressed: _toggleForm,
           ),
           const SizedBox(height: 12),
@@ -581,7 +637,9 @@ class _Link extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.only(top: 4),
-        child: Text(label, style: TextStyle(fontSize: 11, color: t.primary, decoration: TextDecoration.underline, decorationColor: t.primary)),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 11, color: t.primary, decoration: TextDecoration.underline, decorationColor: t.primary)),
       ),
     );
   }

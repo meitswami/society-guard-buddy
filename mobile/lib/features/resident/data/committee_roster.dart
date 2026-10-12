@@ -140,7 +140,8 @@ CommitteeTermSplit splitCommitteeTerms(List<CommitteeRosterRow> rows) {
       previous.add(r);
     }
   }
-  return CommitteeTermSplit(current: dedupeCommitteeByPosition(current), previous: previous, currentTermFrom: currentFrom);
+  return CommitteeTermSplit(
+      current: dedupeCommitteeByPosition(current), previous: previous, currentTermFrom: currentFrom);
 }
 
 List<CommitteeRosterRow> currentCommitteeMembers(List<CommitteeRosterRow> rows) => splitCommitteeTerms(rows).current;
@@ -159,7 +160,9 @@ bool isMemberOnCommitteeRoster({
   for (final row in roster) {
     final rowFlat = row.flatId ?? '';
     if (f.isNotEmpty && rowFlat.isNotEmpty && rowFlat == f && n.isNotEmpty && _norm(row.name) == n) return true;
-    if (f.isNotEmpty && rowFlat.isNotEmpty && rowFlat == f && n.isNotEmpty && _norm(row.flatOwnerName) == n) return true;
+    if (f.isNotEmpty && rowFlat.isNotEmpty && rowFlat == f && n.isNotEmpty && _norm(row.flatOwnerName) == n) {
+      return true;
+    }
     if (p.isNotEmpty && (row.phone ?? '').isNotEmpty && row.phone!.replaceAll(RegExp(r'\D'), '') == p) return true;
     if ((id ?? '').isNotEmpty && row.flatId == f) {
       if (_norm(row.name) == n || _norm(row.flatOwnerName) == n) return true;

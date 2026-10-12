@@ -14,8 +14,13 @@ class AdminPasswordModule extends StatelessWidget {
   Widget build(BuildContext context) {
     return PageContainer(
       children: [
-        PageHeader(title: context.t('admin.changePassword'), icon: Icons.lock_outline, subtitle: ctx.adminName),
-        CardSection(child: AdminPasswordForm(adminId: ctx.adminId, societyId: ctx.societyId)),
+        PageHeader(
+            title: context.t('admin.changePassword'),
+            icon: Icons.lock_outline,
+            subtitle: ctx.adminName),
+        CardSection(
+            child: AdminPasswordForm(
+                adminId: ctx.adminId, societyId: ctx.societyId)),
       ],
     );
   }

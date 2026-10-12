@@ -7,7 +7,8 @@ import 'data/superadmin_repository.dart';
 /// Shared console state — the web `SuperadminDashboard` keeps `societies`, `roles`,
 /// `admins` and `selectedSociety` at the top level and every tab reads them.
 class SuperadminConsole extends ChangeNotifier {
-  SuperadminConsole({required this.session, this.repo = const SuperadminRepository()});
+  SuperadminConsole(
+      {required this.session, this.repo = const SuperadminRepository()});
 
   final SessionSuperadmin session;
   final SuperadminRepository repo;
@@ -36,7 +37,8 @@ class SuperadminConsole extends ChangeNotifier {
     loadFailed = d.societies == null && d.roles == null && d.admins == null;
     if (societies.isEmpty) {
       selectedSocietyId = '';
-    } else if (selectedSocietyId.isEmpty || !societies.any((s) => s.id == selectedSocietyId)) {
+    } else if (selectedSocietyId.isEmpty ||
+        !societies.any((s) => s.id == selectedSocietyId)) {
       selectedSocietyId = societies.first.id;
     }
     loaded = true;
@@ -69,14 +71,18 @@ class SuperadminConsole extends ChangeNotifier {
   }
 
   /// Web `roles.filter(r => r.society_id === id)`.
-  List<SocietyRoleRow> rolesFor(String? societyId) =>
-      roles.where((r) => societyId != null && r.societyId == societyId).toList();
+  List<SocietyRoleRow> rolesFor(String? societyId) => roles
+      .where((r) => societyId != null && r.societyId == societyId)
+      .toList();
 
   /// Web `filteredAdmins` (all admins when no society is selected).
   List<AdminRow> adminsFor(String? societyId) =>
-      (societyId == null || societyId.isEmpty) ? admins : admins.where((a) => a.societyId == societyId).toList();
+      (societyId == null || societyId.isEmpty)
+          ? admins
+          : admins.where((a) => a.societyId == societyId).toList();
 
-  int adminsUsingRole(String roleId) => admins.where((a) => a.roleId == roleId).length;
+  int adminsUsingRole(String roleId) =>
+      admins.where((a) => a.roleId == roleId).length;
 
   void _notify() {
     if (!_disposed) notifyListeners();
@@ -91,13 +97,17 @@ class SuperadminConsole extends ChangeNotifier {
 
 /// Makes the [SuperadminConsole] available to the tabs below the shell.
 class SuperadminScope extends InheritedNotifier<SuperadminConsole> {
-  const SuperadminScope({super.key, required SuperadminConsole console, required super.child}) : super(notifier: console);
+  const SuperadminScope(
+      {super.key, required SuperadminConsole console, required super.child})
+      : super(notifier: console);
 
   /// Rebuilds the caller when the console changes.
   static SuperadminConsole of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<SuperadminScope>()!.notifier!;
 
   /// Reads without subscribing (callbacks).
-  static SuperadminConsole read(BuildContext context) =>
-      (context.getElementForInheritedWidgetOfExactType<SuperadminScope>()!.widget as SuperadminScope).notifier!;
+  static SuperadminConsole read(BuildContext context) => (context
+          .getElementForInheritedWidgetOfExactType<SuperadminScope>()!
+          .widget as SuperadminScope)
+      .notifier!;
 }

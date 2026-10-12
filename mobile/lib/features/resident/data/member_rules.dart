@@ -197,6 +197,7 @@ class MemberFormData {
 
   final String name;
   final String phone;
+
   /// Capitalised family relation (`Owner`, `Tenant`, `Others`, …).
   final String relation;
   final String age;

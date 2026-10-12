@@ -93,8 +93,10 @@ class _ResidentFeedbackTabState extends State<ResidentFeedbackTab> {
 
   String _issueText(String name, FeedbackFileIssue i) => switch (i) {
         FeedbackFileIssue.notMedia => context.tr('$name: use an image or video', '$name: चित्र या वीडियो चुनें'),
-        FeedbackFileIssue.imageTooLarge => context.tr('Image too large (max 12MB): $name', 'चित्र बहुत बड़ा है (अधिकतम 12MB): $name'),
-        FeedbackFileIssue.videoTooLarge => context.tr('Video too large (max 50MB): $name', 'वीडियो बहुत बड़ा है (अधिकतम 50MB): $name'),
+        FeedbackFileIssue.imageTooLarge =>
+          context.tr('Image too large (max 12MB): $name', 'चित्र बहुत बड़ा है (अधिकतम 12MB): $name'),
+        FeedbackFileIssue.videoTooLarge =>
+          context.tr('Video too large (max 50MB): $name', 'वीडियो बहुत बड़ा है (अधिकतम 50MB): $name'),
         FeedbackFileIssue.uploadFailed => context.tr('Upload failed: $name', 'अपलोड विफल: $name'),
       };
 
@@ -102,11 +104,13 @@ class _ResidentFeedbackTabState extends State<ResidentFeedbackTab> {
     final text = _message.text.trim();
     final s = widget.session;
     if (s.societyId.isEmpty) {
-      _err(context.tr('Society is not loaded. Try again in a moment.', 'सोसाइटी लोड नहीं हुई। थोड़ी देर में फिर कोशिश करें।'));
+      _err(context.tr(
+          'Society is not loaded. Try again in a moment.', 'सोसाइटी लोड नहीं हुई। थोड़ी देर में फिर कोशिश करें।'));
       return;
     }
     if (text.isEmpty && _files.isEmpty && _voice == null) {
-      _err(context.tr('Add a message, voice note, or at least one image/video', 'संदेश, आवाज़ नोट या कम से कम एक चित्र / वीडियो जोड़ें'));
+      _err(context.tr('Add a message, voice note, or at least one image/video',
+          'संदेश, आवाज़ नोट या कम से कम एक चित्र / वीडियो जोड़ें'));
       return;
     }
     setState(() => _submitting = true);
@@ -126,7 +130,10 @@ class _ResidentFeedbackTabState extends State<ResidentFeedbackTab> {
       final voice = _voice;
       if (voice != null) {
         if (voice.length > kFeedbackMaxAudioBytes) {
-          if (mounted) _err(context.tr('Recording is too long or too large (max 15MB)', 'रिकॉर्डिंग बहुत लंबी या बड़ी है (अधिकतम 15MB)'));
+          if (mounted) {
+            _err(context.tr(
+                'Recording is too long or too large (max 15MB)', 'रिकॉर्डिंग बहुत लंबी या बड़ी है (अधिकतम 15MB)'));
+          }
         } else {
           try {
             audioUrl = await _repo.uploadVoice(voice, s.resident.id);
@@ -150,7 +157,10 @@ class _ResidentFeedbackTabState extends State<ResidentFeedbackTab> {
         audioUrl: audioUrl,
       );
       if (!mounted) return;
-      AppFeedback.toast(context, context.tr('Thanks! Your feedback was sent to support.', 'धन्यवाद! आपकी प्रतिक्रिया सहायता टीम को भेज दी गई।'),
+      AppFeedback.toast(
+          context,
+          context.tr(
+              'Thanks! Your feedback was sent to support.', 'धन्यवाद! आपकी प्रतिक्रिया सहायता टीम को भेज दी गई।'),
           tone: BadgeTone.success);
       setState(() {
         _message.clear();
@@ -177,10 +187,12 @@ class _ResidentFeedbackTabState extends State<ResidentFeedbackTab> {
         ),
         CardSection(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            FieldLabel(context.tr('Message (optional if you send voice or media)', 'संदेश (आवाज़ या मीडिया भेजने पर वैकल्पिक)')),
+            FieldLabel(context.tr(
+                'Message (optional if you send voice or media)', 'संदेश (आवाज़ या मीडिया भेजने पर वैकल्पिक)')),
             AppTextField(
               controller: _message,
-              hint: context.tr('Describe what happened or what you would like…', 'बताएँ क्या हुआ या आप क्या चाहते हैं…'),
+              hint:
+                  context.tr('Describe what happened or what you would like…', 'बताएँ क्या हुआ या आप क्या चाहते हैं…'),
               maxLines: 8,
               minLines: 5,
               caps: false,
@@ -205,7 +217,9 @@ class _ResidentFeedbackTabState extends State<ResidentFeedbackTab> {
                   onPressed: _stopRecording,
                 ),
               if (_voice != null && !_recording) ...[
-                Text(context.tr('Voice note ready (${(_voice!.length / 1024).round()} KB)', 'आवाज़ नोट तैयार (${(_voice!.length / 1024).round()} KB)'),
+                Text(
+                    context.tr('Voice note ready (${(_voice!.length / 1024).round()} KB)',
+                        'आवाज़ नोट तैयार (${(_voice!.length / 1024).round()} KB)'),
                     style: AppText.caption(context)),
                 TextButton(
                   onPressed: () => setState(() => _voice = null),
@@ -227,7 +241,8 @@ class _ResidentFeedbackTabState extends State<ResidentFeedbackTab> {
             ),
             for (var i = 0; i < _files.length; i++)
               Row(children: [
-                Icon(_files[i].isVideo ? Icons.videocam_outlined : Icons.image_outlined, size: 14, color: t.mutedForeground),
+                Icon(_files[i].isVideo ? Icons.videocam_outlined : Icons.image_outlined,
+                    size: 14, color: t.mutedForeground),
                 const SizedBox(width: 6),
                 Expanded(child: Text(_files[i].name, style: AppText.caption(context), overflow: TextOverflow.ellipsis)),
                 IconButton(
@@ -238,7 +253,9 @@ class _ResidentFeedbackTabState extends State<ResidentFeedbackTab> {
               ]),
             const SizedBox(height: 12),
             AppButton(
-              label: _submitting ? context.tr('Sending…', 'भेज रहे हैं…') : context.tr('Send feedback', 'प्रतिक्रिया भेजें'),
+              label: _submitting
+                  ? context.tr('Sending…', 'भेज रहे हैं…')
+                  : context.tr('Send feedback', 'प्रतिक्रिया भेजें'),
               icon: Icons.send,
               loading: _submitting,
               onPressed: _submit,

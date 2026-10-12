@@ -58,7 +58,8 @@ class ResidentApprovalsController extends ChangeNotifier {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'approval_requests',
-          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'flat_id', value: session.resident.flatId),
+          filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq, column: 'flat_id', value: session.resident.flatId),
           callback: (_) => load(),
         )
         .subscribe();

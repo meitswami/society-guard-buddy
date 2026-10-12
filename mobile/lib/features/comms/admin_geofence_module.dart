@@ -57,7 +57,8 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
         }
       });
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
@@ -66,13 +67,17 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
         if (mounted) {
-          await AppFeedback.error(context, title: context.t('admin.locationError'), message: context.ct('comms.geo.serviceOff'));
+          await AppFeedback.error(context,
+              title: context.t('admin.locationError'),
+              message: context.ct('comms.geo.serviceOff'));
         }
         return;
       }
       var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+      if (perm == LocationPermission.denied)
+        perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
         if (!mounted) return;
         final open = await AppFeedback.confirm(
           context,
@@ -85,7 +90,8 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 15)),
+        locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 15)),
       );
       if (!mounted) return;
       setState(() {
@@ -96,7 +102,9 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
       });
     } catch (e) {
       if (mounted) {
-        await AppFeedback.error(context, title: context.t('admin.locationError'), message: '${context.t('admin.locationError')}: $e');
+        await AppFeedback.error(context,
+            title: context.t('admin.locationError'),
+            message: '${context.t('admin.locationError')}: $e');
       }
     } finally {
       if (mounted) setState(() => _capturing = false);
@@ -107,7 +115,8 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
     final lat = parseCoordinate(_lat.text);
     final lng = parseCoordinate(_lng.text);
     if (!isValidLatitude(lat) || !isValidLongitude(lng)) {
-      AppFeedback.toast(context, context.ct('comms.geo.invalid'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.ct('comms.geo.invalid'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _loading = true);
@@ -121,9 +130,15 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
         setBy: widget.ctx.adminName,
       );
       await _loadExisting();
-      if (mounted) await AppFeedback.success(context, title: context.t('swal.success'), message: context.t('admin.geofenceSaved'));
+      if (mounted)
+        await AppFeedback.success(context,
+            title: context.t('swal.success'),
+            message: context.t('admin.geofenceSaved'));
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, context.ct('comms.geo.saveFailed', {'error': commsErrorMessage(e)}), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context,
+            context.ct('comms.geo.saveFailed', {'error': commsErrorMessage(e)}),
+            tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -152,9 +167,12 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
         _radius = kGeofenceDefaultRadius;
         _accuracy = null;
       });
-      await AppFeedback.success(context, title: context.ct('comms.geo.cleared'), message: context.ct('comms.geo.removed'));
+      await AppFeedback.success(context,
+          title: context.ct('comms.geo.cleared'),
+          message: context.ct('comms.geo.removed'));
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
@@ -165,28 +183,50 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
     return PageContainer(
       onRefresh: _loadExisting,
       children: [
-        PageHeader(title: context.t('admin.geofence'), subtitle: context.t('admin.geofenceSubtitle'), icon: Icons.location_on_outlined),
+        PageHeader(
+            title: context.t('admin.geofence'),
+            subtitle: context.t('admin.geofenceSubtitle'),
+            icon: Icons.location_on_outlined),
         CardSection(
           margin: const EdgeInsets.only(bottom: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(context.t('admin.currentLocation'), style: AppText.sectionTitle(context)),
+              Text(context.t('admin.currentLocation'),
+                  style: AppText.sectionTitle(context)),
               const SizedBox(height: 12),
               if (g != null) ...[
-                Text(context.ct('comms.geo.latLng', {'lat': formatCoordinate(g.latitude), 'lng': formatCoordinate(g.longitude)}),
+                Text(
+                    context.ct('comms.geo.latLng', {
+                      'lat': formatCoordinate(g.latitude),
+                      'lng': formatCoordinate(g.longitude)
+                    }),
                     style: AppText.caption(context)),
                 const SizedBox(height: 6),
-                Text(context.ct('comms.geo.radiusLine', {'label': context.t('admin.radius'), 'm': g.radiusMeters}), style: AppText.caption(context)),
+                Text(
+                    context.ct('comms.geo.radiusLine', {
+                      'label': context.t('admin.radius'),
+                      'm': g.radiusMeters
+                    }),
+                    style: AppText.caption(context)),
                 const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(value: 1, minHeight: 8, color: t.success, backgroundColor: AppTokens.tint(t.success, 0.2)),
+                  child: LinearProgressIndicator(
+                      value: 1,
+                      minHeight: 8,
+                      color: t.success,
+                      backgroundColor: AppTokens.tint(t.success, 0.2)),
                 ),
                 const SizedBox(height: 8),
-                Text('✅ ${context.t('admin.geofenceActive')}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.success)),
+                Text('✅ ${context.t('admin.geofenceActive')}',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: t.success)),
               ] else
-                Text('⚠️ ${context.t('admin.noGeofence')}', style: AppText.caption(context)),
+                Text('⚠️ ${context.t('admin.noGeofence')}',
+                    style: AppText.caption(context)),
             ],
           ),
         ),
@@ -197,12 +237,17 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
               AppButton(
                 icon: Icons.navigation_outlined,
                 loading: _capturing,
-                label: _capturing ? context.t('admin.capturing') : context.t('admin.captureLocation'),
+                label: _capturing
+                    ? context.t('admin.capturing')
+                    : context.t('admin.captureLocation'),
                 onPressed: _capturing ? null : _capture,
               ),
               if (_accuracy != null) ...[
                 const SizedBox(height: 6),
-                Text(context.ct('comms.geo.accuracy', {'m': _accuracy!.round()}), textAlign: TextAlign.center, style: AppText.tiny(context)),
+                Text(
+                    context.ct('comms.geo.accuracy', {'m': _accuracy!.round()}),
+                    textAlign: TextAlign.center,
+                    style: AppText.tiny(context)),
               ],
               if (_hasPoint) ...[
                 const SizedBox(height: 16),
@@ -213,7 +258,8 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
                         label: context.ct('comms.geo.lat'),
                         controller: _lat,
                         caps: false,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true, signed: true),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -222,26 +268,33 @@ class _AdminGeofenceModuleState extends State<AdminGeofenceModule> {
                         label: context.ct('comms.geo.lng'),
                         controller: _lng,
                         caps: false,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true, signed: true),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text('${context.t('admin.radius')} (${_radius}m)', style: AppText.caption(context)),
+                Text('${context.t('admin.radius')} (${_radius}m)',
+                    style: AppText.caption(context)),
                 Slider(
-                  value: _radius.toDouble().clamp(kGeofenceMinRadius.toDouble(), kGeofenceMaxRadius.toDouble()),
+                  value: _radius.toDouble().clamp(kGeofenceMinRadius.toDouble(),
+                      kGeofenceMaxRadius.toDouble()),
                   min: kGeofenceMinRadius.toDouble(),
                   max: kGeofenceMaxRadius.toDouble(),
-                  divisions: (kGeofenceMaxRadius - kGeofenceMinRadius) ~/ kGeofenceRadiusStep,
+                  divisions: (kGeofenceMaxRadius - kGeofenceMinRadius) ~/
+                      kGeofenceRadiusStep,
                   label: '${_radius}m',
-                  onChanged: (v) => setState(() => _radius = snapGeofenceRadius(v)),
+                  onChanged: (v) =>
+                      setState(() => _radius = snapGeofenceRadius(v)),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('${kGeofenceMinRadius}m', style: AppText.tiny(context)),
-                    Text('${kGeofenceMaxRadius}m', style: AppText.tiny(context)),
+                    Text('${kGeofenceMinRadius}m',
+                        style: AppText.tiny(context)),
+                    Text('${kGeofenceMaxRadius}m',
+                        style: AppText.tiny(context)),
                   ],
                 ),
                 const SizedBox(height: 16),

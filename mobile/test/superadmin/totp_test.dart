@@ -6,15 +6,18 @@ import 'package:kutumbika_mobile/features/superadmin/logic/totp.dart';
 /// Vectors generated with the web's own `otplib@13.4.0` (`generateSync`, `verifySync`
 /// with `epochTolerance: 30`, `generateURI`) plus RFC 6238 Appendix B (SHA-1).
 void main() {
-  const rfcSecret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'; // "12345678901234567890"
+  const rfcSecret =
+      'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'; // "12345678901234567890"
   const s2 = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 
   group('Base32', () {
     test('round-trips and matches RFC 4648', () {
       expect(Base32.encode('12345678901234567890'.codeUnits), rfcSecret);
-      expect(String.fromCharCodes(Base32.decode(rfcSecret)!), '12345678901234567890');
+      expect(String.fromCharCodes(Base32.decode(rfcSecret)!),
+          '12345678901234567890');
       expect(Base32.encode('foobar'.codeUnits), 'MZXW6YTBOI');
-      expect(String.fromCharCodes(Base32.decode('MZXW6YTBOI======')!), 'foobar');
+      expect(
+          String.fromCharCodes(Base32.decode('MZXW6YTBOI======')!), 'foobar');
     });
 
     test('decode upper-cases like otplib and rejects bad characters', () {
@@ -34,7 +37,9 @@ void main() {
         2000000000: '279037',
         20000000000: '353130',
       };
-      expected.forEach((t, code) => expect(generateTotpCode(rfcSecret, epochSeconds: t), code, reason: 't=$t'));
+      expected.forEach((t, code) => expect(
+          generateTotpCode(rfcSecret, epochSeconds: t), code,
+          reason: 't=$t'));
     });
 
     test('otplib vectors for a 20-byte secret', () {
@@ -48,11 +53,15 @@ void main() {
         1760000029: '793635',
         1760000030: '793635',
       };
-      expected.forEach((t, code) => expect(generateTotpCode(s2, epochSeconds: t), code, reason: 't=$t'));
-      expect(generateTotpCode(s2.toLowerCase(), epochSeconds: 1760000000), '325812');
+      expected.forEach((t, code) =>
+          expect(generateTotpCode(s2, epochSeconds: t), code, reason: 't=$t'));
+      expect(generateTotpCode(s2.toLowerCase(), epochSeconds: 1760000000),
+          '325812');
     });
 
-    test('secrets shorter than 16 bytes are rejected (otplib SecretTooShortError)', () {
+    test(
+        'secrets shorter than 16 bytes are rejected (otplib SecretTooShortError)',
+        () {
       expect(generateTotpCode('JBSWY3DPEHPK3PXP', epochSeconds: 0), isNull);
     });
   });
@@ -79,15 +88,28 @@ void main() {
         90: false,
       };
       valid.forEach((off, ok) {
-        expect(verifyTotpCode(s2, codeAt(base + off), epochSeconds: base), ok, reason: 'offset $off');
+        expect(verifyTotpCode(s2, codeAt(base + off), epochSeconds: base), ok,
+            reason: 'offset $off');
       });
     });
 
     test('late in a window', () {
       const base2 = 1760000029;
-      const valid = {-60: false, -59: false, -31: true, -30: true, 0: true, 1: true, 30: true, 31: true, 60: false, 61: false};
+      const valid = {
+        -60: false,
+        -59: false,
+        -31: true,
+        -30: true,
+        0: true,
+        1: true,
+        30: true,
+        31: true,
+        60: false,
+        61: false
+      };
       valid.forEach((off, ok) {
-        expect(verifyTotpCode(s2, codeAt(base2 + off), epochSeconds: base2), ok, reason: 'offset $off');
+        expect(verifyTotpCode(s2, codeAt(base2 + off), epochSeconds: base2), ok,
+            reason: 'offset $off');
       });
     });
 
@@ -97,7 +119,8 @@ void main() {
       expect(verifyTotpCode(s2, '79363', epochSeconds: 1760000015), isFalse);
       expect(verifyTotpCode(s2, '7936355', epochSeconds: 1760000015), isFalse);
       expect(verifyTotpCode(s2, '79363a', epochSeconds: 1760000015), isFalse);
-      expect(verifyTotpCode('not base32!', '793635', epochSeconds: 1760000015), isFalse);
+      expect(verifyTotpCode('not base32!', '793635', epochSeconds: 1760000015),
+          isFalse);
       expect(verifyTotpCode('JBSWY3DPEHPK3PXP', '123456'), isFalse);
     });
   });

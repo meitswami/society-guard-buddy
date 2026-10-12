@@ -2,7 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kutumbika_mobile/features/comms/data/content_translation_catalog.dart';
 
 void main() {
-  ContentDraft defaults(String key) => ContentDraft(en: 'EN:$key', hi: key == 'finance.receiptHead' ? '' : 'HI:$key');
+  ContentDraft defaults(String key) => ContentDraft(
+      en: 'EN:$key', hi: key == 'finance.receiptHead' ? '' : 'HI:$key');
 
   group('catalog (web contentTranslationCatalog.ts)', () {
     test('one finance group with the 10 member-facing keys in order', () {
@@ -46,7 +47,8 @@ void main() {
   group('applyContentVars', () {
     test('replaces known vars and keeps unknown placeholders', () {
       expect(
-        applyContentVars('Flat {flat} in {month} ({head})', {'flat': '101', 'month': 'Mar 2026'}),
+        applyContentVars('Flat {flat} in {month} ({head})',
+            {'flat': '101', 'month': 'Mar 2026'}),
         'Flat 101 in Mar 2026 ({head})',
       );
       expect(applyContentVars('{n} items', {'n': 0}), '0 items');
@@ -61,13 +63,19 @@ void main() {
         keys: const ['finance.receiptHead', 'finance.allReceiptHeads'],
         defaultsFor: defaults,
         savedRows: const [
-          {'content_key': 'finance.allReceiptHeads', 'text_en': 'All heads', 'text_hi': 'सभी शीर्ष'},
+          {
+            'content_key': 'finance.allReceiptHeads',
+            'text_en': 'All heads',
+            'text_hi': 'सभी शीर्ष'
+          },
           {'content_key': 'not.editable', 'text_en': 'x', 'text_hi': 'y'},
         ],
       );
       expect(drafts.keys, ['finance.receiptHead', 'finance.allReceiptHeads']);
-      expect(drafts['finance.receiptHead'], const ContentDraft(en: 'EN:finance.receiptHead', hi: ''));
-      expect(drafts['finance.allReceiptHeads'], const ContentDraft(en: 'All heads', hi: 'सभी शीर्ष'));
+      expect(drafts['finance.receiptHead'],
+          const ContentDraft(en: 'EN:finance.receiptHead', hi: ''));
+      expect(drafts['finance.allReceiptHeads'],
+          const ContentDraft(en: 'All heads', hi: 'सभी शीर्ष'));
     });
 
     test('saved rows with null text become empty strings', () {
@@ -75,7 +83,11 @@ void main() {
         keys: const ['finance.receiptHead'],
         defaultsFor: defaults,
         savedRows: const [
-          {'content_key': 'finance.receiptHead', 'text_en': null, 'text_hi': null},
+          {
+            'content_key': 'finance.receiptHead',
+            'text_en': null,
+            'text_hi': null
+          },
         ],
       );
       expect(drafts['finance.receiptHead'], const ContentDraft(en: '', hi: ''));
@@ -85,7 +97,9 @@ void main() {
       final rows = buildContentUpsertRows(
         societyId: 's1',
         keys: const ['finance.receiptHead', 'finance.allReceiptHeads'],
-        drafts: const {'finance.receiptHead': ContentDraft(en: '  Head  ', hi: ' शीर्ष ')},
+        drafts: const {
+          'finance.receiptHead': ContentDraft(en: '  Head  ', hi: ' शीर्ष ')
+        },
         defaultsFor: defaults,
       );
       expect(rows, [
@@ -107,9 +121,16 @@ void main() {
     });
 
     test('default hint uses the current language, else English', () {
-      expect(contentDefaultHint(const ContentDraft(en: 'E', hi: 'H'), hindi: true), 'H');
-      expect(contentDefaultHint(const ContentDraft(en: 'E', hi: ''), hindi: true), 'E');
-      expect(contentDefaultHint(const ContentDraft(en: 'E', hi: 'H'), hindi: false), 'E');
+      expect(
+          contentDefaultHint(const ContentDraft(en: 'E', hi: 'H'), hindi: true),
+          'H');
+      expect(
+          contentDefaultHint(const ContentDraft(en: 'E', hi: ''), hindi: true),
+          'E');
+      expect(
+          contentDefaultHint(const ContentDraft(en: 'E', hi: 'H'),
+              hindi: false),
+          'E');
     });
   });
 }

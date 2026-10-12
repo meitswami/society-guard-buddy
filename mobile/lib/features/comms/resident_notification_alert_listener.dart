@@ -15,7 +15,8 @@ import 'data/notification_sound_player.dart';
 /// this flat / person shows an in-app toast (title + first 200 chars, 8 s) and plays its
 /// alert sound. Wrap the resident shell body with it.
 class ResidentNotificationAlertListener extends StatefulWidget {
-  const ResidentNotificationAlertListener({super.key, required this.session, required this.child, this.onInsert});
+  const ResidentNotificationAlertListener(
+      {super.key, required this.session, required this.child, this.onInsert});
 
   final SessionResident session;
   final Widget child;
@@ -24,10 +25,12 @@ class ResidentNotificationAlertListener extends StatefulWidget {
   final VoidCallback? onInsert;
 
   @override
-  State<ResidentNotificationAlertListener> createState() => _ResidentNotificationAlertListenerState();
+  State<ResidentNotificationAlertListener> createState() =>
+      _ResidentNotificationAlertListenerState();
 }
 
-class _ResidentNotificationAlertListenerState extends State<ResidentNotificationAlertListener> {
+class _ResidentNotificationAlertListenerState
+    extends State<ResidentNotificationAlertListener> {
   RealtimeChannel? _channel;
 
   @override
@@ -39,7 +42,8 @@ class _ResidentNotificationAlertListenerState extends State<ResidentNotification
   @override
   void didUpdateWidget(ResidentNotificationAlertListener oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.session.resident.id != widget.session.resident.id || oldWidget.session.societyId != widget.session.societyId) {
+    if (oldWidget.session.resident.id != widget.session.resident.id ||
+        oldWidget.session.societyId != widget.session.societyId) {
       _unsubscribe();
       _subscribe();
     }
@@ -47,7 +51,10 @@ class _ResidentNotificationAlertListenerState extends State<ResidentNotification
 
   void _subscribe() {
     final s = widget.session;
-    _channel = const NotificationRepository().subscribeInserts('notifications-dashboard-resident-${s.resident.id}', s.societyId, _onRow);
+    _channel = const NotificationRepository().subscribeInserts(
+        'notifications-dashboard-resident-${s.resident.id}',
+        s.societyId,
+        _onRow);
   }
 
   void _unsubscribe() {
@@ -59,7 +66,9 @@ class _ResidentNotificationAlertListenerState extends State<ResidentNotification
   void _onRow(Map<String, dynamic> row) {
     final s = widget.session;
     if (!notificationRowVisibleToResident(row,
-        residentId: s.resident.id, residentName: s.resident.name, flatNumber: s.resident.flatNumber)) {
+        residentId: s.resident.id,
+        residentName: s.resident.name,
+        flatNumber: s.resident.flatNumber)) {
       return;
     }
     widget.onInsert?.call();
@@ -67,8 +76,10 @@ class _ResidentNotificationAlertListenerState extends State<ResidentNotification
     final title = (row['title'] ?? 'Alert').toString();
     final message = (row['message'] ?? '').toString();
     final body = message.length > 200 ? message.substring(0, 200) : message;
-    AppFeedback.toast(context, body.isEmpty ? title : '$title\n$body', duration: const Duration(seconds: 8));
-    unawaited(playNotificationAlert(row['sound_key']?.toString() ?? 'digital', row['sound_custom_url']?.toString()));
+    AppFeedback.toast(context, body.isEmpty ? title : '$title\n$body',
+        duration: const Duration(seconds: 8));
+    unawaited(playNotificationAlert(row['sound_key']?.toString() ?? 'digital',
+        row['sound_custom_url']?.toString()));
   }
 
   @override

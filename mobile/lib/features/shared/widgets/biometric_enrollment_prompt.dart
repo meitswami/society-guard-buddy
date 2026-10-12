@@ -8,13 +8,15 @@ import '../../comms/core/comms_i18n.dart';
 
 /// One-time prompt after login to enable fingerprint quick-login (web onboarding nudge).
 class BiometricEnrollmentPrompt extends StatefulWidget {
-  const BiometricEnrollmentPrompt({super.key, required this.session, required this.child});
+  const BiometricEnrollmentPrompt(
+      {super.key, required this.session, required this.child});
 
   final AppSessionState session;
   final Widget child;
 
   @override
-  State<BiometricEnrollmentPrompt> createState() => _BiometricEnrollmentPromptState();
+  State<BiometricEnrollmentPrompt> createState() =>
+      _BiometricEnrollmentPromptState();
 }
 
 class _BiometricEnrollmentPromptState extends State<BiometricEnrollmentPrompt> {
@@ -34,7 +36,8 @@ class _BiometricEnrollmentPromptState extends State<BiometricEnrollmentPrompt> {
     final login = BiometricLoginService();
     final user = await login.userContextFromSession(widget.session);
     if (user == null || !user.allowed) return;
-    final has = await login.hasEnrollment(role: user.role, userDbId: user.userDbId);
+    final has =
+        await login.hasEnrollment(role: user.role, userDbId: user.userDbId);
     if (has || !mounted) return;
 
     final t = context.tokens;
@@ -42,12 +45,18 @@ class _BiometricEnrollmentPromptState extends State<BiometricEnrollmentPrompt> {
       context: context,
       builder: (ctx) => AlertDialog(
         icon: Icon(Icons.fingerprint, size: 40, color: t.primary),
-        title: Text(ctx.ct('comms.bio.promptTitle'), textAlign: TextAlign.center),
-        content: Text(ctx.ct('comms.bio.promptText'), textAlign: TextAlign.center),
+        title:
+            Text(ctx.ct('comms.bio.promptTitle'), textAlign: TextAlign.center),
+        content:
+            Text(ctx.ct('comms.bio.promptText'), textAlign: TextAlign.center),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(ctx.ct('comms.bio.notNow'))),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(ctx.ct('comms.bio.enableShort'))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(ctx.ct('comms.bio.notNow'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(ctx.ct('comms.bio.enableShort'))),
         ],
       ),
     );
@@ -55,9 +64,14 @@ class _BiometricEnrollmentPromptState extends State<BiometricEnrollmentPrompt> {
 
     try {
       await login.enrollFromSession(widget.session);
-      if (mounted) AppFeedback.toast(context, context.t('biometric.registered'), tone: BadgeTone.success);
+      if (mounted)
+        AppFeedback.toast(context, context.t('biometric.registered'),
+            tone: BadgeTone.success);
     } on BiometricLoginFailure catch (e) {
-      if (mounted) AppFeedback.toast(context, '${context.t('biometric.registerFailed')}: ${e.message}', tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(
+            context, '${context.t('biometric.registerFailed')}: ${e.message}',
+            tone: BadgeTone.alert);
     }
   }
 

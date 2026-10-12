@@ -16,7 +16,8 @@ class NotificationMediaItem {
   Map<String, String> toJson() => {'url': url, 'kind': kind};
 
   @override
-  bool operator ==(Object other) => other is NotificationMediaItem && other.url == url && other.kind == kind;
+  bool operator ==(Object other) =>
+      other is NotificationMediaItem && other.url == url && other.kind == kind;
 
   @override
   int get hashCode => Object.hash(url, kind);
@@ -130,7 +131,8 @@ class NotificationComment {
 
   bool get isAdmin => authorRole == 'admin';
 
-  factory NotificationComment.fromRow(Map<String, dynamic> r) => NotificationComment(
+  factory NotificationComment.fromRow(Map<String, dynamic> r) =>
+      NotificationComment(
         id: r['id']?.toString() ?? '',
         notificationId: r['notification_id']?.toString() ?? '',
         authorRole: r['author_role']?.toString() ?? 'resident',
@@ -144,7 +146,8 @@ class NotificationComment {
 
 /// Who is reading a notification (web `ResidentRef`).
 class ResidentRef {
-  const ResidentRef({required this.id, required this.name, required this.flatNumber});
+  const ResidentRef(
+      {required this.id, required this.name, required this.flatNumber});
 
   final String id;
   final String name;

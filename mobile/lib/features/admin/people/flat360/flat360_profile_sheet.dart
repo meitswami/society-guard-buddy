@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/ui/ui.dart';
+import '../../../../models/session_models.dart';
+import '../../../../providers/session_provider.dart';
 import 'flat360_models.dart';
 import 'flat360_panel.dart';
 import 'flat360_service.dart';
@@ -12,7 +15,8 @@ export 'flat360_panel.dart' show Flat360ProfilePanel;
 ///
 /// Admin (default): includes gate visitors and shows all notices addressed to the flat.
 /// Resident: pass [residentId] + [residentName] so notices are filtered for resident
-/// visibility (visitors are then excluded unless [includeVisitors] is set).
+/// visibility (visitors are then excluded unless [includeVisitors] is set). When no resident is
+/// passed but the signed-in session is a resident, that resident is used automatically.
 abstract final class Flat360ProfileSheet {
   static Future<void> show(
     BuildContext context, {
@@ -25,9 +29,20 @@ abstract final class Flat360ProfileSheet {
     bool compact = false,
     int monthsBack = 12,
   }) {
-    final resident = (residentId != null && residentId.isNotEmpty)
+    var resident = (residentId != null && residentId.isNotEmpty)
         ? Flat360ResidentContext(id: residentId, name: residentName ?? '')
         : null;
+    if (resident == null) {
+      try {
+        final session = ProviderScope.containerOf(context, listen: false).read(sessionProvider).value;
+        if (session is SessionResident) {
+          resident = Flat360ResidentContext(id: session.resident.id, name: session.resident.name);
+          flatNumber ??= session.resident.flatId == flatId ? session.resident.flatNumber : null;
+        }
+      } catch (_) {
+        // No ProviderScope (tests) — admin view.
+      }
+    }
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

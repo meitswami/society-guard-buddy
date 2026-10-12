@@ -196,13 +196,16 @@ String chargePeriodLabel(String frequency, DateTime d) {
 }
 
 class ChargeDue {
-  const ChargeDue({required this.charge, required this.state, required this.periodLabel, required this.dueDate, this.payment});
+  const ChargeDue(
+      {required this.charge, required this.state, required this.periodLabel, required this.dueDate, this.payment});
 
   final MaintenanceChargeRow charge;
   final DueState state;
   final String periodLabel;
+
   /// Suggested due date for a new payment (`yyyy-MM-dd`).
   final String dueDate;
+
   /// Payment that decided the state (verified / pending / rejected), if any.
   final MaintenancePaymentRow? payment;
 
@@ -211,12 +214,14 @@ class ChargeDue {
 
 /// Status of each active charge for the current billing period, from the flat's payments
 /// (billing date = `due_date`, like web finance).
-List<ChargeDue> computeChargeDues(List<MaintenanceChargeRow> charges, List<MaintenancePaymentRow> payments, DateTime now) {
+List<ChargeDue> computeChargeDues(
+    List<MaintenanceChargeRow> charges, List<MaintenancePaymentRow> payments, DateTime now) {
   final out = <ChargeDue>[];
   for (final c in charges) {
     if (!c.isActive) continue;
     final key = chargePeriodKey(c.frequency, now);
-    final inPeriod = payments.where((p) => p.chargeId == c.id && _periodKeyForYmd(c.frequency, p.dueDate) == key).toList();
+    final inPeriod =
+        payments.where((p) => p.chargeId == c.id && _periodKeyForYmd(c.frequency, p.dueDate) == key).toList();
     MaintenancePaymentRow? pick(String status) {
       for (final p in inPeriod) {
         if (p.paymentStatus == status) return p;
@@ -257,8 +262,10 @@ class AmountRow {
   const AmountRow({this.amount, this.dateIso, this.date});
 
   final double? amount;
+
   /// Preferred for grouping — `yyyy-MM-dd` or ISO timestamp.
   final String? dateIso;
+
   /// Display date (`dd/MM/yyyy`) when ISO is unavailable.
   final String? date;
 }
@@ -329,7 +336,8 @@ List<MonthlyAmountTotal> monthlyAmountTotals(Iterable<AmountRow> rows) {
   }
   final keys = map.keys.toList()..sort();
   return [
-    for (final k in keys) MonthlyAmountTotal(monthKey: k, label: fmtIsoMonthToDisplay(k), total: map[k]!.$1, count: map[k]!.$2),
+    for (final k in keys)
+      MonthlyAmountTotal(monthKey: k, label: fmtIsoMonthToDisplay(k), total: map[k]!.$1, count: map[k]!.$2),
   ];
 }
 

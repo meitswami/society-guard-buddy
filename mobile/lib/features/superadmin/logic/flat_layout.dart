@@ -76,14 +76,18 @@ BuiltFlatRange? buildValidFlatNumberSet({
 
 bool wingAllowedForTrim(String? wing, List<String>? blockNames) {
   if (blockNames == null || blockNames.isEmpty) return true;
-  final set = blockNames.map((b) => b.trim().toLowerCase()).where((b) => b.isNotEmpty).toSet();
+  final set = blockNames
+      .map((b) => b.trim().toLowerCase())
+      .where((b) => b.isNotEmpty)
+      .toSet();
   final w = (wing ?? '').trim().toLowerCase();
   if (w.isNotEmpty && set.contains(w)) return true;
   if (w.isEmpty && set.length == 1) return true;
   return false;
 }
 
-bool isResidentialFlatType(String? flatType) => (flatType ?? 'residential') == 'residential';
+bool isResidentialFlatType(String? flatType) =>
+    (flatType ?? 'residential') == 'residential';
 
 /// Web `flatRowShouldTrim`: on a configured tier, the unit looks like a mistaken extra in
 /// the same band (e.g. 106 when the range is 101–105) — but not odd numbers like shop 150.
@@ -104,7 +108,10 @@ bool flatRowShouldTrim({
   if (range.valid.contains('$n')) return false;
 
   final floorPrefix = _floorDiv100(n);
-  if (floorPrefix < range.floorBase || floorPrefix > range.floorBase + range.floors - 1) return false;
+  if (floorPrefix < range.floorBase ||
+      floorPrefix > range.floorBase + range.floors - 1) {
+    return false;
+  }
 
   final unit = n - floorPrefix * 100;
   if (unit < range.uStart || unit > range.maxTrimUnit) return false;
@@ -118,12 +125,14 @@ BuiltFlatRange? canTrimFlatsFromSocietyRow(SocietyLayoutInput row) {
   final start = row.flatSeriesStart?.trim() ?? '';
   final end = row.flatSeriesEnd?.trim() ?? '';
   if (start.isEmpty || end.isEmpty) return null;
-  return buildValidFlatNumberSet(totalFloors: floors, flatSeriesStart: start, flatSeriesEnd: end);
+  return buildValidFlatNumberSet(
+      totalFloors: floors, flatSeriesStart: start, flatSeriesEnd: end);
 }
 
 /// A `flats` row as read for trimming / generation.
 class ExistingFlat {
-  const ExistingFlat({this.id, required this.flatNumber, this.wing, this.flatType});
+  const ExistingFlat(
+      {this.id, required this.flatNumber, this.wing, this.flatType});
 
   final String? id;
   final String flatNumber;
@@ -175,7 +184,8 @@ const String kWingModeConflictError =
 
 /// Result of planning `upsertSocietyFlatsFromLayout` (inserts happen in the repository).
 class FlatGenerationPlan {
-  const FlatGenerationPlan({required this.rows, required this.skipped, this.error});
+  const FlatGenerationPlan(
+      {required this.rows, required this.skipped, this.error});
 
   final List<Map<String, dynamic>> rows;
   final int skipped;
@@ -183,27 +193,42 @@ class FlatGenerationPlan {
 }
 
 /// Web `upsertSocietyFlatsFromLayout` minus the DB calls: which `flats` rows to insert.
-FlatGenerationPlan planFlatsFromLayout(String societyId, SocietyLayoutInput row, List<ExistingFlat> existing) {
-  if (societyId.isEmpty) return const FlatGenerationPlan(rows: [], skipped: 0, error: 'Missing society id');
+FlatGenerationPlan planFlatsFromLayout(
+    String societyId, SocietyLayoutInput row, List<ExistingFlat> existing) {
+  if (societyId.isEmpty) {
+    return const FlatGenerationPlan(
+        rows: [], skipped: 0, error: 'Missing society id');
+  }
   final range = canTrimFlatsFromSocietyRow(row);
-  if (range == null) return const FlatGenerationPlan(rows: [], skipped: 0, error: kInvalidFlatLayoutError);
+  if (range == null) {
+    return const FlatGenerationPlan(
+        rows: [], skipped: 0, error: kInvalidFlatLayoutError);
+  }
 
   final blocks = row.blockNames;
   final List<String?> wings = (blocks != null && blocks.isNotEmpty)
-      ? blocks.map((w) => w.trim().toUpperCase()).where((w) => w.isNotEmpty).toList()
+      ? blocks
+          .map((w) => w.trim().toUpperCase())
+          .where((w) => w.isNotEmpty)
+          .toList()
       : <String?>[null];
 
-  final sortedNumbers = range.valid.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+  final sortedNumbers = range.valid.toList()
+    ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
 
   final hasExistingWinged = existing.any((r) => wingKey(r.wing).isNotEmpty);
   final hasExistingUnwinged = existing.any((r) => wingKey(r.wing).isEmpty);
   final wantsWinged = wings.any((w) => wingKey(w).isNotEmpty);
   final wantsUnwinged = wings.any((w) => wingKey(w).isEmpty);
-  if ((hasExistingWinged && wantsUnwinged) || (hasExistingUnwinged && wantsWinged)) {
-    return const FlatGenerationPlan(rows: [], skipped: 0, error: kWingModeConflictError);
+  if ((hasExistingWinged && wantsUnwinged) ||
+      (hasExistingUnwinged && wantsWinged)) {
+    return const FlatGenerationPlan(
+        rows: [], skipped: 0, error: kWingModeConflictError);
   }
 
-  final taken = <String>{for (final r in existing) '${r.flatNumber.trim()}|${wingKey(r.wing)}'};
+  final taken = <String>{
+    for (final r in existing) '${r.flatNumber.trim()}|${wingKey(r.wing)}'
+  };
   final rows = <Map<String, dynamic>>[];
   var skipped = 0;
   for (final wing in wings) {

@@ -98,7 +98,8 @@ class _BannerDialogState extends State<_BannerDialog> {
                   imageUrl: b.imageUrl,
                   fit: BoxFit.contain,
                   placeholder: (_, __) => const SizedBox(height: 240, child: LoadingView()),
-                  errorWidget: (_, __, ___) => SizedBox(height: 200, child: Icon(Icons.broken_image_outlined, color: t.mutedForeground)),
+                  errorWidget: (_, __, ___) =>
+                      SizedBox(height: 200, child: Icon(Icons.broken_image_outlined, color: t.mutedForeground)),
                 ),
               ),
             ),
@@ -158,7 +159,9 @@ class _BannerDialogState extends State<_BannerDialog> {
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(children: [
-              Expanded(child: Text(b.title ?? ' ', style: AppText.bodyMedium(context), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(
+                  child: Text(b.title ?? ' ',
+                      style: AppText.bodyMedium(context), maxLines: 1, overflow: TextOverflow.ellipsis)),
               if (many) Text('${_idx + 1}/${widget.banners.length}', style: AppText.tiny(context)),
             ]),
           ),

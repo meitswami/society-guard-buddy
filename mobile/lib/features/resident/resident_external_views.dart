@@ -15,7 +15,8 @@ import '../shared/directory/directory_view.dart';
 /// Views owned by other modules, mounted by contract (AGENT_BRIEF contract table).
 /// Kept in one file so a not-yet-delivered view only affects this import list.
 abstract final class ResidentExternalViews {
-  static Widget directory(SessionResident s, {VoidCallback? onOpenFamily, VoidCallback? onOpenVehicles}) => DirectoryView(
+  static Widget directory(SessionResident s, {VoidCallback? onOpenFamily, VoidCallback? onOpenVehicles}) =>
+      DirectoryView(
         societyId: s.societyId,
         viewerRole: 'resident',
         viewerName: s.resident.name,

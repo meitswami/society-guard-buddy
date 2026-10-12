@@ -49,7 +49,8 @@ class ResidentApprovalsTab extends StatelessWidget {
           children: [
             PageHeader(
               title: context.t('resident.approvals'),
-              subtitle: context.tr('Visitors waiting at the gate for your approval', 'गेट पर आपकी अनुमति की प्रतीक्षा में आगंतुक'),
+              subtitle: context.tr(
+                  'Visitors waiting at the gate for your approval', 'गेट पर आपकी अनुमति की प्रतीक्षा में आगंतुक'),
               icon: Icons.notifications_outlined,
             ),
             if (controller.loading && controller.requests.isEmpty) const LoadingView(),

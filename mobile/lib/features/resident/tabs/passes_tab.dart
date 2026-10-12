@@ -99,7 +99,8 @@ class _ResidentPassesTabState extends State<ResidentPassesTab> {
         _saving = false;
         _resetForm();
       });
-      await AppFeedback.success(context, title: context.t('swal.success'), message: '${context.t('resident.passCreated')} — OTP: $otp');
+      await AppFeedback.success(context,
+          title: context.t('swal.success'), message: '${context.t('resident.passCreated')} — OTP: $otp');
       await _load();
       if (!mounted) return;
       final share = await AppFeedback.confirm(
@@ -119,7 +120,13 @@ class _ResidentPassesTabState extends State<ResidentPassesTab> {
     }
   }
 
-  Future<void> _share({required String otp, String? guestName, String? guestPhone, required String validDate, String? from, String? to}) async {
+  Future<void> _share(
+      {required String otp,
+      String? guestName,
+      String? guestPhone,
+      required String validDate,
+      String? from,
+      String? to}) async {
     final msg = passShareMessage(
       otp: otp,
       flatNumber: widget.session.resident.flatNumber,
@@ -132,7 +139,8 @@ class _ResidentPassesTabState extends State<ResidentPassesTab> {
     );
     final ok = await ExportKit.openWhatsApp(msg, phone: guestPhone);
     if (!ok && mounted) {
-      AppFeedback.toast(context, context.tr('WhatsApp is not available', 'व्हाट्सऐप उपलब्ध नहीं है'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.tr('WhatsApp is not available', 'व्हाट्सऐप उपलब्ध नहीं है'),
+          tone: BadgeTone.alert);
     }
   }
 
@@ -205,9 +213,13 @@ class _ResidentPassesTabState extends State<ResidentPassesTab> {
               ),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: ResidentTimeField(label: context.t('resident.from'), value: _from, onChanged: (v) => setState(() => _from = v))),
+                Expanded(
+                    child: ResidentTimeField(
+                        label: context.t('resident.from'), value: _from, onChanged: (v) => setState(() => _from = v))),
                 const SizedBox(width: 8),
-                Expanded(child: ResidentTimeField(label: context.t('resident.to'), value: _to, onChanged: (v) => setState(() => _to = v))),
+                Expanded(
+                    child: ResidentTimeField(
+                        label: context.t('resident.to'), value: _to, onChanged: (v) => setState(() => _to = v))),
               ]),
               const SizedBox(height: 12),
               AppButton(label: context.t('resident.generateOTP'), loading: _saving, onPressed: _create),
@@ -227,7 +239,9 @@ class _ResidentPassesTabState extends State<ResidentPassesTab> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
-                        Text(p.otpCode, style: AppText.mono(context, size: 18, weight: FontWeight.w600, color: t.primary).copyWith(letterSpacing: 4)),
+                        Text(p.otpCode,
+                            style: AppText.mono(context, size: 18, weight: FontWeight.w600, color: t.primary)
+                                .copyWith(letterSpacing: 4)),
                         if (p.isActive)
                           IconButton(
                             visualDensity: VisualDensity.compact,
@@ -237,7 +251,8 @@ class _ResidentPassesTabState extends State<ResidentPassesTab> {
                           ),
                       ]),
                       if ((p.guestName ?? '').isNotEmpty) Text(p.guestName!, style: AppText.body(context)),
-                      if ((p.guestPhone ?? '').isNotEmpty) Text(p.guestPhone!, style: AppText.mono(context, size: 12, color: t.mutedForeground)),
+                      if ((p.guestPhone ?? '').isNotEmpty)
+                        Text(p.guestPhone!, style: AppText.mono(context, size: 12, color: t.mutedForeground)),
                     ]),
                   ),
                   ToneBadge(p.status, tone: _tone(p.status)),
@@ -247,7 +262,8 @@ class _ResidentPassesTabState extends State<ResidentPassesTab> {
                   Icon(Icons.schedule, size: 12, color: t.mutedForeground),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(passSlotLabel(validDate: p.validDate, start: p.timeSlotStart, end: p.timeSlotEnd), style: AppText.caption(context)),
+                    child: Text(passSlotLabel(validDate: p.validDate, start: p.timeSlotStart, end: p.timeSlotEnd),
+                        style: AppText.caption(context)),
                   ),
                 ]),
                 if (p.isActive) ...[

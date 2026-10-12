@@ -9,7 +9,9 @@ double getDistanceMeters(double lat1, double lon1, double lat2, double lon2) {
   final dLat = (lat2 - lat1) * math.pi / 180;
   final dLon = (lon2 - lon1) * math.pi / 180;
   final a = math.pow(math.sin(dLat / 2), 2) +
-      math.cos(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) * math.pow(math.sin(dLon / 2), 2);
+      math.cos(lat1 * math.pi / 180) *
+          math.cos(lat2 * math.pi / 180) *
+          math.pow(math.sin(dLon / 2), 2);
   return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 }
 
@@ -20,7 +22,10 @@ enum GeofencePolicy { strict, permissive }
 enum GeofenceFailReason { noGeolocation, positionUnavailable, outside }
 
 class GeofenceFence {
-  const GeofenceFence({required this.latitude, required this.longitude, required this.radiusMeters});
+  const GeofenceFence(
+      {required this.latitude,
+      required this.longitude,
+      required this.radiusMeters});
 
   final double latitude;
   final double longitude;
@@ -54,12 +59,15 @@ GeofenceCheckResult evaluateGeofence({
   if (positionFailed || latitude == null || longitude == null) {
     if (policy == GeofencePolicy.strict) {
       return GeofenceCheckResult.fail(
-        geolocationAvailable ? GeofenceFailReason.positionUnavailable : GeofenceFailReason.noGeolocation,
+        geolocationAvailable
+            ? GeofenceFailReason.positionUnavailable
+            : GeofenceFailReason.noGeolocation,
       );
     }
     return const GeofenceCheckResult.ok();
   }
-  final d = getDistanceMeters(latitude, longitude, fence.latitude, fence.longitude);
+  final d =
+      getDistanceMeters(latitude, longitude, fence.latitude, fence.longitude);
   if (d <= fence.radiusMeters) return const GeofenceCheckResult.ok();
   return GeofenceCheckResult.fail(GeofenceFailReason.outside, distanceM: d);
 }
@@ -83,9 +91,11 @@ double? parseCoordinate(String raw) {
   return v;
 }
 
-bool isValidLatitude(double? v) => v != null && v.isFinite && v >= -90 && v <= 90;
+bool isValidLatitude(double? v) =>
+    v != null && v.isFinite && v >= -90 && v <= 90;
 
-bool isValidLongitude(double? v) => v != null && v.isFinite && v >= -180 && v <= 180;
+bool isValidLongitude(double? v) =>
+    v != null && v.isFinite && v >= -180 && v <= 180;
 
 /// `toFixed(6)` display of an existing fence.
 String formatCoordinate(double v) => v.toStringAsFixed(6);

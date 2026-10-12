@@ -46,14 +46,16 @@ class _BannersPanelState extends State<BannersPanel> {
       final b = await _repo.loadBanners(widget.societyId);
       if (mounted) setState(() => _banners = b);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
   Future<void> _add() async {
     XFile? x;
     try {
-      x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+      x = await ImagePicker().pickImage(
+          source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
     } catch (e) {
       if (mounted) AppFeedback.toast(context, '$e', tone: BadgeTone.alert);
       return;
@@ -62,7 +64,8 @@ class _BannersPanelState extends State<BannersPanel> {
     setState(() => _adding = true);
     try {
       final bytes = await x.readAsBytes();
-      final mime = guessContentType(x.name, mimeType: x.mimeType) ?? 'image/jpeg';
+      final mime =
+          guessContentType(x.name, mimeType: x.mimeType) ?? 'image/jpeg';
       final url = 'data:$mime;base64,${base64Encode(bytes)}';
       final title = _newTitle.text.trim();
       await _repo.addBanner(
@@ -72,37 +75,46 @@ class _BannersPanelState extends State<BannersPanel> {
         sortOrder: nextBannerSortOrder(_banners),
       );
       if (!mounted) return;
-      AppFeedback.toast(context, context.t('settings.bannerAdded'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.t('settings.bannerAdded'),
+          tone: BadgeTone.success);
       _newTitle.clear();
       await _load();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _adding = false);
     }
   }
 
   Future<void> _remove(String id) async {
-    final ok = await AppFeedback.confirm(context, title: context.ct('comms.settings.removeBannerConfirm'), destructive: true);
+    final ok = await AppFeedback.confirm(context,
+        title: context.ct('comms.settings.removeBannerConfirm'),
+        destructive: true);
     if (!ok || !mounted) return;
     try {
       await _repo.deleteBanner(widget.societyId, id);
       if (!mounted) return;
-      AppFeedback.toast(context, context.t('settings.bannerRemoved'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.t('settings.bannerRemoved'),
+          tone: BadgeTone.success);
       await _load();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
   Future<void> _saveTitle(String id, String title) async {
     try {
-      await _repo.updateBanner(widget.societyId, id, {'title': title.trim().isEmpty ? null : title.trim()});
+      await _repo.updateBanner(widget.societyId, id,
+          {'title': title.trim().isEmpty ? null : title.trim()});
       if (!mounted) return;
-      AppFeedback.toast(context, context.t('settings.bannerTitleSaved'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.t('settings.bannerTitleSaved'),
+          tone: BadgeTone.success);
       await _load();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
@@ -111,7 +123,8 @@ class _BannersPanelState extends State<BannersPanel> {
       await _repo.updateBanner(widget.societyId, id, {'is_active': on});
       await _load();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
@@ -122,7 +135,8 @@ class _BannersPanelState extends State<BannersPanel> {
       await _repo.swapBannerOrder(_banners[index], _banners[other]);
       await _load();
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
@@ -135,28 +149,40 @@ class _BannersPanelState extends State<BannersPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(context.t('settings.banners'), style: AppText.sectionTitle(context)),
+          Text(context.t('settings.banners'),
+              style: AppText.sectionTitle(context)),
           const SizedBox(height: 4),
-          Text(context.t('settings.bannersHint'), style: AppText.tiny(context).copyWith(height: 1.4)),
+          Text(context.t('settings.bannersHint'),
+              style: AppText.tiny(context).copyWith(height: 1.4)),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: AppTextField(controller: _newTitle, hint: context.t('settings.bannerTitlePlaceholder'), caps: false)),
+              Expanded(
+                  child: AppTextField(
+                      controller: _newTitle,
+                      hint: context.t('settings.bannerTitlePlaceholder'),
+                      caps: false)),
               const SizedBox(width: 8),
               AppButton(
                 expand: false,
                 icon: Icons.add_photo_alternate_outlined,
                 loading: _adding,
-                label: _adding ? context.t('settings.bannerUploading') : context.t('settings.bannerAdd'),
+                label: _adding
+                    ? context.t('settings.bannerUploading')
+                    : context.t('settings.bannerAdd'),
                 onPressed: _adding ? null : _add,
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(context.t('settings.bannersActiveCount', {'active': active, 'total': _banners.length}), style: AppText.tiny(context)),
+          Text(
+              context.t('settings.bannersActiveCount',
+                  {'active': active, 'total': _banners.length}),
+              style: AppText.tiny(context)),
           const SizedBox(height: 8),
           if (_banners.isEmpty)
-            Text(context.t('settings.bannersEmpty'), style: AppText.caption(context))
+            Text(context.t('settings.bannersEmpty'),
+                style: AppText.caption(context))
           else
             for (var i = 0; i < _banners.length; i++)
               Container(
@@ -168,7 +194,8 @@ class _BannersPanelState extends State<BannersPanel> {
                   borderRadius: BorderRadius.circular(AppTokens.radius),
                 ),
                 child: _BannerRow(
-                  key: ValueKey('${_banners[i]['id']}-${_banners[i]['title'] ?? ''}'),
+                  key: ValueKey(
+                      '${_banners[i]['id']}-${_banners[i]['title'] ?? ''}'),
                   banner: _banners[i],
                   onTitle: (v) => _saveTitle(_banners[i]['id'].toString(), v),
                   onToggle: (v) => _toggle(_banners[i]['id'].toString(), v),
@@ -206,7 +233,8 @@ class _BannerRow extends StatefulWidget {
 }
 
 class _BannerRowState extends State<_BannerRow> {
-  late final TextEditingController _title = TextEditingController(text: widget.banner['title']?.toString() ?? '');
+  late final TextEditingController _title =
+      TextEditingController(text: widget.banner['title']?.toString() ?? '');
   final _focus = FocusNode();
 
   @override
@@ -240,16 +268,25 @@ class _BannerRowState extends State<_BannerRow> {
       try {
         bytes = UriData.parse(url).contentAsBytes();
       } catch (_) {}
-      child = bytes == null ? fallback() : Image.memory(bytes, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback());
+      child = bytes == null
+          ? fallback()
+          : Image.memory(bytes,
+              fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback());
     } else if (url.isNotEmpty) {
-      child = CachedNetworkImage(imageUrl: url, fit: BoxFit.cover, errorWidget: (_, __, ___) => fallback());
+      child = CachedNetworkImage(
+          imageUrl: url,
+          fit: BoxFit.cover,
+          errorWidget: (_, __, ___) => fallback());
     } else {
       child = fallback();
     }
     return Container(
       width: 96,
       height: 56,
-      decoration: BoxDecoration(color: t.background, border: Border.all(color: t.border), borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
+      decoration: BoxDecoration(
+          color: t.background,
+          border: Border.all(color: t.border),
+          borderRadius: BorderRadius.circular(AppTokens.radiusSm)),
       clipBehavior: Clip.antiAlias,
       child: child,
     );
@@ -274,18 +311,27 @@ class _BannerRowState extends State<_BannerRow> {
                 style: const TextStyle(fontSize: 12),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _focus.unfocus(),
-                decoration: InputDecoration(isDense: true, hintText: context.t('settings.bannerTitlePlaceholder')),
+                decoration: InputDecoration(
+                    isDense: true,
+                    hintText: context.t('settings.bannerTitlePlaceholder')),
               ),
               const SizedBox(height: 4),
-              Text(context.ct('comms.settings.order', {'n': widget.banner['sort_order'] ?? 0}), style: AppText.tiny(context)),
+              Text(
+                  context.ct('comms.settings.order',
+                      {'n': widget.banner['sort_order'] ?? 0}),
+                  style: AppText.tiny(context)),
               Row(
                 children: [
                   SizedBox(
                     width: 32,
                     height: 28,
-                    child: Checkbox(value: active, onChanged: (v) => widget.onToggle(v ?? false), visualDensity: VisualDensity.compact),
+                    child: Checkbox(
+                        value: active,
+                        onChanged: (v) => widget.onToggle(v ?? false),
+                        visualDensity: VisualDensity.compact),
                   ),
-                  Text(context.t('settings.bannerActive'), style: AppText.tiny(context)),
+                  Text(context.t('settings.bannerActive'),
+                      style: AppText.tiny(context)),
                 ],
               ),
             ],
@@ -296,13 +342,15 @@ class _BannerRowState extends State<_BannerRow> {
             IconButton(
               visualDensity: VisualDensity.compact,
               tooltip: context.ct('comms.settings.moveUp'),
-              icon: Icon(Icons.keyboard_arrow_up, size: 18, color: t.mutedForeground),
+              icon: Icon(Icons.keyboard_arrow_up,
+                  size: 18, color: t.mutedForeground),
               onPressed: widget.onUp,
             ),
             IconButton(
               visualDensity: VisualDensity.compact,
               tooltip: context.ct('comms.settings.moveDown'),
-              icon: Icon(Icons.keyboard_arrow_down, size: 18, color: t.mutedForeground),
+              icon: Icon(Icons.keyboard_arrow_down,
+                  size: 18, color: t.mutedForeground),
               onPressed: widget.onDown,
             ),
             IconButton(

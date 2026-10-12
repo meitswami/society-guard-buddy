@@ -2,10 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kutumbika_mobile/features/resident/data/payment_rules.dart';
 import 'package:kutumbika_mobile/features/resident/data/resident_models.dart';
 
-MaintenanceChargeRow charge(String id, String title, {double amount = 2500, String frequency = 'monthly', int dueDay = 10, bool active = true}) =>
+MaintenanceChargeRow charge(String id, String title,
+        {double amount = 2500, String frequency = 'monthly', int dueDay = 10, bool active = true}) =>
     MaintenanceChargeRow(id: id, title: title, amount: amount, frequency: frequency, dueDay: dueDay, isActive: active);
 
-MaintenancePaymentRow payment(String id, String chargeId, String status, String dueDate, {double amount = 2500}) => MaintenancePaymentRow(
+MaintenancePaymentRow payment(String id, String chargeId, String status, String dueDate, {double amount = 2500}) =>
+    MaintenancePaymentRow(
       id: id,
       chargeId: chargeId,
       amount: amount,
@@ -49,7 +51,11 @@ void main() {
 
     test('buildUpiPayUrl matches URLSearchParams encoding', () {
       expect(
-        buildUpiPayUrl(upiVpa: ' greenpark@hdfcbank ', payeeName: 'Green Park CHS', amount: 2500, note: 'Maintenance for Flat 604'),
+        buildUpiPayUrl(
+            upiVpa: ' greenpark@hdfcbank ',
+            payeeName: 'Green Park CHS',
+            amount: 2500,
+            note: 'Maintenance for Flat 604'),
         'upi://pay?pa=greenpark%40hdfcbank&pn=Green+Park+CHS&cu=INR&am=2500&tn=Maintenance+for+Flat+604',
       );
       expect(buildUpiPayUrl(upiVpa: 'x@y', payeeName: '  ', amount: 0), 'upi://pay?pa=x%40y&pn=Society&cu=INR');
@@ -88,16 +94,22 @@ void main() {
     });
 
     test('validation', () {
-      expect(validateResidentPayment(chargeId: '', amountText: '10', paidOn: 'a', dueDate: 'b'), ResidentPaymentError.chargeRequired);
-      expect(validateResidentPayment(chargeId: 'c', amountText: '', paidOn: 'a', dueDate: 'b'), ResidentPaymentError.amountInvalid);
-      expect(validateResidentPayment(chargeId: 'c', amountText: '-5', paidOn: 'a', dueDate: 'b'), ResidentPaymentError.amountInvalid);
-      expect(validateResidentPayment(chargeId: 'c', amountText: 'abc', paidOn: 'a', dueDate: 'b'), ResidentPaymentError.amountInvalid);
-      expect(validateResidentPayment(chargeId: 'c', amountText: '10', paidOn: '', dueDate: 'b'), ResidentPaymentError.datesRequired);
+      expect(validateResidentPayment(chargeId: '', amountText: '10', paidOn: 'a', dueDate: 'b'),
+          ResidentPaymentError.chargeRequired);
+      expect(validateResidentPayment(chargeId: 'c', amountText: '', paidOn: 'a', dueDate: 'b'),
+          ResidentPaymentError.amountInvalid);
+      expect(validateResidentPayment(chargeId: 'c', amountText: '-5', paidOn: 'a', dueDate: 'b'),
+          ResidentPaymentError.amountInvalid);
+      expect(validateResidentPayment(chargeId: 'c', amountText: 'abc', paidOn: 'a', dueDate: 'b'),
+          ResidentPaymentError.amountInvalid);
+      expect(validateResidentPayment(chargeId: 'c', amountText: '10', paidOn: '', dueDate: 'b'),
+          ResidentPaymentError.datesRequired);
       expect(
         validateResidentPayment(chargeId: 'c', amountText: '10', paidOn: 'a', dueDate: 'b', fileBytes: 9 * 1024 * 1024),
         ResidentPaymentError.fileTooLarge,
       );
-      expect(validateResidentPayment(chargeId: 'c', amountText: ' 2500 ', paidOn: 'a', dueDate: 'b', fileBytes: 1000), isNull);
+      expect(validateResidentPayment(chargeId: 'c', amountText: ' 2500 ', paidOn: 'a', dueDate: 'b', fileBytes: 1000),
+          isNull);
     });
 
     test('paid date is stored as local noon in UTC ISO', () {

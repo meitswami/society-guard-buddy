@@ -51,7 +51,9 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load();
+    });
     if (dbReady) {
       _channel = db
           .channel('superadmin-support-tickets')
@@ -87,7 +89,8 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
     super.dispose();
   }
 
-  TextEditingController _reply(String id) => _replies.putIfAbsent(id, TextEditingController.new);
+  TextEditingController _reply(String id) =>
+      _replies.putIfAbsent(id, TextEditingController.new);
 
   Future<void> _load({bool silent = false}) async {
     if (!silent) setState(() => _loading = true);
@@ -95,7 +98,10 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
       final rows = await SuperadminScope.read(context).repo.loadTickets();
       if (mounted) setState(() => _tickets = rows);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, e is PostgrestException ? e.message : '$e', tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, e is PostgrestException ? e.message : '$e',
+            tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -104,9 +110,15 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
   Future<void> _setStatus(SupportTicket t, String status) async {
     try {
       await SuperadminScope.read(context).repo.setTicketStatus(t.id, status);
-      if (mounted) AppFeedback.toast(context, context.st('sa.tickets.statusUpdated'), tone: BadgeTone.success);
+      if (mounted) {
+        AppFeedback.toast(context, context.st('sa.tickets.statusUpdated'),
+            tone: BadgeTone.success);
+      }
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, e is PostgrestException ? e.message : '$e', tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, e is PostgrestException ? e.message : '$e',
+            tone: BadgeTone.alert);
+      }
       return;
     }
     await _load(silent: true);
@@ -115,11 +127,13 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
   Future<void> _send(SupportTicket t) async {
     final body = _reply(t.id).text.trim();
     if (body.isEmpty) {
-      AppFeedback.toast(context, context.st('sa.tickets.enterReply'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.st('sa.tickets.enterReply'),
+          tone: BadgeTone.alert);
       return;
     }
     if ((t.societyId ?? '').isEmpty || t.submitterResidentId.isEmpty) {
-      AppFeedback.toast(context, context.st('sa.tickets.missingTarget'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.st('sa.tickets.missingTarget'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _sendingId = t.id);
@@ -135,7 +149,8 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
       AppFeedback.toast(context, err, tone: BadgeTone.alert);
       return;
     }
-    AppFeedback.toast(context, context.st('sa.tickets.replySent'), tone: BadgeTone.success);
+    AppFeedback.toast(context, context.st('sa.tickets.replySent'),
+        tone: BadgeTone.success);
     _reply(t.id).clear();
     await _load(silent: true);
   }
@@ -143,8 +158,14 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
   void _openImage(String url) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => Scaffold(
-        appBar: AppBar(actions: [IconButton(icon: const Icon(Icons.open_in_new), onPressed: () => ExportKit.openUrl(url))]),
-        body: InteractiveViewer(child: Center(child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain))),
+        appBar: AppBar(actions: [
+          IconButton(
+              icon: const Icon(Icons.open_in_new),
+              onPressed: () => ExportKit.openUrl(url))
+        ]),
+        body: InteractiveViewer(
+            child: Center(
+                child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain))),
       ),
     ));
   }
@@ -152,8 +173,13 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final counts = {for (final s in kTicketStatuses) s: _tickets.where((x) => x.status == s).length};
-    final list = _filter == 'all' ? _tickets : _tickets.where((x) => x.status == _filter).toList();
+    final counts = {
+      for (final s in kTicketStatuses)
+        s: _tickets.where((x) => x.status == s).length
+    };
+    final list = _filter == 'all'
+        ? _tickets
+        : _tickets.where((x) => x.status == _filter).toList();
     return SuperadminTabPage(
       ctx: widget.ctx,
       onRefresh: _load,
@@ -161,7 +187,10 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
         SaTabTitle(
           context.st('sa.tickets.title'),
           icon: Icons.headset_mic_outlined,
-          actions: [SaLinkButton(label: context.st('sa.refresh'), color: t.primary, onTap: _load)],
+          actions: [
+            SaLinkButton(
+                label: context.st('sa.refresh'), color: t.primary, onTap: _load)
+          ],
         ),
         Text(context.st('sa.tickets.intro'), style: AppText.caption(context)),
         const SizedBox(height: 12),
@@ -186,7 +215,9 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
         if (_loading && _tickets.isEmpty)
           LoadingView(message: context.st('sa.loading'))
         else if (_tickets.isEmpty)
-          EmptyView(message: context.st('sa.tickets.empty'), icon: Icons.headset_mic_outlined)
+          EmptyView(
+              message: context.st('sa.tickets.empty'),
+              icon: Icons.headset_mic_outlined)
         else if (list.isEmpty)
           EmptyView(message: context.st('sa.noMatches'))
         else
@@ -203,12 +234,15 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('#${tk.ticketNumber}', style: AppText.sectionTitle(context)),
+                            Text('#${tk.ticketNumber}',
+                                style: AppText.sectionTitle(context)),
                             Text(
                               '${tk.societyName ?? '—'} · ${context.t('common.flat')} ${tk.flatNumber} · ${tk.submitterName}',
                               style: AppText.caption(context),
                             ),
-                            Text(Fmt.dateTimeFull(tk.createdAt), style: AppText.mono(context, size: 10, color: t.mutedForeground)),
+                            Text(Fmt.dateTimeFull(tk.createdAt),
+                                style: AppText.mono(context,
+                                    size: 10, color: t.mutedForeground)),
                           ],
                         ),
                       ),
@@ -228,18 +262,24 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(context.st('sa.tickets.message').toUpperCase(), style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w500)),
+                  Text(context.st('sa.tickets.message').toUpperCase(),
+                      style: AppText.tiny(context)
+                          .copyWith(fontWeight: FontWeight.w500)),
                   const SizedBox(height: 4),
                   SelectableText(tk.message, style: AppText.body(context)),
                   if ((tk.audioUrl ?? '').isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text(context.st('sa.tickets.voice').toUpperCase(), style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w500)),
+                    Text(context.st('sa.tickets.voice').toUpperCase(),
+                        style: AppText.tiny(context)
+                            .copyWith(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 4),
                     VoiceNotePlayer(url: tk.audioUrl!),
                   ],
                   if (tk.media.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text(context.st('sa.tickets.media').toUpperCase(), style: AppText.tiny(context).copyWith(fontWeight: FontWeight.w500)),
+                    Text(context.st('sa.tickets.media').toUpperCase(),
+                        style: AppText.tiny(context)
+                            .copyWith(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 4),
                     Wrap(
                       spacing: 8,
@@ -247,11 +287,20 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
                       children: [
                         for (final m in tk.media)
                           if (m.kind == 'image')
-                            InkWell(onTap: () => _openImage(m.url), child: SaNetImage(m.url, width: 64, height: 64))
+                            InkWell(
+                                onTap: () => _openImage(m.url),
+                                child: SaNetImage(m.url, width: 64, height: 64))
                           else
                             ActionChip(
-                              avatar: Icon(m.kind == 'video' ? Icons.videocam_outlined : Icons.open_in_new, size: 16, color: t.primary),
-                              label: Text(m.kind ?? 'file', style: TextStyle(color: t.primary, fontSize: 12)),
+                              avatar: Icon(
+                                  m.kind == 'video'
+                                      ? Icons.videocam_outlined
+                                      : Icons.open_in_new,
+                                  size: 16,
+                                  color: t.primary),
+                              label: Text(m.kind ?? 'file',
+                                  style: TextStyle(
+                                      color: t.primary, fontSize: 12)),
                               onPressed: () => ExportKit.openUrl(m.url),
                             ),
                       ],
@@ -269,13 +318,16 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(context.st('sa.tickets.lastReply'),
-                              style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500)),
+                              style: AppText.caption(context)
+                                  .copyWith(fontWeight: FontWeight.w500)),
                           const SizedBox(height: 4),
-                          SelectableText(tk.superadminReply!, style: const TextStyle(fontSize: 12)),
+                          SelectableText(tk.superadminReply!,
+                              style: const TextStyle(fontSize: 12)),
                           if ((tk.repliedAt ?? '').isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 4),
-                              child: Text(Fmt.dateTimeFull(tk.repliedAt), style: AppText.tiny(context)),
+                              child: Text(Fmt.dateTimeFull(tk.repliedAt),
+                                  style: AppText.tiny(context)),
                             ),
                         ],
                       ),
@@ -284,7 +336,8 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
                   const SizedBox(height: 12),
                   Divider(height: 1, color: t.border),
                   const SizedBox(height: 12),
-                  Text(context.st('sa.tickets.replyLabel'), style: AppText.caption(context)),
+                  Text(context.st('sa.tickets.replyLabel'),
+                      style: AppText.caption(context)),
                   const SizedBox(height: 6),
                   AppTextField(
                     controller: _reply(tk.id),
@@ -297,7 +350,9 @@ class _SupportTicketsTabState extends State<SupportTicketsTab> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: AppButton(
-                      label: _sendingId == tk.id ? context.st('sa.tickets.sending') : context.st('sa.tickets.send'),
+                      label: _sendingId == tk.id
+                          ? context.st('sa.tickets.sending')
+                          : context.st('sa.tickets.send'),
                       icon: Icons.send_outlined,
                       expand: false,
                       dense: true,

@@ -3,7 +3,9 @@ import 'package:kutumbika_mobile/features/comms/data/notification_compose.dart';
 import 'package:kutumbika_mobile/features/comms/data/notification_models.dart';
 
 void main() {
-  const media = [NotificationMediaItem(url: 'https://cdn/x.jpg', kind: 'image')];
+  const media = [
+    NotificationMediaItem(url: 'https://cdn/x.jpg', kind: 'image')
+  ];
 
   group('validateCompose', () {
     String? v({
@@ -34,7 +36,8 @@ void main() {
     test('flat / person modes need a selection', () {
       expect(v(mode: NotificationTargetMode.flat), 'comms.notif.selectOneFlat');
       expect(v(mode: NotificationTargetMode.flat, flats: 2), isNull);
-      expect(v(mode: NotificationTargetMode.user), 'comms.notif.selectOneResident');
+      expect(v(mode: NotificationTargetMode.user),
+          'comms.notif.selectOneResident');
       expect(v(mode: NotificationTargetMode.user, residents: 1), isNull);
     });
 
@@ -143,7 +146,8 @@ void main() {
       expect(fileMediaKind(fileName: 'IMG_1.HEIC'), 'image');
       expect(fileMediaKind(fileName: 'clip.mov'), 'video');
       expect(fileMediaKind(fileName: 'notes.pdf'), isNull);
-      expect(fileMediaKind(mimeType: 'application/pdf', fileName: 'a.pdf'), isNull);
+      expect(fileMediaKind(mimeType: 'application/pdf', fileName: 'a.pdf'),
+          isNull);
     });
 
     test('size limits: 12 MB images, 50 MB videos', () {
@@ -158,7 +162,8 @@ void main() {
       expect(isAudioFile(fileName: 'tune.ogg'), isTrue);
       expect(isAudioFile(fileName: 'tune.jpg'), isFalse);
       expect(attachmentChipLabel('short.jpg'), 'short.jpg');
-      expect(attachmentChipLabel('a-very-long-file-name.jpeg'), 'a-very-long-file-n…');
+      expect(attachmentChipLabel('a-very-long-file-name.jpeg'),
+          'a-very-long-file-n…');
     });
   });
 
@@ -166,8 +171,10 @@ void main() {
     test('mediaItemsFromReceiptUrl skips PDFs', () {
       expect(mediaItemsFromReceiptUrl(null), isNull);
       expect(mediaItemsFromReceiptUrl('https://x/bill.PDF?token=1'), isNull);
-      expect(mediaItemsFromReceiptUrl('https://x/bill.png?x=1')!.single.kind, 'image');
-      expect(mediaItemsFromReceiptUrl('https://x/bill')!.single.url, 'https://x/bill');
+      expect(mediaItemsFromReceiptUrl('https://x/bill.png?x=1')!.single.kind,
+          'image');
+      expect(mediaItemsFromReceiptUrl('https://x/bill')!.single.url,
+          'https://x/bill');
     });
 
     test('selected flats are de-duplicated, one row each', () {

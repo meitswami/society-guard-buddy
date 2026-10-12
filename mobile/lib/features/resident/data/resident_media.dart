@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -102,7 +101,10 @@ abstract final class ResidentMedia {
       final jpeg = await compute(_reencodeJpeg, <Object>[raw, maxSide, quality]);
       return 'data:image/jpeg;base64,${base64Encode(jpeg)}';
     } catch (_) {
-      if (context.mounted) AppFeedback.toast(context, context.tr('Could not open the camera / gallery', 'कैमरा / गैलरी नहीं खुल सकी'), tone: BadgeTone.alert);
+      if (context.mounted) {
+        AppFeedback.toast(context, context.tr('Could not open the camera / gallery', 'कैमरा / गैलरी नहीं खुल सकी'),
+            tone: BadgeTone.alert);
+      }
       return null;
     }
   }
@@ -137,7 +139,8 @@ abstract final class ResidentMedia {
     if (choice == null) return null;
     try {
       if (choice == 'file') {
-        final res = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'], withData: true);
+        final res = await FilePicker.pickFiles(
+            type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'], withData: true);
         final f = res?.files.firstOrNull;
         if (f == null || f.bytes == null) return null;
         return PickedMedia(bytes: f.bytes!, name: f.name, mimeType: mimeFromName(f.name));
@@ -150,7 +153,8 @@ abstract final class ResidentMedia {
       );
       if (file == null) return null;
       final bytes = await file.readAsBytes();
-      return PickedMedia(bytes: bytes, name: file.name, mimeType: file.mimeType ?? mimeFromName(file.name, fallback: 'image/jpeg'));
+      return PickedMedia(
+          bytes: bytes, name: file.name, mimeType: file.mimeType ?? mimeFromName(file.name, fallback: 'image/jpeg'));
     } catch (_) {
       return null;
     }
@@ -187,7 +191,8 @@ abstract final class ResidentMedia {
     try {
       final files = <XFile>[];
       if (choice == 'photo') {
-        final f = await _picker.pickImage(source: ImageSource.camera, maxWidth: 1920, maxHeight: 1920, imageQuality: 85);
+        final f =
+            await _picker.pickImage(source: ImageSource.camera, maxWidth: 1920, maxHeight: 1920, imageQuality: 85);
         if (f != null) files.add(f);
       } else if (choice == 'video') {
         final f = await _picker.pickVideo(source: ImageSource.camera, maxDuration: const Duration(minutes: 3));

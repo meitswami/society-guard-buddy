@@ -82,10 +82,12 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
   Future<void> _onHousehold() async {
     final me = _h.myMember;
     if (!_h.selfIdUploadEnabled || me == null) {
-      if (_selfDocsFor != null) setState(() {
-        _selfDocs = const [];
-        _selfDocsFor = null;
-      });
+      if (_selfDocsFor != null) {
+        setState(() {
+          _selfDocs = const [];
+          _selfDocsFor = null;
+        });
+      }
       return;
     }
     if (_selfDocsFor == me.id) return;
@@ -119,7 +121,10 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
         email: email.isEmpty ? null : email,
       );
       if (mounted) {
-        AppFeedback.toast(context, context.tr('WhatsApp and email saved for directory despatch', 'निर्देशिका प्रेषण के लिए व्हाट्सऐप और ईमेल सहेजे गए'),
+        AppFeedback.toast(
+            context,
+            context.tr('WhatsApp and email saved for directory despatch',
+                'निर्देशिका प्रेषण के लिए व्हाट्सऐप और ईमेल सहेजे गए'),
             tone: BadgeTone.success);
       }
     } catch (e) {
@@ -151,7 +156,9 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
     final cur = _current.text, next = _new.text, conf = _confirm.text;
     if (cur.isEmpty || next.isEmpty || conf.isEmpty) return _err(context.tr('Fill all fields', 'सभी फ़ील्ड भरें'));
     if (next != conf) return _err(context.tr('Passwords do not match', 'कूटशब्द मेल नहीं खाते'));
-    if (next.length < 4) return _err(context.tr('Password must be at least 4 characters', 'कूटशब्द कम से कम 4 अक्षर का होना चाहिए'));
+    if (next.length < 4) {
+      return _err(context.tr('Password must be at least 4 characters', 'कूटशब्द कम से कम 4 अक्षर का होना चाहिए'));
+    }
     setState(() => _passLoading = true);
     try {
       final ok = await _repo.verifyPassword(residentId: widget.session.resident.id, password: cur);
@@ -160,7 +167,9 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
       } else {
         await _repo.setFlatPassword(flatId: widget.session.resident.flatId, password: next);
         if (mounted) {
-          AppFeedback.toast(context, context.tr('Password changed for all flatmates', 'सभी फ्लैट सदस्यों के लिए कूटशब्द बदला गया'), tone: BadgeTone.success);
+          AppFeedback.toast(
+              context, context.tr('Password changed for all flatmates', 'सभी फ्लैट सदस्यों के लिए कूटशब्द बदला गया'),
+              tone: BadgeTone.success);
           _current.clear();
           _new.clear();
           _confirm.clear();
@@ -236,11 +245,14 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
                         TextSpan(children: [
                           TextSpan(text: me?.name ?? r.name),
                           if (me?.isPrimary ?? false)
-                            TextSpan(text: '  ★ ${context.tr('Primary', 'प्राथमिक')}', style: TextStyle(fontSize: 10, color: t.primary)),
+                            TextSpan(
+                                text: '  ★ ${context.tr('Primary', 'प्राथमिक')}',
+                                style: TextStyle(fontSize: 10, color: t.primary)),
                         ]),
                         style: AppText.sectionTitle(context),
                       ),
-                      Text('${context.t('common.flat')} ${r.flatNumber} · 📱 ${r.phone}', style: AppText.caption(context)),
+                      Text('${context.t('common.flat')} ${r.flatNumber} · 📱 ${r.phone}',
+                          style: AppText.caption(context)),
                       if (onCommittee)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
@@ -274,7 +286,8 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
             CardSection(
               margin: const EdgeInsets.only(bottom: 16),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text(context.tr('WhatsApp & email for notices', 'सूचनाओं के लिए व्हाट्सऐप व ईमेल'), style: AppText.sectionTitle(context)),
+                Text(context.tr('WhatsApp & email for notices', 'सूचनाओं के लिए व्हाट्सऐप व ईमेल'),
+                    style: AppText.sectionTitle(context)),
                 const SizedBox(height: 4),
                 Text(
                   context.tr(
@@ -291,10 +304,15 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
                   mono: true,
                 ),
                 const SizedBox(height: 8),
-                AppTextField(controller: _email, hint: context.tr('Email ID', 'ईमेल आईडी'), keyboardType: TextInputType.emailAddress),
+                AppTextField(
+                    controller: _email,
+                    hint: context.tr('Email ID', 'ईमेल आईडी'),
+                    keyboardType: TextInputType.emailAddress),
                 const SizedBox(height: 12),
                 AppButton(
-                  label: _savingChannels ? context.tr('Saving…', 'सहेज रहे हैं…') : context.tr('Save contact channels', 'संपर्क चैनल सहेजें'),
+                  label: _savingChannels
+                      ? context.tr('Saving…', 'सहेज रहे हैं…')
+                      : context.tr('Save contact channels', 'संपर्क चैनल सहेजें'),
                   loading: _savingChannels,
                   dense: true,
                   onPressed: _saveChannels,
@@ -333,7 +351,9 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: AppButton(
-                        label: _savingSelfId ? context.tr('Saving…', 'सहेज रहे हैं…') : context.tr('Save Photo ID', 'फ़ोटो पहचान पत्र सहेजें'),
+                        label: _savingSelfId
+                            ? context.tr('Saving…', 'सहेज रहे हैं…')
+                            : context.tr('Save Photo ID', 'फ़ोटो पहचान पत्र सहेजें'),
                         loading: _savingSelfId,
                         dense: true,
                         expand: false,
@@ -348,7 +368,8 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 SectionTitle(context.tr('Change Password', 'कूटशब्द बदलें'), icon: Icons.lock_outline),
                 Text(
-                  context.tr('⚠️ Changing password will update it for all flatmates', '⚠️ कूटशब्द बदलने से सभी फ्लैट सदस्यों के लिए बदल जाएगा'),
+                  context.tr('⚠️ Changing password will update it for all flatmates',
+                      '⚠️ कूटशब्द बदलने से सभी फ्लैट सदस्यों के लिए बदल जाएगा'),
                   style: AppText.tiny(context),
                 ),
                 const SizedBox(height: 12),
@@ -366,7 +387,9 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
                 _passField(_confirm, context.tr('Confirm New Password', 'नए कूटशब्द की पुष्टि करें')),
                 const SizedBox(height: 12),
                 AppButton(
-                  label: _passLoading ? context.tr('Changing...', 'बदल रहे हैं...') : context.tr('Change Password', 'कूटशब्द बदलें'),
+                  label: _passLoading
+                      ? context.tr('Changing...', 'बदल रहे हैं...')
+                      : context.tr('Change Password', 'कूटशब्द बदलें'),
                   loading: _passLoading,
                   onPressed: _changePassword,
                 ),
@@ -377,7 +400,8 @@ class _ResidentProfileTabState extends State<ResidentProfileTab> {
               padding: EdgeInsets.zero,
               child: BiometricSettingsTile(session: widget.session),
             ),
-            AppButton.destructive(label: context.t('swal.confirmLogoutUser'), icon: Icons.logout, onPressed: widget.onLogout),
+            AppButton.destructive(
+                label: context.t('swal.confirmLogoutUser'), icon: Icons.logout, onPressed: widget.onLogout),
           ],
         );
       },

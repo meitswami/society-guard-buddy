@@ -10,7 +10,11 @@ import '../superadmin_i18n.dart';
 
 /// Web dashboard heading: crown square + "Super Admin Panel" + name, red logout button.
 class SuperadminHeader extends StatelessWidget {
-  const SuperadminHeader({super.key, required this.name, required this.onLogout, this.bottomSpacing = 20});
+  const SuperadminHeader(
+      {super.key,
+      required this.name,
+      required this.onLogout,
+      this.bottomSpacing = 20});
 
   final String name;
   final VoidCallback onLogout;
@@ -59,12 +63,16 @@ class SocietySelector extends StatelessWidget {
       padding: EdgeInsets.only(bottom: bottomSpacing),
       child: AppDropdown<String>(
         items: [for (final s in console.societies) s.id],
-        value: console.selectedSocietyId.isEmpty ? null : console.selectedSocietyId,
+        value: console.selectedSocietyId.isEmpty
+            ? null
+            : console.selectedSocietyId,
         hint: context.t('superadmin.selectSociety'),
         labelOf: (id) {
           final s = console.societyById(id);
           if (s == null) return id;
-          return s.isActive ? s.name : '${s.name} (${context.st('sa.societies.inactive')})';
+          return s.isActive
+              ? s.name
+              : '${s.name} (${context.st('sa.societies.inactive')})';
         },
         onChanged: (v) {
           if (v != null) console.selectSociety(v);
@@ -76,7 +84,8 @@ class SocietySelector extends StatelessWidget {
 
 /// `text-[10px] text-muted-foreground`, optionally with the web's left accent border.
 class SaHint extends StatelessWidget {
-  const SaHint(this.text, {super.key, this.accent, this.padding = const EdgeInsets.only(top: 4)});
+  const SaHint(this.text,
+      {super.key, this.accent, this.padding = const EdgeInsets.only(top: 4)});
 
   final String text;
   final Color? accent;
@@ -84,13 +93,15 @@ class SaHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = Text(text, style: AppText.tiny(context).copyWith(height: 1.4));
+    final label =
+        Text(text, style: AppText.tiny(context).copyWith(height: 1.4));
     if (accent == null) return Padding(padding: padding, child: label);
     return Padding(
       padding: padding,
       child: Container(
         padding: const EdgeInsets.only(left: 8),
-        decoration: BoxDecoration(border: Border(left: BorderSide(color: accent!, width: 2))),
+        decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: accent!, width: 2))),
         child: label,
       ),
     );
@@ -110,13 +121,15 @@ class SaSubsection extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.only(top: 12),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: t.border))),
+      decoration:
+          BoxDecoration(border: Border(top: BorderSide(color: t.border))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(label.toUpperCase(), style: AppText.fieldLabel(context)),
+            child:
+                Text(label.toUpperCase(), style: AppText.fieldLabel(context)),
           ),
           ...children,
         ],
@@ -127,7 +140,11 @@ class SaSubsection extends StatelessWidget {
 
 /// Yes / No / Not specified select (web `TriState` selects).
 class TriStateField extends StatelessWidget {
-  const TriStateField({super.key, required this.label, required this.value, required this.onChanged});
+  const TriStateField(
+      {super.key,
+      required this.label,
+      required this.value,
+      required this.onChanged});
 
   final String label;
   final TriState value;
@@ -138,7 +155,9 @@ class TriStateField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(label, style: AppText.caption(context))),
+        Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(label, style: AppText.caption(context))),
         AppDropdown<TriState>(
           items: TriState.values,
           value: value,
@@ -156,7 +175,11 @@ class TriStateField extends StatelessWidget {
 
 /// Web 6-digit code input: centred, mono, wide letter spacing, digits only.
 class OtpCodeField extends StatelessWidget {
-  const OtpCodeField({super.key, required this.controller, this.onSubmitted, this.autofocus = true});
+  const OtpCodeField(
+      {super.key,
+      required this.controller,
+      this.onSubmitted,
+      this.autofocus = true});
 
   final TextEditingController controller;
   final ValueChanged<String>? onSubmitted;
@@ -183,7 +206,12 @@ class OtpCodeField extends StatelessWidget {
 
 /// Web `<img class="rounded-lg object-cover">` with a muted placeholder.
 class SaNetImage extends StatelessWidget {
-  const SaNetImage(this.url, {super.key, this.width = 40, this.height = 40, this.radius = 8, this.fit = BoxFit.cover});
+  const SaNetImage(this.url,
+      {super.key,
+      this.width = 40,
+      this.height = 40,
+      this.radius = 8,
+      this.fit = BoxFit.cover});
 
   final String url;
   final double width;
@@ -199,7 +227,9 @@ class SaNetImage extends StatelessWidget {
       height: height,
       color: t.muted,
       alignment: Alignment.center,
-      child: Icon(Icons.image_outlined, size: (width < height ? width : height) * 0.45, color: t.mutedForeground),
+      child: Icon(Icons.image_outlined,
+          size: (width < height ? width : height) * 0.45,
+          color: t.mutedForeground),
     );
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
@@ -240,7 +270,8 @@ class SaErrorText extends StatelessWidget {
 
 /// Underlined muted link button (web `text-xs text-muted-foreground underline`).
 class SaLinkButton extends StatelessWidget {
-  const SaLinkButton({super.key, required this.label, required this.onTap, this.color});
+  const SaLinkButton(
+      {super.key, required this.label, required this.onTap, this.color});
 
   final String label;
   final VoidCallback? onTap;
@@ -257,7 +288,11 @@ class SaLinkButton extends StatelessWidget {
         child: Text(
           label,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: c, decoration: TextDecoration.underline, decorationColor: c),
+          style: TextStyle(
+              fontSize: 12,
+              color: c,
+              decoration: TextDecoration.underline,
+              decorationColor: c),
         ),
       ),
     );
@@ -280,7 +315,9 @@ class SaTag extends StatelessWidget {
         color: primary ? AppTokens.tint(t.primary, 0.10) : t.muted,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(label, style: TextStyle(fontSize: 10, color: primary ? t.primary : t.mutedForeground)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10, color: primary ? t.primary : t.mutedForeground)),
     );
   }
 }
@@ -288,7 +325,10 @@ class SaTag extends StatelessWidget {
 /// Copies [text] and shows a toast.
 Future<void> saCopy(BuildContext context, String text) async {
   await Clipboard.setData(ClipboardData(text: text));
-  if (context.mounted) AppFeedback.toast(context, context.st('sa.copied'), tone: BadgeTone.success);
+  if (context.mounted) {
+    AppFeedback.toast(context, context.st('sa.copied'),
+        tone: BadgeTone.success);
+  }
 }
 
 /// Upper-cases as you type (web inputs with `uppercase` + `.toUpperCase()` on save).
@@ -296,7 +336,8 @@ class UpperCaseTextFormatter extends TextInputFormatter {
   const UpperCaseTextFormatter();
 
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) =>
+  TextEditingValue formatEditUpdate(
+          TextEditingValue oldValue, TextEditingValue newValue) =>
       newValue.copyWith(text: newValue.text.toUpperCase());
 }
 

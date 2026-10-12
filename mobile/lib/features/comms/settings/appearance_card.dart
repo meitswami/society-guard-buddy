@@ -16,18 +16,23 @@ class AppearanceCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(context.t('settings.appearance'), style: AppText.sectionTitle(context)),
+          Text(context.t('settings.appearance'),
+              style: AppText.sectionTitle(context)),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: Text(context.t('settings.theme'), style: AppText.caption(context))),
+              Expanded(
+                  child: Text(context.t('settings.theme'),
+                      style: AppText.caption(context))),
               const ThemeToggle(),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: Text(context.t('settings.language'), style: AppText.caption(context))),
+              Expanded(
+                  child: Text(context.t('settings.language'),
+                      style: AppText.caption(context))),
               const LanguageToggle(),
             ],
           ),
@@ -38,14 +43,20 @@ class AppearanceCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(context.t('settings.autoCaps'), style: AppText.caption(context)),
+                    Text(context.t('settings.autoCaps'),
+                        style: AppText.caption(context)),
                     const SizedBox(height: 2),
                     Text(context.t('settings.autoCapsHint'),
-                        style: AppText.tiny(context).copyWith(color: AppTokens.tint(context.tokens.mutedForeground, 0.8))),
+                        style: AppText.tiny(context).copyWith(
+                            color: AppTokens.tint(
+                                context.tokens.mutedForeground, 0.8))),
                   ],
                 ),
               ),
-              Switch(value: caps, onChanged: (v) => ref.read(entryCapsProvider.notifier).set(v)),
+              Switch(
+                  value: caps,
+                  onChanged: (v) =>
+                      ref.read(entryCapsProvider.notifier).set(v)),
             ],
           ),
         ],

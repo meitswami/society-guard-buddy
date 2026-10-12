@@ -82,12 +82,14 @@ class EmergencyAlertButton extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(ctx.ct('comms.emergency.modeTitle'),
-                        style: AppText.pageTitle(ctx).copyWith(fontSize: 18, color: t.destructive)),
+                        style: AppText.pageTitle(ctx)
+                            .copyWith(fontSize: 18, color: t.destructive)),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
-              Text(ctx.ct('comms.emergency.modeDesc'), style: AppText.caption(ctx)),
+              Text(ctx.ct('comms.emergency.modeDesc'),
+                  style: AppText.caption(ctx)),
               const SizedBox(height: 14),
               EmergencyAlertForm(
                 societyId: societyId,
@@ -128,7 +130,8 @@ class EmergencyAlertButton extends StatelessWidget {
                   child: Text(
                     context.ct('comms.emergency.compactButton'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.w600, color: t.destructive),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, color: t.destructive),
                   ),
                 ),
               ],
@@ -150,8 +153,10 @@ class _PulsingIcon extends StatefulWidget {
   State<_PulsingIcon> createState() => _PulsingIconState();
 }
 
-class _PulsingIconState extends State<_PulsingIcon> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+class _PulsingIconState extends State<_PulsingIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1000))
     ..repeat(reverse: true);
 
   @override
@@ -211,7 +216,8 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
 
   Future<void> _takePhoto() async {
     if (_total >= kEmergencyMaxPhotos) {
-      AppFeedback.toast(context, context.ct('comms.emergency.maxPhotos'), tone: BadgeTone.warning);
+      AppFeedback.toast(context, context.ct('comms.emergency.maxPhotos'),
+          tone: BadgeTone.warning);
       return;
     }
     try {
@@ -221,7 +227,8 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
       if (!mounted) return;
       setState(() => _photos.add(EmergencyImage(
             bytes: compressed,
-            fileName: 'emergency_${DateTime.now().millisecondsSinceEpoch}_${_photos.length}.jpg',
+            fileName:
+                'emergency_${DateTime.now().millisecondsSinceEpoch}_${_photos.length}.jpg',
             mimeType: 'image/jpeg',
           )));
     } catch (e) {
@@ -232,17 +239,24 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
   Future<void> _pickFiles() async {
     final room = kEmergencyMaxPhotos - _total;
     if (room <= 0) {
-      AppFeedback.toast(context, context.ct('comms.emergency.maxPhotos'), tone: BadgeTone.warning);
+      AppFeedback.toast(context, context.ct('comms.emergency.maxPhotos'),
+          tone: BadgeTone.warning);
       return;
     }
     try {
-      final picked = room >= 2 ? await ImagePicker().pickMultiImage(limit: room) : [await ImagePicker().pickImage(source: ImageSource.gallery)];
+      final picked = room >= 2
+          ? await ImagePicker().pickMultiImage(limit: room)
+          : [await ImagePicker().pickImage(source: ImageSource.gallery)];
       final next = <EmergencyImage>[];
       for (final x in picked) {
         if (x == null) continue;
-        if (fileMediaKind(mimeType: x.mimeType, fileName: x.name) != 'image') continue;
+        if (fileMediaKind(mimeType: x.mimeType, fileName: x.name) != 'image')
+          continue;
         if (next.length + _total >= kEmergencyMaxPhotos) break;
-        next.add(EmergencyImage(bytes: await x.readAsBytes(), fileName: x.name, mimeType: x.mimeType));
+        next.add(EmergencyImage(
+            bytes: await x.readAsBytes(),
+            fileName: x.name,
+            mimeType: x.mimeType));
       }
       if (!mounted || next.isEmpty) return;
       setState(() => _files.addAll(next));
@@ -253,11 +267,13 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
 
   Future<void> _send() async {
     if (_message.text.trim().isEmpty) {
-      AppFeedback.toast(context, context.ct('comms.emergency.describe'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.ct('comms.emergency.describe'),
+          tone: BadgeTone.alert);
       return;
     }
     if (!kEmergencySenderRoles.contains(widget.senderRole)) {
-      AppFeedback.toast(context, context.ct('comms.emergency.invalidRole'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.ct('comms.emergency.invalidRole'),
+          tone: BadgeTone.alert);
       return;
     }
     final ok = await AppFeedback.confirm(
@@ -284,7 +300,9 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
       );
       if (!mounted) return;
       if (!result.success) {
-        AppFeedback.toast(context, result.error ?? context.ct('comms.emergency.failed'), tone: BadgeTone.alert);
+        AppFeedback.toast(
+            context, result.error ?? context.ct('comms.emergency.failed'),
+            tone: BadgeTone.alert);
         return;
       }
       AppFeedback.toast(
@@ -324,13 +342,19 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(context.ct('comms.emergency.banner'),
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.destructive)),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: t.destructive)),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
-        AppTextField(controller: _title, hint: context.ct('comms.emergency.titlePh'), caps: false),
+        AppTextField(
+            controller: _title,
+            hint: context.ct('comms.emergency.titlePh'),
+            caps: false),
         const SizedBox(height: 12),
         AppTextField(
           controller: _message,
@@ -340,7 +364,9 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
           maxLines: 8,
         ),
         const SizedBox(height: 12),
-        Text(context.ct('comms.emergency.photos'), style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500)),
+        Text(context.ct('comms.emergency.photos'),
+            style:
+                AppText.caption(context).copyWith(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         if (_photos.isNotEmpty)
           Padding(
@@ -355,7 +381,8 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(AppTokens.radiusSm),
-                        child: Image.memory(_photos[i].bytes, width: 72, height: 72, fit: BoxFit.cover),
+                        child: Image.memory(_photos[i].bytes,
+                            width: 72, height: 72, fit: BoxFit.cover),
                       ),
                       Positioned(
                         top: -6,
@@ -365,7 +392,8 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
                           child: CircleAvatar(
                             radius: 11,
                             backgroundColor: t.destructive,
-                            child: Icon(Icons.close, size: 13, color: t.destructiveForeground),
+                            child: Icon(Icons.close,
+                                size: 13, color: t.destructiveForeground),
                           ),
                         ),
                       ),
@@ -379,10 +407,18 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            OutlinePill(icon: Icons.photo_camera_outlined, label: context.ct('comms.emergency.takePhoto'), onTap: _sending ? null : _takePhoto),
-            OutlinePill(icon: Icons.attach_file, label: context.ct('comms.emergency.addImage'), onTap: _sending ? null : _pickFiles),
+            OutlinePill(
+                icon: Icons.photo_camera_outlined,
+                label: context.ct('comms.emergency.takePhoto'),
+                onTap: _sending ? null : _takePhoto),
+            OutlinePill(
+                icon: Icons.attach_file,
+                label: context.ct('comms.emergency.addImage'),
+                onTap: _sending ? null : _pickFiles),
             for (var i = 0; i < _files.length; i++)
-              FileChip(label: attachmentChipLabel(_files[i].fileName, max: 16), onRemove: () => setState(() => _files.removeAt(i))),
+              FileChip(
+                  label: attachmentChipLabel(_files[i].fileName, max: 16),
+                  onRemove: () => setState(() => _files.removeAt(i))),
           ],
         ),
         const SizedBox(height: 14),
@@ -400,13 +436,22 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (_sending)
-                      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: t.destructiveForeground))
+                      SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: t.destructiveForeground))
                     else
-                      Icon(Icons.send, size: 16, color: t.destructiveForeground),
+                      Icon(Icons.send,
+                          size: 16, color: t.destructiveForeground),
                     const SizedBox(width: 8),
                     Text(
-                      _sending ? context.ct('comms.emergency.sending') : context.ct('comms.emergency.send'),
-                      style: TextStyle(fontWeight: FontWeight.w600, color: t.destructiveForeground),
+                      _sending
+                          ? context.ct('comms.emergency.sending')
+                          : context.ct('comms.emergency.send'),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: t.destructiveForeground),
                     ),
                   ],
                 ),

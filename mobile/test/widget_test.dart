@@ -26,7 +26,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign in'), findsOneWidget);
+    // Unified login (web UnifiedLoginPage): brand header, society picker, register CTA, footer.
+    expect(find.text('Kutumbika'), findsOneWidget);
+    expect(find.text('SELECT YOUR SOCIETY'), findsOneWidget);
+    expect(find.text('Register a new society'), findsOneWidget);
+    expect(find.text('Select a society to sign in.'), findsOneWidget);
+    expect(find.text('Privacy Policy'), findsOneWidget);
   });
 }
 

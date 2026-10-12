@@ -12,13 +12,15 @@ import 'package:audioplayers/audioplayers.dart';
 enum ToneWave { sine, square, triangle, sawtooth }
 
 class ToneSpec {
-  const ToneSpec(this.freq, this.durationMs, {this.wave = ToneWave.sine, this.gain = 0.12, this.offsetMs = 0, this.decay = true});
+  const ToneSpec(this.freq, this.durationMs,
+      {this.wave = ToneWave.sine, this.gain = 0.12, this.offsetMs = 0, this.decay = true});
 
   final double freq;
   final int durationMs;
   final ToneWave wave;
   final double gain;
   final int offsetMs;
+
   /// Web presets ramp the gain exponentially to 0.001 over the tone; the approval beep does not.
   final bool decay;
 }

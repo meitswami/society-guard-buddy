@@ -21,9 +21,14 @@ import 'widgets/notification_detail_sheet.dart';
 /// compact `EmergencyAlertPanel` + `NotificationCenter isResident` (inbox filtered to the
 /// flat / person, dismissals, "Mark all as seen", "Clear till date", detail + thread).
 class NotificationsInboxView extends StatefulWidget {
-  const NotificationsInboxView({super.key, required this.session});
+  const NotificationsInboxView(
+      {super.key, required this.session, this.showEmergencyButton = false});
 
   final SessionResident session;
+
+  /// Show the compact "Emergency or Alert" button above the inbox (web order). Off by
+  /// default because `ResidentShell` already renders that button above this view.
+  final bool showEmergencyButton;
 
   @override
   State<NotificationsInboxView> createState() => _NotificationsInboxViewState();
@@ -38,13 +43,19 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
   RealtimeChannel? _channel;
 
   SessionResident get s => widget.session;
-  ResidentRef get _ref => ResidentRef(id: s.resident.id, name: s.resident.name, flatNumber: s.resident.flatNumber);
+  ResidentRef get _ref => ResidentRef(
+      id: s.resident.id,
+      name: s.resident.name,
+      flatNumber: s.resident.flatNumber);
 
   @override
   void initState() {
     super.initState();
     _load();
-    _channel = _repo.subscribeInserts('notifications-inbox-resident-${s.resident.id}', s.societyId, (_) => _load(silent: true));
+    _channel = _repo.subscribeInserts(
+        'notifications-inbox-resident-${s.resident.id}',
+        s.societyId,
+        (_) => _load(silent: true));
   }
 
   @override
@@ -90,9 +101,13 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
 
   Future<void> _open(AppNotification n) async {
     if (!n.isRead) {
-      unawaited(_repo.markRead(n.id).then((_) => _load(silent: true)).catchError((_) {}));
+      unawaited(_repo
+          .markRead(n.id)
+          .then((_) => _load(silent: true))
+          .catchError((_) {}));
     }
-    await NotificationDetailSheet.show(context, notification: n, isResident: true, resident: _ref);
+    await NotificationDetailSheet.show(context,
+        notification: n, isResident: true, resident: _ref);
   }
 
   Future<void> _markAllSeen() async {
@@ -101,17 +116,20 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
     try {
       await _repo.markIdsRead(ids);
       if (!mounted) return;
-      AppFeedback.toast(context, context.ct('comms.notif.allMarkedRead'), tone: BadgeTone.success);
+      AppFeedback.toast(context, context.ct('comms.notif.allMarkedRead'),
+          tone: BadgeTone.success);
       await _load(silent: true);
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     }
   }
 
   Future<void> _openClearDialog() async {
     await showCommsSheet<void>(
       context,
-      builder: (ctx) => _ClearTillDateSheet(onClear: (date) => _clearTill(ctx, date)),
+      builder: (ctx) =>
+          _ClearTillDateSheet(onClear: (date) => _clearTill(ctx, date)),
     );
   }
 
@@ -146,13 +164,18 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
       if (!mounted) return true;
       AppFeedback.toast(
         context,
-        context.ct(ids.length == 1 ? 'comms.inbox.clearedOne' : 'comms.inbox.clearedMany', {'count': ids.length, 'date': label}),
+        context.ct(
+            ids.length == 1
+                ? 'comms.inbox.clearedOne'
+                : 'comms.inbox.clearedMany',
+            {'count': ids.length, 'date': label}),
         tone: BadgeTone.success,
       );
       await _load(silent: true);
       return true;
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
       return false;
     }
   }
@@ -163,12 +186,13 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
     return PageContainer(
       onRefresh: () => _load(silent: true),
       children: [
-        EmergencyAlertButton(
-          societyId: s.societyId,
-          senderName: s.resident.name,
-          senderRole: 'resident',
-          flatNumber: s.resident.flatNumber,
-        ),
+        if (widget.showEmergencyButton)
+          EmergencyAlertButton(
+            societyId: s.societyId,
+            senderName: s.resident.name,
+            senderRole: 'resident',
+            flatNumber: s.resident.flatNumber,
+          ),
         BadgedPageHeader(
           title: context.t('resident.alerts'),
           subtitle: _unread > 0
@@ -180,7 +204,9 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    if (_unread > 0) LinkText(context.ct('comms.inbox.markAllSeen'), onTap: _markAllSeen),
+                    if (_unread > 0)
+                      LinkText(context.ct('comms.inbox.markAllSeen'),
+                          onTap: _markAllSeen),
                     if (_items.isNotEmpty)
                       LinkText(
                         context.ct('comms.inbox.clearTillDate'),
@@ -194,7 +220,8 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
         ),
         MutedBox(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text(context.ct('comms.inbox.info'), style: AppText.caption(context).copyWith(height: 1.45)),
+          child: Text(context.ct('comms.inbox.info'),
+              style: AppText.caption(context).copyWith(height: 1.45)),
         ),
         const SizedBox(height: 16),
         if (_loading && _items.isEmpty)
@@ -202,9 +229,13 @@ class _NotificationsInboxViewState extends State<NotificationsInboxView> {
         else if (_failed)
           ErrorView(onRetry: _load)
         else if (_items.isEmpty)
-          EmptyView(message: context.ct('comms.inbox.empty'), icon: Icons.notifications_off_outlined)
+          EmptyView(
+              message: context.ct('comms.inbox.empty'),
+              icon: Icons.notifications_off_outlined)
         else
-          for (final n in _items) NotificationCard(notification: n, isResident: true, onTap: () => _open(n)),
+          for (final n in _items)
+            NotificationCard(
+                notification: n, isResident: true, onTap: () => _open(n)),
       ],
     );
   }
@@ -243,29 +274,38 @@ class _ClearTillDateSheetState extends State<_ClearTillDateSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(context.ct('comms.inbox.clearTitle'), style: AppText.pageTitle(context).copyWith(fontSize: 18)),
+          Text(context.ct('comms.inbox.clearTitle'),
+              style: AppText.pageTitle(context).copyWith(fontSize: 18)),
           const SizedBox(height: 4),
-          Text(context.ct('comms.inbox.clearDesc'), style: AppText.caption(context)),
+          Text(context.ct('comms.inbox.clearDesc'),
+              style: AppText.caption(context)),
           const SizedBox(height: 16),
           FieldLabel(context.ct('comms.inbox.tillDate')),
           InkWell(
             onTap: _pick,
             borderRadius: BorderRadius.circular(AppTokens.radiusSm),
             child: InputDecorator(
-              decoration: InputDecoration(suffixIcon: Icon(Icons.calendar_today_outlined, size: 18, color: t.mutedForeground)),
-              child: Text(DateFormat('dd/MM/yyyy').format(_date), style: AppText.mono(context, size: 14)),
+              decoration: InputDecoration(
+                  suffixIcon: Icon(Icons.calendar_today_outlined,
+                      size: 18, color: t.mutedForeground)),
+              child: Text(DateFormat('dd/MM/yyyy').format(_date),
+                  style: AppText.mono(context, size: 14)),
             ),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
-                child: AppButton.secondary(label: context.t('common.cancel'), onPressed: () => Navigator.of(context).maybePop()),
+                child: AppButton.secondary(
+                    label: context.t('common.cancel'),
+                    onPressed: () => Navigator.of(context).maybePop()),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: AppButton.destructive(
-                  label: _clearing ? context.ct('comms.inbox.clearing') : context.ct('comms.inbox.clearAlerts'),
+                  label: _clearing
+                      ? context.ct('comms.inbox.clearing')
+                      : context.ct('comms.inbox.clearAlerts'),
                   loading: _clearing,
                   onPressed: _clearing
                       ? null

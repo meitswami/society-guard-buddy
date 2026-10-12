@@ -18,7 +18,15 @@ import 'superadmin_i18n.dart';
 import 'widgets/sa_widgets.dart';
 import 'widgets/totp_qr.dart';
 
-enum _Step { password, totp, setupQr, setupTotpVerify, setupRecovery, recoveryRequest, recoveryVerify }
+enum _Step {
+  password,
+  totp,
+  setupQr,
+  setupTotpVerify,
+  setupRecovery,
+  recoveryRequest,
+  recoveryVerify
+}
 
 /// Superadmin sign-in — port of `SuperadminLoginForm.tsx` (+ the `SuperadminLoginPage`
 /// wrapper): username / password, optional fingerprint, Microsoft Authenticator (TOTP)
@@ -38,7 +46,8 @@ class SuperadminLoginView extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
 
   @override
-  ConsumerState<SuperadminLoginView> createState() => _SuperadminLoginViewState();
+  ConsumerState<SuperadminLoginView> createState() =>
+      _SuperadminLoginViewState();
 }
 
 class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
@@ -97,14 +106,20 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
   // ---------------------------------------------------------------------------
   // Flow (same order and messages as the web form)
 
-  Future<void> _finishLogin({required String id, required String name, required String username, required String method}) async {
+  Future<void> _finishLogin(
+      {required String id,
+      required String name,
+      required String username,
+      required String method}) async {
     if (_finishing) return;
     _finishing = true;
     SuperadminAudit.loginSuccess(id, name, method);
     final session = SessionSuperadmin(id: id, name: name, username: username);
     final onLoggedIn = widget.onLoggedIn;
     try {
-      await ref.read(sessionProvider.notifier).loginSuperadmin(id: id, name: name, username: username);
+      await ref
+          .read(sessionProvider.notifier)
+          .loginSuperadmin(id: id, name: name, username: username);
     } catch (_) {
       // The host still receives the session through [onLoggedIn].
     }
@@ -128,7 +143,11 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
       return;
     }
     if (!row.totpEnabled) {
-      _finishLogin(id: row.id, name: row.name, username: row.username, method: fromBio ? 'biometric' : 'password');
+      _finishLogin(
+          id: row.id,
+          name: row.name,
+          username: row.username,
+          method: fromBio ? 'biometric' : 'password');
       return;
     }
     setState(() => _step = _Step.totp);
@@ -167,9 +186,13 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (queryError != null) {
-      final reason = queryError is PostgrestException ? (queryError.code ?? queryError.message) : '$queryError';
+      final reason = queryError is PostgrestException
+          ? (queryError.code ?? queryError.message)
+          : '$queryError';
       SuperadminAudit.loginFailed(u, reason);
-      _setError(_looksLikeNetwork(queryError) ? 'login.connectionProblem' : 'login.invalidCredentials');
+      _setError(_looksLikeNetwork(queryError)
+          ? 'login.connectionProblem'
+          : 'login.invalidCredentials');
       return;
     }
     if (data == null) {
@@ -223,7 +246,10 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
     setState(() => _error = '');
     final row = _pending;
     final secret = row?.totpSecret;
-    if (row == null || secret == null || secret.isEmpty || !verifyTotpCode(secret, _totpCode.text)) {
+    if (row == null ||
+        secret == null ||
+        secret.isEmpty ||
+        !verifyTotpCode(secret, _totpCode.text)) {
       _setError('superadmin.invalidAuthenticatorCode');
       return;
     }
@@ -239,14 +265,17 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
     setState(() => _error = '');
     final row = _pending;
     final secret = _setupSecret;
-    if (row == null || secret == null || !verifyTotpCode(secret, _totpCode.text)) {
+    if (row == null ||
+        secret == null ||
+        !verifyTotpCode(secret, _totpCode.text)) {
       _setError('superadmin.invalidAuthenticatorCode');
       return;
     }
     setState(() => _loading = true);
     var ok = true;
     try {
-      await _repo.updateSuperAdmin(row.id, {'totp_secret': secret, 'totp_enabled': true});
+      await _repo.updateSuperAdmin(
+          row.id, {'totp_secret': secret, 'totp_enabled': true});
     } catch (_) {
       ok = false;
     }
@@ -286,7 +315,11 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
       _setError('superadmin.couldNotSaveRecovery');
       return;
     }
-    _finishLogin(id: row.id, name: row.name, username: row.username, method: 'mfa_enrollment');
+    _finishLogin(
+        id: row.id,
+        name: row.name,
+        username: row.username,
+        method: 'mfa_enrollment');
   }
 
   Future<void> _sendRecovery() async {
@@ -303,17 +336,23 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
     setState(() => _loading = false);
     if (res.failed) {
       final msg = res.errorMessage ?? '';
-      setState(() => _error = msg.isNotEmpty ? msg : context.t('superadmin.recoverySendFailed'));
+      setState(() => _error =
+          msg.isNotEmpty ? msg : context.t('superadmin.recoverySendFailed'));
       return;
     }
     final data = res.data;
-    if (data != null && data['ok'] == false && data['error'] != null && '${data['error']}'.isNotEmpty) {
+    if (data != null &&
+        data['ok'] == false &&
+        data['error'] != null &&
+        '${data['error']}'.isNotEmpty) {
       setState(() => _error = '${data['error']}');
       return;
     }
     final devCode = data?['dev_code'];
     setState(() {
-      _recoveryInfo = (devCode != null && '$devCode'.isNotEmpty) ? '${context.t('superadmin.devRecoveryCode')}: $devCode' : '';
+      _recoveryInfo = (devCode != null && '$devCode'.isNotEmpty)
+          ? '${context.t('superadmin.devRecoveryCode')}: $devCode'
+          : '';
       _recoveryUsername.text = u;
       _step = _Step.recoveryVerify;
     });
@@ -327,7 +366,8 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
       return;
     }
     setState(() => _loading = true);
-    final res = await _repo.verifyRecoveryCode(_recoveryUsername.text.trim().toUpperCase(), code);
+    final res = await _repo.verifyRecoveryCode(
+        _recoveryUsername.text.trim().toUpperCase(), code);
     if (!mounted) return;
     setState(() => _loading = false);
     final data = res.data;
@@ -347,17 +387,23 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
   Future<void> _openAuthenticator(String uri) async {
     var opened = false;
     try {
-      opened = await launchUrl(Uri.parse(uri), mode: LaunchMode.externalApplication);
+      opened =
+          await launchUrl(Uri.parse(uri), mode: LaunchMode.externalApplication);
     } catch (_) {
       opened = false;
     }
-    if (!opened && mounted) AppFeedback.toast(context, context.st('sa.login.noAuthenticator'), tone: BadgeTone.warning);
+    if (!opened && mounted) {
+      AppFeedback.toast(context, context.st('sa.login.noAuthenticator'),
+          tone: BadgeTone.warning);
+    }
   }
 
   // ---------------------------------------------------------------------------
   // UI
 
-  Widget _primaryButton(String label, VoidCallback onPressed, {String? loadingLabel}) => Padding(
+  Widget _primaryButton(String label, VoidCallback onPressed,
+          {String? loadingLabel}) =>
+      Padding(
         padding: const EdgeInsets.only(top: 4),
         child: AppButton(
           label: _loading && loadingLabel != null ? loadingLabel : label,
@@ -369,11 +415,17 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
   Widget _caption(String text, {bool strong = false}) => Text(
         text,
         textAlign: TextAlign.center,
-        style: strong ? AppText.sectionTitle(context) : AppText.body(context).copyWith(color: context.tokens.mutedForeground),
+        style: strong
+            ? AppText.sectionTitle(context)
+            : AppText.body(context)
+                .copyWith(color: context.tokens.mutedForeground),
       );
 
   List<Widget> _gap(List<Widget> items, [double h = 16]) => [
-        for (var i = 0; i < items.length; i++) ...[if (i > 0) SizedBox(height: h), items[i]],
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) SizedBox(height: h),
+          items[i]
+        ],
       ];
 
   Widget _passwordStep() {
@@ -387,7 +439,8 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
               color: AppTokens.tint(t.primary, 0.05),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppTokens.radius),
-                side: BorderSide(color: AppTokens.tint(t.primary, 0.3), width: 2),
+                side:
+                    BorderSide(color: AppTokens.tint(t.primary, 0.3), width: 2),
               ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(AppTokens.radius),
@@ -397,12 +450,19 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
                   child: Column(
                     children: [
                       _bioLoading
-                          ? SizedBox(width: 32, height: 32, child: CircularProgressIndicator(color: t.primary, strokeWidth: 3))
+                          ? SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: CircularProgressIndicator(
+                                  color: t.primary, strokeWidth: 3))
                           : Icon(Icons.fingerprint, size: 32, color: t.primary),
                       const SizedBox(height: 8),
                       Text(
                         context.t('biometric.loginButton'),
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: t.primary),
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: t.primary),
                       ),
                     ],
                   ),
@@ -430,13 +490,18 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _submitPassword(),
               suffix: IconButton(
-                icon: Icon(_showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
+                icon: Icon(
+                    _showPassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 18),
                 color: t.mutedForeground,
                 onPressed: () => setState(() => _showPassword = !_showPassword),
               ),
             ),
             if (_error.isNotEmpty) SaErrorText(_error),
-            _primaryButton(context.t('superadmin.loginButton'), _submitPassword, loadingLabel: context.t('login.loggingIn')),
+            _primaryButton(context.t('superadmin.loginButton'), _submitPassword,
+                loadingLabel: context.t('login.loggingIn')),
           ]),
           const SizedBox(height: 8),
           SaLinkButton(
@@ -449,7 +514,9 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
           ),
           if (widget.onBack != null) ...[
             const SizedBox(height: 4),
-            SaLinkButton(label: '← ${context.t('admin.backToMain')}', onTap: widget.onBack),
+            SaLinkButton(
+                label: '← ${context.t('admin.backToMain')}',
+                onTap: widget.onBack),
           ],
         ],
       ),
@@ -460,9 +527,11 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: _gap([
           _caption(context.t('superadmin.enterAuthenticatorCode')),
-          OtpCodeField(controller: _totpCode, onSubmitted: (_) => _submitTotp()),
+          OtpCodeField(
+              controller: _totpCode, onSubmitted: (_) => _submitTotp()),
           if (_error.isNotEmpty) SaErrorText(_error),
-          _primaryButton(context.t('superadmin.verifyAndContinue'), _submitTotp),
+          _primaryButton(
+              context.t('superadmin.verifyAndContinue'), _submitTotp),
           SaLinkButton(
             label: context.t('superadmin.backToLogin'),
             onTap: () => setState(() {
@@ -483,14 +552,17 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: _gap([
         _caption(context.t('superadmin.mfaSetupTitle'), strong: true),
-        Text(context.t('superadmin.mfaSetupSubtitle'), textAlign: TextAlign.center, style: AppText.caption(context)),
+        Text(context.t('superadmin.mfaSetupSubtitle'),
+            textAlign: TextAlign.center, style: AppText.caption(context)),
         TotpQrCode(data: uri),
         SelectableText(
           secret,
           textAlign: TextAlign.center,
-          style: AppText.mono(context, size: 11, color: context.tokens.mutedForeground),
+          style: AppText.mono(context,
+              size: 11, color: context.tokens.mutedForeground),
         ),
-        Text(context.st('sa.login.sameDeviceHint'), textAlign: TextAlign.center, style: AppText.tiny(context)),
+        Text(context.st('sa.login.sameDeviceHint'),
+            textAlign: TextAlign.center, style: AppText.tiny(context)),
         Row(
           children: [
             Expanded(
@@ -530,9 +602,11 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: _gap([
           _caption(context.t('superadmin.enterCodeFromApp')),
-          OtpCodeField(controller: _totpCode, onSubmitted: (_) => _submitSetupTotp()),
+          OtpCodeField(
+              controller: _totpCode, onSubmitted: (_) => _submitSetupTotp()),
           if (_error.isNotEmpty) SaErrorText(_error),
-          _primaryButton(context.t('superadmin.verifyAndContinue'), _submitSetupTotp),
+          _primaryButton(
+              context.t('superadmin.verifyAndContinue'), _submitSetupTotp),
           SaLinkButton(
             label: context.t('superadmin.backToQr'),
             onTap: () => setState(() {
@@ -546,8 +620,10 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
   Widget _setupRecoveryStep() => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: _gap([
-          _caption(context.t('superadmin.recoveryEmailStepTitle'), strong: true),
-          Text(context.t('superadmin.recoveryEmailStepHelp'), textAlign: TextAlign.center, style: AppText.caption(context)),
+          _caption(context.t('superadmin.recoveryEmailStepTitle'),
+              strong: true),
+          Text(context.t('superadmin.recoveryEmailStepHelp'),
+              textAlign: TextAlign.center, style: AppText.caption(context)),
           AppTextField(
             controller: _recoveryEmailInput,
             hint: 'you@example.com',
@@ -556,7 +632,8 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
             onSubmitted: (_) => _saveRecoveryAndEnter(),
           ),
           if (_error.isNotEmpty) SaErrorText(_error),
-          _primaryButton(context.t('superadmin.finishAndEnter'), _saveRecoveryAndEnter),
+          _primaryButton(
+              context.t('superadmin.finishAndEnter'), _saveRecoveryAndEnter),
         ]),
       );
 
@@ -580,7 +657,8 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
             onSubmitted: (_) => _sendRecovery(),
           ),
           if (_error.isNotEmpty) SaErrorText(_error),
-          _primaryButton(context.t('superadmin.sendRecoveryCode'), _sendRecovery),
+          _primaryButton(
+              context.t('superadmin.sendRecoveryCode'), _sendRecovery),
           SaLinkButton(
             label: context.t('superadmin.backToLogin'),
             onTap: () => setState(() {
@@ -610,9 +688,11 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
             ),
           ),
         _caption(context.t('superadmin.enterRecoveryCode')),
-        OtpCodeField(controller: _recoveryCode, onSubmitted: (_) => _verifyRecovery()),
+        OtpCodeField(
+            controller: _recoveryCode, onSubmitted: (_) => _verifyRecovery()),
         if (_error.isNotEmpty) SaErrorText(_error),
-        _primaryButton(context.t('superadmin.verifyAndContinue'), _verifyRecovery),
+        _primaryButton(
+            context.t('superadmin.verifyAndContinue'), _verifyRecovery),
         SaLinkButton(
           label: context.t('superadmin.resendRecovery'),
           onTap: () => setState(() {
@@ -638,7 +718,8 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
               color: AppTokens.tint(t.primary, 0.10),
               borderRadius: BorderRadius.circular(AppTokens.radiusXl),
             ),
-            child: Icon(Icons.workspace_premium_outlined, size: 40, color: t.primary),
+            child: Icon(Icons.workspace_premium_outlined,
+                size: 40, color: t.primary),
           ),
           const SizedBox(height: 16),
           Text(
@@ -647,15 +728,18 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
             style: AppText.pageTitle(context).copyWith(fontSize: 24),
           ),
           const SizedBox(height: 4),
-          Text(context.t('app.subtitle'), textAlign: TextAlign.center, style: AppText.caption(context)),
+          Text(context.t('app.subtitle'),
+              textAlign: TextAlign.center, style: AppText.caption(context)),
           const SizedBox(height: 2),
           Text(
             context.t('app.tagline'),
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11, color: AppTokens.tint(t.mutedForeground, 0.8)),
+            style: TextStyle(
+                fontSize: 11, color: AppTokens.tint(t.mutedForeground, 0.8)),
           ),
           const SizedBox(height: 16),
-          Text(context.t('superadmin.login'), style: AppText.pageTitle(context)),
+          Text(context.t('superadmin.login'),
+              style: AppText.pageTitle(context)),
           const SizedBox(height: 4),
           Text(
             context.t('superadmin.loginSubtitle'),
@@ -676,7 +760,8 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
           const SizedBox(width: 8),
           Text(
             context.t('superadmin.login'),
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: t.primary),
+            style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w500, color: t.primary),
           ),
         ],
       ),
@@ -687,9 +772,14 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
     final body = switch (_step) {
       _Step.password => _passwordStep(),
       _Step.totp => _pending == null ? _passwordStep() : _totpStep(),
-      _Step.setupQr => (_pending == null || _setupSecret == null) ? _passwordStep() : _setupQrStep(),
-      _Step.setupTotpVerify => (_pending == null || _setupSecret == null) ? _passwordStep() : _setupVerifyStep(),
-      _Step.setupRecovery => _pending == null ? _passwordStep() : _setupRecoveryStep(),
+      _Step.setupQr => (_pending == null || _setupSecret == null)
+          ? _passwordStep()
+          : _setupQrStep(),
+      _Step.setupTotpVerify => (_pending == null || _setupSecret == null)
+          ? _passwordStep()
+          : _setupVerifyStep(),
+      _Step.setupRecovery =>
+        _pending == null ? _passwordStep() : _setupRecoveryStep(),
       _Step.recoveryRequest => _recoveryRequestStep(),
       _Step.recoveryVerify => _recoveryVerifyStep(),
     };
@@ -699,7 +789,8 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_step == _Step.password) embedded ? _embeddedHeader() : _fullHeader(),
+          if (_step == _Step.password)
+            embedded ? _embeddedHeader() : _fullHeader(),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
             child: KeyedSubtree(key: ValueKey(_step), child: body),
@@ -733,10 +824,13 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
                 children: [
                   Positioned.fill(
                     child: SingleChildScrollView(
-                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.fromLTRB(24, 56, 24, 48),
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: (constraints.maxHeight - 104).clamp(0, double.infinity)),
+                        constraints: BoxConstraints(
+                            minHeight: (constraints.maxHeight - 104)
+                                .clamp(0, double.infinity)),
                         child: Center(child: _form(embedded: false)),
                       ),
                     ),
@@ -744,7 +838,11 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
                   const Positioned(
                     top: 12,
                     right: 12,
-                    child: Row(children: [LanguageToggle(), SizedBox(width: 8), ThemeToggle()]),
+                    child: Row(children: [
+                      LanguageToggle(),
+                      SizedBox(width: 8),
+                      ThemeToggle()
+                    ]),
                   ),
                 ],
               ),
@@ -755,4 +853,3 @@ class _SuperadminLoginViewState extends ConsumerState<SuperadminLoginView> {
     );
   }
 }
-

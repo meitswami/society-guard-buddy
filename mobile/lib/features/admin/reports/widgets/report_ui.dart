@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/i18n/extra/reports_strings.dart';
 import '../../../../core/ui/ui.dart';
 import '../logic/js_compat.dart';
 import '../logic/metric_copy.dart';
@@ -8,6 +9,13 @@ import '../logic/report_formatters.dart';
 /// Small building blocks shared by the Reports screens (web Tailwind patterns).
 
 bool isHindi(BuildContext context) => context.lang == AppLang.hi;
+
+/// Reports-module string from [kReportsStrings] (works before the lead merges the map).
+String rs(BuildContext context, String key) {
+  final row = kReportsStrings[key];
+  if (row == null) return context.t(key);
+  return (isHindi(context) ? row['hi'] : row['en']) ?? row['en'] ?? key;
+}
 
 /// Opens the description sheet for a metric (web `HoverInfoTip`).
 Future<void> showMetricInfo(

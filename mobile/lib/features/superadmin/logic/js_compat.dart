@@ -29,17 +29,23 @@ double jsNumber(String? value) {
 }
 
 /// A JSON-friendly number: integral doubles are sent as ints (JS `JSON.stringify(40)` → `40`).
-num jsonNumber(double v) => v == v.roundToDouble() && v.isFinite ? v.toInt() : v;
+num jsonNumber(double v) =>
+    v == v.roundToDouble() && v.isFinite ? v.toInt() : v;
 
 /// Web `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` (recovery e-mail validation).
-bool isValidEmail(String value) => RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
+bool isValidEmail(String value) =>
+    RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
 
 /// Web `file.name.replace(/[^\w.-]/g, '_')` used in storage object paths.
-String safeStorageFileName(String name) => name.replaceAll(RegExp(r'[^\w.-]'), '_');
+String safeStorageFileName(String name) =>
+    name.replaceAll(RegExp(r'[^\w.-]'), '_');
 
 /// Web `blocks_csv.split(/[,;]+/).map((x) => x.trim()).filter(Boolean)`.
-List<String> splitBlocksCsv(String csv) =>
-    csv.split(RegExp(r'[,;]+')).map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
+List<String> splitBlocksCsv(String csv) => csv
+    .split(RegExp(r'[,;]+'))
+    .map((x) => x.trim())
+    .where((x) => x.isNotEmpty)
+    .toList();
 
 /// Keeps only digits and caps the length (web `value.replace(/\D/g, '').slice(0, 6)`).
 String digitsOnly(String value, {int? maxLength}) {

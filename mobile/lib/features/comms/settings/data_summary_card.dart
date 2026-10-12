@@ -25,14 +25,16 @@ class _DataSummaryCardState extends State<DataSummaryCard> {
 
   Future<void> _load() async {
     try {
-      final d = await const SettingsRepository().loadDataSummary(widget.societyId);
+      final d =
+          await const SettingsRepository().loadDataSummary(widget.societyId);
       if (mounted) setState(() => _data = d);
     } catch (_) {
       if (mounted) setState(() => _data = const SocietyDataSummary());
     }
   }
 
-  Widget _card(BuildContext context, String key, int? value) => DescriptiveStatCard(
+  Widget _card(BuildContext context, String key, int? value) =>
+      DescriptiveStatCard(
         compact: true,
         title: context.ct('comms.metric.$key.title'),
         description: context.ct('comms.metric.$key.desc'),
@@ -48,7 +50,9 @@ class _DataSummaryCardState extends State<DataSummaryCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SectionTitle(context.t('settings.dataSummary'), icon: Icons.shield_outlined, padding: const EdgeInsets.only(bottom: 12)),
+          SectionTitle(context.t('settings.dataSummary'),
+              icon: Icons.shield_outlined,
+              padding: const EdgeInsets.only(bottom: 12)),
           StatGrid(
             spacing: 8,
             children: [

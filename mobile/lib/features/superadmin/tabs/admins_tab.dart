@@ -30,7 +30,8 @@ class _AdminsTabState extends State<AdminsTab> {
     final ok = await AppFeedback.confirm(
       context,
       title: context.t('swal.confirmDelete'),
-      message: '${a.name} (${a.adminId})\n${context.t('swal.confirmDeleteText')}',
+      message:
+          '${a.name} (${a.adminId})\n${context.t('swal.confirmDeleteText')}',
       confirmLabel: context.t('swal.yes'),
       cancelLabel: context.t('swal.no'),
       destructive: true,
@@ -38,9 +39,16 @@ class _AdminsTabState extends State<AdminsTab> {
     if (!ok || !mounted) return;
     try {
       await console.repo.deleteAdmin(a.id);
-      if (mounted) await AppFeedback.success(context, title: context.t('swal.success'), message: context.st('sa.admins.deleted'));
+      if (mounted) {
+        await AppFeedback.success(context,
+            title: context.t('swal.success'),
+            message: context.st('sa.admins.deleted'));
+      }
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.st('sa.admins.deleteFailed'), tone: BadgeTone.alert);
+      if (mounted) {
+        AppFeedback.toast(context, context.st('sa.admins.deleteFailed'),
+            tone: BadgeTone.alert);
+      }
     }
     await console.loadAll();
   }
@@ -56,7 +64,9 @@ class _AdminsTabState extends State<AdminsTab> {
     final res = await console.repo.updateAdmin(a.id, {'password': pw});
     if (!mounted) return;
     if (!res.ok) {
-      AppFeedback.toast(context, res.message ?? context.st('sa.admins.saveFailed'), tone: BadgeTone.alert);
+      AppFeedback.toast(
+          context, res.message ?? context.st('sa.admins.saveFailed'),
+          tone: BadgeTone.alert);
       return;
     }
     SuperadminAudit.passwordReset(
@@ -71,25 +81,34 @@ class _AdminsTabState extends State<AdminsTab> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: Icon(Icons.check_circle_rounded, color: ctx.tokens.success, size: 44),
-        title: Text(ctx.t('admin.passwordChanged'), textAlign: TextAlign.center),
+        icon: Icon(Icons.check_circle_rounded,
+            color: ctx.tokens.success, size: 44),
+        title:
+            Text(ctx.t('admin.passwordChanged'), textAlign: TextAlign.center),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('${a.name} · ${a.adminId}', style: AppText.caption(ctx)),
             const SizedBox(height: 8),
-            SelectableText(pw, style: AppText.mono(ctx, size: 18, weight: FontWeight.w600)),
+            SelectableText(pw,
+                style: AppText.mono(ctx, size: 18, weight: FontWeight.w600)),
           ],
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton.icon(onPressed: () => saCopy(ctx, pw), icon: const Icon(Icons.content_copy, size: 16), label: Text(ctx.st('sa.copy'))),
           TextButton.icon(
-            onPressed: () => ExportKit.openWhatsApp(ctx.st('sa.admins.shareCredentials', {'id': a.adminId, 'password': pw})),
+              onPressed: () => saCopy(ctx, pw),
+              icon: const Icon(Icons.content_copy, size: 16),
+              label: Text(ctx.st('sa.copy'))),
+          TextButton.icon(
+            onPressed: () => ExportKit.openWhatsApp(ctx.st(
+                'sa.admins.shareCredentials',
+                {'id': a.adminId, 'password': pw})),
             icon: const Icon(Icons.share_outlined, size: 16),
             label: Text(ctx.t('mobile.share')),
           ),
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
         ],
       ),
     );
@@ -98,7 +117,9 @@ class _AdminsTabState extends State<AdminsTab> {
   @override
   Widget build(BuildContext context) {
     final console = SuperadminScope.of(context);
-    final scoped = _allSocieties ? console.admins : console.adminsFor(console.selectedSocietyId);
+    final scoped = _allSocieties
+        ? console.admins
+        : console.adminsFor(console.selectedSocietyId);
     final list = scoped.where((a) => a.matches(_query)).toList();
     final t = context.tokens;
     return SuperadminTabPage(
@@ -112,7 +133,8 @@ class _AdminsTabState extends State<AdminsTab> {
             SaTintButton(
               icon: Icons.add,
               tooltip: context.st('sa.admins.add'),
-              onPressed: () => AdminFormPage.open(context, console, defaultSocietyId: console.selectedSocietyId),
+              onPressed: () => AdminFormPage.open(context, console,
+                  defaultSocietyId: console.selectedSocietyId),
             ),
           ],
         ),
@@ -151,17 +173,24 @@ class _AdminsTabState extends State<AdminsTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(a.name, style: AppText.bodyMedium(context)),
-                        Text(a.adminId, style: AppText.mono(context, size: 12, color: t.mutedForeground)),
-                        if (a.email != null && a.email!.isNotEmpty) Text(a.email!, style: AppText.caption(context)),
+                        Text(a.adminId,
+                            style: AppText.mono(context,
+                                size: 12, color: t.mutedForeground)),
+                        if (a.email != null && a.email!.isNotEmpty)
+                          Text(a.email!, style: AppText.caption(context)),
                         const SizedBox(height: 4),
                         Wrap(
                           spacing: 8,
                           runSpacing: 4,
                           children: [
-                            if (role != null) SaTag(role.roleName, primary: true),
-                            if (a.roleId == null) SaTag(context.st('sa.admins.fullAccess'), primary: true),
+                            if (role != null)
+                              SaTag(role.roleName, primary: true),
+                            if (a.roleId == null)
+                              SaTag(context.st('sa.admins.fullAccess'),
+                                  primary: true),
                             if (society != null) SaTag(society.name),
-                            if (a.societyId == null) SaTag(context.st('sa.admins.noSociety')),
+                            if (a.societyId == null)
+                              SaTag(context.st('sa.admins.noSociety')),
                           ],
                         ),
                       ],
@@ -180,16 +209,24 @@ class _AdminsTabState extends State<AdminsTab> {
                       }
                     },
                     itemBuilder: (ctx) => [
-                      PopupMenuItem(value: 'edit', child: ListTile(leading: const Icon(Icons.edit_outlined), title: Text(ctx.st('sa.admins.edit')))),
+                      PopupMenuItem(
+                          value: 'edit',
+                          child: ListTile(
+                              leading: const Icon(Icons.edit_outlined),
+                              title: Text(ctx.st('sa.admins.edit')))),
                       PopupMenuItem(
                         value: 'password',
-                        child: ListTile(leading: const Icon(Icons.lock_reset), title: Text(ctx.st('sa.admins.resetPassword'))),
+                        child: ListTile(
+                            leading: const Icon(Icons.lock_reset),
+                            title: Text(ctx.st('sa.admins.resetPassword'))),
                       ),
                       PopupMenuItem(
                         value: 'delete',
                         child: ListTile(
-                          leading: Icon(Icons.delete_outline, color: ctx.tokens.destructive),
-                          title: Text(ctx.t('common.delete'), style: TextStyle(color: ctx.tokens.destructive)),
+                          leading: Icon(Icons.delete_outline,
+                              color: ctx.tokens.destructive),
+                          title: Text(ctx.t('common.delete'),
+                              style: TextStyle(color: ctx.tokens.destructive)),
                         ),
                       ),
                     ],
@@ -227,13 +264,16 @@ class _ResetPasswordSheetState extends State<_ResetPasswordSheet> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 0, 20, 16 + MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.fromLTRB(
+            20, 0, 20, 16 + MediaQuery.of(context).viewInsets.bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(context.st('sa.admins.resetPassword'), style: AppText.sectionTitle(context)),
-            Text('${widget.admin.name} · ${widget.admin.adminId}', style: AppText.caption(context)),
+            Text(context.st('sa.admins.resetPassword'),
+                style: AppText.sectionTitle(context)),
+            Text('${widget.admin.name} · ${widget.admin.adminId}',
+                style: AppText.caption(context)),
             const SizedBox(height: 12),
             AppTextField(
               label: context.t('admin.newPassword'),
@@ -243,10 +283,14 @@ class _ResetPasswordSheetState extends State<_ResetPasswordSheet> {
               suffix: IconButton(
                 tooltip: context.st('sa.admins.generate'),
                 icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-                onPressed: () => setState(() => _pw.text = generateFlatPassword()),
+                onPressed: () =>
+                    setState(() => _pw.text = generateFlatPassword()),
               ),
             ),
-            if (_error.isNotEmpty) ...[const SizedBox(height: 8), SaErrorText(_error)],
+            if (_error.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SaErrorText(_error)
+            ],
             const SizedBox(height: 16),
             AppButton(
               label: context.st('sa.admins.setPassword'),
@@ -269,15 +313,21 @@ class _ResetPasswordSheetState extends State<_ResetPasswordSheet> {
 
 /// Add / edit admin (web `showAdminForm` card; edit is mobile-only).
 class AdminFormPage extends StatefulWidget {
-  const AdminFormPage({super.key, required this.console, this.admin, this.defaultSocietyId});
+  const AdminFormPage(
+      {super.key, required this.console, this.admin, this.defaultSocietyId});
 
   final SuperadminConsole console;
   final AdminRow? admin;
   final String? defaultSocietyId;
 
-  static Future<void> open(BuildContext context, SuperadminConsole console, {AdminRow? admin, String? defaultSocietyId}) =>
+  static Future<void> open(BuildContext context, SuperadminConsole console,
+          {AdminRow? admin, String? defaultSocietyId}) =>
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => AdminFormPage(console: console, admin: admin, defaultSocietyId: defaultSocietyId)),
+        MaterialPageRoute(
+            builder: (_) => AdminFormPage(
+                console: console,
+                admin: admin,
+                defaultSocietyId: defaultSocietyId)),
       );
 
   @override
@@ -285,11 +335,15 @@ class AdminFormPage extends StatefulWidget {
 }
 
 class _AdminFormPageState extends State<AdminFormPage> {
-  late final TextEditingController _name = TextEditingController(text: widget.admin?.name ?? '');
-  late final TextEditingController _adminId = TextEditingController(text: widget.admin?.adminId ?? '');
-  late final TextEditingController _email = TextEditingController(text: widget.admin?.email ?? '');
+  late final TextEditingController _name =
+      TextEditingController(text: widget.admin?.name ?? '');
+  late final TextEditingController _adminId =
+      TextEditingController(text: widget.admin?.adminId ?? '');
+  late final TextEditingController _email =
+      TextEditingController(text: widget.admin?.email ?? '');
   late final TextEditingController _password = TextEditingController();
-  late String _societyId = widget.admin?.societyId ?? (widget.defaultSocietyId ?? '');
+  late String _societyId =
+      widget.admin?.societyId ?? (widget.defaultSocietyId ?? '');
   late String _roleId = widget.admin?.roleId ?? '';
   bool _saving = false;
   String _error = '';
@@ -311,7 +365,10 @@ class _AdminFormPageState extends State<AdminFormPage> {
     final adminId = _adminId.text;
     final email = _email.text;
     // Web `addAdmin`: name, admin ID, password and society are required.
-    if (name.isEmpty || adminId.isEmpty || _societyId.isEmpty || (!_editing && _password.text.isEmpty)) {
+    if (name.isEmpty ||
+        adminId.isEmpty ||
+        _societyId.isEmpty ||
+        (!_editing && _password.text.isEmpty)) {
       setState(() => _error = context.st('sa.admins.required'));
       return;
     }
@@ -338,10 +395,17 @@ class _AdminFormPageState extends State<AdminFormPage> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (!res.ok) {
-      setState(() => _error = res.duplicate ? context.st('sa.admins.duplicateId') : (res.message ?? context.st('sa.admins.saveFailed')));
+      setState(() => _error = res.duplicate
+          ? context.st('sa.admins.duplicateId')
+          : (res.message ?? context.st('sa.admins.saveFailed')));
       return;
     }
-    AppFeedback.toast(context, _editing ? context.st('sa.admins.updated') : context.t('superadmin.adminAdded'), tone: BadgeTone.success);
+    AppFeedback.toast(
+        context,
+        _editing
+            ? context.st('sa.admins.updated')
+            : context.t('superadmin.adminAdded'),
+        tone: BadgeTone.success);
     await console.loadAll();
     if (mounted) Navigator.of(context).pop();
   }
@@ -352,7 +416,10 @@ class _AdminFormPageState extends State<AdminFormPage> {
     final roles = console.rolesFor(_societyId);
     final selectedRole = console.roleById(_roleId.isEmpty ? null : _roleId);
     return Scaffold(
-      appBar: AppBar(title: Text(_editing ? context.st('sa.admins.edit') : context.st('sa.admins.add'))),
+      appBar: AppBar(
+          title: Text(_editing
+              ? context.st('sa.admins.edit')
+              : context.st('sa.admins.add'))),
       body: PageContainer(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
@@ -360,7 +427,11 @@ class _AdminFormPageState extends State<AdminFormPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AppTextField(label: context.t('common.name'), hint: context.t('common.name'), controller: _name, caps: false),
+                AppTextField(
+                    label: context.t('common.name'),
+                    hint: context.t('common.name'),
+                    controller: _name,
+                    caps: false),
                 const SizedBox(height: 12),
                 AppTextField(
                   label: context.t('admin.adminId'),
@@ -388,7 +459,8 @@ class _AdminFormPageState extends State<AdminFormPage> {
                     suffix: IconButton(
                       tooltip: context.st('sa.admins.generate'),
                       icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-                      onPressed: () => setState(() => _password.text = generateFlatPassword()),
+                      onPressed: () => setState(
+                          () => _password.text = generateFlatPassword()),
                     ),
                   ),
                 ],
@@ -401,7 +473,11 @@ class _AdminFormPageState extends State<AdminFormPage> {
                   labelOf: (id) => console.societyById(id)?.name ?? id,
                   onChanged: (v) => setState(() {
                     _societyId = v ?? '';
-                    if (!console.rolesFor(_societyId).any((r) => r.id == _roleId)) _roleId = '';
+                    if (!console
+                        .rolesFor(_societyId)
+                        .any((r) => r.id == _roleId)) {
+                      _roleId = '';
+                    }
                   }),
                 ),
                 const SizedBox(height: 12),
@@ -409,7 +485,9 @@ class _AdminFormPageState extends State<AdminFormPage> {
                   label: context.t('superadmin.roles'),
                   items: ['', for (final r in roles) r.id],
                   value: _roleId,
-                  labelOf: (id) => id.isEmpty ? context.t('superadmin.noRole') : (console.roleById(id)?.roleName ?? id),
+                  labelOf: (id) => id.isEmpty
+                      ? context.t('superadmin.noRole')
+                      : (console.roleById(id)?.roleName ?? id),
                   onChanged: (v) => setState(() => _roleId = v ?? ''),
                 ),
                 SaHint(
@@ -420,14 +498,23 @@ class _AdminFormPageState extends State<AdminFormPage> {
                           'total': AdminPerm.values.length,
                         }),
                 ),
-                if (_error.isNotEmpty) ...[const SizedBox(height: 12), SaErrorText(_error)],
+                if (_error.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  SaErrorText(_error)
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: AppButton(label: context.t('common.save'), loading: _saving, onPressed: _saving ? null : _save)),
+                    Expanded(
+                        child: AppButton(
+                            label: context.t('common.save'),
+                            loading: _saving,
+                            onPressed: _saving ? null : _save)),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: AppButton.secondary(label: context.t('common.cancel'), onPressed: () => Navigator.of(context).pop()),
+                      child: AppButton.secondary(
+                          label: context.t('common.cancel'),
+                          onPressed: () => Navigator.of(context).pop()),
                     ),
                   ],
                 ),

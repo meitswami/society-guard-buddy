@@ -43,9 +43,12 @@ class TotpQrCode extends StatelessWidget {
           ? CachedNetworkImage(
               imageUrl: totpQrImageUrl(data, size: (size * 2).round()),
               fit: BoxFit.contain,
-              errorWidget: (_, __, ___) => const Icon(Icons.qr_code_2, color: qrForeground, size: 64),
+              errorWidget: (_, __, ___) =>
+                  const Icon(Icons.qr_code_2, color: qrForeground, size: 64),
             )
-          : CustomPaint(painter: _QrPainter(bars, qrForeground), size: Size.square(size - 24)),
+          : CustomPaint(
+              painter: _QrPainter(bars, qrForeground),
+              size: Size.square(size - 24)),
     );
   }
 }
@@ -66,7 +69,8 @@ class _QrPainter extends CustomPainter {
       // Barcode elements use a top-left origin like the Flutter canvas (the pdf
       // package flips them for PDF space); +0.5 avoids hairline gaps between modules.
       canvas.drawRect(
-        Rect.fromLTWH(b.left * scale, b.top * scale, b.width * scale + 0.5, b.height * scale + 0.5),
+        Rect.fromLTWH(b.left * scale, b.top * scale, b.width * scale + 0.5,
+            b.height * scale + 0.5),
         paint,
       );
     }

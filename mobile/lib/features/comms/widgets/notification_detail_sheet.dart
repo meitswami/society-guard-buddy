@@ -48,7 +48,8 @@ class NotificationDetailSheet extends StatefulWidget {
   }
 
   @override
-  State<NotificationDetailSheet> createState() => _NotificationDetailSheetState();
+  State<NotificationDetailSheet> createState() =>
+      _NotificationDetailSheetState();
 }
 
 class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
@@ -94,7 +95,8 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
     final text = _draft.text.trim();
     if (text.isEmpty) return;
     if (widget.isResident && widget.resident == null) {
-      AppFeedback.toast(context, context.ct('comms.detail.notResident'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.ct('comms.detail.notResident'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _sending = true);
@@ -110,11 +112,15 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
       await _loadComments();
       Future.delayed(const Duration(milliseconds: 100), () {
         if (_scroll.hasClients) {
-          _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+          _scroll.animateTo(_scroll.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut);
         }
       });
     } catch (_) {
-      if (mounted) AppFeedback.toast(context, context.ct('comms.detail.sendFailed'), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, context.ct('comms.detail.sendFailed'),
+            tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -124,7 +130,8 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
     final len = n.media.length;
     if (len < 2) return;
     final next = (_mediaIndex + dir + len) % len;
-    _pages.animateToPage(next, duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
+    _pages.animateToPage(next,
+        duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
   }
 
   @override
@@ -134,7 +141,8 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
       children: [
         Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: t.border))),
+          decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: t.border))),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -142,9 +150,12 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(n.title, style: AppText.bodyMedium(context).copyWith(fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text(n.title,
+                        style: AppText.bodyMedium(context).copyWith(
+                            fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
-                    Text(Fmt.dateTimeFull(n.createdAt), style: AppText.caption(context)),
+                    Text(Fmt.dateTimeFull(n.createdAt),
+                        style: AppText.caption(context)),
                   ],
                 ),
               ),
@@ -163,18 +174,25 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                child: SelectableText(n.message, style: AppText.body(context).copyWith(color: t.mutedForeground)),
+                child: SelectableText(n.message,
+                    style: AppText.body(context)
+                        .copyWith(color: t.mutedForeground)),
               ),
               if (n.media.isNotEmpty) _mediaCarousel(context),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppTokens.tint(t.muted, 0.4),
-                  border: Border.symmetric(horizontal: BorderSide(color: t.border)),
+                  border:
+                      Border.symmetric(horizontal: BorderSide(color: t.border)),
                 ),
                 child: Text(
-                  widget.isResident ? context.ct('comms.detail.threadResident') : context.ct('comms.detail.threadAdmin'),
-                  style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500),
+                  widget.isResident
+                      ? context.ct('comms.detail.threadResident')
+                      : context.ct('comms.detail.threadAdmin'),
+                  style: AppText.caption(context)
+                      .copyWith(fontWeight: FontWeight.w500),
                 ),
               ),
               Padding(
@@ -182,16 +200,21 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
                 child: _comments.isEmpty
                     ? Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Text(context.ct('comms.detail.noMessages'), textAlign: TextAlign.center, style: AppText.caption(context)),
+                        child: Text(context.ct('comms.detail.noMessages'),
+                            textAlign: TextAlign.center,
+                            style: AppText.caption(context)),
                       )
-                    : Column(children: [for (final c in _comments) _bubble(context, c)]),
+                    : Column(children: [
+                        for (final c in _comments) _bubble(context, c)
+                      ]),
               ),
             ],
           ),
         ),
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(border: Border(top: BorderSide(color: t.border))),
+          decoration:
+              BoxDecoration(border: Border(top: BorderSide(color: t.border))),
           child: SafeArea(
             top: false,
             child: Row(
@@ -206,17 +229,26 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
                     onChanged: (_) => setState(() {}),
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: widget.isResident ? context.ct('comms.detail.replyResident') : context.ct('comms.detail.replyAdmin'),
+                      hintText: widget.isResident
+                          ? context.ct('comms.detail.replyResident')
+                          : context.ct('comms.detail.replyAdmin'),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
                   tooltip: context.ct('comms.detail.send'),
-                  style: IconButton.styleFrom(backgroundColor: t.primary, foregroundColor: t.primaryForeground),
-                  onPressed: (_sending || _draft.text.trim().isEmpty) ? null : _send,
+                  style: IconButton.styleFrom(
+                      backgroundColor: t.primary,
+                      foregroundColor: t.primaryForeground),
+                  onPressed:
+                      (_sending || _draft.text.trim().isEmpty) ? null : _send,
                   icon: _sending
-                      ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: t.primaryForeground))
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: t.primaryForeground))
                       : const Icon(Icons.send, size: 18),
                 ),
               ],
@@ -252,9 +284,12 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.play_circle_fill, size: 56, color: t.primaryForeground),
+                          Icon(Icons.play_circle_fill,
+                              size: 56, color: t.primaryForeground),
                           const SizedBox(height: 6),
-                          Text(context.ct('comms.detail.openVideo'), style: TextStyle(fontSize: 12, color: t.primaryForeground)),
+                          Text(context.ct('comms.detail.openVideo'),
+                              style: TextStyle(
+                                  fontSize: 12, color: t.primaryForeground)),
                         ],
                       ),
                     ),
@@ -265,26 +300,45 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
                   child: CachedNetworkImage(
                     imageUrl: m.url,
                     fit: BoxFit.contain,
-                    placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
+                    placeholder: (_, __) =>
+                        const Center(child: CircularProgressIndicator()),
                     errorWidget: (_, __, ___) => Center(
-                      child: Text(context.ct('comms.detail.imageFailed'), style: TextStyle(color: t.primaryForeground, fontSize: 12)),
+                      child: Text(context.ct('comms.detail.imageFailed'),
+                          style: TextStyle(
+                              color: t.primaryForeground, fontSize: 12)),
                     ),
                   ),
                 );
               },
             ),
             if (media.length > 1) ...[
-              Positioned(left: 8, top: 0, bottom: 0, child: Center(child: _roundNav(Icons.chevron_left, () => _step(-1), 'comms.detail.previous'))),
-              Positioned(right: 8, top: 0, bottom: 0, child: Center(child: _roundNav(Icons.chevron_right, () => _step(1), 'comms.detail.next'))),
+              Positioned(
+                  left: 8,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                      child: _roundNav(Icons.chevron_left, () => _step(-1),
+                          'comms.detail.previous'))),
+              Positioned(
+                  right: 8,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                      child: _roundNav(Icons.chevron_right, () => _step(1),
+                          'comms.detail.next'))),
               Positioned(
                 bottom: 8,
                 left: 0,
                 right: 0,
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(color: AppTokens.tint(t.background, 0.8), borderRadius: BorderRadius.circular(999)),
-                    child: Text('${_mediaIndex + 1} / ${media.length}', style: TextStyle(fontSize: 12, color: t.foreground)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: AppTokens.tint(t.background, 0.8),
+                        borderRadius: BorderRadius.circular(999)),
+                    child: Text('${_mediaIndex + 1} / ${media.length}',
+                        style: TextStyle(fontSize: 12, color: t.foreground)),
                   ),
                 ),
               ),
@@ -306,7 +360,9 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
         onTap: onTap,
         child: Tooltip(
           message: context.ct(tipKey),
-          child: Padding(padding: const EdgeInsets.all(8), child: Icon(icon, size: 20, color: t.foreground)),
+          child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Icon(icon, size: 20, color: t.foreground)),
         ),
       ),
     );
@@ -324,7 +380,8 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
         ),
         body: InteractiveViewer(
           maxScale: 5,
-          child: Center(child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain)),
+          child: Center(
+              child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain)),
         ),
       ),
     ));
@@ -335,7 +392,8 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
     final admin = c.isAdmin;
     return Container(
       width: double.infinity,
-      margin: EdgeInsets.only(bottom: 12, left: admin ? 16 : 0, right: admin ? 0 : 16),
+      margin: EdgeInsets.only(
+          bottom: 12, left: admin ? 16 : 0, right: admin ? 0 : 16),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: admin ? AppTokens.tint(t.primary, 0.10) : t.muted,
@@ -350,13 +408,22 @@ class _NotificationDetailSheetState extends State<NotificationDetailSheet> {
             children: [
               Text(c.authorName, style: AppText.sectionTitle(context)),
               if ((c.authorFlatNumber ?? '').isNotEmpty)
-                Text(context.ct('comms.detail.flat', {'flat': c.authorFlatNumber}), style: AppText.tiny(context)),
+                Text(
+                    context
+                        .ct('comms.detail.flat', {'flat': c.authorFlatNumber}),
+                    style: AppText.tiny(context)),
               if (admin)
-                Text(context.ct('comms.detail.admin'), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: t.primary)),
+                Text(context.ct('comms.detail.admin'),
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: t.primary)),
             ],
           ),
           const SizedBox(height: 2),
-          SelectableText(c.body, style: AppText.body(context).copyWith(color: AppTokens.tint(t.foreground, 0.9))),
+          SelectableText(c.body,
+              style: AppText.body(context)
+                  .copyWith(color: AppTokens.tint(t.foreground, 0.9))),
           const SizedBox(height: 4),
           Text(Fmt.dateTimeFull(c.createdAt), style: AppText.tiny(context)),
         ],

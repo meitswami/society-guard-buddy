@@ -32,13 +32,20 @@ class _AdminBiometricModuleState extends State<AdminBiometricModule> {
   Widget build(BuildContext context) {
     return PageContainer(
       children: [
-        PageHeader(title: context.t('biometric.title'), subtitle: context.t('biometric.subtitle'), icon: Icons.fingerprint),
+        PageHeader(
+            title: context.t('biometric.title'),
+            subtitle: context.t('biometric.subtitle'),
+            icon: Icons.fingerprint),
         if (_supported == null)
           const LoadingView()
         else if (_supported == false)
-          NoticeBanner(message: context.ct('comms.bio.unavailable'), tone: BadgeTone.warning, icon: Icons.fingerprint)
+          NoticeBanner(
+              message: context.ct('comms.bio.unavailable'),
+              tone: BadgeTone.warning,
+              icon: Icons.fingerprint)
         else
-          CardSection(child: BiometricSettingsTile(session: widget.ctx.session)),
+          CardSection(
+              child: BiometricSettingsTile(session: widget.ctx.session)),
       ],
     );
   }

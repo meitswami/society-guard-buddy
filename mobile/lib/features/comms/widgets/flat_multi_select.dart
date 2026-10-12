@@ -42,16 +42,21 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
           children: [
             Expanded(
               child: Text(
-                context.ct('comms.flats.selected', {'label': label, 'count': widget.selected.length}),
-                style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500),
+                context.ct('comms.flats.selected',
+                    {'label': label, 'count': widget.selected.length}),
+                style: AppText.caption(context)
+                    .copyWith(fontWeight: FontWeight.w500),
               ),
             ),
             if (filtered.isNotEmpty) ...[
               LinkText(context.ct('comms.flats.allVisible'),
-                  onTap: () => widget.onChanged(selectAllVisible(widget.selected, filtered))),
+                  onTap: () => widget
+                      .onChanged(selectAllVisible(widget.selected, filtered))),
               Text(' · ', style: AppText.tiny(context)),
               LinkText(context.ct('comms.flats.clearVisible'),
-                  color: t.mutedForeground, onTap: () => widget.onChanged(clearVisible(widget.selected, filtered))),
+                  color: t.mutedForeground,
+                  onTap: () => widget
+                      .onChanged(clearVisible(widget.selected, filtered))),
             ],
           ],
         ),
@@ -71,7 +76,8 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
           child: filtered.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(context.ct('comms.flats.empty'), style: AppText.caption(context)),
+                  child: Text(context.ct('comms.flats.empty'),
+                      style: AppText.caption(context)),
                 )
               : GridView.builder(
                   itemCount: filtered.length,
@@ -92,16 +98,22 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
                       ),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(6),
-                        onTap: () => widget.onChanged(toggleFlat(widget.selected, f.flatNumber)),
+                        onTap: () => widget.onChanged(
+                            toggleFlat(widget.selected, f.flatNumber)),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 4),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
                                 f.flatNumber,
                                 style: AppText.mono(context,
-                                    size: 12, weight: FontWeight.w600, color: on ? t.primaryForeground : t.foreground),
+                                    size: 12,
+                                    weight: FontWeight.w600,
+                                    color: on
+                                        ? t.primaryForeground
+                                        : t.foreground),
                               ),
                               if (f.subtitle != null)
                                 Text(
@@ -112,7 +124,10 @@ class _FlatMultiSelectState extends State<FlatMultiSelect> {
                                   style: TextStyle(
                                     fontSize: 9,
                                     height: 1.15,
-                                    color: on ? AppTokens.tint(t.primaryForeground, 0.9) : t.mutedForeground,
+                                    color: on
+                                        ? AppTokens.tint(
+                                            t.primaryForeground, 0.9)
+                                        : t.mutedForeground,
                                   ),
                                 ),
                             ],

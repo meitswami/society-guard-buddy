@@ -68,7 +68,8 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
         _right.text = formatMm(lh?.rightMm ?? kPdfMarginMm);
       });
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -79,7 +80,8 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
       await _repo.updateSociety(widget.societyId, patch);
       return true;
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
       return false;
     }
   }
@@ -95,16 +97,20 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
     if (x == null || !mounted) return;
     final type = guessContentType(x.name, mimeType: x.mimeType);
     if (fileMediaKind(mimeType: type, fileName: x.name) != 'image') {
-      AppFeedback.toast(context, context.t('settings.letterheadInvalidType'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.t('settings.letterheadInvalidType'),
+          tone: BadgeTone.alert);
       return;
     }
     setState(() => _saving = true);
     try {
-      final uploaded = await _repo.uploadLetterhead(widget.societyId, await x.readAsBytes(), x.name, contentType: type);
+      final uploaded = await _repo.uploadLetterhead(
+          widget.societyId, await x.readAsBytes(), x.name,
+          contentType: type);
       if (!mounted) return;
       setState(() => _previewUrl = uploaded.signedUrl);
       final previous = _lh?.letterheadStoragePath;
-      if (previous != null && previous.isNotEmpty && previous != uploaded.path) await _repo.removeDocument(previous);
+      if (previous != null && previous.isNotEmpty && previous != uploaded.path)
+        await _repo.removeDocument(previous);
       final ok = await _persist({
         'letterhead_storage_path': uploaded.path,
         'letterhead_url': null,
@@ -112,11 +118,13 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
         'default_report_format': _format,
       });
       if (ok && mounted) {
-        AppFeedback.toast(context, context.t('settings.letterheadSaved'), tone: BadgeTone.success);
+        AppFeedback.toast(context, context.t('settings.letterheadSaved'),
+            tone: BadgeTone.success);
         await _reload();
       }
     } catch (e) {
-      if (mounted) AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
+      if (mounted)
+        AppFeedback.toast(context, commsErrorMessage(e), tone: BadgeTone.alert);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -127,9 +135,14 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
     try {
       final path = _lh?.letterheadStoragePath;
       if (path != null && path.isNotEmpty) await _repo.removeDocument(path);
-      final ok = await _persist({'letterhead_storage_path': null, 'letterhead_url': null, 'letterhead_mode': 'auto'});
+      final ok = await _persist({
+        'letterhead_storage_path': null,
+        'letterhead_url': null,
+        'letterhead_mode': 'auto'
+      });
       if (ok && mounted) {
-        AppFeedback.toast(context, context.t('settings.letterheadRemoved'), tone: BadgeTone.success);
+        AppFeedback.toast(context, context.t('settings.letterheadRemoved'),
+            tone: BadgeTone.success);
         await _reload();
       }
     } finally {
@@ -150,7 +163,8 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
         resolvedLetterheadUrl: _resolvedUrl,
       ));
       if (ok && mounted) {
-        AppFeedback.toast(context, context.t('settings.reportSettingsSaved'), tone: BadgeTone.success);
+        AppFeedback.toast(context, context.t('settings.reportSettingsSaved'),
+            tone: BadgeTone.success);
         await _reload();
       }
     } finally {
@@ -167,18 +181,24 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(context.t('settings.reportSettings'), style: AppText.sectionTitle(context)),
+          Text(context.t('settings.reportSettings'),
+              style: AppText.sectionTitle(context)),
           const SizedBox(height: 4),
-          Text(context.t('settings.reportSettingsHint'), style: AppText.tiny(context).copyWith(height: 1.4)),
+          Text(context.t('settings.reportSettingsHint'),
+              style: AppText.tiny(context).copyWith(height: 1.4)),
           const SizedBox(height: 12),
           if (_loading)
             Text('…', style: AppText.caption(context))
           else ...[
             if (!has) ...[
-              NoticeBanner(message: context.ct('comms.settings.letterheadWarning'), tone: BadgeTone.warning),
+              NoticeBanner(
+                  message: context.ct('comms.settings.letterheadWarning'),
+                  tone: BadgeTone.warning),
               const SizedBox(height: 16),
             ],
-            Text(context.t('settings.societyLetterhead'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+            Text(context.t('settings.societyLetterhead'),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(AppTokens.radiusSm),
@@ -197,10 +217,13 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
                         child: CachedNetworkImage(
                           imageUrl: _previewUrl!,
                           fit: BoxFit.contain,
-                          errorWidget: (_, __, ___) => Icon(Icons.image_not_supported_outlined, color: t.mutedForeground),
+                          errorWidget: (_, __, ___) => Icon(
+                              Icons.image_not_supported_outlined,
+                              color: t.mutedForeground),
                         ),
                       )
-                    : Icon(Icons.image_outlined, size: 24, color: t.mutedForeground),
+                    : Icon(Icons.image_outlined,
+                        size: 24, color: t.mutedForeground),
               ),
             ),
             const SizedBox(height: 8),
@@ -212,7 +235,9 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
                   expand: false,
                   dense: true,
                   icon: Icons.upload_outlined,
-                  label: has ? context.t('settings.replaceLetterhead') : context.t('settings.uploadLetterhead'),
+                  label: has
+                      ? context.t('settings.replaceLetterhead')
+                      : context.t('settings.uploadLetterhead'),
                   onPressed: _saving ? null : _upload,
                 ),
                 if (has)
@@ -225,9 +250,12 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
               ],
             ),
             const SizedBox(height: 6),
-            Text(context.t('settings.letterheadUploadHint'), style: AppText.tiny(context)),
+            Text(context.t('settings.letterheadUploadHint'),
+                style: AppText.tiny(context)),
             const SizedBox(height: 16),
-            Text(context.t('settings.defaultReportFormat'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+            Text(context.t('settings.defaultReportFormat'),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
             RadioGroup<String>(
               groupValue: _format,
               onChanged: (v) => setState(() => _format = v ?? 'letterhead'),
@@ -237,19 +265,23 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     value: 'letterhead',
-                    title: Text(context.t('settings.formatOfficialLetterhead'), style: const TextStyle(fontSize: 12)),
+                    title: Text(context.t('settings.formatOfficialLetterhead'),
+                        style: const TextStyle(fontSize: 12)),
                   ),
                   RadioListTile<String>(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     value: 'plain',
-                    title: Text(context.t('settings.formatPlainPdf'), style: const TextStyle(fontSize: 12)),
+                    title: Text(context.t('settings.formatPlainPdf'),
+                        style: const TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 8),
-            Text(context.t('settings.safeContentArea'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+            Text(context.t('settings.safeContentArea'),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -278,12 +310,17 @@ class _ReportSettingsPanelState extends State<ReportSettingsPanel> {
     );
   }
 
-  Widget _mm(BuildContext context, String key, TextEditingController c) => Column(
+  Widget _mm(BuildContext context, String key, TextEditingController c) =>
+      Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(context.t(key), style: AppText.tiny(context)),
           const SizedBox(height: 4),
-          AppTextField(controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true), caps: false),
+          AppTextField(
+              controller: c,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              caps: false),
         ],
       );
 }

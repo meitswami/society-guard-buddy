@@ -5,7 +5,8 @@ library;
 /// One editable translation key (web `ContentTranslationField`). The web labels are English
 /// only; [labelHi] is the Hindi label shown when the app language is Hindi.
 class ContentTranslationField {
-  const ContentTranslationField(this.key, this.labelEn, this.labelHi, {this.multiline = false});
+  const ContentTranslationField(this.key, this.labelEn, this.labelHi,
+      {this.multiline = false});
 
   final String key;
   final String labelEn;
@@ -37,20 +38,38 @@ const List<ContentTranslationGroup> kContentTranslationGroups = [
     id: 'finance_member',
     titleEn: 'Finance (member-facing notices)',
     titleHi: 'वित्त (सदस्यों को दिखने वाली सूचनाएँ)',
-    descriptionEn: 'Receipt / duplicate messages members and admins see in Finance and Audit.',
-    descriptionHi: 'रसीद / डुप्लिकेट संदेश जो सदस्य और प्रशासक वित्त तथा लेखा-परीक्षा में देखते हैं।',
+    descriptionEn:
+        'Receipt / duplicate messages members and admins see in Finance and Audit.',
+    descriptionHi:
+        'रसीद / डुप्लिकेट संदेश जो सदस्य और प्रशासक वित्त तथा लेखा-परीक्षा में देखते हैं।',
     fields: [
-      ContentTranslationField('finance.receiptHead', 'Receipt head (generic label)', 'रसीद शीर्ष (सामान्य नाम)'),
-      ContentTranslationField('finance.allReceiptHeads', 'All receipt heads', 'सभी रसीद शीर्ष'),
-      ContentTranslationField('finance.noDuplicateTitle', 'No duplicate receipt-head — title', 'कोई डुप्लिकेट रसीद-शीर्ष नहीं — शीर्षक'),
-      ContentTranslationField('finance.noDuplicateBody', 'No duplicate receipt-head — body', 'कोई डुप्लिकेट रसीद-शीर्ष नहीं — विवरण',
+      ContentTranslationField('finance.receiptHead',
+          'Receipt head (generic label)', 'रसीद शीर्ष (सामान्य नाम)'),
+      ContentTranslationField(
+          'finance.allReceiptHeads', 'All receipt heads', 'सभी रसीद शीर्ष'),
+      ContentTranslationField(
+          'finance.noDuplicateTitle',
+          'No duplicate receipt-head — title',
+          'कोई डुप्लिकेट रसीद-शीर्ष नहीं — शीर्षक'),
+      ContentTranslationField(
+          'finance.noDuplicateBody',
+          'No duplicate receipt-head — body',
+          'कोई डुप्लिकेट रसीद-शीर्ष नहीं — विवरण',
           multiline: true),
-      ContentTranslationField('finance.duplicateDetectedTitle', 'Duplicates detected — title', 'डुप्लिकेट मिले — शीर्षक'),
-      ContentTranslationField('finance.duplicateDetectedBody', 'Duplicates detected — body', 'डुप्लिकेट मिले — विवरण', multiline: true),
-      ContentTranslationField('finance.findReceiptHeadTitle', 'Find recorded receipt head — title', 'दर्ज रसीद शीर्ष खोजें — शीर्षक'),
-      ContentTranslationField('finance.findReceiptHeadHint', 'Find recorded receipt head — hint', 'दर्ज रसीद शीर्ष खोजें — संकेत',
+      ContentTranslationField('finance.duplicateDetectedTitle',
+          'Duplicates detected — title', 'डुप्लिकेट मिले — शीर्षक'),
+      ContentTranslationField('finance.duplicateDetectedBody',
+          'Duplicates detected — body', 'डुप्लिकेट मिले — विवरण',
           multiline: true),
-      ContentTranslationField('finance.receiptAlreadyRecorded', 'Receipt already recorded (short)', 'रसीद पहले से दर्ज (संक्षिप्त)',
+      ContentTranslationField(
+          'finance.findReceiptHeadTitle',
+          'Find recorded receipt head — title',
+          'दर्ज रसीद शीर्ष खोजें — शीर्षक'),
+      ContentTranslationField('finance.findReceiptHeadHint',
+          'Find recorded receipt head — hint', 'दर्ज रसीद शीर्ष खोजें — संकेत',
+          multiline: true),
+      ContentTranslationField('finance.receiptAlreadyRecorded',
+          'Receipt already recorded (short)', 'रसीद पहले से दर्ज (संक्षिप्त)',
           multiline: true),
       ContentTranslationField(
         'finance.receiptAlreadyRecordedDetail',
@@ -84,10 +103,12 @@ class ContentDraft {
   final String en;
   final String hi;
 
-  ContentDraft copyWith({String? en, String? hi}) => ContentDraft(en: en ?? this.en, hi: hi ?? this.hi);
+  ContentDraft copyWith({String? en, String? hi}) =>
+      ContentDraft(en: en ?? this.en, hi: hi ?? this.hi);
 
   @override
-  bool operator ==(Object other) => other is ContentDraft && other.en == en && other.hi == hi;
+  bool operator ==(Object other) =>
+      other is ContentDraft && other.en == en && other.hi == hi;
 
   @override
   int get hashCode => Object.hash(en, hi);
@@ -107,7 +128,9 @@ Map<String, ContentDraft> mergeContentDrafts({
   for (final row in savedRows) {
     final key = row['content_key']?.toString() ?? '';
     if (!keys.contains(key)) continue;
-    map[key] = ContentDraft(en: row['text_en']?.toString() ?? '', hi: row['text_hi']?.toString() ?? '');
+    map[key] = ContentDraft(
+        en: row['text_en']?.toString() ?? '',
+        hi: row['text_hi']?.toString() ?? '');
   }
   return map;
 }

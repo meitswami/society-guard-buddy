@@ -20,9 +20,12 @@ class SocietyFormPage extends StatefulWidget {
   /// `null` → new society.
   final SocietyRow? society;
 
-  static Future<bool?> open(BuildContext context, SuperadminConsole console, {SocietyRow? society}) =>
+  static Future<bool?> open(BuildContext context, SuperadminConsole console,
+          {SocietyRow? society}) =>
       Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => SocietyFormPage(console: console, society: society)),
+        MaterialPageRoute(
+            builder: (_) =>
+                SocietyFormPage(console: console, society: society)),
       );
 
   @override
@@ -43,11 +46,16 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
   @override
   void initState() {
     super.initState();
-    _sf = widget.society == null ? emptySocietyForm() : societyToForm(widget.society!.formSource);
+    _sf = widget.society == null
+        ? emptySocietyForm()
+        : societyToForm(widget.society!.formSource);
   }
 
   void _toast(String msg, [BadgeTone tone = BadgeTone.alert]) {
-    if (mounted) AppFeedback.toast(context, msg, tone: tone, duration: const Duration(seconds: 4));
+    if (mounted) {
+      AppFeedback.toast(context, msg,
+          tone: tone, duration: const Duration(seconds: 4));
+    }
   }
 
   Future<ImageSource?> _askSource() => showModalBottomSheet<ImageSource>(
@@ -87,7 +95,8 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
     if (files.isEmpty || !mounted) return;
     setState(() {
       for (final f in files) {
-        if (_pendingPhotos.length + _sf.existingPhotoUrls.length >= kMaxSocietyPhotos) {
+        if (_pendingPhotos.length + _sf.existingPhotoUrls.length >=
+            kMaxSocietyPhotos) {
           _toast(context.t('superadmin.societyPhotosLimit'));
           break;
         }
@@ -97,7 +106,8 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
   }
 
   Future<List<PickedImage>?> _cameraPhoto() async {
-    final f = await SuperadminImagePicker.pickOne(source: ImageSource.camera, maxSide: 2048, quality: 88);
+    final f = await SuperadminImagePicker.pickOne(
+        source: ImageSource.camera, maxSide: 2048, quality: 88);
     return f == null ? null : [f];
   }
 
@@ -105,7 +115,10 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
     final source = await _askSource();
     if (source == null) return null;
     try {
-      return await SuperadminImagePicker.pickOne(source: source, maxSide: source == ImageSource.camera ? (maxSide ?? 2048) : maxSide, quality: source == ImageSource.camera ? 90 : null);
+      return await SuperadminImagePicker.pickOne(
+          source: source,
+          maxSide: source == ImageSource.camera ? (maxSide ?? 2048) : maxSide,
+          quality: source == ImageSource.camera ? 90 : null);
     } catch (_) {
       if (mounted) _toast(context.st('sa.pick.failed'));
       return null;
@@ -119,7 +132,8 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
       return;
     }
     final baseRow = buildSocietyBaseRow(_sf);
-    if (_sf.existingPhotoUrls.length + _pendingPhotos.length > kMaxSocietyPhotos) {
+    if (_sf.existingPhotoUrls.length + _pendingPhotos.length >
+        kMaxSocietyPhotos) {
       _toast(context.t('superadmin.societyPhotosLimit'));
       return;
     }
@@ -140,12 +154,22 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
       final editingId = _editingId;
       if (editingId != null) {
         societyId = editingId;
-        if (_pendingLogo != null) logoUrl = await uploads.societyLogo(editingId, _pendingLogo!) ?? logoUrl;
+        if (_pendingLogo != null) {
+          logoUrl =
+              await uploads.societyLogo(editingId, _pendingLogo!) ?? logoUrl;
+        }
         if (_pendingLetterhead != null) {
-          letterheadUrl = await uploads.societyLetterhead(editingId, _pendingLetterhead!) ?? letterheadUrl;
+          letterheadUrl =
+              await uploads.societyLetterhead(editingId, _pendingLetterhead!) ??
+                  letterheadUrl;
         }
         var photoUrls = [..._sf.existingPhotoUrls];
-        if (_pendingPhotos.isNotEmpty) photoUrls = [...photoUrls, ...await uploads.societyPhotos(editingId, _pendingPhotos)];
+        if (_pendingPhotos.isNotEmpty) {
+          photoUrls = [
+            ...photoUrls,
+            ...await uploads.societyPhotos(editingId, _pendingPhotos)
+          ];
+        }
         await repo.updateSociety(editingId, {
           ...baseRow,
           'logo_url': logoUrl,
@@ -154,13 +178,24 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
         });
         _toast(msgUpdated, BadgeTone.success);
       } else {
-        societyId = await repo.insertSociety({...baseRow, 'photo_urls': <String>[]});
-        if (_pendingLogo != null) logoUrl = await uploads.societyLogo(societyId, _pendingLogo!) ?? logoUrl;
+        societyId =
+            await repo.insertSociety({...baseRow, 'photo_urls': <String>[]});
+        if (_pendingLogo != null) {
+          logoUrl =
+              await uploads.societyLogo(societyId, _pendingLogo!) ?? logoUrl;
+        }
         if (_pendingLetterhead != null) {
-          letterheadUrl = await uploads.societyLetterhead(societyId, _pendingLetterhead!) ?? letterheadUrl;
+          letterheadUrl =
+              await uploads.societyLetterhead(societyId, _pendingLetterhead!) ??
+                  letterheadUrl;
         }
         var photoUrls = [..._sf.existingPhotoUrls];
-        if (_pendingPhotos.isNotEmpty) photoUrls = [...photoUrls, ...await uploads.societyPhotos(societyId, _pendingPhotos)];
+        if (_pendingPhotos.isNotEmpty) {
+          photoUrls = [
+            ...photoUrls,
+            ...await uploads.societyPhotos(societyId, _pendingPhotos)
+          ];
+        }
         final patch = <String, dynamic>{
           if (photoUrls.isNotEmpty) 'photo_urls': photoUrls,
           if (logoUrl != null) 'logo_url': logoUrl,
@@ -171,14 +206,18 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
       }
 
       final trimmed = await repo.trimFlatsToConfiguredRange(societyId, layout);
-      if (trimmed > 0) _toast(msgTrimmed.replaceAll('{count}', '$trimmed'), BadgeTone.info);
+      if (trimmed > 0) {
+        _toast(msgTrimmed.replaceAll('{count}', '$trimmed'), BadgeTone.info);
+      }
 
       final generated = await repo.upsertFlatsFromLayout(societyId, layout);
       if (generated.error != null) {
         _toast(generated.error!);
       } else if (generated.created > 0) {
         _toast(
-          msgGenerated.replaceAll('{created}', '${generated.created}').replaceAll('{skipped}', '${generated.skipped}'),
+          msgGenerated
+              .replaceAll('{created}', '${generated.created}')
+              .replaceAll('{skipped}', '${generated.skipped}'),
           BadgeTone.success,
         );
       }
@@ -209,12 +248,15 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
     setState(() => _resetting = true);
     try {
       await widget.console.repo.deleteResidentialFlats(id);
-      final generated = await widget.console.repo.upsertFlatsFromLayout(id, layout);
+      final generated =
+          await widget.console.repo.upsertFlatsFromLayout(id, layout);
       if (generated.error != null) {
         _toast(generated.error!);
       } else {
         _toast(
-          msgRegenerated.replaceAll('{created}', '${generated.created}').replaceAll('{skipped}', '${generated.skipped}'),
+          msgRegenerated
+              .replaceAll('{created}', '${generated.created}')
+              .replaceAll('{skipped}', '${generated.skipped}'),
           BadgeTone.success,
         );
       }
@@ -228,11 +270,19 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
 
   Widget _row2(Widget a, Widget b) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [Expanded(child: a), const SizedBox(width: 8), Expanded(child: b)],
+        children: [
+          Expanded(child: a),
+          const SizedBox(width: 8),
+          Expanded(child: b)
+        ],
       );
 
   Widget _field(String hint, String value, ValueChanged<String> onChanged,
-      {TextInputType? keyboard, int maxLines = 1, IconData? icon, bool error = false, String? label}) {
+      {TextInputType? keyboard,
+      int maxLines = 1,
+      IconData? icon,
+      bool error = false,
+      String? label}) {
     return AppTextField(
       label: label,
       hint: hint,
@@ -248,21 +298,28 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
   }
 
   List<Widget> _spaced(List<Widget> items, [double h = 12]) => [
-        for (var i = 0; i < items.length; i++) ...[if (i > 0) SizedBox(height: h), items[i]],
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) SizedBox(height: h),
+          items[i]
+        ],
       ];
 
-  Widget _imagePreview({String? url, PickedImage? pending, double w = 40, double h = 40}) {
+  Widget _imagePreview(
+      {String? url, PickedImage? pending, double w = 40, double h = 40}) {
     final t = context.tokens;
     if (pending != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Container(
           decoration: BoxDecoration(border: Border.all(color: t.border)),
-          child: Image.memory(pending.bytes, width: w, height: h, fit: BoxFit.cover),
+          child: Image.memory(pending.bytes,
+              width: w, height: h, fit: BoxFit.cover),
         ),
       );
     }
-    if (url != null && url.trim().isNotEmpty) return SaNetImage(url.trim(), width: w, height: h);
+    if (url != null && url.trim().isNotEmpty) {
+      return SaNetImage(url.trim(), width: w, height: h);
+    }
     return const SizedBox.shrink();
   }
 
@@ -272,7 +329,10 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
     final editing = _editingId != null;
     final busy = _saving || _resetting;
     return Scaffold(
-      appBar: AppBar(title: Text(editing ? context.t('superadmin.editSociety') : context.t('superadmin.newSociety'))),
+      appBar: AppBar(
+          title: Text(editing
+              ? context.t('superadmin.editSociety')
+              : context.t('superadmin.newSociety'))),
       body: SafeArea(
         child: PageContainer(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -292,26 +352,37 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                       if (v.trim().isNotEmpty) _nameError = false;
                     }),
                   ),
-                  if (_nameError) Text(context.st('sa.societies.nameRequired'), style: TextStyle(fontSize: 12, color: t.destructive)),
-                  _field(context.t('superadmin.address'), _sf.address, (v) => _sf.address = v, maxLines: 3),
+                  if (_nameError)
+                    Text(context.st('sa.societies.nameRequired'),
+                        style: TextStyle(fontSize: 12, color: t.destructive)),
+                  _field(context.t('superadmin.address'), _sf.address,
+                      (v) => _sf.address = v,
+                      maxLines: 3),
                   _row2(
-                    _field(context.t('superadmin.city'), _sf.city, (v) => _sf.city = v),
-                    _field(context.t('superadmin.state'), _sf.state, (v) => _sf.state = v),
+                    _field(context.t('superadmin.city'), _sf.city,
+                        (v) => _sf.city = v),
+                    _field(context.t('superadmin.state'), _sf.state,
+                        (v) => _sf.state = v),
                   ),
-                  _field(context.t('superadmin.pincode'), _sf.pincode, (v) => _sf.pincode = v, keyboard: TextInputType.number),
+                  _field(context.t('superadmin.pincode'), _sf.pincode,
+                      (v) => _sf.pincode = v,
+                      keyboard: TextInputType.number),
 
                   // Building & site
                   SaSubsection(
                     label: context.t('superadmin.societyBuilding'),
                     children: [
                       _row2(
-                        _field(context.t('superadmin.totalFlats'), _sf.totalFlats, (v) => _sf.totalFlats = v,
+                        _field(context.t('superadmin.totalFlats'),
+                            _sf.totalFlats, (v) => _sf.totalFlats = v,
                             keyboard: TextInputType.number),
-                        _field(context.t('superadmin.totalFloors'), _sf.totalFloors, (v) => _sf.totalFloors = v,
+                        _field(context.t('superadmin.totalFloors'),
+                            _sf.totalFloors, (v) => _sf.totalFloors = v,
                             keyboard: TextInputType.number),
                       ),
                       const SizedBox(height: 8),
-                      _field(context.t('superadmin.blocksPlaceholder'), _sf.blocksCsv, (v) => _sf.blocksCsv = v),
+                      _field(context.t('superadmin.blocksPlaceholder'),
+                          _sf.blocksCsv, (v) => _sf.blocksCsv = v),
                       SaHint(context.t('superadmin.blocksHint')),
                       const SizedBox(height: 8),
                       TriStateField(
@@ -325,7 +396,9 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                         value: _sf.basement,
                         onChanged: (v) => setState(() {
                           _sf.basement = v;
-                          if (v != TriState.yes) _sf.basementUsable = TriState.unset;
+                          if (v != TriState.yes) {
+                            _sf.basementUsable = TriState.unset;
+                          }
                         }),
                       ),
                       if (_sf.basement == TriState.yes) ...[
@@ -333,7 +406,8 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                         TriStateField(
                           label: context.t('superadmin.basementUsable'),
                           value: _sf.basementUsable,
-                          onChanged: (v) => setState(() => _sf.basementUsable = v),
+                          onChanged: (v) =>
+                              setState(() => _sf.basementUsable = v),
                         ),
                       ],
                     ],
@@ -343,18 +417,23 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                   SaSubsection(
                     label: context.t('superadmin.flatNumbering'),
                     children: [
-                      _field(context.t('superadmin.flatsPerFloor'), _sf.flatsPerFloor, (v) => _sf.flatsPerFloor = v,
+                      _field(context.t('superadmin.flatsPerFloor'),
+                          _sf.flatsPerFloor, (v) => _sf.flatsPerFloor = v,
                           keyboard: TextInputType.number),
                       const SizedBox(height: 8),
                       _row2(
-                        _field(context.t('superadmin.flatSeriesFrom'), _sf.flatSeriesFrom, (v) => _sf.flatSeriesFrom = v),
-                        _field(context.t('superadmin.flatSeriesTo'), _sf.flatSeriesTo, (v) => _sf.flatSeriesTo = v),
+                        _field(context.t('superadmin.flatSeriesFrom'),
+                            _sf.flatSeriesFrom, (v) => _sf.flatSeriesFrom = v),
+                        _field(context.t('superadmin.flatSeriesTo'),
+                            _sf.flatSeriesTo, (v) => _sf.flatSeriesTo = v),
                       ),
                       SaHint(context.t('superadmin.flatSeriesHelp')),
                       SaHint(context.t('superadmin.flatTrimHint'),
-                          accent: AppTokens.tint(t.primary, 0.3), padding: const EdgeInsets.only(top: 6)),
+                          accent: AppTokens.tint(t.primary, 0.3),
+                          padding: const EdgeInsets.only(top: 6)),
                       SaHint(context.t('superadmin.flatGenerateHint'),
-                          accent: AppTokens.tint(t.success, 0.4), padding: const EdgeInsets.only(top: 6)),
+                          accent: AppTokens.tint(t.success, 0.4),
+                          padding: const EdgeInsets.only(top: 6)),
                       if (editing) ...[
                         const SizedBox(height: 8),
                         Align(
@@ -379,7 +458,8 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                   SaSubsection(
                     label: context.t('superadmin.societyPhotos'),
                     children: [
-                      SaHint(context.t('superadmin.societyPhotosHint'), padding: const EdgeInsets.only(bottom: 8)),
+                      SaHint(context.t('superadmin.societyPhotosHint'),
+                          padding: const EdgeInsets.only(bottom: 8)),
                       if (_sf.existingPhotoUrls.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
@@ -395,14 +475,18 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                                       top: 2,
                                       right: 2,
                                       child: InkWell(
-                                        onTap: () => setState(() => _sf.existingPhotoUrls.remove(url)),
+                                        onTap: () => setState(() =>
+                                            _sf.existingPhotoUrls.remove(url)),
                                         child: Container(
                                           padding: const EdgeInsets.all(2),
                                           decoration: BoxDecoration(
-                                            color: AppTokens.tint(t.background, 0.9),
-                                            borderRadius: BorderRadius.circular(4),
+                                            color: AppTokens.tint(
+                                                t.background, 0.9),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
                                           ),
-                                          child: Icon(Icons.close, size: 12, color: t.destructive),
+                                          child: Icon(Icons.close,
+                                              size: 12, color: t.destructive),
                                         ),
                                       ),
                                     ),
@@ -418,16 +502,20 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
-                                child: Image.memory(_pendingPhotos[i].bytes, width: 28, height: 28, fit: BoxFit.cover),
+                                child: Image.memory(_pendingPhotos[i].bytes,
+                                    width: 28, height: 28, fit: BoxFit.cover),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(_pendingPhotos[i].name,
-                                    overflow: TextOverflow.ellipsis, style: AppText.tiny(context)),
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppText.tiny(context)),
                               ),
                               InkWell(
-                                onTap: () => setState(() => _pendingPhotos.removeAt(i)),
-                                child: Icon(Icons.close, size: 14, color: t.destructive),
+                                onTap: () =>
+                                    setState(() => _pendingPhotos.removeAt(i)),
+                                child: Icon(Icons.close,
+                                    size: 14, color: t.destructive),
                               ),
                             ],
                           ),
@@ -449,20 +537,29 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                   SaSubsection(
                     label: context.t('superadmin.branding'),
                     children: _spaced([
-                      _field(context.t('superadmin.contactPerson'), _sf.contactPerson, (v) => _sf.contactPerson = v,
+                      _field(context.t('superadmin.contactPerson'),
+                          _sf.contactPerson, (v) => _sf.contactPerson = v,
                           icon: Icons.person_outline),
-                      _field(context.t('superadmin.contactEmail'), _sf.contactEmail, (v) => _sf.contactEmail = v,
-                          icon: Icons.mail_outline, keyboard: TextInputType.emailAddress),
-                      _field(context.t('superadmin.contactPhone'), _sf.contactPhone, (v) => _sf.contactPhone = v,
-                          icon: Icons.phone_outlined, keyboard: TextInputType.phone),
+                      _field(context.t('superadmin.contactEmail'),
+                          _sf.contactEmail, (v) => _sf.contactEmail = v,
+                          icon: Icons.mail_outline,
+                          keyboard: TextInputType.emailAddress),
+                      _field(context.t('superadmin.contactPhone'),
+                          _sf.contactPhone, (v) => _sf.contactPhone = v,
+                          icon: Icons.phone_outlined,
+                          keyboard: TextInputType.phone),
                       Row(
                         children: [
-                          if (_pendingLogo != null || _sf.logoUrl.trim().isNotEmpty) ...[
-                            _imagePreview(url: _sf.logoUrl, pending: _pendingLogo),
+                          if (_pendingLogo != null ||
+                              _sf.logoUrl.trim().isNotEmpty) ...[
+                            _imagePreview(
+                                url: _sf.logoUrl, pending: _pendingLogo),
                             const SizedBox(width: 8),
                           ],
                           Expanded(
-                            child: _field(context.t('superadmin.logoUrl'), _sf.logoUrl,
+                            child: _field(
+                                context.t('superadmin.logoUrl'),
+                                _sf.logoUrl,
                                 (v) => setState(() => _sf.logoUrl = v),
                                 keyboard: TextInputType.url),
                           ),
@@ -479,42 +576,62 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                               ? null
                               : () async {
                                   final f = await _pickSingle(maxSide: 1024);
-                                  if (f != null && mounted) setState(() => _pendingLogo = f);
+                                  if (f != null && mounted) {
+                                    setState(() => _pendingLogo = f);
+                                  }
                                 },
                         ),
                       ),
                       if (_pendingLogo != null)
-                        SaHint('${_pendingLogo!.name} — ${context.t('superadmin.logoUploadOnSave')}', padding: EdgeInsets.zero),
+                        SaHint(
+                            '${_pendingLogo!.name} — ${context.t('superadmin.logoUploadOnSave')}',
+                            padding: EdgeInsets.zero),
 
                       // Letterhead
                       Container(
                         padding: const EdgeInsets.only(top: 8),
-                        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppTokens.tint(t.border, 0.6)))),
+                        decoration: BoxDecoration(
+                            border: Border(
+                                top: BorderSide(
+                                    color: AppTokens.tint(t.border, 0.6)))),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: _spaced([
                             Text(context.t('superadmin.letterhead'),
-                                style: AppText.caption(context).copyWith(fontWeight: FontWeight.w500)),
-                            SaHint(context.t('superadmin.letterheadHint'), padding: EdgeInsets.zero),
+                                style: AppText.caption(context)
+                                    .copyWith(fontWeight: FontWeight.w500)),
+                            SaHint(context.t('superadmin.letterheadHint'),
+                                padding: EdgeInsets.zero),
                             AppDropdown<String>(
                               items: kLetterheadModes,
                               value: _sf.letterheadMode,
                               labelOf: (m) => switch (m) {
-                                'image' => context.t('superadmin.letterheadModeImage'),
-                                'stationery' => context.t('superadmin.letterheadModeStationery'),
+                                'image' =>
+                                  context.t('superadmin.letterheadModeImage'),
+                                'stationery' => context
+                                    .t('superadmin.letterheadModeStationery'),
                                 _ => context.t('superadmin.letterheadModeAuto'),
                               },
-                              onChanged: (v) => setState(() => _sf.letterheadMode = v ?? 'auto'),
+                              onChanged: (v) => setState(
+                                  () => _sf.letterheadMode = v ?? 'auto'),
                             ),
                             Row(
                               children: [
-                                if (_pendingLetterhead != null || _sf.letterheadUrl.trim().isNotEmpty) ...[
-                                  _imagePreview(url: _sf.letterheadUrl, pending: _pendingLetterhead, w: 64, h: 40),
+                                if (_pendingLetterhead != null ||
+                                    _sf.letterheadUrl.trim().isNotEmpty) ...[
+                                  _imagePreview(
+                                      url: _sf.letterheadUrl,
+                                      pending: _pendingLetterhead,
+                                      w: 64,
+                                      h: 40),
                                   const SizedBox(width: 8),
                                 ],
                                 Expanded(
-                                  child: _field(context.t('superadmin.letterheadUrl'), _sf.letterheadUrl,
-                                      (v) => setState(() => _sf.letterheadUrl = v),
+                                  child: _field(
+                                      context.t('superadmin.letterheadUrl'),
+                                      _sf.letterheadUrl,
+                                      (v) =>
+                                          setState(() => _sf.letterheadUrl = v),
                                       keyboard: TextInputType.url),
                                 ),
                               ],
@@ -529,7 +646,8 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                                 onPressed: busy
                                     ? null
                                     : () async {
-                                        final f = await _pickSingle(maxSide: 2480);
+                                        final f =
+                                            await _pickSingle(maxSide: 2480);
                                         if (f != null && mounted) {
                                           setState(() {
                                             _pendingLetterhead = f;
@@ -540,15 +658,24 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                               ),
                             ),
                             if (_pendingLetterhead != null)
-                              SaHint('${_pendingLetterhead!.name} — ${context.t('superadmin.logoUploadOnSave')}',
+                              SaHint(
+                                  '${_pendingLetterhead!.name} — ${context.t('superadmin.logoUploadOnSave')}',
                                   padding: EdgeInsets.zero),
                             _row2(
-                              _field('15–80', _sf.letterheadTopMm, (v) => _sf.letterheadTopMm = v,
-                                  keyboard: const TextInputType.numberWithOptions(decimal: true),
-                                  label: context.t('superadmin.letterheadTopMm')),
-                              _field('10–40', _sf.letterheadBottomMm, (v) => _sf.letterheadBottomMm = v,
-                                  keyboard: const TextInputType.numberWithOptions(decimal: true),
-                                  label: context.t('superadmin.letterheadBottomMm')),
+                              _field('15–80', _sf.letterheadTopMm,
+                                  (v) => _sf.letterheadTopMm = v,
+                                  keyboard:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
+                                  label:
+                                      context.t('superadmin.letterheadTopMm')),
+                              _field('10–40', _sf.letterheadBottomMm,
+                                  (v) => _sf.letterheadBottomMm = v,
+                                  keyboard:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
+                                  label: context
+                                      .t('superadmin.letterheadBottomMm')),
                             ),
                           ], 8),
                         ),
@@ -569,7 +696,9 @@ class _SocietyFormPageState extends State<SocietyFormPage> {
                       Expanded(
                         child: AppButton.secondary(
                           label: context.t('common.cancel'),
-                          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+                          onPressed: _saving
+                              ? null
+                              : () => Navigator.of(context).pop(false),
                         ),
                       ),
                     ],

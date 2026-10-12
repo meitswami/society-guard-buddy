@@ -35,18 +35,25 @@ class _AdminSettingsModuleState extends State<AdminSettingsModule> {
     return PageContainer(
       onRefresh: () async => setState(() => _gen++),
       children: [
-        PageHeader(title: context.t('settings.title'), subtitle: context.t('settings.subtitle'), icon: Icons.settings_outlined),
+        PageHeader(
+            title: context.t('settings.title'),
+            subtitle: context.t('settings.subtitle'),
+            icon: Icons.settings_outlined),
         const AppearanceCard(),
         CardSection(
           margin: const EdgeInsets.only(bottom: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SectionTitle(context.t('settings.account'), icon: Icons.lock_outline, padding: const EdgeInsets.only(bottom: 12)),
-              AdminPasswordForm(key: k('pw'), adminId: widget.ctx.adminId, societyId: sid),
+              SectionTitle(context.t('settings.account'),
+                  icon: Icons.lock_outline,
+                  padding: const EdgeInsets.only(bottom: 12)),
+              AdminPasswordForm(
+                  key: k('pw'), adminId: widget.ctx.adminId, societyId: sid),
               if (widget.ctx.adminName.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                BiometricSettingsTile(key: k('bio'), session: widget.ctx.session),
+                BiometricSettingsTile(
+                    key: k('bio'), session: widget.ctx.session),
               ],
             ],
           ),
@@ -59,7 +66,8 @@ class _AdminSettingsModuleState extends State<AdminSettingsModule> {
         DataSummaryCard(key: k('summary'), societyId: sid),
         BannersPanel(key: k('banners'), societyId: sid),
         const SizedBox(height: 8),
-        Text(context.t('app.footer'), textAlign: TextAlign.center, style: AppText.tiny(context)),
+        Text(context.t('app.footer'),
+            textAlign: TextAlign.center, style: AppText.tiny(context)),
       ],
     );
   }

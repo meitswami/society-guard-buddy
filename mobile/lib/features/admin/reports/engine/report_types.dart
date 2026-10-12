@@ -1,4 +1,5 @@
 /// Metadata-driven reporting engine types — port of `src/services/reporting/types.ts`.
+library;
 
 /// Tables the engine is allowed to query. Keep this list explicit for security.
 const List<String> kReportableTables = [

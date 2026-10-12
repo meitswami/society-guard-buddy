@@ -22,7 +22,8 @@ const kEmergencySenderRoles = ['guard', 'resident', 'admin'];
 
 /// One image to attach (camera capture or picked file).
 class EmergencyImage {
-  const EmergencyImage({required this.bytes, required this.fileName, this.mimeType});
+  const EmergencyImage(
+      {required this.bytes, required this.fileName, this.mimeType});
 
   final Uint8List bytes;
   final String fileName;
@@ -51,9 +52,11 @@ class EmergencyAlertResult {
   final String? error;
 
   factory EmergencyAlertResult.fromResponse(Map<String, dynamic>? data) {
-    int? n(Object? v) => v == null ? null : (v is num ? v.toInt() : int.tryParse('$v'));
+    int? n(Object? v) =>
+        v == null ? null : (v is num ? v.toInt() : int.tryParse('$v'));
     if (data != null && data['error'] != null) {
-      return EmergencyAlertResult(success: false, error: data['error'].toString());
+      return EmergencyAlertResult(
+          success: false, error: data['error'].toString());
     }
     return EmergencyAlertResult(
       success: true,
@@ -92,14 +95,18 @@ class EmergencyAlertService {
 
   /// Web `uploadEmergencyMedia`: images only, ≤ 12 MB each, path
   /// `emergency/{uuid}/{timestamp}_{name}` in `notification-media`. Failed uploads are skipped.
-  Future<List<NotificationMediaItem>> uploadMedia(List<EmergencyImage> images) async {
+  Future<List<NotificationMediaItem>> uploadMedia(
+      List<EmergencyImage> images) async {
     final items = <NotificationMediaItem>[];
     for (final img in images) {
-      final kind = fileMediaKind(mimeType: img.mimeType, fileName: img.fileName);
+      final kind =
+          fileMediaKind(mimeType: img.mimeType, fileName: img.fileName);
       if (kind == null) continue;
-      if (kind == 'image' && img.bytes.length > kMaxNotificationImageBytes) continue;
+      if (kind == 'image' && img.bytes.length > kMaxNotificationImageBytes)
+        continue;
       final safe = sanitizeStorageFileName(img.fileName);
-      final path = 'emergency/${const Uuid().v4()}/${DateTime.now().millisecondsSinceEpoch}_$safe';
+      final path =
+          'emergency/${const Uuid().v4()}/${DateTime.now().millisecondsSinceEpoch}_$safe';
       try {
         final url = await uploadToNotificationMedia(
           path,
@@ -124,7 +131,9 @@ class EmergencyAlertService {
     String? senderFlatNumber,
     List<EmergencyImage> images = const [],
   }) async {
-    if (!dbReady) return const EmergencyAlertResult(success: false, error: 'Supabase not configured');
+    if (!dbReady)
+      return const EmergencyAlertResult(
+          success: false, error: 'Supabase not configured');
     try {
       final media = await uploadMedia(images);
       final data = await invokeFunction(
@@ -149,7 +158,8 @@ class EmergencyAlertService {
 }
 
 /// Success toast text (web `Emergency alert sent · Push: n · WhatsApp: a/b`).
-String emergencySentSummary(EmergencyAlertResult r, {required String sentLabel, required String waNotConfigured}) {
+String emergencySentSummary(EmergencyAlertResult r,
+    {required String sentLabel, required String waNotConfigured}) {
   final wa = (r.whatsappConfigured ?? false)
       ? ' · WhatsApp: ${r.whatsappSent ?? 0}/${r.whatsappRecipients ?? 0}'
       : ' · $waNotConfigured';

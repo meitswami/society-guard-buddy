@@ -22,7 +22,8 @@ num? _numOrNull(Object? v) {
 
 bool? _boolOrNull(Object? v) => v is bool ? v : null;
 
-List<String> _stringList(Object? v) => v is List ? v.map((e) => '$e').toList() : <String>[];
+List<String> _stringList(Object? v) =>
+    v is List ? v.map((e) => '$e').toList() : <String>[];
 
 /// `societies` row (web `Society` interface + the columns the details sheet shows).
 class SocietyRow {
@@ -103,10 +104,12 @@ class SocietyRow {
         photoUrls: _stringList(j['photo_urls']),
         totalFlats: _intOrNull(j['total_flats']),
         totalFloors: _intOrNull(j['total_floors']),
-        blockNames: j['block_names'] is List ? _stringList(j['block_names']) : null,
+        blockNames:
+            j['block_names'] is List ? _stringList(j['block_names']) : null,
         terraceAccessible: _boolOrNull(j['terrace_accessible']),
         hasBasement: _boolOrNull(j['has_basement']),
-        basementUsableForResidents: _boolOrNull(j['basement_usable_for_residents']),
+        basementUsableForResidents:
+            _boolOrNull(j['basement_usable_for_residents']),
         flatsPerFloor: _intOrNull(j['flats_per_floor']),
         flatSeriesStart: _str(j['flat_series_start']),
         flatSeriesEnd: _str(j['flat_series_end']),
@@ -120,7 +123,8 @@ class SocietyRow {
     return photoUrls.isNotEmpty ? photoUrls.first : null;
   }
 
-  String get addressLine => societyAddressLine(address: address, city: city, state: state);
+  String get addressLine =>
+      societyAddressLine(address: address, city: city, state: state);
 
   SocietyFormSource get formSource => SocietyFormSource(
         name: name,
@@ -152,9 +156,17 @@ class SocietyRow {
   bool matches(String query) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return true;
-    return [name, address, city, state, pincode, contactPerson, contactPhone, contactEmail, referralCode]
-        .whereType<String>()
-        .any((v) => v.toLowerCase().contains(q));
+    return [
+      name,
+      address,
+      city,
+      state,
+      pincode,
+      contactPerson,
+      contactPhone,
+      contactEmail,
+      referralCode
+    ].whereType<String>().any((v) => v.toLowerCase().contains(q));
   }
 }
 
@@ -225,7 +237,9 @@ class AdminRow {
   bool matches(String query) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return true;
-    return [name, adminId, email].whereType<String>().any((v) => v.toLowerCase().contains(q));
+    return [name, adminId, email]
+        .whereType<String>()
+        .any((v) => v.toLowerCase().contains(q));
   }
 }
 
@@ -261,7 +275,9 @@ class SuperAdminRow {
         totpSecret: _str(j['totp_secret']),
       );
 
-  SuperAdminRow copyWith({String? totpSecret, bool? totpEnabled, String? recoveryEmail}) => SuperAdminRow(
+  SuperAdminRow copyWith(
+          {String? totpSecret, bool? totpEnabled, String? recoveryEmail}) =>
+      SuperAdminRow(
         id: id,
         name: name,
         username: username,
@@ -285,7 +301,8 @@ List<TicketMedia> parseTicketMedia(Object? raw) {
   if (raw is! List) return const [];
   return [
     for (final x in raw)
-      if (x is Map && x.containsKey('url')) TicketMedia(url: '${x['url'] ?? ''}', kind: x['kind']?.toString()),
+      if (x is Map && x.containsKey('url'))
+        TicketMedia(url: '${x['url'] ?? ''}', kind: x['kind']?.toString()),
   ];
 }
 
@@ -364,7 +381,8 @@ class OnboardingRow {
   String? get contactPhone => signup?['contact_phone']?.toString();
   String? get contactPerson => signup?['contact_person']?.toString();
   String? get referralCodeUsed => signup?['referral_code_used']?.toString();
-  String get merchantTransactionId => '${order['merchant_transaction_id'] ?? ''}';
+  String get merchantTransactionId =>
+      '${order['merchant_transaction_id'] ?? ''}';
   String get provider => '${order['provider'] ?? ''}';
   String get currency => '${order['currency'] ?? 'INR'}';
   String? get createdAt => order['created_at']?.toString();
@@ -377,16 +395,24 @@ class OnboardingRow {
   bool matches(String query) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return true;
-    return [societyName, contactPhone, contactPerson, merchantTransactionId, referralCodeUsed]
-        .whereType<String>()
-        .any((v) => v.toLowerCase().contains(q));
+    return [
+      societyName,
+      contactPhone,
+      contactPerson,
+      merchantTransactionId,
+      referralCodeUsed
+    ].whereType<String>().any((v) => v.toLowerCase().contains(q));
   }
 }
 
 /// Web `loadOnboarding` join: orders (newest first) with their signups by `signup_id`.
-List<OnboardingRow> joinOnboarding(List<Map<String, dynamic>> orders, List<Map<String, dynamic>> signups) {
+List<OnboardingRow> joinOnboarding(
+    List<Map<String, dynamic>> orders, List<Map<String, dynamic>> signups) {
   final byId = {for (final s in signups) '${s['id']}': s};
-  return [for (final o in orders) OnboardingRow(order: o, signup: byId['${o['signup_id']}'])];
+  return [
+    for (final o in orders)
+      OnboardingRow(order: o, signup: byId['${o['signup_id']}'])
+  ];
 }
 
 /// Distinct non-empty signup ids (web `[...new Set(orders.map((o) => o.signup_id).filter(Boolean))]`).
@@ -403,12 +429,17 @@ List<String> distinctSignupIds(List<Map<String, dynamic>> orders) {
 
 /// Server-side biometric credential (`biometric_credentials`) shown in Settings.
 class BiometricDevice {
-  const BiometricDevice({required this.id, required this.credentialId, required this.createdAt, this.thisDevice = false});
+  const BiometricDevice(
+      {required this.id,
+      required this.credentialId,
+      required this.createdAt,
+      this.thisDevice = false});
 
   final String id;
   final String credentialId;
   final String createdAt;
   final bool thisDevice;
 
-  String get shortId => credentialId.length > 8 ? credentialId.substring(0, 8) : credentialId;
+  String get shortId =>
+      credentialId.length > 8 ? credentialId.substring(0, 8) : credentialId;
 }
