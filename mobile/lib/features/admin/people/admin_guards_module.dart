@@ -96,6 +96,12 @@ class _AdminGuardsModuleState extends State<AdminGuardsModule> {
     }
   }
 
+  /// `parseInt(v) || 7`.
+  int _days(String v) {
+    final n = int.tryParse(v) ?? 0;
+    return n == 0 ? 7 : n;
+  }
+
   void _toast(String msg, {BadgeTone tone = BadgeTone.success}) {
     if (mounted) AppFeedback.toast(context, msg, tone: tone);
   }
@@ -124,7 +130,7 @@ class _AdminGuardsModuleState extends State<AdminGuardsModule> {
         password: _gPassword.text,
         authMode: _authMode,
         policeVerification: _police,
-        kycAlertDays: int.tryParse(_gKyc.text) ?? 7,
+        kycAlertDays: _days(_gKyc.text),
         phone: _gPhone.text,
       );
       for (final c in [_gId, _gName, _gPassword, _gPhone]) {
@@ -221,7 +227,7 @@ class _AdminGuardsModuleState extends State<AdminGuardsModule> {
         guardId: gid,
         authMode: _eAuth,
         policeVerification: _ePolice,
-        kycAlertDays: int.tryParse(_eKyc.text) ?? 7,
+        kycAlertDays: _days(_eKyc.text),
         phoneDigits: phone,
       );
       if (!mounted) return;
@@ -904,7 +910,6 @@ class _RangeFormatter extends TextInputFormatter {
     if (newValue.text.isEmpty) return newValue;
     final n = int.tryParse(newValue.text);
     if (n == null || n > max) return oldValue;
-    if (n < min && newValue.text.length >= '$min'.length && n == 0) return oldValue;
     return newValue;
   }
 }
