@@ -478,6 +478,15 @@ const KioskRunner = ({ settings, onStop }: { settings: KioskSettings; onStop: ()
     </div>
   );
 
+  const retry = { onRetry: camera.retryCamera, retryLabel: kioskText('retryCamera', lang) };
+  const screensaverStatus =
+    camera.cameraState === 'starting' ? { text: kioskText('statusCamStarting', lang), tone: 'warn' as const }
+      : camera.cameraState === 'denied' ? { text: kioskText('statusCamDenied', lang), tone: 'error' as const, ...retry }
+        : camera.cameraState === 'error' ? { text: kioskText('statusCamError', lang), tone: 'error' as const, ...retry }
+          : camera.detectorState === 'loading' ? { text: kioskText('statusDetectorLoading', lang), tone: 'warn' as const }
+            : camera.detectorState === 'none' ? { text: kioskText('statusNoDetector', lang), tone: 'warn' as const }
+              : { text: kioskText('statusLooking', lang), tone: 'ok' as const };
+
   if (showScreensaver) {
     return (
       <div className="fixed inset-0 z-[70] bg-[#0b1020]">
@@ -486,16 +495,10 @@ const KioskRunner = ({ settings, onStop }: { settings: KioskSettings; onStop: ()
           societyName={societyName}
           now={now}
           attachVideo={camera.attachVideo}
-          faceDetection={faceDetection}
+          status={screensaverStatus}
           onTap={() => void startSession()}
         />
         <div className="absolute top-0 inset-x-0">{topBar}</div>
-        {camera.cameraState === 'denied' && (
-          <p className="absolute bottom-6 left-6 right-32 text-xs text-amber-300">{t('kiosk.check.camera')}: {t('kiosk.check.missing')}</p>
-        )}
-        {camera.detectorState === 'none' && (
-          <p className="absolute bottom-6 left-6 right-32 text-xs text-white/50">{t('kiosk.check.faceMissing')}</p>
-        )}
       </div>
     );
   }

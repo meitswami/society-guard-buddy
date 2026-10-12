@@ -1577,6 +1577,28 @@ const translations: Record<string, Record<Lang, string>> = {
   'kiosk.check.speech': { en: 'Speech recognition', hi: 'आवाज़ पहचान' },
   'kiosk.check.voice': { en: 'Hindi voice', hi: 'हिंदी आवाज़' },
   'kiosk.check.ok': { en: 'Ready', hi: 'तैयार' },
+  'kiosk.check.notListed': { en: 'Not listed', hi: 'सूची में नहीं' },
+  'kiosk.check.voiceHint': {
+    en: 'Tap "Test voice". If you hear nothing, install Hindi in Android Settings → Text-to-speech → Google → Install voice data.',
+    hi: '"आवाज़ जाँचें" दबाएँ। कुछ न सुनाई दे तो Android सेटिंग → टेक्स्ट-टू-स्पीच → Google → वॉइस डेटा में हिंदी इंस्टॉल करें।',
+  },
+  'kiosk.check.testVoice': { en: 'Test voice', hi: 'आवाज़ जाँचें' },
+  'kiosk.test.open': { en: 'Test camera & face detection', hi: 'कैमरा और चेहरा पहचान जाँचें' },
+  'kiosk.test.close': { en: 'Close test', hi: 'जाँच बंद करें' },
+  'kiosk.test.loadingDetector': { en: 'Loading face detection…', hi: 'चेहरा पहचान लोड हो रही है…' },
+  'kiosk.test.camDenied': {
+    en: 'Camera permission blocked. Allow camera for this app / site in settings.',
+    hi: 'कैमरे की अनुमति बंद है। सेटिंग में इस ऐप/साइट के लिए कैमरा चालू करें।',
+  },
+  'kiosk.test.camError': {
+    en: 'Camera did not start. App wrappers like AppMySite may block it — try in Chrome.',
+    hi: 'कैमरा शुरू नहीं हुआ। AppMySite जैसे ऐप इसे रोक सकते हैं — Chrome में आज़माएँ।',
+  },
+  'kiosk.test.none': { en: 'No face seen — look at the camera', hi: 'चेहरा नहीं दिखा — कैमरे की ओर देखें' },
+  'kiosk.test.tooFar': { en: 'Face seen — too far', hi: 'चेहरा दिखा — बहुत दूर' },
+  'kiosk.test.tooClose': { en: 'Face seen — too close', hi: 'चेहरा दिखा — बहुत पास' },
+  'kiosk.test.offCenter': { en: 'Face seen — not centred', hi: 'चेहरा दिखा — बीच में नहीं' },
+  'kiosk.test.framed': { en: '✓ Face framed — kiosk will start talking', hi: '✓ चेहरा सही जगह — कियोस्क बात शुरू करेगा' },
   'kiosk.check.checking': { en: 'Checking…', hi: 'जाँच हो रही है…' },
   'kiosk.check.missing': { en: 'Not available', hi: 'उपलब्ध नहीं' },
   'kiosk.check.speechMissing': {

@@ -27,18 +27,12 @@ async function createMediaPipeDetector(): Promise<KioskFaceDetector> {
     import('@mediapipe/tasks-vision/vision_wasm_internal.wasm?url').then((m) => m.default as string),
   ]);
   const fileset = { wasmLoaderPath: loaderUrl, wasmBinaryPath: binaryUrl };
-  const make = (delegate: 'GPU' | 'CPU') =>
-    FaceDetector.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: MODEL_URL, delegate },
-      runningMode: 'VIDEO',
-      minDetectionConfidence: 0.6,
-    });
-  let detector;
-  try {
-    detector = await make('GPU');
-  } catch {
-    detector = await make('CPU');
-  }
+  // CPU: BlazeFace is tiny, and the GPU delegate returns no faces on some Android GPUs.
+  const detector = await FaceDetector.createFromOptions(fileset, {
+    baseOptions: { modelAssetPath: MODEL_URL, delegate: 'CPU' },
+    runningMode: 'VIDEO',
+    minDetectionConfidence: 0.5,
+  });
   let lastTs = 0;
   return {
     kind: 'mediapipe',
@@ -109,8 +103,9 @@ export function evaluateFraming(faces: FaceBox[]): { status: FramingStatus; face
   const face = [...faces].sort((a, b) => b.width * b.height - a.width * a.height)[0];
   const cx = face.x + face.width / 2;
   const cy = face.y + face.height / 2;
-  if (face.width < 0.2) return { status: 'tooFar', face };
-  if (face.width > 0.65) return { status: 'tooClose', face };
-  if (Math.abs(cx - 0.5) > 0.17 || Math.abs(cy - 0.45) > 0.22) return { status: 'offCenter', face };
+  // Thresholds suit a phone at a gate: a face ~1 m away is roughly 15–20% of the frame width.
+  if (face.width < 0.12) return { status: 'tooFar', face };
+  if (face.width > 0.7) return { status: 'tooClose', face };
+  if (Math.abs(cx - 0.5) > 0.22 || Math.abs(cy - 0.45) > 0.27) return { status: 'offCenter', face };
   return { status: 'framed', face };
 }

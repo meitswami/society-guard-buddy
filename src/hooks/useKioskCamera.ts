@@ -27,25 +27,36 @@ export function useKioskCamera(active: boolean) {
   const [framedSince, setFramedSince] = useState<number | null>(null);
 
   // Camera
+  const [cameraAttempt, setCameraAttempt] = useState(0);
+  const retryCamera = useCallback(() => setCameraAttempt((n) => n + 1), []);
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
     setCameraState('starting');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraState('error');
+      return;
+    }
+    // Some Android WebViews (app wrappers) never answer the permission request.
+    const hang = setTimeout(() => { if (!cancelled) setCameraState('error'); }, 12_000);
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
           audio: false,
         });
+        clearTimeout(hang);
         if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = stream;
         const video = videoRef.current;
         if (video) {
           video.srcObject = stream;
-          await video.play().catch(() => undefined);
+          // Don't await: play() can stay pending in some WebViews; the loop re-kicks it.
+          void video.play().catch(() => undefined);
         }
         setCameraState('ready');
       } catch (e) {
+        clearTimeout(hang);
         if (cancelled) return;
         const name = (e as DOMException)?.name;
         setCameraState(name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : 'error');
@@ -53,11 +64,12 @@ export function useKioskCamera(active: boolean) {
     })();
     return () => {
       cancelled = true;
+      clearTimeout(hang);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       if (videoRef.current) videoRef.current.srcObject = null;
     };
-  }, [active]);
+  }, [active, cameraAttempt]);
 
   // Detector
   useEffect(() => {
@@ -83,11 +95,13 @@ export function useKioskCamera(active: boolean) {
     let timer: ReturnType<typeof setTimeout>;
     let busy = false;
     let lastStatus: FramingStatus = 'none';
+    let failures = 0;
 
     const step = async () => {
       if (stopped) return;
       const video = videoRef.current;
       const detector = detectorRef.current;
+      if (video && video.paused && video.srcObject) void video.play().catch(() => undefined);
       if (!busy && video && detector && !document.hidden && video.readyState >= 2) {
         busy = true;
         try {
@@ -108,8 +122,13 @@ export function useKioskCamera(active: boolean) {
             lastStatus = status;
             setFraming(status);
           }
-        } catch {
-          /* a dropped frame is fine */
+          failures = 0;
+        } catch (e) {
+          // A dropped frame is fine; a detector that never works is not.
+          if (++failures === 25) {
+            console.warn('Kiosk face detection keeps failing', e);
+            setDetectorState('none');
+          }
         } finally {
           busy = false;
         }
@@ -153,5 +172,5 @@ export function useKioskCamera(active: boolean) {
     [],
   );
 
-  return { attachVideo, cameraState, detectorState, framing, framedSince, captureFrame, msSinceFace };
+  return { attachVideo, retryCamera, cameraState, detectorState, framing, framedSince, captureFrame, msSinceFace };
 }
