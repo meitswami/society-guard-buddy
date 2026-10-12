@@ -26,3 +26,7 @@ verify_jwt = false
 # Emergency alerts are sent from in-app sessions (not Supabase Auth JWT).
 [functions.send-emergency-alert]
 verify_jwt = false
+
+# AI kiosk transcript understanding is called from the guard's in-app session (not Supabase Auth JWT).
+[functions.kiosk-assistant]
+verify_jwt = false

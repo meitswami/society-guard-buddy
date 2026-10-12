@@ -10,6 +10,7 @@ when version tags are published.
 
 ### Added
 
+- **AI receptionist kiosk** — New guard tab **AI Kiosk**. The device plays a screensaver until a face is detected and properly framed (MediaPipe BlazeFace, model in `public/models/`). Then a talking receptionist asks the visitor's name, mobile, flat, purpose and vehicle in **Hindi (default), Hinglish or English**, showing the live transcript and the value it understood for confirmation. Blacklist and repeat-visitor checks, optional resident approval, camera snapshot, and on-screen typing as a fallback are included, and entries are saved to the visitor log as `<guard> · AI Kiosk`. Unclear speech can optionally go to the new `kiosk-assistant` Edge Function (Claude; secret `ANTHROPIC_API_KEY`). Uses the browser Web Speech APIs (Chrome on Android / installed PWA).
 - **Emergency / Alert mode** — Guards get a dedicated **Alert** tab; residents get an **Emergency or Alert** button. Photos, FCM push, and WhatsApp broadcast via `send-emergency-alert`. Migration `20260524140000`.
 - **Committee module** — MC roster (`committee_members`): position, flat, tenure, elected/nominated, election trace. Migration `20260524130000`, `20260606150000`.
 - **Audit & financial integrity** — Duplicate maintenance alarms with inline edit/delete; self-audit engine (10 checks); manual audit tracer; ledger overcount panel; society governance guide; public About page.

@@ -21,7 +21,8 @@ interface AppState {
   // Visitors
   visitors: Visitor[];
   loadVisitors: () => Promise<void>;
-  addVisitor: (visitor: Visitor) => Promise<void>;
+  /** Resolves false when the insert failed (or no society is selected). */
+  addVisitor: (visitor: Visitor) => Promise<boolean>;
   updateVisitor: (id: string, updates: Partial<Visitor>) => void;
   markExit: (id: string) => Promise<void>;
 
@@ -207,8 +208,8 @@ export const useStore = create<AppState>()((set, get) => ({
 
   addVisitor: async (visitor) => {
     const sid = get().societyId;
-    if (!sid) return;
-    await supabase.from('visitors').insert({
+    if (!sid) return false;
+    const { error } = await supabase.from('visitors').insert({
       society_id: sid,
       name: visitor.name, phone: visitor.phone, document_type: visitor.documentType,
       document_number: visitor.documentNumber || null, document_photo: visitor.documentPhoto || null,
@@ -218,6 +219,7 @@ export const useStore = create<AppState>()((set, get) => ({
       vehicle_number: visitor.vehicleNumber || null, vehicle_entry_time: visitor.vehicleEntryTime || null,
     });
     get().loadVisitors();
+    return !error;
   },
 
   updateVisitor: (id, updates) => set(s => ({

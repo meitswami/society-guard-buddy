@@ -14,7 +14,9 @@ import { checkSocietyGeofence } from '@/lib/geofenceUtils';
 import PasswordResetFlow from '@/components/PasswordResetFlow';
 import OTPLoginFlow from '@/components/OTPLoginFlow';
 import { LoginFooter } from '@/components/LoginFooter';
-import { fetchActiveSocietiesByName, getResidentByPhoneInSociety, type LoginSocietyRow } from '@/lib/societiesLogin';
+import { getResidentByPhoneInSociety } from '@/lib/societiesLogin';
+import { useLoginSocieties } from '@/hooks/useLoginSocieties';
+import SocietyListStatus from '@/components/SocietyListStatus';
 import { permissionsFromAdminJoin, type AdminPanelPermissions } from '@/lib/adminPermissions';
 import { useShowSuperadminLogin } from '@/hooks/use-show-superadmin-login';
 import { completeResidentOtpOnboarding, normalizeLoginPhone } from '@/lib/residentLoginOnboarding';
@@ -41,7 +43,7 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
   const { t } = useLanguage();
   const { login, establishGuardSession, setSocietyId, loadGuards } = useStore();
   const showSuperadminEntry = useShowSuperadminLogin();
-  const [societies, setSocieties] = useState<LoginSocietyRow[]>([]);
+  const { societies, loading: societiesLoading, error: societiesError, reload: reloadSocieties } = useLoginSocieties();
   const [selectedSocietyId, setSelectedSocietyId] = useState('');
   const [loginRole, setLoginRole] = useState<LoginRole>('');
   const [societyFlats, setSocietyFlats] = useState<{ id: string; flat_number: string }[]>([]);
@@ -62,17 +64,6 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
 
   useEffect(() => {
     isAvailable().then(setBioAvailable);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const list = await fetchActiveSocietiesByName();
-      if (!cancelled) setSocieties(list);
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   // Autofill last society / role / flat / mobile (all remain editable).
@@ -651,13 +642,19 @@ const UnifiedLoginPage = ({ onGuardLogin, onResidentLogin, onAdminLogin, onSuper
                   persistLoginRemember({ societyId: next, role: '', flatId: '' });
                 }}
               >
-                <option value="">{t('login.societyPlaceholder')}</option>
+                <option value="">{societiesLoading && societies.length === 0 ? t('app.loading') : t('login.societyPlaceholder')}</option>
                 {societies.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
                 ))}
               </select>
+              <SocietyListStatus
+                loading={societiesLoading}
+                error={societiesError}
+                count={societies.length}
+                onRetry={() => void reloadSocieties()}
+              />
               {!selectedSocietyId && (
                 <>
                   <Link

@@ -61,6 +61,12 @@ const translations: Record<string, Record<Lang, string>> = {
   'login.footerAbout': { en: 'About', hi: 'परिचय' },
   'login.selectSociety': { en: 'Select your society', hi: 'अपनी सोसाइटी चुनें' },
   'login.societyPlaceholder': { en: 'Choose society…', hi: 'सोसाइटी चुनें…' },
+  'login.societiesLoadFailed': {
+    en: 'Could not load societies. Check your internet connection and try again.',
+    hi: 'सोसाइटी सूची लोड नहीं हो पाई। इंटरनेट जाँचें और फिर से कोशिश करें।',
+  },
+  'login.societiesEmpty': { en: 'No active societies found.', hi: 'कोई सक्रिय सोसाइटी नहीं मिली।' },
+  'login.retry': { en: 'Retry', hi: 'फिर से' },
   'login.continueToLogin': { en: 'Continue to login', hi: 'प्रवेश पर जाएँ' },
   'login.superadminPlatform': { en: 'Platform superadmin login', hi: 'मंच मुख्य प्रशासक प्रवेश' },
   'login.createSocietyCta': { en: 'New society? Create & pay ₹8,500', hi: 'नई सोसाइटी? बनाएँ और ₹8,500 भुगतान करें' },
@@ -257,6 +263,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'nav.settings': { en: 'Settings', hi: 'सेटिंग' },
   'nav.tour': { en: 'Tour', hi: 'मार्गदर्शन' },
   'nav.duty': { en: 'Duty', hi: 'कर्तव्य' },
+  'nav.kiosk': { en: 'AI Kiosk', hi: 'AI कियोस्क' },
 
   // Guard daily duty (supervisor shift log)
   'duty.title': { en: 'Daily Duty', hi: 'दैनिक कर्तव्य' },
@@ -1538,6 +1545,61 @@ const translations: Record<string, Record<Lang, string>> = {
   'contentEditor.english': { en: 'English', hi: 'अंग्रेज़ी' },
   'contentEditor.hindi': { en: 'Hindi', hi: 'हिंदी' },
   'contentEditor.defaultHint': { en: 'App default', hi: 'ऐप मूल' },
+
+  // AI receptionist kiosk (guard setup screen)
+  'kiosk.setup.title': { en: 'AI Receptionist Kiosk', hi: 'AI रिसेप्शनिस्ट कियोस्क' },
+  'kiosk.setup.subtitle': {
+    en: 'Visitors check in by talking — the kiosk sees a face, asks their details and logs the entry.',
+    hi: 'आगंतुक बोलकर एंट्री करते हैं — कियोस्क चेहरा पहचानकर विवरण पूछता है और एंट्री दर्ज करता है।',
+  },
+  'kiosk.setup.start': { en: 'Start kiosk', hi: 'कियोस्क शुरू करें' },
+  'kiosk.setup.back': { en: 'Back', hi: 'वापस' },
+  'kiosk.setup.defaultLang': { en: 'Default visitor language', hi: 'आगंतुक की डिफ़ॉल्ट भाषा' },
+  'kiosk.setup.requireApproval': { en: 'Ask resident approval before entry', hi: 'एंट्री से पहले निवासी की अनुमति लें' },
+  'kiosk.setup.requireApprovalHint': {
+    en: 'Sends an approval request to the flat and waits up to 2 minutes.',
+    hi: 'फ्लैट को अनुमति अनुरोध भेजता है और 2 मिनट तक इंतज़ार करता है।',
+  },
+  'kiosk.setup.cloudAi': { en: 'Cloud AI understanding', hi: 'क्लाउड AI समझ' },
+  'kiosk.setup.cloudAiHint': {
+    en: 'Uses the kiosk-assistant function (Claude) when speech is unclear, and to spell Hindi names in English.',
+    hi: 'बोली साफ़ न होने पर और हिंदी नाम को अंग्रेज़ी में लिखने के लिए kiosk-assistant फ़ंक्शन (Claude) का उपयोग।',
+  },
+  'kiosk.setup.capturePhoto': { en: 'Save visitor photo from camera', hi: 'कैमरे से आगंतुक की फोटो सहेजें' },
+  'kiosk.setup.askVehicle': { en: 'Ask about vehicle', hi: 'वाहन के बारे में पूछें' },
+  'kiosk.setup.exitPin': { en: 'Exit PIN (optional)', hi: 'बाहर निकलने का PIN (वैकल्पिक)' },
+  'kiosk.setup.exitPinHint': {
+    en: 'Hold the lock icon for 3 seconds to leave the kiosk. With a PIN, visitors cannot exit.',
+    hi: 'कियोस्क से बाहर आने के लिए ताले को 3 सेकंड दबाए रखें। PIN होने पर आगंतुक बाहर नहीं जा सकते।',
+  },
+  'kiosk.setup.checks': { en: 'Device check', hi: 'डिवाइस जाँच' },
+  'kiosk.check.camera': { en: 'Front camera', hi: 'सामने का कैमरा' },
+  'kiosk.check.speech': { en: 'Speech recognition', hi: 'आवाज़ पहचान' },
+  'kiosk.check.voice': { en: 'Hindi voice', hi: 'हिंदी आवाज़' },
+  'kiosk.check.ok': { en: 'Ready', hi: 'तैयार' },
+  'kiosk.check.checking': { en: 'Checking…', hi: 'जाँच हो रही है…' },
+  'kiosk.check.missing': { en: 'Not available', hi: 'उपलब्ध नहीं' },
+  'kiosk.check.speechMissing': {
+    en: 'Speech recognition needs Chrome on Android and an internet connection. Visitors can still type.',
+    hi: 'आवाज़ पहचान के लिए Android पर Chrome और इंटरनेट चाहिए। आगंतुक फिर भी टाइप कर सकते हैं।',
+  },
+  'kiosk.check.faceMissing': {
+    en: 'Face detection unavailable — visitors will tap the screen to start.',
+    hi: 'चेहरा पहचान उपलब्ध नहीं — आगंतुक शुरू करने के लिए स्क्रीन छुएँगे।',
+  },
+  'kiosk.setup.tips': {
+    en: 'Tip: mount the phone/tablet at face height, keep it charging, and use Android screen pinning for a locked kiosk.',
+    hi: 'सुझाव: फोन/टैबलेट को चेहरे की ऊँचाई पर लगाएँ, चार्जिंग पर रखें, और लॉक कियोस्क के लिए Android स्क्रीन पिनिंग चालू करें।',
+  },
+  'kiosk.exit.hold': { en: 'Hold to exit', hi: 'बाहर जाने के लिए दबाए रखें' },
+  'kiosk.exit.confirmTitle': { en: 'Exit kiosk?', hi: 'कियोस्क बंद करें?' },
+  'kiosk.exit.confirmText': { en: 'Visitors will no longer be able to check in here.', hi: 'आगंतुक यहाँ एंट्री नहीं कर पाएँगे।' },
+  'kiosk.exit.pinPrompt': { en: 'Enter exit PIN', hi: 'बाहर निकलने का PIN डालें' },
+  'kiosk.exit.wrongPin': { en: 'Wrong PIN', hi: 'गलत PIN' },
+  'kiosk.toast.saved': { en: 'AI kiosk logged {name} → flat {flat}', hi: 'AI कियोस्क ने {name} → फ्लैट {flat} दर्ज किया' },
+  'kiosk.toast.blocked': { en: 'Blacklisted visitor at kiosk: {phone}', hi: 'कियोस्क पर काली सूची का आगंतुक: {phone}' },
+  'kiosk.toast.rejected': { en: 'Resident declined {name} (flat {flat})', hi: 'निवासी ने {name} (फ्लैट {flat}) को मना किया' },
+  'kiosk.toast.timeout': { en: 'No resident reply for {name} (flat {flat}) — please assist', hi: '{name} (फ्लैट {flat}) के लिए निवासी का जवाब नहीं — कृपया मदद करें' },
 };
 
 export default translations;
