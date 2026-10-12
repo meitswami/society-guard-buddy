@@ -36,7 +36,8 @@ class TermsScreen extends StatelessWidget {
         ]),
         LegalSection(title: '3. Acceptable use', children: [
           const LegalText('You agree not to:'),
-          LegalList(items: LegalList.plain(const [
+          LegalList(
+              items: LegalList.plain(const [
             'Violate applicable law or third-party rights;',
             'Attempt to gain unauthorized access to the Service, other accounts, or underlying systems;',
             'Interfere with or disrupt the Service or its infrastructure;',

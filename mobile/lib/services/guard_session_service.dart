@@ -55,20 +55,13 @@ class GuardSessionService {
   }) async {
     if (!Env.isConfigured) return null;
 
-    final shift = await SupabaseBootstrap.client
-        .from('guard_shifts')
-        .select('id, guard_id, login_time, logout_time')
-        .eq('id', shiftId)
-        .maybeSingle();
+    final shift =
+        await SupabaseBootstrap.client.from('guard_shifts').select('id, guard_id, login_time, logout_time').eq('id', shiftId).maybeSingle();
 
     if (shift == null || shift['logout_time'] != null) return null;
 
-    final guardRow = await SupabaseBootstrap.client
-        .from('guards')
-        .select('*')
-        .eq('guard_id', guardId)
-        .eq('society_id', societyId)
-        .maybeSingle();
+    final guardRow =
+        await SupabaseBootstrap.client.from('guards').select('*').eq('guard_id', guardId).eq('society_id', societyId).maybeSingle();
 
     if (guardRow == null) return null;
 
@@ -82,10 +75,7 @@ class GuardSessionService {
 
   Future<void> endShift(String shiftId) async {
     if (!Env.isConfigured) return;
-    await SupabaseBootstrap.client
-        .from('guard_shifts')
-        .update({'logout_time': DateTime.now().toIso8601String()})
-        .eq('id', shiftId);
+    await SupabaseBootstrap.client.from('guard_shifts').update({'logout_time': DateTime.now().toIso8601String()}).eq('id', shiftId);
     await AppSession.clear();
   }
 }

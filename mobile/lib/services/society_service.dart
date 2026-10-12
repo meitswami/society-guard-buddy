@@ -103,8 +103,7 @@ class SocietyService {
   /// Flats of a society for the login flat picker (`id, flat_number`, ordered by flat number).
   Future<List<FlatRow>> fetchLoginFlats(String societyId) async {
     if (!Env.isConfigured) return const [];
-    final rows =
-        await _db.from('flats').select('id, flat_number').eq('society_id', societyId).order('flat_number', ascending: true);
+    final rows = await _db.from('flats').select('id, flat_number').eq('society_id', societyId).order('flat_number', ascending: true);
     return (rows as List).map((r) => FlatRow.fromRow(Map<String, dynamic>.from(r as Map))).toList();
   }
 

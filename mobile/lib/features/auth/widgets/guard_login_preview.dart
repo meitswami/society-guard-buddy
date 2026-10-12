@@ -114,8 +114,7 @@ class GuardLoginPreview extends StatelessWidget {
           title: Text(context.t('guard.preview.title'), style: AppText.sectionTitle(context)),
           shape: Border(bottom: BorderSide(color: context.tokens.border)),
           actions: [
-            if (onClose != null)
-              IconButton(tooltip: context.t('guard.preview.close'), icon: const Icon(Icons.close), onPressed: onClose),
+            if (onClose != null) IconButton(tooltip: context.t('guard.preview.close'), icon: const Icon(Icons.close), onPressed: onClose),
           ],
         ),
         body: PageContainer(children: [_grid(context)]),

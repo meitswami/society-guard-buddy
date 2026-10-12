@@ -18,17 +18,19 @@ class DeleteAccountScreen extends StatelessWidget {
       children: [
         const EnglishOnlyNote(),
         LegalText('', foreground: true, spans: [legalStrong(context, 'Last updated:'), const TextSpan(text: ' April 14, 2026')]),
-        LegalText('This page is for account deletion requests for ', spans: [
-          legalStrong(context, 'Kutumbika'),
-          const TextSpan(text: ' by '),
-          legalStrong(context, 'BrandZaha'),
-          const TextSpan(text: '.'),
-        ], bottom: 20),
+        LegalText('This page is for account deletion requests for ',
+            spans: [
+              legalStrong(context, 'Kutumbika'),
+              const TextSpan(text: ' by '),
+              legalStrong(context, 'BrandZaha'),
+              const TextSpan(text: '.'),
+            ],
+            bottom: 20),
         LegalSection(title: 'How to request account deletion', children: [
           LegalList(ordered: true, items: [
-            [const TextSpan(text: 'Open the app and sign in using your registered account.')],
-            [
-              const TextSpan(
+            const [TextSpan(text: 'Open the app and sign in using your registered account.')],
+            const [
+              TextSpan(
                   text: 'Go to your profile/settings screen and choose account deletion request, or contact your society administrator.'),
             ],
             [
@@ -46,14 +48,16 @@ class DeleteAccountScreen extends StatelessWidget {
           ]),
         ]),
         LegalSection(title: 'What data is deleted', children: [
-          LegalList(items: LegalList.plain(const [
+          LegalList(
+              items: LegalList.plain(const [
             'Account profile details linked to your login (for example name, phone, role, and login mapping).',
             'Push notification token registrations for your account/device.',
             'Any account-specific settings and access entries tied directly to your user record.',
           ])),
         ]),
         LegalSection(title: 'What data may be retained', children: [
-          LegalList(items: LegalList.plain(const [
+          LegalList(
+              items: LegalList.plain(const [
             'Society operational records (for example visitor approvals, guard logs, payment records, and audit/security logs) may '
                 'be retained as required by society policy or legal obligations.',
             'Backups may retain deleted data for a limited period before permanent purge.',

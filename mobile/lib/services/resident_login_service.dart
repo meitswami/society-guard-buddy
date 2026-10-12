@@ -171,8 +171,7 @@ class ResidentLoginService {
     final result = await lookupGuardForOtp(phone, societyId);
     return switch (result) {
       GuardOtpFound(:final guard) => guard.toSession(),
-      GuardOtpNotFound(reason: GuardOtpFailureReason.passwordMode) =>
-        throw ResidentLoginFailure('This guard uses ID & password login'),
+      GuardOtpNotFound(reason: GuardOtpFailureReason.passwordMode) => throw ResidentLoginFailure('This guard uses ID & password login'),
       GuardOtpNotFound() => throw ResidentLoginFailure('Phone not registered for any guard'),
     };
   }

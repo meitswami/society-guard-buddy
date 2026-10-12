@@ -17,8 +17,7 @@ class PasswordResetScreen extends StatefulWidget {
   final String? societyId;
   final PasswordResetService? service;
 
-  static Future<void> open(BuildContext context, {required ResetUserType userType, String? societyId}) =>
-      Navigator.of(context).push(
+  static Future<void> open(BuildContext context, {required ResetUserType userType, String? societyId}) => Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => PasswordResetScreen(userType: userType, societyId: societyId)),
       );
 
@@ -209,7 +208,8 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                   child: Text(
                     label,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: active ? t.primaryForeground : t.secondaryForeground),
+                    style:
+                        TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: active ? t.primaryForeground : t.secondaryForeground),
                   ),
                 ),
               ],
@@ -235,9 +235,8 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
         controller: _identifier,
         hint: _placeholder,
         caps: false,
-        keyboardType: _method == ResetMethod.email
-            ? TextInputType.emailAddress
-            : (residentPhone ? TextInputType.phone : TextInputType.text),
+        keyboardType:
+            _method == ResetMethod.email ? TextInputType.emailAddress : (residentPhone ? TextInputType.phone : TextInputType.text),
         maxLength: residentPhone ? 10 : null,
         inputFormatters: [_ResetIdentifierFormatter(method: _method, userType: _type)],
         textInputAction: TextInputAction.search,
@@ -245,7 +244,9 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
       ),
       const SizedBox(height: 16),
       AppButton(
-        label: _loading ? context.tr('Finding account...', 'खाता खोजा जा रहा है...') : context.tr('Find Account & Send Code', 'खाता खोजें और कोड भेजें'),
+        label: _loading
+            ? context.tr('Finding account...', 'खाता खोजा जा रहा है...')
+            : context.tr('Find Account & Send Code', 'खाता खोजें और कोड भेजें'),
         loading: _loading,
         onPressed: _requestReset,
       ),
@@ -303,7 +304,8 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
             _identifier.clear();
           }),
           style: TextButton.styleFrom(foregroundColor: t.mutedForeground, textStyle: const TextStyle(fontSize: 12)),
-          child: Text(context.tr('Try a different account', 'दूसरा खाता आज़माएँ'), style: const TextStyle(decoration: TextDecoration.underline)),
+          child: Text(context.tr('Try a different account', 'दूसरा खाता आज़माएँ'),
+              style: const TextStyle(decoration: TextDecoration.underline)),
         ),
       ),
     ];

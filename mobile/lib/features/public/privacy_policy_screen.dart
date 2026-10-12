@@ -44,7 +44,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
         ]),
         LegalSection(title: '2. How we use information', children: [
           const LegalText('We use information to:'),
-          LegalList(items: LegalList.plain(const [
+          LegalList(
+              items: LegalList.plain(const [
             'Provide, maintain, and improve the Service;',
             'Authenticate users, enforce access controls, and protect against fraud or abuse;',
             'Send service-related messages (including security alerts and, where enabled, push notifications);',

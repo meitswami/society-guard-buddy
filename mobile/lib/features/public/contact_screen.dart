@@ -19,14 +19,20 @@ class ContactScreen extends StatelessWidget {
       ok = await action();
     } catch (_) {}
     if (!ok && context.mounted) {
-      AppFeedback.toast(context, context.tr('Could not open the app for this action.', 'इस कार्य के लिए ऐप नहीं खुल सका।'), tone: BadgeTone.alert);
+      AppFeedback.toast(context, context.tr('Could not open the app for this action.', 'इस कार्य के लिए ऐप नहीं खुल सका।'),
+          tone: BadgeTone.alert);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    Widget card({required IconData icon, required String title, required String description, required String value, required VoidCallback onTap}) =>
+    Widget card(
+            {required IconData icon,
+            required String title,
+            required String description,
+            required String value,
+            required VoidCallback onTap}) =>
         CardSection(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
@@ -47,7 +53,12 @@ class ContactScreen extends StatelessWidget {
                 onTap: onTap,
                 child: Text(
                   value,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: t.primary, decoration: TextDecoration.underline, decorationColor: t.primary),
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: t.primary,
+                      decoration: TextDecoration.underline,
+                      decorationColor: t.primary),
                 ),
               ),
             ],

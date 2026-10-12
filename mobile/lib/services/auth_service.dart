@@ -99,13 +99,8 @@ class AuthService {
     required String password,
   }) async {
     if (!Env.isConfigured) return null;
-    final row = await _maybeRow(_db
-        .from('resident_users')
-        .select('*')
-        .eq('phone', phone)
-        .eq('password', password)
-        .eq('flat_id', flatId)
-        .maybeSingle());
+    final row = await _maybeRow(
+        _db.from('resident_users').select('*').eq('phone', phone).eq('password', password).eq('flat_id', flatId).maybeSingle());
     return row == null ? null : ResidentUser.fromRow(row);
   }
 
@@ -115,8 +110,7 @@ class AuthService {
     required String phone,
   }) async {
     if (!Env.isConfigured) return null;
-    final row = await _maybeRow(
-        _db.from('resident_users').select('id, password').eq('flat_id', flatId).eq('phone', phone).maybeSingle());
+    final row = await _maybeRow(_db.from('resident_users').select('id, password').eq('flat_id', flatId).eq('phone', phone).maybeSingle());
     if (row == null) return null;
     return (id: row['id'] as String, password: (row['password'] as String?) ?? '');
   }
@@ -124,8 +118,8 @@ class AuthService {
   /// True when any login of the flat uses this password (shared flat password).
   Future<bool> flatPasswordMatches({required String flatId, required String password}) async {
     if (!Env.isConfigured) return false;
-    final row = await _maybeRow(
-        _db.from('resident_users').select('id').eq('flat_id', flatId).eq('password', password).limit(1).maybeSingle());
+    final row =
+        await _maybeRow(_db.from('resident_users').select('id').eq('flat_id', flatId).eq('password', password).limit(1).maybeSingle());
     return row != null;
   }
 
@@ -215,15 +209,13 @@ class AuthService {
     required String guardId,
   }) async {
     if (!Env.isConfigured) return null;
-    final row =
-        await _maybeRow(_db.from('guards').select('id').eq('guard_id', guardId).eq('society_id', societyId).maybeSingle());
+    final row = await _maybeRow(_db.from('guards').select('id').eq('guard_id', guardId).eq('society_id', societyId).maybeSingle());
     return row?['id'] as String?;
   }
 
   Future<AdminUser?> fetchAdminById(String id) async {
     if (!Env.isConfigured) return null;
-    final row =
-        await _maybeRow(_db.from('admins').select('*, society_roles(permissions, slug, role_name)').eq('id', id).maybeSingle());
+    final row = await _maybeRow(_db.from('admins').select('*, society_roles(permissions, slug, role_name)').eq('id', id).maybeSingle());
     if (row == null) return null;
     return adminFromRow(row);
   }

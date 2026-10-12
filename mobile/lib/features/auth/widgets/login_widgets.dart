@@ -192,8 +192,7 @@ class _SelectSheetState<T> extends State<_SelectSheet<T>> {
                   children: [
                     if (widget.placeholder != null && q.isEmpty)
                       tile(widget.placeholder!, widget.value == null, () => Navigator.pop(context, _Pick<T>(null)), muted: true),
-                    for (final o in filtered)
-                      tile(widget.labelOf(o), o == widget.value, () => Navigator.pop(context, _Pick<T>(o))),
+                    for (final o in filtered) tile(widget.labelOf(o), o == widget.value, () => Navigator.pop(context, _Pick<T>(o))),
                     if (filtered.isEmpty)
                       Padding(
                         padding: const EdgeInsets.all(20),
@@ -350,7 +349,8 @@ class LoginModeToggle extends StatelessWidget {
               decoration: BoxDecoration(
                 color: active ? t.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(AppTokens.radiusSm),
-                boxShadow: active ? [BoxShadow(color: AppTokens.tint(t.foreground, 0.08), blurRadius: 2, offset: const Offset(0, 1))] : null,
+                boxShadow:
+                    active ? [BoxShadow(color: AppTokens.tint(t.foreground, 0.08), blurRadius: 2, offset: const Offset(0, 1))] : null,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,

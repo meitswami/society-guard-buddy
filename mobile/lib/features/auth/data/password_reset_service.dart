@@ -100,8 +100,7 @@ class PasswordResetService {
           }
         }
       } else {
-        user = await _row(
-            db.from('guards').select('*').eq('guard_id', identifier.toUpperCase()).eq('society_id', sid).maybeSingle());
+        user = await _row(db.from('guards').select('*').eq('guard_id', identifier.toUpperCase()).eq('society_id', sid).maybeSingle());
       }
     } else {
       var q = db.from('admins').select('*').eq('admin_id', identifier.toUpperCase());

@@ -222,6 +222,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (mounted) setState(() => _error = message);
   }
 
+  /// Error from a web translation key (safe after async gaps).
+  void _failKey(String key) {
+    if (!mounted) return;
+    setState(() => _error = context.t(key));
+  }
+
   Future<bool> _withinFence() async {
     final result = await checkSocietyGeofence(_societyId, GeofencePolicy.permissive);
     return result.ok;
@@ -249,10 +255,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleOtpVerified(String phone) async {
     _fail('');
-    if (_societyId.isEmpty) return _fail(context.t('login.pickSocietyFirst'));
+    if (_societyId.isEmpty) return _failKey('login.pickSocietyFirst');
     final role = _role;
-    if (role == null) return _fail(context.t('login.pickRoleFirst'));
-    if (role == LoginRole.admin) return _fail(context.t('login.adminUsePassword'));
+    if (role == null) return _failKey('login.pickRoleFirst');
+    if (role == LoginRole.admin) return _failKey('login.adminUsePassword');
     final normalized = normalizeLoginPhone(phone);
 
     try {
@@ -261,17 +267,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (!mounted) return;
         switch (lookup) {
           case GuardOtpNotFound(:final reason):
-            return _fail(context.t(
-                reason == GuardOtpFailureReason.passwordMode ? 'login.guardOtpPasswordMode' : 'login.guardOtpPhoneNotRegistered'));
+            return _fail(context
+                .t(reason == GuardOtpFailureReason.passwordMode ? 'login.guardOtpPasswordMode' : 'login.guardOtpPhoneNotRegistered'));
           case GuardOtpFound(:final guard):
             if (!await _withinFence()) {
-              if (mounted) _fail(context.t('admin.geofenceBlocked'));
+              if (mounted) _failKey('admin.geofenceBlocked');
               return;
             }
             final session = guard.toSession();
             final shiftId = await _guardSessions.establishGuardSession(societyId: _societyId, guard: session);
             if (!mounted) return;
-            if (shiftId == null) return _fail(context.t('login.invalidCredentials'));
+            if (shiftId == null) return _failKey('login.invalidCredentials');
             AuthAudit.loginSuccess('guard', guard.guardId, guard.name, method: 'otp', societyId: _societyId);
             _persist({'societyId': _societyId, 'role': 'guard', 'phone': normalized});
             await _enterGuard(session, shiftId);
@@ -279,17 +285,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
       }
 
-      if (_flatId.isEmpty) return _fail(context.t('login.pickFlatFirst'));
+      if (_flatId.isEmpty) return _failKey('login.pickFlatFirst');
 
       final otherFlat = await _residentLogin.otherFlatForPhone(phone: normalized, societyId: _societyId);
       if (!mounted) return;
-      if (otherFlat != null && otherFlat != _flatId) return _fail(context.t('login.onboard.phoneOtherFlat'));
+      if (otherFlat != null && otherFlat != _flatId) return _failKey('login.onboard.phoneOtherFlat');
 
       final row = await _societyService.getResidentByPhoneInSociety(normalized, _societyId);
       if (!mounted) return;
       if (row != null) {
         final resident = ResidentUser.fromRow(row);
-        if (resident.flatId != _flatId) return _fail(context.t('login.onboard.phoneOtherFlat'));
+        if (resident.flatId != _flatId) return _failKey('login.onboard.phoneOtherFlat');
         AuthAudit.loginSuccess('resident', resident.id, resident.name, method: 'otp', societyId: _societyId);
         _persist({'societyId': _societyId, 'role': 'resident', 'flatId': _flatId, 'phone': normalized});
         await _enterResident(resident);
@@ -297,10 +303,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       final flat = _flats.where((f) => f.id == _flatId).firstOrNull;
-      if (flat == null) return _fail(context.t('login.pickFlatFirst'));
+      if (flat == null) return _failKey('login.pickFlatFirst');
       await _onboardAndEnter(phone: normalized, flatNumber: flat.flatNumber, method: 'otp');
     } catch (_) {
-      _fail(context.t('login.connectionProblem'));
+      _failKey('login.connectionProblem');
     }
   }
 
@@ -323,11 +329,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _handleCredentialLogin() async {
     FocusScope.of(context).unfocus();
     setState(() => _error = '');
-    if (_societyId.isEmpty) return _fail(context.t('login.pickSocietyFirst'));
+    if (_societyId.isEmpty) return _failKey('login.pickSocietyFirst');
     final role = _role;
-    if (role == null) return _fail(context.t('login.pickRoleFirst'));
+    if (role == null) return _failKey('login.pickRoleFirst');
     final password = _password.text;
-    if (_identifier.text.isEmpty || password.isEmpty) return _fail(context.t('login.enterBoth'));
+    if (_identifier.text.isEmpty || password.isEmpty) return _failKey('login.enterBoth');
 
     setState(() => _loading = true);
     final idRaw = _identifier.text.trim();
@@ -339,7 +345,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (!mounted) return;
           if (admin == null) {
             AuthAudit.loginFailed('admin', idRaw, societyId: _societyId);
-            return _fail(context.t('login.invalidCredentials'));
+            return _failKey('login.invalidCredentials');
           }
           AuthAudit.loginSuccess('admin', admin.id, admin.name, societyId: _societyId);
           try {
@@ -356,27 +362,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (!mounted) return;
           if (guard == null) {
             AuthAudit.loginFailed('guard', idRaw, societyId: _societyId);
-            return _fail(context.t('login.invalidCredentials'));
+            return _failKey('login.invalidCredentials');
           }
           if (!await _withinFence()) {
-            if (mounted) _fail(context.t('admin.geofenceBlocked'));
+            if (mounted) _failKey('admin.geofenceBlocked');
             return;
           }
           final shiftId = await _guardSessions.establishGuardSession(societyId: _societyId, guard: guard.session);
           if (!mounted) return;
-          if (shiftId == null) return _fail(context.t('login.invalidCredentials'));
+          if (shiftId == null) return _failKey('login.invalidCredentials');
           AuthAudit.loginSuccess('guard', guard.session.guardId, guard.session.name, societyId: _societyId);
           await _enterGuard(guard.session, shiftId);
           return;
 
         case LoginRole.resident:
-          if (_flatId.isEmpty) return _fail(context.t('login.pickFlatFirst'));
+          if (_flatId.isEmpty) return _failKey('login.pickFlatFirst');
           var flatNumber = _flats.where((f) => f.id == _flatId).map((f) => f.flatNumber).firstOrNull ?? '';
           if (flatNumber.isEmpty) flatNumber = await _auth.fetchFlatNumber(_flatId);
 
           final otherFlat = await _residentLogin.otherFlatForPhone(phone: id, societyId: _societyId);
           if (!mounted) return;
-          if (otherFlat != null && otherFlat != _flatId) return _fail(context.t('login.onboard.phoneOtherFlat'));
+          if (otherFlat != null && otherFlat != _flatId) return _failKey('login.onboard.phoneOtherFlat');
 
           final resident = await _auth.findResidentForPassword(flatId: _flatId, phone: id, password: password);
           if (!mounted) return;
@@ -391,11 +397,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (!mounted) return;
           if (onFlat != null && onFlat.password != password) {
             AuthAudit.loginFailed('resident', idRaw, societyId: _societyId);
-            return _fail(context.t('login.invalidCredentials'));
+            return _failKey('login.invalidCredentials');
           }
           if (!await _auth.flatPasswordMatches(flatId: _flatId, password: password)) {
             AuthAudit.loginFailed('resident', idRaw, societyId: _societyId);
-            if (mounted) _fail(context.t('login.invalidCredentials'));
+            if (mounted) _failKey('login.invalidCredentials');
             return;
           }
           if (!mounted) return;
@@ -404,7 +410,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           return;
       }
     } catch (_) {
-      _fail(context.t('login.connectionProblem'));
+      _failKey('login.connectionProblem');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -441,11 +447,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleBiometricLogin() async {
     setState(() => _error = '');
-    if (_societyId.isEmpty) return _fail(context.t('login.pickSocietyFirst'));
+    if (_societyId.isEmpty) return _failKey('login.pickSocietyFirst');
     final role = _role;
-    if (role == null) return _fail(context.t('login.pickRoleFirst'));
-    if (role == LoginRole.admin) return _fail(context.t('login.adminUsePassword'));
-    if (role == LoginRole.resident && _flatId.isEmpty) return _fail(context.t('login.pickFlatFirst'));
+    if (role == null) return _failKey('login.pickRoleFirst');
+    if (role == LoginRole.admin) return _failKey('login.adminUsePassword');
+    if (role == LoginRole.resident && _flatId.isEmpty) return _failKey('login.pickFlatFirst');
 
     setState(() => _bioLoading = true);
     try {
@@ -455,7 +461,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
       final usable = role == LoginRole.resident ? all.where((e) => e.flatId == _flatId).toList() : all;
       if (usable.isEmpty) {
-        return _fail(context.t(all.isNotEmpty ? 'login.onboard.phoneOtherFlat' : 'biometric.notRegistered'));
+        return _failKey(all.isNotEmpty ? 'login.onboard.phoneOtherFlat' : 'biometric.notRegistered');
       }
       final picked = await _pickEnrollment(usable);
       if (picked == null || !mounted) return;
@@ -467,14 +473,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (role == LoginRole.guard) {
         final guard = await _auth.fetchGuardByDbId(picked.userDbId);
         if (!mounted) return;
-        if (guard == null || guard.societyId != _societyId) return _fail(context.t('login.invalidCredentials'));
+        if (guard == null || guard.societyId != _societyId) return _failKey('login.invalidCredentials');
         if (!await _withinFence()) {
-          if (mounted) _fail(context.t('admin.geofenceBlocked'));
+          if (mounted) _failKey('admin.geofenceBlocked');
           return;
         }
         final shiftId = await _guardSessions.establishGuardSession(societyId: _societyId, guard: guard.session);
         if (!mounted) return;
-        if (shiftId == null) return _fail(context.t('login.invalidCredentials'));
+        if (shiftId == null) return _failKey('login.invalidCredentials');
         AuthAudit.biometricLogin('guard', guard.dbId, guard.session.name, societyId: _societyId);
         await _enterGuard(guard.session, shiftId);
         return;
@@ -482,15 +488,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       final resident = await _auth.fetchResidentById(picked.userDbId);
       if (!mounted) return;
-      if (resident == null) return _fail(context.t('login.invalidCredentials'));
+      if (resident == null) return _failKey('login.invalidCredentials');
       final flatSociety = await _auth.fetchFlatSocietyId(resident.flatId);
       if (!mounted) return;
-      if (flatSociety != _societyId) return _fail(context.t('login.invalidCredentials'));
-      if (resident.flatId != _flatId) return _fail(context.t('login.onboard.phoneOtherFlat'));
+      if (flatSociety != _societyId) return _failKey('login.invalidCredentials');
+      if (resident.flatId != _flatId) return _failKey('login.onboard.phoneOtherFlat');
       AuthAudit.biometricLogin('resident', resident.id, resident.name, societyId: _societyId);
       await _enterResident(resident);
     } catch (_) {
-      _fail(context.t('login.connectionProblem'));
+      _failKey('login.connectionProblem');
     } finally {
       if (mounted) setState(() => _bioLoading = false);
     }
@@ -747,7 +753,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (role != null && _loginMode == LoginMode.otp && role != LoginRole.admin) ...[
             if (showBio) _biometricButton(),
             OtpLoginFlow(
-              key: ValueKey('otp-${_societyId}-${role.name}'),
+              key: ValueKey('otp-$_societyId-${role.name}'),
               embedded: true,
               initialPhone: _rememberedPhone,
               onPhoneChange: _onOtpPhoneChange,

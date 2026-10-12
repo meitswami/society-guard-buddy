@@ -66,7 +66,8 @@ class ResidentOtpOnboarding {
         return ResidentOnboardingResult(row, openFamilyTab: true);
 
       case OnboardingStepKind.noPrimary:
-        await AppFeedback.error(context, title: context.t('login.onboard.noPrimaryTitle'), message: context.t('login.onboard.noPrimaryBody'));
+        await AppFeedback.error(context,
+            title: context.t('login.onboard.noPrimaryTitle'), message: context.t('login.onboard.noPrimaryBody'));
         return null;
 
       case OnboardingStepKind.linkPrimary:

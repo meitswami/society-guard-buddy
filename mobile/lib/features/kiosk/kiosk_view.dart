@@ -53,11 +53,15 @@ class _KioskViewState extends State<KioskView> {
 
   @override
   Widget build(BuildContext context) {
-    return KioskSetupPanel(
-      settings: _settings,
-      onChange: _update,
-      onStart: _start,
-      onBack: widget.onExit,
+    // SafeArea: GATE shows this page full-screen without an app bar.
+    return SafeArea(
+      bottom: false,
+      child: KioskSetupPanel(
+        settings: _settings,
+        onChange: _update,
+        onStart: _start,
+        onBack: widget.onExit,
+      ),
     );
   }
 }

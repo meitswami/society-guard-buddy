@@ -168,11 +168,7 @@ class LoginRememberData {
 
   @override
   bool operator ==(Object other) =>
-      other is LoginRememberData &&
-      other.societyId == societyId &&
-      other.role == role &&
-      other.flatId == flatId &&
-      other.phone == phone;
+      other is LoginRememberData && other.societyId == societyId && other.role == role && other.flatId == flatId && other.phone == phone;
 
   @override
   int get hashCode => Object.hash(societyId, role, flatId, phone);
