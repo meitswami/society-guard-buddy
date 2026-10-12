@@ -12,17 +12,22 @@ Widget _app(Widget Function(BuildContext) onTap) => ProviderScope(
         theme: ThemeData(extensions: [AppTokens.light]),
         home: Builder(
           builder: (context) => Scaffold(
-            body: Center(child: TextButton(onPressed: () => onTap(context), child: const Text('open'))),
+            body: Center(
+                child: TextButton(
+                    onPressed: () => onTap(context),
+                    child: const Text('open'))),
           ),
         ),
       ),
     );
 
 void main() {
-  testWidgets('overlay steps through Next and resolves true on Done', (tester) async {
+  testWidgets('overlay steps through Next and resolves true on Done',
+      (tester) async {
     bool? result;
     await tester.pumpWidget(_app((ctx) {
-      TourGuideOverlay.show(ctx, steps: getFirstLoginSteps('guard')).then((v) => result = v);
+      TourGuideOverlay.show(ctx, steps: getFirstLoginSteps('guard'))
+          .then((v) => result = v);
       return const SizedBox();
     }));
     await tester.tap(find.text('open'));
@@ -39,7 +44,8 @@ void main() {
   testWidgets('skip does not persist unless persistOnSkip', (tester) async {
     bool? result;
     await tester.pumpWidget(_app((ctx) {
-      TourGuideOverlay.show(ctx, steps: getFirstLoginSteps('resident')).then((v) => result = v);
+      TourGuideOverlay.show(ctx, steps: getFirstLoginSteps('resident'))
+          .then((v) => result = v);
       return const SizedBox();
     }));
     await tester.tap(find.text('open'));
@@ -49,7 +55,8 @@ void main() {
     expect(result, isFalse);
   });
 
-  testWidgets('first-login tour shows once and is stored under the web key', (tester) async {
+  testWidgets('first-login tour shows once and is stored under the web key',
+      (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(_app((ctx) {
       TourGuideFirstLogin.maybeShow(ctx, role: 'guard', userId: 'G001');

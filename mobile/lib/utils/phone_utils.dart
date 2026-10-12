@@ -8,8 +8,9 @@ String normalizeLoginPhone(String phone) {
 /// `value.replace(/\D/g, '')`, optionally capped like an `<input maxLength>`.
 String digitsOnly(String value, {int? maxLength}) {
   final d = value.replaceAll(RegExp(r'\D'), '');
-  if (maxLength != null && d.length > maxLength)
+  if (maxLength != null && d.length > maxLength) {
     return d.substring(0, maxLength);
+  }
   return d;
 }
 

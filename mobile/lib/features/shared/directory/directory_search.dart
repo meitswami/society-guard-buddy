@@ -134,10 +134,12 @@ List<VisitorDirectoryEntry> buildVisitorDirectory(
     final existing = byPhone[v.phone];
     if (existing != null) {
       existing.totalVisits++;
-      if (v.entryTime.compareTo(existing.latest.entryTime) > 0)
+      if (v.entryTime.compareTo(existing.latest.entryTime) > 0) {
         existing.latest = v;
-      if (v.entryTime.compareTo(existing.firstVisit) < 0)
+      }
+      if (v.entryTime.compareTo(existing.firstVisit) < 0) {
         existing.firstVisit = v.entryTime;
+      }
     } else {
       byPhone[v.phone] = VisitorDirectoryEntry(
           latest: v, totalVisits: 1, firstVisit: v.entryTime);

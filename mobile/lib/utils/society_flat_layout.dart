@@ -240,14 +240,16 @@ FlatGenerationPlan planFlatsFromLayout({
   required SocietyFlatRangeInput row,
   required List<ExistingFlatKey> existing,
 }) {
-  if (societyId.isEmpty)
+  if (societyId.isEmpty) {
     return const FlatGenerationPlan(
         rows: [], skipped: 0, error: 'Missing society id');
+  }
 
   final range = canTrimFlatsFromSocietyRow(row);
-  if (range == null)
+  if (range == null) {
     return const FlatGenerationPlan(
         rows: [], skipped: 0, error: kInvalidLayoutError);
+  }
 
   final wings = layoutWings(row.blockNames);
   final sortedNumbers = range.sortedNumbers;

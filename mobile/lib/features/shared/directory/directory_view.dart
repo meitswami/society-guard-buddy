@@ -84,7 +84,9 @@ class _DirectoryViewState extends State<DirectoryView> {
       _search.text = widget.initialQuery!.trim();
     }
     if (widget.societyId != old.societyId ||
-        widget.viewerRole != old.viewerRole) _load();
+        widget.viewerRole != old.viewerRole) {
+      _load();
+    }
   }
 
   @override
