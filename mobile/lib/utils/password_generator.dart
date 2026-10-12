@@ -1,19 +1,25 @@
 import 'dart:math';
 
+/// Port of web `src/lib/passwordGenerator.ts`:
+/// animal + fruit/vegetable + 2-digit number + symbol (e.g. `TigerMango42@`).
 final _random = Random();
 
-const _animals = [
-  'Tiger', 'Eagle', 'Panda', 'Lion', 'Fox', 'Wolf', 'Bear', 'Hawk', 'Deer', 'Owl',
+const kPasswordAnimals = [
+  'Tiger', 'Eagle', 'Panda', 'Lion', 'Fox', 'Wolf', 'Bear', 'Hawk', 'Deer', 'Owl', //
+  'Dolphin', 'Falcon', 'Cobra', 'Rhino', 'Shark',
 ];
-const _fruits = [
-  'Mango', 'Apple', 'Grape', 'Peach', 'Lemon', 'Berry', 'Melon', 'Guava', 'Plum', 'Cherry',
+const kPasswordFruits = [
+  'Mango', 'Apple', 'Grape', 'Peach', 'Lemon', 'Berry', 'Melon', 'Guava', 'Plum', 'Cherry', //
+  'Kiwi', 'Papaya', 'Fig', 'Olive', 'Coconut',
 ];
-const _symbols = ['@', '#', r'$', '!', '&', '*', '%'];
+const kPasswordSymbols = ['@', '#', r'$', '!', '&', '*', '%'];
 
-String generateFlatPassword() {
-  final animal = _animals[_random.nextInt(_animals.length)];
-  final fruit = _fruits[_random.nextInt(_fruits.length)];
-  final num = 10 + _random.nextInt(90);
-  final sym = _symbols[_random.nextInt(_symbols.length)];
+/// Shared flat login password (all household logins of a flat use the same one).
+String generateFlatPassword([Random? random]) {
+  final r = random ?? _random;
+  final animal = kPasswordAnimals[r.nextInt(kPasswordAnimals.length)];
+  final fruit = kPasswordFruits[r.nextInt(kPasswordFruits.length)];
+  final num = 10 + r.nextInt(90); // 10-99
+  final sym = kPasswordSymbols[r.nextInt(kPasswordSymbols.length)];
   return '$animal$fruit$num$sym';
 }
