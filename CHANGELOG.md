@@ -10,6 +10,12 @@ when version tags are published.
 
 ### Added
 
+- **Native Flutter app (`mobile/`)**:
+  - Full Android port of every web role and module. Login, public pages, guard and gate screens, the AI kiosk, resident area, admin modules and the superadmin console all use the same Supabase backend.
+  - It replaces the AppMySite PWA wrapper on the Play Store.
+  - The web design tokens and Hindi/English strings are shared with the web app. See `docs/mobile/PARITY-ROADMAP.md` and `docs/mobile/PLAY-STORE-RELEASE.md`.
+- **Android CI** (`.github/workflows/android.yml`): runs analyze and tests, then builds a signed APK and AAB. A manual run can upload to the Play internal track.
+- **VPS hosting kit** for moving the web app off Vercel: nginx site, server setup script, a GitHub Actions deploy with atomic releases and rollback, and a Docker alternative. See `docs/deploy/VPS-MIGRATION.md`.
 - **AI receptionist kiosk** — New guard tab **AI Kiosk**. The device plays a screensaver until a face is detected and properly framed (MediaPipe BlazeFace, model in `public/models/`). Then a talking receptionist asks the visitor's name, mobile, flat, purpose and vehicle in **Hindi (default), Hinglish or English**, showing the live transcript and the value it understood for confirmation. Blacklist and repeat-visitor checks, optional resident approval, camera snapshot, and on-screen typing as a fallback are included, and entries are saved to the visitor log as `<guard> · AI Kiosk`. Unclear speech can optionally go to the new `kiosk-assistant` Edge Function (Claude; secret `ANTHROPIC_API_KEY`). Uses the browser Web Speech APIs (Chrome on Android / installed PWA).
 - **Emergency / Alert mode** — Guards get a dedicated **Alert** tab; residents get an **Emergency or Alert** button. Photos, FCM push, and WhatsApp broadcast via `send-emergency-alert`. Migration `20260524140000`.
 - **Committee module** — MC roster (`committee_members`): position, flat, tenure, elected/nominated, election trace. Migration `20260524130000`, `20260606150000`.
