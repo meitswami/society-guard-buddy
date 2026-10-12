@@ -8,13 +8,14 @@ import '../../../../core/supabase/db.dart';
 /// (`src/lib/auditLogger.ts`). Best-effort: never throws.
 abstract final class PeopleAudit {
   static Map<String, dynamic> _deviceInfo() {
-    if (kIsWeb)
+    if (kIsWeb) {
       return {
         'browser': 'web',
         'os': 'Unknown',
         'platform': 'web',
         'isMobile': false
       };
+    }
     return {
       'browser': 'Kutumbika app',
       'os': Platform.isAndroid

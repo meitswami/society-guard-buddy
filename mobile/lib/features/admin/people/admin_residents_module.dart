@@ -96,8 +96,9 @@ class _AdminResidentsModuleState extends State<AdminResidentsModule> {
     final q = widget.ctx.initialQuery?.trim();
     if (q != null && q.isNotEmpty) _search.text = q;
     final sub = widget.ctx.subTab;
-    if (sub != null && sub.startsWith('flat:'))
+    if (sub != null && sub.startsWith('flat:')) {
       _pendingExpand = sub.substring(5);
+    }
   }
 
   void _applyPendingExpand() {

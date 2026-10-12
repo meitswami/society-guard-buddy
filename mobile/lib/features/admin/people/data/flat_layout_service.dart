@@ -50,9 +50,10 @@ class FlatLayoutService {
   /// Web `upsertSocietyFlatsFromLayout` (idempotent; inserts in chunks of 250).
   Future<GenerateFlatsResult> upsertFromLayout(
       String societyId, SocietyFlatRangeInput row) async {
-    if (societyId.isEmpty)
+    if (societyId.isEmpty) {
       return const GenerateFlatsResult(
           created: 0, skipped: 0, error: 'Missing society id');
+    }
     if (canTrimFlatsFromSocietyRow(row) == null) {
       return const GenerateFlatsResult(
           created: 0, skipped: 0, error: kInvalidLayoutError);
@@ -74,11 +75,13 @@ class FlatLayoutService {
           ExistingFlatKey('${r['flat_number']}', r['wing']?.toString())
       ],
     );
-    if (plan.error != null)
+    if (plan.error != null) {
       return GenerateFlatsResult(
           created: 0, skipped: plan.skipped, error: plan.error);
-    if (plan.rows.isEmpty)
+    }
+    if (plan.rows.isEmpty) {
       return GenerateFlatsResult(created: 0, skipped: plan.skipped);
+    }
 
     const chunk = 250;
     var created = 0;

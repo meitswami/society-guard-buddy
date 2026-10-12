@@ -235,8 +235,9 @@ Future<void> showPasswordDialog(BuildContext context,
           label: Text(ctx.tr('Copy', 'कॉपी')),
           onPressed: () async {
             await Clipboard.setData(ClipboardData(text: password));
-            if (ctx.mounted)
+            if (ctx.mounted) {
               AppFeedback.toast(ctx, ctx.tr('Copied', 'कॉपी हुआ'));
+            }
           },
         ),
         FilledButton(

@@ -126,10 +126,12 @@ Future<Uint8List> buildResidentsDirectoryPdf({
           child: pw.Text(line, style: const pw.TextStyle(fontSize: 8)),
         ));
       }
-      if (isDataImageUrl(m.idPhotoFront))
+      if (isDataImageUrl(m.idPhotoFront)) {
         content.add(idImage('Photo ID — front', m.idPhotoFront!));
-      if (isDataImageUrl(m.idPhotoBack))
+      }
+      if (isDataImageUrl(m.idPhotoBack)) {
         content.add(idImage('Photo ID — back', m.idPhotoBack!));
+      }
     }
     content.add(pw.SizedBox(height: 2 * mm));
   }

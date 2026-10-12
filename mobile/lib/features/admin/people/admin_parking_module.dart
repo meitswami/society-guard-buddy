@@ -157,8 +157,9 @@ class _AdminParkingModuleState extends State<AdminParkingModule> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const LoadingView();
-    if (_error != null && _snap.spaces.isEmpty)
+    if (_error != null && _snap.spaces.isEmpty) {
       return ErrorView(onRetry: _load);
+    }
     final t = context.tokens;
     final allocated = _snap.allocated;
     final available = _snap.available;

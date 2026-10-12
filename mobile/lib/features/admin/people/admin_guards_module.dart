@@ -168,10 +168,11 @@ class _AdminGuardsModuleState extends State<AdminGuardsModule> {
         _showForm = false;
       });
       await _load();
-      if (mounted)
+      if (mounted) {
         await AppFeedback.success(context,
             title: context.t('swal.success'),
             message: context.t('admin.guardAdded'));
+      }
     } catch (e) {
       _toast('$e', tone: BadgeTone.alert);
     } finally {
@@ -297,9 +298,10 @@ class _AdminGuardsModuleState extends State<AdminGuardsModule> {
       _toast(context.tr('Worker photo saved', 'कर्मचारी फ़ोटो सहेजी गई'));
       await _load();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _toast(context.tr('Photo upload failed', 'फ़ोटो अपलोड विफल'),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _uploadingProfile = null);
     }
@@ -342,9 +344,10 @@ class _AdminGuardsModuleState extends State<AdminGuardsModule> {
           : context.tr('Back uploaded', 'पीछे का भाग अपलोड हुआ'));
       await _load();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _toast(context.tr('Upload failed', 'अपलोड विफल'),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _uploadingDoc = false);
     }
@@ -393,9 +396,10 @@ class _AdminGuardsModuleState extends State<AdminGuardsModule> {
           : context.tr('$n documents saved', '$n दस्तावेज़ सहेजे गए'));
       await _load();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _toast(context.tr('Document upload failed', 'दस्तावेज़ अपलोड विफल'),
             tone: BadgeTone.alert);
+      }
       await _load();
     } finally {
       if (mounted) setState(() => _uploadingDoc = false);
@@ -440,8 +444,9 @@ class _AdminGuardsModuleState extends State<AdminGuardsModule> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const LoadingView();
-    if (_error != null && _snap.guards.isEmpty)
+    if (_error != null && _snap.guards.isEmpty) {
       return ErrorView(onRetry: _load);
+    }
     final t = context.tokens;
     final kycPending =
         _snap.guards.where((g) => g.policeVerification != 'done').toList();

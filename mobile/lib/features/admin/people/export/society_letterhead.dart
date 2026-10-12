@@ -73,7 +73,9 @@ class SocietyLetterhead {
   String get brandMode {
     if (letterheadMode == 'image' ||
         letterheadMode == 'stationery' ||
-        letterheadMode == 'auto') return letterheadMode;
+        letterheadMode == 'auto') {
+      return letterheadMode;
+    }
     return hasOfficialAsset ? 'image' : 'auto';
   }
 }
@@ -94,8 +96,9 @@ Future<Uint8List?> _fetchImage(String? url) async {
   final u = url?.trim() ?? '';
   if (u.isEmpty) return null;
   if (u.startsWith('data:')) return dataUrlBytes(u);
-  if (u.toLowerCase().contains('.pdf'))
+  if (u.toLowerCase().contains('.pdf')) {
     return null; // PDF stationery cannot be embedded as an image
+  }
   try {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10);

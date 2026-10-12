@@ -267,8 +267,9 @@ class ResidentsService {
       final ins =
           await db.from('members').insert(payload).select('id').single();
       final id = ins['id']?.toString();
-      if (id == null || id.isEmpty)
+      if (id == null || id.isEmpty) {
         throw MemberSaveException('Could not add member');
+      }
       memberId = id;
     }
 
@@ -289,8 +290,9 @@ class ResidentsService {
           societyId: societyId, memberId: memberId, flat: flat, form: form);
     } else {
       final vid = await _vehicleIdForMember(memberId);
-      if (vid != null)
+      if (vid != null) {
         await db.from('resident_vehicles').delete().eq('id', vid);
+      }
     }
 
     var created = 0;
@@ -317,8 +319,9 @@ class ResidentsService {
       form: form,
     );
     if (row == null) {
-      if (existingId != null)
+      if (existingId != null) {
         await db.from('resident_vehicles').delete().eq('id', existingId);
+      }
       return;
     }
     if (existingId != null) {
@@ -385,8 +388,9 @@ class ResidentsService {
       {required PeopleMember target,
       required List<PeopleMember> flatMembers}) async {
     for (final m in flatMembers) {
-      if (m.isPrimary)
+      if (m.isPrimary) {
         await db.from('members').update({'is_primary': false}).eq('id', m.id);
+      }
     }
     await db.from('members').update({'is_primary': true}).eq('id', target.id);
     await db

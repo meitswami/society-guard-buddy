@@ -52,9 +52,10 @@ class GuardsService {
         .order('guard_id'));
     final guards = rows.map(GuardRow.fromJson).toList();
     final ids = guards.map((g) => g.id).toList();
-    if (ids.isEmpty)
+    if (ids.isEmpty) {
       return GuardsSnapshot(
           guards: guards, docs: const {}, attachments: const {});
+    }
     final results = await Future.wait([
       selectInChunks(
           table: 'guard_documents', columns: '*', column: 'guard_id', ids: ids),

@@ -93,7 +93,9 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
     }
     if (!await _verify(
         context.tr('Generate flats from layout', 'विन्यास से फ्लैट बनाएँ'),
-        'generate_flats')) return;
+        'generate_flats')) {
+      return;
+    }
     if (!mounted) return;
     setState(() => _busy = true);
     try {
@@ -133,8 +135,9 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
       destructive: true,
     );
     if (!ok || !mounted) return;
-    if (!await _verify(context.t('superadmin.resetFlatsButton'), 'reset_flats'))
+    if (!await _verify(context.t('superadmin.resetFlatsButton'), 'reset_flats')) {
       return;
+    }
     if (!mounted) return;
     setState(() => _busy = true);
     try {
@@ -153,9 +156,10 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
             tone: BadgeTone.success);
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         AppFeedback.toast(context, context.t('superadmin.flatResetFailed'),
             tone: BadgeTone.alert);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
