@@ -249,8 +249,13 @@ class _SocietySignupScreenState extends State<SocietySignupScreen> {
                             Icon(Icons.arrow_back, size: 16, color: t.mutedForeground),
                             const SizedBox(width: 6),
                             // The key text starts with "← "; the icon already shows the arrow.
-                            Text(context.t('login.backToSociety').replaceFirst(RegExp(r'^←\s*'), ''),
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.mutedForeground)),
+                            Flexible(
+                              child: Text(
+                                context.t('login.backToSociety').replaceFirst(RegExp(r'^←\s*'), ''),
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.mutedForeground),
+                              ),
+                            ),
                           ],
                         ),
                       ),
