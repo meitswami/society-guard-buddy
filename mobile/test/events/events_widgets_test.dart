@@ -57,9 +57,9 @@ void main() {
     await tester.tap(find.text('Create Event'));
     await tester.pumpAndSettle();
     expect(find.text('Create Event'), findsNWidgets(2)); // form opened
-    await tester.scrollUntilVisible(find.text('New food expense group'), 300);
+    await tester.scrollUntilVisible(find.text('New food expense group'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('New food expense group'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('No event receipts recorded yet.'), 300);
+    await tester.scrollUntilVisible(find.text('No event receipts recorded yet.'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('No event receipts recorded yet.'), findsOneWidget);
   });
 
@@ -72,7 +72,7 @@ void main() {
     await tester.tap(find.text('New expense head'));
     await tester.pumpAndSettle();
     expect(find.text('MAJOR HEAD'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Head fund reconciliation (Finance)'), 300);
+    await tester.scrollUntilVisible(find.text('Head fund reconciliation (Finance)'), 300, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Head fund reconciliation (Finance)'));
     expect(_navigations.single, (AdminTab.finance, null, 'record_payment'));
   });
@@ -136,8 +136,7 @@ void main() {
       expect(e.value['en']?.trim().isNotEmpty, isTrue, reason: e.key);
       expect(e.value['hi']?.trim().isNotEmpty, isTrue, reason: e.key);
       final vars = RegExp(r'\{(\w+)\}');
-      expect(vars.allMatches(e.value['hi']!).map((m) => m.group(1)).toSet(),
-          vars.allMatches(e.value['en']!).map((m) => m.group(1)).toSet(),
+      expect(vars.allMatches(e.value['hi']!).map((m) => m.group(1)).toSet(), vars.allMatches(e.value['en']!).map((m) => m.group(1)).toSet(),
           reason: 'placeholders differ for ${e.key}');
     }
   });

@@ -444,10 +444,12 @@ class _FinanceTransactionsTabState extends State<FinanceTransactionsTab> {
                           PopupMenuItem(value: 'verified', child: Text(context.tr('Set verified', 'सत्यापित करें'))),
                           PopupMenuItem(value: 'rejected', child: Text(context.tr('Set rejected', 'अस्वीकृत करें'))),
                         ],
-                        child: FinMiniButton(
-                          label: context.tr('Bulk status (payment rows only)…', 'बल्क स्थिति (केवल भुगतान पंक्तियाँ)…'),
-                          icon: Icons.arrow_drop_down,
-                          onTap: null,
+                        child: IgnorePointer(
+                          child: FinMiniButton(
+                            label: context.tr('Bulk status (payment rows only)…', 'बल्क स्थिति (केवल भुगतान पंक्तियाँ)…'),
+                            icon: Icons.arrow_drop_down,
+                            onTap: () {},
+                          ),
                         ),
                       ),
                     ],

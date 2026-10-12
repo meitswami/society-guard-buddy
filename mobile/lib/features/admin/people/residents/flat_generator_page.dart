@@ -135,7 +135,8 @@ class _FlatGeneratorPageState extends State<FlatGeneratorPage> {
       destructive: true,
     );
     if (!ok || !mounted) return;
-    if (!await _verify(context.t('superadmin.resetFlatsButton'), 'reset_flats')) {
+    if (!await _verify(
+        context.t('superadmin.resetFlatsButton'), 'reset_flats')) {
       return;
     }
     if (!mounted) return;
