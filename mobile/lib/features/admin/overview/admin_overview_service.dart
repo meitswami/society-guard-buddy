@@ -128,9 +128,9 @@ String? extractMonthFromTitle(String title, {DateTime? now}) {
 
 /// `2026-02` → `Feb 2026`.
 String formatMonthLabel(String ym) {
-  if (ym.length < 7) return ym;
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   final parts = ym.split('-');
+  if (ym.length < 7 || parts.length < 2) return ym;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   final idx = int.tryParse(parts[1]) ?? 0;
   return '${idx >= 1 && idx <= 12 ? months[idx - 1] : parts[1]} ${parts[0]}';
 }

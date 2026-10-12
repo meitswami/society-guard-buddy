@@ -122,11 +122,10 @@ abstract final class EventsNotify {
           if (f.isNotEmpty && !flats.contains(f)) flats.add(f);
         }
         if (flats.isEmpty) return true;
-        for (final flat in flats) {
-          await db.from('notifications').insert([
-            {...rowBase, 'target_type': 'flat', 'target_id': flat},
-          ]);
-        }
+        // One row per flat like the web (sent as one batch insert).
+        await db.from('notifications').insert([
+          for (final flat in flats) {...rowBase, 'target_type': 'flat', 'target_id': flat},
+        ]);
         await _pushQuietly({
           'title': title,
           'message': message,
