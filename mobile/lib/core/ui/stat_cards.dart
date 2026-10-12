@@ -22,6 +22,7 @@ class DescriptiveStatCard extends StatelessWidget {
     this.highlighted = false,
     this.borderColor,
     this.compact = false,
+    this.footer,
   });
 
   final String title;
@@ -39,6 +40,8 @@ class DescriptiveStatCard extends StatelessWidget {
   final Color? borderColor;
   /// `variant="stat"`: smaller mono value with an uppercase caption above.
   final bool compact;
+  /// Extra rows under a divider (web `children`, e.g. guest / serviceman split).
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +81,12 @@ class DescriptiveStatCard extends StatelessWidget {
             ] else ...[
               Text(value, style: AppText.statValue(context, color: valueColor)),
               Text(caption ?? title, style: AppText.caption(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+            ],
+            if (footer != null) ...[
+              const SizedBox(height: 8),
+              Divider(height: 1, color: t.border),
+              const SizedBox(height: 6),
+              footer!,
             ],
           ],
         ),

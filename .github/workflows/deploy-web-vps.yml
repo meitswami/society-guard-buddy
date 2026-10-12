@@ -1,0 +1,106 @@
+name: Deploy web to VPS
+
+# Builds the React/Vite web app and publishes it to the Brandzaha VPS (nginx static site).
+# Each deploy goes to /var/www/kutumbika/releases/<id>, then `current` is switched atomically;
+# the last 5 releases are kept for instant rollback. Skips cleanly until the VPS secrets exist.
+#
+# Secrets:  VPS_HOST, VPS_USER, VPS_SSH_KEY (private key), optional VPS_PORT (22), VPS_KNOWN_HOSTS
+#           VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_FIREBASE_* , VITE_RECAPTCHA_* (copy from Vercel)
+# Variables: VPS_PATH (default /var/www/kutumbika), VPS_PUBLIC_URL (e.g. https://app.kutumbika.in) for the health check
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['mobile/**', 'docs/**', '**/*.md']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT }}
+      VPS_PATH: ${{ vars.VPS_PATH }}
+    steps:
+      - name: Check VPS configuration
+        id: cfg
+        run: |
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_USER" ]; then
+            echo "::notice::VPS_HOST / VPS_USER secrets not set — skipping VPS deploy (Vercel still serves the site)."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.enabled == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.cfg.outputs.enabled == 'true'
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
+          VITE_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY }}
+          VITE_RECAPTCHA_ASSESSMENT_STRICT: ${{ secrets.VITE_RECAPTCHA_ASSESSMENT_STRICT }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "::error::VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY secrets are required (copy them from Vercel)."
+            exit 1
+          fi
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: SSH key
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          if [ -n "$VPS_KNOWN_HOSTS" ]; then printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts; fi
+
+      - name: Upload release and switch
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          PORT="${VPS_PORT:-22}"
+          ROOT="${VPS_PATH:-/var/www/kutumbika}"
+          RELEASE="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          SSH="ssh -i $HOME/.ssh/deploy_key -p $PORT -o StrictHostKeyChecking=accept-new"
+          $SSH "$VPS_USER@$VPS_HOST" "mkdir -p '$ROOT/releases/$RELEASE'"
+          rsync -az --delete -e "$SSH" dist/ "$VPS_USER@$VPS_HOST:$ROOT/releases/$RELEASE/"
+          # Atomic switch: build the symlink beside `current`, then rename over it.
+          $SSH "$VPS_USER@$VPS_HOST" "cd '$ROOT' && ln -sfn 'releases/$RELEASE' current.next && mv -Tf current.next current && ls -1dt releases/*/ | tail -n +6 | xargs -r rm -rf"
+          echo "Deployed release $RELEASE"
+
+      - name: Health check
+        if: steps.cfg.outputs.enabled == 'true' && vars.VPS_PUBLIC_URL != ''
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${{ vars.VPS_PUBLIC_URL }}/" || true)
+            echo "attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 5
+          done
+          echo "::error::${{ vars.VPS_PUBLIC_URL }} did not return 200"
+          exit 1
