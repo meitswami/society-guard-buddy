@@ -13,6 +13,7 @@ import { LoginFooter } from '@/components/LoginFooter';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useGuardGeofenceMonitor } from '@/hooks/useGuardGeofenceMonitor';
 import { toast } from 'sonner';
+import { isKioskLocked } from '@/lib/kiosk/kioskSettings';
 
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const ResidentDashboard = lazy(() => import('@/pages/ResidentDashboard'));
@@ -26,6 +27,7 @@ const GuardLoginPreview = lazy(() => import('@/components/GuardLoginPreview'));
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const VisitorEntryPage = lazy(() => import('@/pages/VisitorEntryPage'));
+const KioskPage = lazy(() => import('@/pages/KioskPage'));
 const DeliveryEntryPage = lazy(() => import('@/pages/DeliveryEntryPage'));
 const VehiclePage = lazy(() => import('@/pages/VehiclePage'));
 const QuickEntryPage = lazy(() => import('@/pages/QuickEntryPage'));
@@ -152,6 +154,11 @@ const AppContent = () => {
     if (!currentGuard || typeof window === 'undefined') return;
     window.history.pushState({ sgbGuardTabTrap: true }, '');
     const onPopState = () => {
+      // A running AI kiosk faces visitors — the back button must not leave it.
+      if (isKioskLocked()) {
+        window.history.pushState({ sgbGuardTabTrap: true }, '');
+        return;
+      }
       if (guardTabRef.current !== 'dashboard') {
         setActiveTab('dashboard');
         window.history.pushState({ sgbGuardTabTrap: true }, '');
@@ -396,7 +403,7 @@ const AppContent = () => {
   }
 
   // Guard tabs (tour last — full in-app guide)
-  const guardTabs: TabType[] = ['dashboard', 'duty', 'quick', 'visitor', 'delivery', 'vehicle', 'blacklist', 'emergency', 'directory', 'settings', 'tour'];
+  const guardTabs: TabType[] = ['dashboard', 'duty', 'quick', 'visitor', 'kiosk', 'delivery', 'vehicle', 'blacklist', 'emergency', 'directory', 'settings', 'tour'];
 
   return (
     <div className="min-h-screen bg-background">
@@ -406,6 +413,7 @@ const AppContent = () => {
         {activeTab === 'duty' && <GuardDutyPage />}
         {activeTab === 'quick' && <QuickEntryPage />}
         {activeTab === 'visitor' && <VisitorEntryPage onDone={goHome} />}
+        {activeTab === 'kiosk' && <KioskPage onExit={goHome} />}
         {activeTab === 'delivery' && <DeliveryEntryPage onDone={goHome} />}
         {activeTab === 'vehicle' && <VehiclePage />}
         {activeTab === 'blacklist' && <BlacklistPage />}

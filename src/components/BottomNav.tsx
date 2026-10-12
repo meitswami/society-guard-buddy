@@ -1,6 +1,6 @@
 import type { TabType } from '@/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LayoutDashboard, UserPlus, Car, Truck, FileText, Zap, BookUser, ShieldAlert, BarChart3, Settings, ChevronLeft, ChevronRight, Sparkles, Siren, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, UserPlus, Car, Truck, FileText, Zap, BookUser, ShieldAlert, BarChart3, Settings, ChevronLeft, ChevronRight, Sparkles, Siren, ClipboardCheck, ScanFace } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
@@ -14,6 +14,7 @@ const allTabs: { id: TabType; labelKey: string; icon: React.ElementType }[] = [
   { id: 'duty', labelKey: 'nav.duty', icon: ClipboardCheck },
   { id: 'quick', labelKey: 'nav.quick', icon: Zap },
   { id: 'visitor', labelKey: 'nav.visitor', icon: UserPlus },
+  { id: 'kiosk', labelKey: 'nav.kiosk', icon: ScanFace },
   { id: 'delivery', labelKey: 'nav.delivery', icon: Truck },
   { id: 'vehicle', labelKey: 'nav.vehicles', icon: Car },
   { id: 'blacklist', labelKey: 'nav.blacklist', icon: ShieldAlert },

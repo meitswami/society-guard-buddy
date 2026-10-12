@@ -106,4 +106,5 @@ export type TabType =
   | 'settings'
   | 'tour'
   | 'emergency'
-  | 'duty';
+  | 'duty'
+  | 'kiosk';
