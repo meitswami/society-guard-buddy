@@ -146,7 +146,7 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                                 setState(() => _expandedId = m.id);
                                 _suggestionCtrl.clear();
                                 _agendaCtrl.clear();
-                                void _ensureDetail(m.id);
+                                _ensureDetail(m.id);
                               } else if (_expandedId == m.id) {
                                 setState(() => _expandedId = null);
                               }
