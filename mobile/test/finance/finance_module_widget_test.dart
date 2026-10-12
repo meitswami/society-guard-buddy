@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kutumbika_mobile/core/i18n/i18n.dart';
 import 'package:kutumbika_mobile/core/prefs/app_prefs.dart';
 import 'package:kutumbika_mobile/core/theme/kutumbika_theme.dart';
 import 'package:kutumbika_mobile/features/admin/core/admin_module.dart';
@@ -233,6 +234,7 @@ Future<void> _pump(WidgetTester tester, AdminModuleContext ctx, _FakeRepo repo) 
   await tester.pumpWidget(ProviderScope(
     child: MaterialApp(
       theme: KutumbikaTheme.light(),
+      builder: (context, child) => I18nScope(translator: const Translator(AppLang.en), child: child!),
       home: Scaffold(body: FinanceManagerView(ctx: ctx, repository: repo)),
     ),
   ));
