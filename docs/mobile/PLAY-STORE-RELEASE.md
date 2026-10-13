@@ -6,7 +6,7 @@ GitHub Actions (`.github/workflows/android.yml`) builds a signed APK and a Play 
 ## A. Replace the existing listing (keep installs, ratings, reviews)
 To update an existing Play listing in place, the new app must match it in two ways:
 
-1. **Same package name.** In Play Console, open the AppMySite app → *Dashboard*. The package name is shown under the app name, e.g. `com.appmysite.xxxx`.
+1. **Same package name.** The live listing is `app.kutumbikaparivaarjaisi.android` (https://play.google.com/store/apps/details?id=app.kutumbikaparivaarjaisi.android).
    Set it in GitHub → Settings → Variables → `ANDROID_APPLICATION_ID`. The build uses it as `applicationId`; the code package stays `app.kutumbika.kutumbika_mobile`, which is fine.
 2. **A key Google accepts.** Check *Play Console → Setup → App signing*:
    - **Play App Signing is on** (normal since 2021). Google holds the app signing key and you only need an *upload key*.
