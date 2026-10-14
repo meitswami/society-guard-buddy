@@ -1,22 +1,22 @@
 import '../core/config/env.dart';
-import '../core/supabase/supabase_bootstrap.dart';
+import '../core/supabase/db.dart';
 import '../models/blacklist_entry.dart';
 
+/// `blacklist` table access — same queries as web `useStore` (`loadBlacklist`, `addToBlacklist`,
+/// `removeFromBlacklist`).
 class BlacklistService {
+  /// All entries of the society, newest first.
   Future<List<BlacklistEntry>> fetchAll(String societyId) async {
     if (!Env.isConfigured) return const [];
-
-    final rows = await SupabaseBootstrap.client
+    final rows = await db
         .from('blacklist')
         .select('*')
         .eq('society_id', societyId)
         .order('added_at', ascending: false);
-
-    return (rows as List)
-        .map((r) => BlacklistEntry.fromRow(Map<String, dynamic>.from(r as Map)))
-        .toList();
+    return rowsOf(rows).map(BlacklistEntry.fromRow).toList();
   }
 
+  /// Web `addToBlacklist` (`added_at` is filled by the database default).
   Future<void> addEntry({
     required String societyId,
     required String type,
@@ -27,23 +27,21 @@ class BlacklistService {
     String? vehicleNumber,
   }) async {
     if (!Env.isConfigured) return;
-
-    await SupabaseBootstrap.client.from('blacklist').insert({
+    String? orNull(String? v) => (v == null || v.isEmpty) ? null : v;
+    await db.from('blacklist').insert({
       'society_id': societyId,
       'type': type,
-      'reason': reason.trim(),
+      'name': orNull(name),
+      'phone': orNull(phone),
+      'vehicle_number': orNull(vehicleNumber),
+      'reason': reason,
       'added_by': addedBy,
-      'added_at': DateTime.now().toIso8601String(),
-      if (name != null && name.isNotEmpty) 'name': name.trim(),
-      if (phone != null && phone.isNotEmpty) 'phone': phone.trim(),
-      if (vehicleNumber != null && vehicleNumber.isNotEmpty) 'vehicle_number': vehicleNumber.trim().toUpperCase(),
     });
   }
 
   Future<void> removeEntry(String societyId, String id) async {
     if (!Env.isConfigured) return;
-
-    await SupabaseBootstrap.client
+    await db
         .from('blacklist')
         .delete()
         .eq('id', id)

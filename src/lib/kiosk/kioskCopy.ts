@@ -37,6 +37,27 @@ const COPY = {
   frameOffCenter: { hi: 'कृपया बीच में आइए', hinglish: 'Kripya beech mein aaiye', en: 'Please move to the centre' },
   frameHold: { hi: 'बढ़िया! ऐसे ही रहिए…', hinglish: 'Badhiya! Aise hi rahiye…', en: 'Great! Hold still…' },
 
+  // Camera / detector status (bottom of the screensaver)
+  statusCamStarting: { hi: 'कैमरा शुरू हो रहा है…', hinglish: 'Camera shuru ho raha hai…', en: 'Starting camera…' },
+  statusCamDenied: {
+    hi: 'कैमरे की अनुमति नहीं मिली — ऐप/ब्राउज़र सेटिंग में कैमरा चालू करें',
+    hinglish: 'Camera permission nahi mili — app/browser settings mein camera allow karein',
+    en: 'Camera blocked — allow camera in app / browser settings',
+  },
+  statusCamError: {
+    hi: 'कैमरा शुरू नहीं हुआ। यह ऐप कैमरा रोक रहा हो सकता है — Chrome में खोलकर देखें',
+    hinglish: 'Camera shuru nahi hua. Ye app camera rok raha ho sakta hai — Chrome mein kholkar dekhiye',
+    en: 'Camera did not start. This app may be blocking it — try opening in Chrome',
+  },
+  statusDetectorLoading: { hi: 'चेहरा पहचान लोड हो रही है…', hinglish: 'Face detection load ho raha hai…', en: 'Loading face detection…' },
+  statusNoDetector: {
+    hi: 'चेहरा पहचान उपलब्ध नहीं — शुरू करने के लिए स्क्रीन छुएँ',
+    hinglish: 'Face detection nahi chal raha — shuru karne ke liye screen touch karein',
+    en: 'Face detection unavailable — tap the screen to start',
+  },
+  statusLooking: { hi: 'कैमरा चालू · चेहरा देख रही हूँ', hinglish: 'Camera on · chehra dekh rahi hoon', en: 'Camera on · looking for a face' },
+  retryCamera: { hi: 'कैमरा फिर से शुरू करें', hinglish: 'Camera phir se shuru karein', en: 'Retry camera' },
+
   // Conversation
   greeting: {
     hi: 'नमस्ते! {society} में आपका स्वागत है। मैं आपकी एंट्री में मदद करूँगी।',

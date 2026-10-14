@@ -1,0 +1,769 @@
+/// COMMS module strings (notifications, emergency alerts, settings, geofence, password,
+/// biometric, tour). The web app hard-codes these in English; Hindi is added here.
+/// Web keys (`settings.*`, `tour.*`, `admin.*`, `biometric.*` …) are NOT repeated.
+const Map<String, Map<String, String>> kCommsStrings = {
+  // ---- Notification types / sounds -------------------------------------------------------
+  'comms.type.notice': {'en': 'Notice', 'hi': 'सूचना'},
+  'comms.type.payment': {'en': 'Payment', 'hi': 'भुगतान'},
+  'comms.type.event': {'en': 'Event', 'hi': 'कार्यक्रम'},
+  'comms.type.reminder': {'en': 'Reminder', 'hi': 'अनुस्मारक'},
+  'comms.type.poll': {'en': 'Poll', 'hi': 'मतदान'},
+  'comms.type.alert': {'en': 'Alert', 'hi': 'चेतावनी'},
+  'comms.compose.type.general': {'en': '📢 General', 'hi': '📢 सामान्य'},
+  'comms.compose.type.alert': {'en': '⚠️ Alert', 'hi': '⚠️ चेतावनी'},
+  'comms.compose.type.event': {'en': '🎉 Event', 'hi': '🎉 कार्यक्रम'},
+  'comms.compose.type.payment_reminder': {
+    'en': '💰 Payment Reminder',
+    'hi': '💰 भुगतान अनुस्मारक'
+  },
+  'comms.sound.digital': {'en': 'Digital beep', 'hi': 'डिजिटल बीप'},
+  'comms.sound.chime': {'en': 'Soft chime', 'hi': 'मधुर झंकार'},
+  'comms.sound.melody': {'en': 'Musical melody', 'hi': 'संगीतमय धुन'},
+  'comms.sound.bell': {'en': 'Bell tone', 'hi': 'घंटी की ध्वनि'},
+  'comms.sound.siren': {'en': 'Emergency siren', 'hi': 'आपातकालीन सायरन'},
+  'comms.sound.custom': {
+    'en': 'Society custom (admin upload)',
+    'hi': 'सोसाइटी की अपनी धुन (प्रशासक द्वारा अपलोड)'
+  },
+
+  // ---- Notification centre (admin) ----------------------------------------------------
+  'comms.notif.title': {'en': 'Notifications', 'hi': 'सूचनाएँ'},
+  'comms.notif.subtitleAdmin': {
+    'en': '{count} unread • Push enabled',
+    'hi': '{count} अपठित • पुश सक्रिय'
+  },
+  'comms.notif.markAllRead': {
+    'en': 'Mark all read',
+    'hi': 'सभी को पढ़ा हुआ करें'
+  },
+  'comms.notif.allMarkedRead': {
+    'en': 'All marked as read',
+    'hi': 'सभी पढ़े हुए चिह्नित किए गए'
+  },
+  'comms.notif.sendPush': {
+    'en': 'Send Push Notification',
+    'hi': 'पुश सूचना भेजें'
+  },
+  'comms.notif.closeForm': {'en': 'Close form', 'hi': 'फ़ॉर्म बंद करें'},
+  'comms.notif.healthCheck': {
+    'en': 'Push Health Check',
+    'hi': 'पुश स्वास्थ्य जाँच'
+  },
+  'comms.notif.healthRunning': {
+    'en': 'Running Push Health Check…',
+    'hi': 'पुश स्वास्थ्य जाँच चल रही है…'
+  },
+  'comms.notif.titlePh': {'en': 'Title', 'hi': 'शीर्षक'},
+  'comms.notif.messagePh': {'en': 'Message', 'hi': 'संदेश'},
+  'comms.notif.typeLabel': {'en': 'Type', 'hi': 'प्रकार'},
+  'comms.notif.soundTitle': {
+    'en': 'Alert sound (in-app + push data)',
+    'hi': 'चेतावनी ध्वनि (ऐप में + पुश डेटा)'
+  },
+  'comms.notif.soundHint': {
+    'en':
+        'Changing the preset plays a short preview here. Presets play instantly on residents’ phones when the app is open. Custom sound is uploaded here by admin only (not residents). The notification tray sound still follows the device; custom audio plays best in-app.',
+    'hi':
+        'ध्वनि बदलते ही यहाँ छोटा पूर्वावलोकन बजता है। ऐप खुला होने पर निवासियों के फ़ोन पर यही ध्वनि तुरंत बजती है। अपनी धुन केवल प्रशासक यहाँ अपलोड करते हैं (निवासी नहीं)। सूचना-पट्टी की ध्वनि उपकरण की सेटिंग के अनुसार रहती है; अपनी धुन ऐप के भीतर सबसे अच्छी बजती है।',
+  },
+  'comms.notif.uploadSound': {
+    'en': 'Upload / replace society sound',
+    'hi': 'सोसाइटी ध्वनि अपलोड करें / बदलें'
+  },
+  'comms.notif.uploading': {'en': 'Uploading…', 'hi': 'अपलोड हो रहा है…'},
+  'comms.notif.currentFile': {
+    'en': 'Current file: {file}',
+    'hi': 'वर्तमान फ़ाइल: {file}'
+  },
+  'comms.notif.preview': {'en': 'Preview', 'hi': 'सुनें'},
+  'comms.notif.attachments': {
+    'en': 'Attachments (optional)',
+    'hi': 'संलग्नक (वैकल्पिक)'
+  },
+  'comms.notif.attachmentsHint': {
+    'en':
+        'Up to {max} images or videos. Residents open the alert to view in full screen and discuss below it.',
+    'hi':
+        'अधिकतम {max} चित्र या वीडियो। निवासी सूचना खोलकर इन्हें पूरी स्क्रीन पर देखते हैं और नीचे चर्चा करते हैं।',
+  },
+  'comms.notif.addMedia': {
+    'en': 'Add photos / videos',
+    'hi': 'फ़ोटो / वीडियो जोड़ें'
+  },
+  'comms.notif.mediaInvalid': {
+    'en': '{name}: use an image or video file',
+    'hi': '{name}: चित्र या वीडियो फ़ाइल चुनें'
+  },
+  'comms.notif.maxAttachments': {
+    'en': 'Maximum {max} attachments',
+    'hi': 'अधिकतम {max} संलग्नक'
+  },
+  'comms.notif.imageTooLarge': {
+    'en': 'Image too large (max {mb}MB): {name}',
+    'hi': 'चित्र बहुत बड़ा है (अधिकतम {mb}MB): {name}'
+  },
+  'comms.notif.videoTooLarge': {
+    'en': 'Video too large (max {mb}MB): {name}',
+    'hi': 'वीडियो बहुत बड़ा है (अधिकतम {mb}MB): {name}'
+  },
+  'comms.notif.uploadFailed': {
+    'en': 'Upload failed: {name}',
+    'hi': 'अपलोड विफल: {name}'
+  },
+  'comms.notif.mediaUploadFailed': {
+    'en': 'Media upload failed',
+    'hi': 'मीडिया अपलोड विफल'
+  },
+  'comms.notif.sendTo': {'en': 'Send To:', 'hi': 'किसे भेजें:'},
+  'comms.notif.target.all': {'en': 'All Residents', 'hi': 'सभी निवासी'},
+  'comms.notif.target.flat': {'en': 'Select Flats', 'hi': 'फ्लैट चुनें'},
+  'comms.notif.target.user': {'en': 'Select Persons', 'hi': 'व्यक्ति चुनें'},
+  'comms.notif.selectFlats': {'en': 'Select flats', 'hi': 'फ्लैट चुनें'},
+  'comms.notif.selectResidents': {
+    'en': 'Select residents ({count} selected):',
+    'hi': 'निवासी चुनें ({count} चुने गए):'
+  },
+  'comms.notif.searchResidents': {
+    'en': 'Search name or flat…',
+    'hi': 'नाम या फ्लैट खोजें…'
+  },
+  'comms.notif.noResidents': {
+    'en': 'No residents found.',
+    'hi': 'कोई निवासी नहीं मिला।'
+  },
+  'comms.notif.directoryTitle': {
+    'en': 'Also despatch via directory contacts',
+    'hi': 'निर्देशिका संपर्कों से भी भेजें'
+  },
+  'comms.notif.channelWhatsapp': {
+    'en': 'WhatsApp (member WhatsApp / phone)',
+    'hi': 'व्हाट्सऐप (सदस्य व्हाट्सऐप / फ़ोन)'
+  },
+  'comms.notif.channelEmail': {
+    'en': 'Email (directory email ID)',
+    'hi': 'ईमेल (निर्देशिका ईमेल पता)'
+  },
+  'comms.notif.send': {'en': 'Send Push + In-App', 'hi': 'पुश + ऐप में भेजें'},
+  'comms.notif.sending': {'en': 'Sending...', 'hi': 'भेजा जा रहा है...'},
+  'comms.notif.fillTitleMessage': {
+    'en': 'Enter a title and a message',
+    'hi': 'शीर्षक और संदेश लिखें'
+  },
+  'comms.notif.selectOneFlat': {
+    'en': 'Select at least one flat',
+    'hi': 'कम से कम एक फ्लैट चुनें'
+  },
+  'comms.notif.selectOneResident': {
+    'en': 'Select at least one resident',
+    'hi': 'कम से कम एक निवासी चुनें'
+  },
+  'comms.notif.customSoundMissing': {
+    'en': 'Upload a society custom sound first, or pick a preset tone',
+    'hi': 'पहले सोसाइटी की अपनी धुन अपलोड करें, या कोई तैयार ध्वनि चुनें',
+  },
+  'comms.notif.sentPush': {
+    'en': 'Notification sent with push alert!',
+    'hi': 'पुश चेतावनी के साथ सूचना भेजी गई!'
+  },
+  'comms.notif.sentPushDirectory': {
+    'en': 'Notification sent (push + directory channels where configured)',
+    'hi': 'सूचना भेजी गई (पुश + जहाँ व्यवस्थित हैं वहाँ निर्देशिका माध्यम)',
+  },
+  'comms.notif.sendFailed': {
+    'en': 'Could not send the notification: {error}',
+    'hi': 'सूचना नहीं भेजी जा सकी: {error}'
+  },
+  'comms.notif.empty': {'en': 'No notifications', 'hi': 'कोई सूचना नहीं'},
+  'comms.notif.tapToViewAdmin': {
+    'en': 'Tap to view · discuss in thread',
+    'hi': 'देखने के लिए दबाएँ · चर्चा में भाग लें'
+  },
+  'comms.notif.attachmentOne': {
+    'en': '{count} attachment',
+    'hi': '{count} संलग्नक'
+  },
+  'comms.notif.attachmentMany': {
+    'en': '{count} attachments',
+    'hi': '{count} संलग्नक'
+  },
+  'comms.notif.flatsLoading': {
+    'en': 'Loading flats…',
+    'hi': 'फ्लैट लाए जा रहे हैं…'
+  },
+
+  // ---- Flat multi-select -------------------------------------------------------------
+  'comms.flats.selected': {
+    'en': '{label} ({count} selected)',
+    'hi': '{label} ({count} चुने गए)'
+  },
+  'comms.flats.allVisible': {'en': 'All visible', 'hi': 'सभी दिखने वाले'},
+  'comms.flats.clearVisible': {'en': 'Clear visible', 'hi': 'दिखने वाले हटाएँ'},
+  'comms.flats.search': {
+    'en': 'Search flat or resident…',
+    'hi': 'फ्लैट या निवासी खोजें…'
+  },
+  'comms.flats.empty': {
+    'en': 'No flats match your search.',
+    'hi': 'खोज से कोई फ्लैट नहीं मिला।'
+  },
+
+  // ---- Push health check -------------------------------------------------------------
+  'comms.health.title': {'en': 'Push Health Check', 'hi': 'पुश स्वास्थ्य जाँच'},
+  'comms.health.running': {
+    'en': 'Running diagnostics...',
+    'hi': 'जाँच चल रही है...'
+  },
+  'comms.health.checking': {
+    'en': 'Checking environment, permission, token, and delivery path...',
+    'hi': 'परिवेश, अनुमति, टोकन और वितरण मार्ग की जाँच हो रही है...',
+  },
+  'comms.health.copy': {'en': 'Copy report', 'hi': 'रिपोर्ट कॉपी करें'},
+  'comms.health.copied': {
+    'en': 'Push health report copied',
+    'hi': 'पुश स्वास्थ्य रिपोर्ट कॉपी हुई'
+  },
+  'comms.health.copyFailed': {
+    'en': 'Could not copy report',
+    'hi': 'रिपोर्ट कॉपी नहीं हो सकी'
+  },
+  'comms.health.ok': {
+    'en': 'All checks passed. Push pipeline looks healthy.',
+    'hi': 'सभी जाँच सफल। पुश व्यवस्था ठीक है।'
+  },
+  'comms.health.fail': {
+    'en': 'Some checks failed. See details below.',
+    'hi': 'कुछ जाँच विफल रहीं। विवरण नीचे देखें।'
+  },
+  'comms.health.crash': {
+    'en': 'Health check crashed unexpectedly.',
+    'hi': 'स्वास्थ्य जाँच अचानक रुक गई।'
+  },
+  'comms.health.toastOk': {
+    'en': 'Push Health Check OK',
+    'hi': 'पुश स्वास्थ्य जाँच ठीक'
+  },
+  'comms.health.toastFail': {
+    'en': 'Push Health Check failed',
+    'hi': 'पुश स्वास्थ्य जाँच विफल'
+  },
+
+  // ---- Resident inbox ----------------------------------------------------------------
+  'comms.inbox.subtitleNew': {
+    'en': '{count} new · Tap an alert to read the full message',
+    'hi': '{count} नई · पूरा संदेश पढ़ने के लिए अलर्ट दबाएँ',
+  },
+  'comms.inbox.subtitleCaughtUp': {
+    'en': 'Society notices for your flat — all caught up',
+    'hi': 'आपके फ्लैट की सोसाइटी सूचनाएँ — सब पढ़ ली गईं',
+  },
+  'comms.inbox.markAllSeen': {
+    'en': 'Mark all as seen',
+    'hi': 'सभी को देखा हुआ करें'
+  },
+  'comms.inbox.clearTillDate': {'en': 'Clear till date', 'hi': 'तिथि तक हटाएँ'},
+  'comms.inbox.info': {
+    'en':
+        'Announcements from your society office appear here. Open any alert to read the full text, view photos or videos, and reply in the thread below it.',
+    'hi':
+        'सोसाइटी कार्यालय की घोषणाएँ यहाँ दिखती हैं। पूरा पाठ पढ़ने, फ़ोटो या वीडियो देखने और नीचे की चर्चा में उत्तर देने के लिए कोई भी अलर्ट खोलें।',
+  },
+  'comms.inbox.empty': {
+    'en': 'No alerts yet — society notices will appear here.',
+    'hi': 'अभी कोई अलर्ट नहीं — सोसाइटी सूचनाएँ यहाँ दिखेंगी।'
+  },
+  'comms.inbox.new': {'en': 'New', 'hi': 'नया'},
+  'comms.inbox.tapToOpen': {'en': 'Tap to open', 'hi': 'खोलने के लिए दबाएँ'},
+  'comms.inbox.clearTitle': {
+    'en': 'Clear alerts till date',
+    'hi': 'तिथि तक अलर्ट हटाएँ'
+  },
+  'comms.inbox.clearDesc': {
+    'en':
+        'Remove alerts from your inbox on or before the selected date. This only affects your view.',
+    'hi':
+        'चुनी गई तिथि या उससे पहले के अलर्ट आपके इनबॉक्स से हटेंगे। इसका असर केवल आपके दृश्य पर होगा।',
+  },
+  'comms.inbox.tillDate': {
+    'en': 'Till date (inclusive)',
+    'hi': 'इस तिथि तक (सम्मिलित)'
+  },
+  'comms.inbox.clearAlerts': {'en': 'Clear alerts', 'hi': 'अलर्ट हटाएँ'},
+  'comms.inbox.clearing': {'en': 'Clearing…', 'hi': 'हटाए जा रहे हैं…'},
+  'comms.inbox.clearConfirmTitle': {
+    'en': 'Clear alerts till date?',
+    'hi': 'तिथि तक के अलर्ट हटाएँ?'
+  },
+  'comms.inbox.clearConfirmText': {
+    'en':
+        'Alerts on or before {date} will be removed from your inbox. Other residents are not affected.',
+    'hi':
+        '{date} या उससे पहले के अलर्ट आपके इनबॉक्स से हट जाएँगे। अन्य निवासियों पर इसका असर नहीं होगा।',
+  },
+  'comms.inbox.clearYes': {'en': 'Yes, clear', 'hi': 'हाँ, हटाएँ'},
+  'comms.inbox.nothingToClear': {
+    'en': 'No alerts to clear for that date',
+    'hi': 'उस तिथि तक हटाने के लिए कोई अलर्ट नहीं'
+  },
+  'comms.inbox.clearedOne': {
+    'en': 'Cleared {count} alert till {date}',
+    'hi': '{date} तक {count} अलर्ट हटाया गया'
+  },
+  'comms.inbox.clearedMany': {
+    'en': 'Cleared {count} alerts till {date}',
+    'hi': '{date} तक {count} अलर्ट हटाए गए'
+  },
+  'comms.inbox.pickDate': {
+    'en': 'Choose a valid date',
+    'hi': 'मान्य तिथि चुनें'
+  },
+
+  // ---- Notification detail -----------------------------------------------------------
+  'comms.detail.threadResident': {
+    'en': 'Replies · your flat can ask follow-up questions here',
+    'hi': 'उत्तर · आपका फ्लैट यहाँ आगे के प्रश्न पूछ सकता है',
+  },
+  'comms.detail.threadAdmin': {
+    'en': 'Discussion · stay on this thread instead of WhatsApp',
+    'hi': 'चर्चा · व्हाट्सऐप के बजाय इसी धागे में बात करें',
+  },
+  'comms.detail.noMessages': {
+    'en': 'No messages yet. Start the conversation.',
+    'hi': 'अभी कोई संदेश नहीं। बातचीत शुरू करें।'
+  },
+  'comms.detail.replyResident': {
+    'en': 'Ask a question or reply…',
+    'hi': 'प्रश्न पूछें या उत्तर दें…'
+  },
+  'comms.detail.replyAdmin': {
+    'en': 'Reply as admin…',
+    'hi': 'प्रशासक के रूप में उत्तर दें…'
+  },
+  'comms.detail.sendFailed': {
+    'en': 'Could not send message',
+    'hi': 'संदेश नहीं भेजा जा सका'
+  },
+  'comms.detail.notResident': {
+    'en': 'Not signed in as resident',
+    'hi': 'निवासी के रूप में प्रवेश नहीं किया गया'
+  },
+  'comms.detail.admin': {'en': 'Admin', 'hi': 'प्रशासक'},
+  'comms.detail.flat': {'en': 'Flat {flat}', 'hi': 'फ्लैट {flat}'},
+  'comms.detail.openVideo': {
+    'en': 'Tap to play video',
+    'hi': 'वीडियो चलाने के लिए दबाएँ'
+  },
+  'comms.detail.previous': {'en': 'Previous', 'hi': 'पिछला'},
+  'comms.detail.next': {'en': 'Next', 'hi': 'अगला'},
+  'comms.detail.send': {'en': 'Send', 'hi': 'भेजें'},
+  'comms.detail.imageFailed': {
+    'en': 'Image could not be loaded',
+    'hi': 'चित्र लोड नहीं हो सका'
+  },
+
+  // ---- Emergency alert ---------------------------------------------------------------
+  'comms.emergency.title': {'en': 'Emergency / Alert', 'hi': 'आपातकाल / अलर्ट'},
+  'comms.emergency.subtitle': {
+    'en': 'Notify all residents immediately',
+    'hi': 'सभी निवासियों को तुरंत सूचित करें'
+  },
+  'comms.emergency.compactButton': {
+    'en': 'Emergency or Alert — notify everyone',
+    'hi': 'आपातकाल या अलर्ट — सबको सूचित करें'
+  },
+  'comms.emergency.modeTitle': {
+    'en': 'Emergency / Alert mode',
+    'hi': 'आपातकाल / अलर्ट मोड'
+  },
+  'comms.emergency.modeDesc': {
+    'en':
+        'Send a picture and message to all resident portals and saved WhatsApp numbers at once.',
+    'hi':
+        'एक साथ सभी निवासी पोर्टलों और सहेजे गए व्हाट्सऐप नंबरों पर चित्र और संदेश भेजें।',
+  },
+  'comms.emergency.banner': {
+    'en':
+        'Society-wide broadcast — all resident portals, push alerts, and saved WhatsApp numbers',
+    'hi':
+        'पूरी सोसाइटी में प्रसारण — सभी निवासी पोर्टल, पुश अलर्ट और सहेजे गए व्हाट्सऐप नंबर',
+  },
+  'comms.emergency.titlePh': {'en': 'Alert title', 'hi': 'अलर्ट शीर्षक'},
+  'comms.emergency.messagePh': {
+    'en': 'What happened? Where? What should residents do?',
+    'hi': 'क्या हुआ? कहाँ? निवासियों को क्या करना चाहिए?',
+  },
+  'comms.emergency.photos': {
+    'en': 'Photo evidence (optional, up to 4)',
+    'hi': 'फ़ोटो प्रमाण (वैकल्पिक, अधिकतम 4)'
+  },
+  'comms.emergency.takePhoto': {'en': 'Take photo', 'hi': 'फ़ोटो लें'},
+  'comms.emergency.addImage': {
+    'en': 'Add image file',
+    'hi': 'चित्र फ़ाइल जोड़ें'
+  },
+  'comms.emergency.send': {
+    'en': 'Send emergency alert now',
+    'hi': 'अभी आपात अलर्ट भेजें'
+  },
+  'comms.emergency.sending': {
+    'en': 'Sending to all residents…',
+    'hi': 'सभी निवासियों को भेजा जा रहा है…'
+  },
+  'comms.emergency.describe': {
+    'en': 'Describe the emergency so residents know what is happening',
+    'hi': 'आपात स्थिति का विवरण लिखें ताकि निवासी जान सकें कि क्या हो रहा है',
+  },
+  'comms.emergency.confirmTitle': {
+    'en': 'Send emergency alert to ALL residents?',
+    'hi': 'सभी निवासियों को आपात अलर्ट भेजें?'
+  },
+  'comms.emergency.confirmText': {
+    'en':
+        'This broadcasts to every resident portal, sends push alerts, and messages saved WhatsApp numbers. Use only for genuine emergencies.',
+    'hi':
+        'यह हर निवासी पोर्टल पर प्रसारित होगा, पुश अलर्ट भेजेगा और सहेजे गए व्हाट्सऐप नंबरों पर संदेश भेजेगा। केवल वास्तविक आपात स्थिति में उपयोग करें।',
+  },
+  'comms.emergency.confirmYes': {'en': 'Yes, send now', 'hi': 'हाँ, अभी भेजें'},
+  'comms.emergency.failed': {
+    'en': 'Failed to send emergency alert',
+    'hi': 'आपात अलर्ट नहीं भेजा जा सका'
+  },
+  'comms.emergency.sent': {
+    'en': 'Emergency alert sent',
+    'hi': 'आपात अलर्ट भेजा गया'
+  },
+  'comms.emergency.waNotConfigured': {
+    'en': 'WhatsApp: configure WHATSAPP_* secrets to enable',
+    'hi': 'व्हाट्सऐप: सक्षम करने के लिए WHATSAPP_* सीक्रेट सेट करें',
+  },
+  'comms.emergency.maxPhotos': {'en': 'Up to 4 photos', 'hi': 'अधिकतम 4 फ़ोटो'},
+  'comms.emergency.sender': {
+    'en': 'Sender: {name}',
+    'hi': 'भेजने वाला: {name}'
+  },
+  'comms.emergency.invalidRole': {
+    'en': 'Invalid sender role',
+    'hi': 'भेजने वाले की भूमिका अमान्य है'
+  },
+
+  // ---- Settings (shared) -------------------------------------------------------------
+  'comms.settings.signedInAs': {
+    'en': 'Signed in as {name}',
+    'hi': '{name} के रूप में प्रवेश'
+  },
+  'comms.settings.guardRole': {
+    'en': 'Guard · {society}',
+    'hi': 'गार्ड · {society}'
+  },
+  'comms.settings.security': {'en': 'Security', 'hi': 'सुरक्षा'},
+  'comms.settings.loading': {'en': 'Loading…', 'hi': 'लाया जा रहा है…'},
+  'comms.settings.fileTooLargeMb': {
+    'en': 'File must be {mb} MB or smaller',
+    'hi': 'फ़ाइल {mb} MB या उससे छोटी होनी चाहिए'
+  },
+  'comms.settings.order': {'en': 'Order: {n}', 'hi': 'क्रम: {n}'},
+  'comms.settings.moveUp': {'en': 'Move up', 'hi': 'ऊपर करें'},
+  'comms.settings.moveDown': {'en': 'Move down', 'hi': 'नीचे करें'},
+  'comms.settings.remove': {'en': 'Remove', 'hi': 'हटाएँ'},
+  'comms.settings.removeBannerConfirm': {
+    'en': 'Remove this banner?',
+    'hi': 'यह सूचनापट हटाएँ?'
+  },
+  'comms.settings.selectSocietyFirst': {
+    'en': 'Select a society first',
+    'hi': 'पहले सोसाइटी चुनें'
+  },
+  'comms.settings.contentNoSociety': {
+    'en': 'Select a society to edit member translations.',
+    'hi': 'सदस्य अनुवाद संपादित करने के लिए सोसाइटी चुनें।',
+  },
+  'comms.settings.contentResetText': {
+    'en': 'This removes custom society translations and restores app defaults.',
+    'hi': 'सोसाइटी के सभी अनुकूलित अनुवाद हटाकर ऐप की मूल भाषा वापस आ जाएगी।',
+  },
+  'comms.settings.letterheadWarning': {
+    'en': 'Official society letterhead has not been configured.',
+    'hi': 'आधिकारिक सोसाइटी लेटरहेड अभी व्यवस्थित नहीं किया गया है।',
+  },
+  'comms.settings.letterheadUrlFailed': {
+    'en': 'Could not create letterhead URL',
+    'hi': 'लेटरहेड लिंक नहीं बन सका'
+  },
+  'comms.settings.fromGallery': {
+    'en': 'Choose from gallery',
+    'hi': 'गैलरी से चुनें'
+  },
+  'comms.settings.fromCamera': {'en': 'Take a photo', 'hi': 'फ़ोटो लें'},
+  'comms.settings.fromFiles': {'en': 'Choose a file', 'hi': 'फ़ाइल चुनें'},
+
+  // Bank account (web hard-coded English)
+  'comms.bank.title': {'en': 'Society bank account', 'hi': 'सोसाइटी बैंक खाता'},
+  'comms.bank.hint': {
+    'en':
+        'Members use these details for UPI / NEFT / IMPS maintenance payments. Keep IFSC and account number accurate.',
+    'hi':
+        'सदस्य इन विवरणों से UPI / NEFT / IMPS द्वारा रखरखाव भुगतान करते हैं। IFSC और खाता संख्या सही रखें।',
+  },
+  'comms.bank.copy': {'en': 'Copy', 'hi': 'कॉपी करें'},
+  'comms.bank.copied': {
+    'en': 'Bank details copied',
+    'hi': 'बैंक विवरण कॉपी हुआ'
+  },
+  'comms.bank.copyFailed': {'en': 'Could not copy', 'hi': 'कॉपी नहीं हो सका'},
+  'comms.bank.saveFirst': {
+    'en': 'Save the account first',
+    'hi': 'पहले खाता सहेजें'
+  },
+  'comms.bank.holder': {'en': 'Account holder name', 'hi': 'खाताधारक का नाम'},
+  'comms.bank.holderPh': {
+    'en': 'M/S. SOCIETY NAME',
+    'hi': 'मेसर्स सोसाइटी का नाम'
+  },
+  'comms.bank.bank': {'en': 'Bank', 'hi': 'बैंक'},
+  'comms.bank.bankPh': {'en': 'HDFC Bank', 'hi': 'HDFC बैंक'},
+  'comms.bank.ifsc': {'en': 'IFSC', 'hi': 'IFSC'},
+  'comms.bank.accountNumber': {'en': 'Account number', 'hi': 'खाता संख्या'},
+  'comms.bank.branch': {'en': 'Branch', 'hi': 'शाखा'},
+  'comms.bank.upi': {'en': 'UPI ID (optional)', 'hi': 'UPI आईडी (वैकल्पिक)'},
+  'comms.bank.branchAddress': {'en': 'Branch address', 'hi': 'शाखा का पता'},
+  'comms.bank.micr': {'en': 'MICR', 'hi': 'MICR'},
+  'comms.bank.accountType': {'en': 'Account type', 'hi': 'खाते का प्रकार'},
+  'comms.bank.notes': {
+    'en': 'Notes (admin only)',
+    'hi': 'टिप्पणी (केवल प्रशासक)'
+  },
+  'comms.bank.save': {'en': 'Save bank account', 'hi': 'बैंक खाता सहेजें'},
+  'comms.bank.update': {
+    'en': 'Update bank account',
+    'hi': 'बैंक खाता अद्यतन करें'
+  },
+  'comms.bank.addAnother': {'en': 'Add another', 'hi': 'एक और जोड़ें'},
+  'comms.bank.required': {
+    'en': 'Bank name, account holder, account number and IFSC are required',
+    'hi': 'बैंक का नाम, खाताधारक, खाता संख्या और IFSC आवश्यक हैं',
+  },
+  'comms.bank.saved': {
+    'en': 'Society bank account saved',
+    'hi': 'सोसाइटी बैंक खाता सहेजा गया'
+  },
+  'comms.bank.updated': {
+    'en': 'Society bank account updated',
+    'hi': 'सोसाइटी बैंक खाता अद्यतन हुआ'
+  },
+  'comms.bank.loadFailed': {
+    'en': 'Could not load bank accounts',
+    'hi': 'बैंक खाते लोड नहीं हो सके'
+  },
+  'comms.bank.saveFailed': {
+    'en': 'Could not save bank account',
+    'hi': 'बैंक खाता सहेजा नहीं जा सका'
+  },
+  'comms.bank.accounts': {
+    'en': '{count} account(s) on file',
+    'hi': '{count} खाता/खाते दर्ज'
+  },
+  'comms.bank.primary': {'en': 'Primary', 'hi': 'मुख्य'},
+  'comms.bank.inactive': {'en': 'Inactive', 'hi': 'निष्क्रिय'},
+  'comms.bank.editing': {'en': 'Editing', 'hi': 'संपादन'},
+
+  // Data summary metric copy (web ADMIN_HOME_METRICS, English on the web)
+  'comms.metric.flats.title': {'en': 'Flats', 'hi': 'फ्लैट'},
+  'comms.metric.flats.desc': {
+    'en': 'Total flat units defined in the society layout.',
+    'hi': 'सोसाइटी संरचना में परिभाषित कुल फ्लैट इकाइयाँ।'
+  },
+  'comms.metric.flats.how': {
+    'en': 'Count of flats for this society_id.',
+    'hi': 'इस सोसाइटी के फ्लैटों की गिनती।'
+  },
+  'comms.metric.members.title': {
+    'en': 'Members registered',
+    'hi': 'पंजीकृत सदस्य'
+  },
+  'comms.metric.members.desc': {
+    'en': 'People linked to flats in Residents (owners, family, tenants).',
+    'hi': 'निवासी खंड में फ्लैटों से जुड़े लोग (मालिक, परिवार, किरायेदार)।',
+  },
+  'comms.metric.members.how': {
+    'en': 'Count of members whose flat belongs to this society.',
+    'hi': 'उन सदस्यों की गिनती जिनका फ्लैट इस सोसाइटी का है।',
+  },
+  'comms.metric.vehicles.title': {
+    'en': 'Resident vehicles',
+    'hi': 'निवासी वाहन'
+  },
+  'comms.metric.vehicles.desc': {
+    'en': 'Vehicles registered to flats in the society.',
+    'hi': 'सोसाइटी के फ्लैटों पर पंजीकृत वाहन।'
+  },
+  'comms.metric.vehicles.how': {
+    'en': 'Count of resident_vehicles (or equivalent) for this society.',
+    'hi': 'इस सोसाइटी के निवासी वाहनों की गिनती।',
+  },
+  'comms.metric.visitors.title': {'en': 'Total visitors', 'hi': 'कुल आगंतुक'},
+  'comms.metric.visitors.desc': {
+    'en':
+        'All visitor log entries (guests and servicemen) recorded by guards or admins.',
+    'hi':
+        'गार्ड या प्रशासक द्वारा दर्ज सभी आगंतुक प्रविष्टियाँ (अतिथि और सेवा कर्मी)।',
+  },
+  'comms.metric.visitors.how': {
+    'en': 'Count of rows in visitors for this society.',
+    'hi': 'इस सोसाइटी की आगंतुक प्रविष्टियों की गिनती।'
+  },
+  'comms.metric.blacklist.title': {
+    'en': 'Blacklist entries',
+    'hi': 'काली सूची प्रविष्टियाँ'
+  },
+  'comms.metric.blacklist.desc': {
+    'en': 'Visitors or persons blocked from entry.',
+    'hi': 'प्रवेश से रोके गए आगंतुक या व्यक्ति।'
+  },
+  'comms.metric.blacklist.how': {
+    'en': 'Count of blacklist records for this society.',
+    'hi': 'इस सोसाइटी की काली सूची प्रविष्टियों की गिनती।'
+  },
+
+  // ---- Geofence / password / biometric ------------------------------------------------
+  'comms.geo.lat': {'en': 'Latitude', 'hi': 'अक्षांश'},
+  'comms.geo.lng': {'en': 'Longitude', 'hi': 'देशांतर'},
+  'comms.geo.latLng': {
+    'en': '📍 Lat: {lat}, Lng: {lng}',
+    'hi': '📍 अक्षांश: {lat}, देशांतर: {lng}'
+  },
+  'comms.geo.radiusLine': {
+    'en': '📐 {label}: {m}m',
+    'hi': '📐 {label}: {m} मीटर'
+  },
+  'comms.geo.clearTitle': {
+    'en': 'Clear Geofence?',
+    'hi': 'भौगोलिक सीमा हटाएँ?'
+  },
+  'comms.geo.clearText': {
+    'en': 'This will remove the geofence boundary.',
+    'hi': 'इससे भौगोलिक सीमा हट जाएगी।'
+  },
+  'comms.geo.clearYes': {'en': 'Yes, Clear', 'hi': 'हाँ, हटाएँ'},
+  'comms.geo.cleared': {'en': 'Cleared!', 'hi': 'हटाया गया!'},
+  'comms.geo.removed': {'en': 'Geofence removed', 'hi': 'भौगोलिक सीमा हटाई गई'},
+  'comms.geo.serviceOff': {
+    'en': 'Location services are off. Turn on GPS and try again.',
+    'hi': 'स्थान सेवाएँ बंद हैं। जीपीएस चालू करके फिर प्रयास करें।'
+  },
+  'comms.geo.permission': {
+    'en': 'Location permission is required to capture the society location.',
+    'hi': 'सोसाइटी का स्थान लेने के लिए स्थान अनुमति आवश्यक है।',
+  },
+  'comms.geo.openSettings': {'en': 'Open settings', 'hi': 'सेटिंग खोलें'},
+  'comms.geo.invalid': {
+    'en': 'Enter a valid latitude and longitude',
+    'hi': 'मान्य अक्षांश और देशांतर लिखें'
+  },
+  'comms.geo.accuracy': {
+    'en': 'GPS accuracy ±{m} m',
+    'hi': 'जीपीएस सटीकता ±{m} मीटर'
+  },
+  'comms.geo.saveFailed': {
+    'en': 'Could not save the geofence: {error}',
+    'hi': 'भौगोलिक सीमा सहेजी नहीं जा सकी: {error}'
+  },
+  'comms.password.show': {'en': 'Show passwords', 'hi': 'कूटशब्द दिखाएँ'},
+  'comms.password.hide': {'en': 'Hide passwords', 'hi': 'कूटशब्द छिपाएँ'},
+  'comms.bio.appLock': {'en': 'Biometric app lock', 'hi': 'जैवमितीय ऐप लॉक'},
+  'comms.bio.appLockHint': {
+    'en': 'Require fingerprint or Face ID when opening the app',
+    'hi': 'ऐप खोलते समय फ़िंगरप्रिंट या फ़ेस आईडी आवश्यक करें',
+  },
+  'comms.bio.confirmLock': {
+    'en': 'Confirm to enable biometric unlock',
+    'hi': 'जैवमितीय अनलॉक सक्षम करने की पुष्टि करें'
+  },
+  'comms.bio.devices': {
+    'en': '({count}/{max} devices)',
+    'hi': '({count}/{max} उपकरण)'
+  },
+  'comms.bio.addAnother': {
+    'en': 'Add another device ({count}/{max})',
+    'hi': 'एक और उपकरण जोड़ें ({count}/{max})'
+  },
+  'comms.bio.device': {
+    'en': 'Device {n} ({id}...)',
+    'hi': 'उपकरण {n} ({id}...)'
+  },
+  'comms.bio.added': {'en': 'Added {date}', 'hi': 'जोड़ा गया {date}'},
+  'comms.bio.remove': {'en': 'Remove', 'hi': 'हटाएँ'},
+  'comms.bio.removing': {'en': 'Removing...', 'hi': 'हटाया जा रहा है...'},
+  'comms.bio.removed': {
+    'en': 'Biometric device removed',
+    'hi': 'जैवमितीय उपकरण हटाया गया'
+  },
+  'comms.bio.removeFailed': {
+    'en': 'Could not remove biometric device',
+    'hi': 'जैवमितीय उपकरण हटाया नहीं जा सका'
+  },
+  'comms.bio.maxReached': {
+    'en':
+        'Max {max} biometrics reached. Adding one more will replace the oldest device.',
+    'hi':
+        'अधिकतम {max} जैवमितीय पंजीकरण हो चुके। एक और जोड़ने पर सबसे पुराना उपकरण बदल जाएगा।',
+  },
+  'comms.bio.unavailable': {
+    'en': 'Fingerprint / Face ID is not available on this device.',
+    'hi': 'इस उपकरण पर फ़िंगरप्रिंट / फ़ेस आईडी उपलब्ध नहीं है।',
+  },
+  'comms.bio.notAllowed': {
+    'en': 'Biometric login is not enabled for your admin role.',
+    'hi': 'आपकी प्रशासक भूमिका के लिए जैवमितीय प्रवेश सक्षम नहीं है।'
+  },
+  'comms.bio.promptTitle': {
+    'en': 'Enable fingerprint login?',
+    'hi': 'फ़िंगरप्रिंट प्रवेश सक्षम करें?'
+  },
+  'comms.bio.promptText': {
+    'en':
+        'Use your device fingerprint or Face ID to sign in faster next time. You can also set this later under Profile or Settings.',
+    'hi':
+        'अगली बार तेज़ी से प्रवेश के लिए अपने उपकरण का फ़िंगरप्रिंट या फ़ेस आईडी उपयोग करें। इसे बाद में प्रोफ़ाइल या सेटिंग में भी सेट कर सकते हैं।',
+  },
+  'comms.bio.notNow': {'en': 'Not now', 'hi': 'अभी नहीं'},
+  'comms.bio.enableShort': {'en': 'Enable', 'hi': 'सक्षम करें'},
+
+  // ---- Sensitive admin verify ---------------------------------------------------------
+  'comms.verify.text': {
+    'en': 'Confirm your identity to {action}. This is logged for security.',
+    'hi':
+        '{action} के लिए अपनी पहचान की पुष्टि करें। सुरक्षा हेतु यह दर्ज किया जाता है।',
+  },
+  'comms.verify.passwordPh': {'en': 'Admin password', 'hi': 'प्रशासक कूटशब्द'},
+  'comms.verify.withPassword': {
+    'en': 'Continue with password',
+    'hi': 'कूटशब्द से आगे बढ़ें'
+  },
+  'comms.verify.biometric': {'en': 'Biometric', 'hi': 'जैवमितीय'},
+  'comms.verify.sms': {'en': 'SMS OTP', 'hi': 'SMS ओटीपी'},
+  'comms.verify.note': {
+    'en': 'Biometric only works if you registered it in Admin → Biometric.',
+    'hi':
+        'जैवमितीय तभी काम करेगा जब आपने इसे प्रशासक → जैवमितीय में पंजीकृत किया हो।',
+  },
+  'comms.verify.wrongPassword': {
+    'en': 'Incorrect password',
+    'hi': 'कूटशब्द गलत है'
+  },
+  'comms.verify.bioFailed': {
+    'en': 'Biometric verification failed',
+    'hi': 'जैवमितीय सत्यापन विफल'
+  },
+  'comms.verify.smsStub': {
+    'en':
+        'SMS OTP requires admin phone on file and SMS setup (not enabled in this build). Use password or biometric.',
+    'hi':
+        'SMS ओटीपी के लिए प्रशासक का फ़ोन नंबर और SMS व्यवस्था चाहिए (इस संस्करण में सक्षम नहीं)। कूटशब्द या जैवमितीय उपयोग करें।',
+  },
+  'comms.verify.reason': {
+    'en': 'Confirm it is you',
+    'hi': 'पुष्टि करें कि यह आप हैं'
+  },
+
+  // ---- Tour ---------------------------------------------------------------------------
+  'comms.tour.close': {'en': 'Close guide', 'hi': 'गाइड बंद करें'},
+};

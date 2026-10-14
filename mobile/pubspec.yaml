@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  http: ^1.6.0
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.9.0
   flutter_riverpod: ^2.6.1
@@ -26,13 +27,27 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   local_auth: ^2.3.0
   flutter_secure_storage: ^9.2.4
-  record: ^5.2.0
+  record: ^6.1.1
   path_provider: ^2.1.5
   uuid: ^4.5.1
   url_launcher: ^6.3.1
   pdf: ^3.11.3
   share_plus: ^10.1.4
   audioplayers: ^6.4.0
+  camera: ^0.12.1
+  google_mlkit_face_detection: ^0.15.1
+  speech_to_text: ^7.5.0
+  flutter_tts: ^4.2.5
+  wakelock_plus: ^1.5.2
+  file_picker: ^11.0.3
+  excel: ^4.0.6
+  csv: ^8.0.0
+  printing: ^5.14.3
+  fl_chart: ^1.2.0
+  image: ^4.3.0
+  crypto: ^3.0.7
+  package_info_plus: ^9.0.1
+  signature: ^6.4.0
 
 dev_dependencies:
   flutter_test:
@@ -43,5 +58,37 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/i18n/
     - assets/fonts/
     - .env
+  fonts:
+    # Same typefaces as the web app (index.css --font-display / --font-mono).
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-SemiBold.ttf
+          weight: 600
+    # Devanagari fallback for Hindi text.
+    - family: NotoSansDevanagari
+      fonts:
+        - asset: assets/fonts/NotoSansDevanagari-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansDevanagari-Bold.ttf
+          weight: 700
+    - family: NotoSans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSans-Bold.ttf
+          weight: 700

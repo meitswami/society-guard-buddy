@@ -9,6 +9,7 @@ import '../models/admin_user.dart';
 import '../models/guard_session.dart';
 import '../models/resident_user.dart';
 import '../models/session_models.dart';
+import '../services/admin_permissions.dart';
 import '../services/auth_service.dart';
 import '../services/guard_session_service.dart';
 import '../services/push_notification_service.dart';
@@ -57,15 +58,40 @@ class SessionNotifier extends AsyncNotifier<AppSessionState> {
       return session;
     }
 
+    if (role == 'superadmin') {
+      final sa = raw['superadmin'] as Map<String, dynamic>?;
+      final id = sa?['id'] as String?;
+      if (sa == null || id == null) return const SessionUnauthenticated();
+      if (Env.isConfigured) {
+        try {
+          final row = await SupabaseBootstrap.client.from('super_admins').select('id').eq('id', id).maybeSingle();
+          if (row == null) {
+            await AppSession.clear();
+            return const SessionUnauthenticated();
+          }
+        } catch (_) {
+          // Offline: keep the stored session (same as other roles' validation failures being network-only).
+        }
+      }
+      return SessionSuperadmin(
+        id: id,
+        name: (sa['name'] as String?) ?? '',
+        username: (sa['username'] as String?) ?? '',
+      );
+    }
+
     if (role == 'admin' && societyId != null) {
       final adminJson = raw['admin'] as Map<String, dynamic>?;
       if (adminJson == null) return const SessionUnauthenticated();
-      final admin = AdminUser.fromJson(adminJson);
+      var admin = AdminUser.fromJson(adminJson);
       final valid = await ref.read(authServiceProvider).validateAdminId(admin.id);
       if (!valid) {
         await AppSession.clear();
         return const SessionUnauthenticated();
       }
+      // Like web: re-read role permissions on restore so changes by the superadmin apply.
+      admin = await _refreshAdminPermissions(admin);
+      await AppSession.write({'role': 'admin', 'societyId': societyId, 'admin': admin.toJson()});
       final societyName = await _societyName(societyId);
       final session = SessionAdmin(
         societyId: societyId,
@@ -103,6 +129,27 @@ class SessionNotifier extends AsyncNotifier<AppSessionState> {
     }
 
     return const SessionUnauthenticated();
+  }
+
+  Future<AdminUser> _refreshAdminPermissions(AdminUser admin) async {
+    if (!Env.isConfigured) return admin;
+    try {
+      final row = await SupabaseBootstrap.client
+          .from('admins')
+          .select('*, society_roles(permissions, slug, role_name)')
+          .eq('id', admin.id)
+          .maybeSingle();
+      if (row == null) return admin;
+      return AdminUser(
+        id: admin.id,
+        name: (row['name'] as String?) ?? admin.name,
+        adminId: (row['admin_id'] as String?) ?? admin.adminId,
+        societyId: (row['society_id'] as String?) ?? admin.societyId,
+        permissions: AdminPanelPermissions.fromAdminJoin(row),
+      );
+    } catch (_) {
+      return admin;
+    }
   }
 
   Future<String> _societyName(String societyId) async {
@@ -171,6 +218,15 @@ class SessionNotifier extends AsyncNotifier<AppSessionState> {
     );
     state = AsyncData(session);
     await ref.read(pushNotificationServiceProvider).registerForSession(session);
+  }
+
+  /// Superadmin console login (web `writePersistedSession({ role: 'superadmin', superadmin })`).
+  Future<void> loginSuperadmin({required String id, required String name, required String username}) async {
+    await AppSession.write({
+      'role': 'superadmin',
+      'superadmin': {'id': id, 'name': name, 'username': username},
+    });
+    state = AsyncData(SessionSuperadmin(id: id, name: name, username: username));
   }
 
   Future<void> logout({String? guardShiftId}) async {

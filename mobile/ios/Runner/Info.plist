@@ -69,11 +69,15 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Kutumbika uses your location to verify guard login is within the society geofence.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Kutumbika uses the camera for visitor photos and feedback attachments.</string>
+	<string>Kutumbika uses the camera for visitor photos, the AI receptionist kiosk and feedback attachments.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Kutumbika uses your photo library for feedback and visitor attachments.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Kutumbika uses the microphone for voice feedback messages.</string>
+	<string>Kutumbika uses the microphone for the AI receptionist kiosk, voice feedback and meeting audio.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Kutumbika turns what visitors say at the AI receptionist kiosk into text to fill in their entry.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Kutumbika saves receipts and reports you export to your photo library when you choose to.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Kutumbika uses Face ID to unlock the app after login.</string>
 	<key>UIBackgroundModes</key>

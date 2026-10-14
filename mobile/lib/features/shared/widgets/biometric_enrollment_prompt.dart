@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ui/ui.dart';
 import '../../../models/session_models.dart';
 import '../../../services/biometric_login_service.dart';
 import '../../../services/biometric_service.dart';
+import '../../comms/core/comms_i18n.dart';
 
-/// One-time prompt after login to enable fingerprint quick-login (matches web onboarding).
+/// One-time prompt after login to enable fingerprint quick-login (web onboarding nudge).
 class BiometricEnrollmentPrompt extends StatefulWidget {
-  const BiometricEnrollmentPrompt({
-    super.key,
-    required this.session,
-    required this.child,
-  });
+  const BiometricEnrollmentPrompt(
+      {super.key, required this.session, required this.child});
 
   final AppSessionState session;
   final Widget child;
 
   @override
-  State<BiometricEnrollmentPrompt> createState() => _BiometricEnrollmentPromptState();
+  State<BiometricEnrollmentPrompt> createState() =>
+      _BiometricEnrollmentPromptState();
 }
 
 class _BiometricEnrollmentPromptState extends State<BiometricEnrollmentPrompt> {
@@ -31,48 +31,48 @@ class _BiometricEnrollmentPromptState extends State<BiometricEnrollmentPrompt> {
   Future<void> _maybePrompt() async {
     if (_checked) return;
     _checked = true;
-
     if (!await BiometricService().isDeviceSupported()) return;
 
     final login = BiometricLoginService();
     final user = await login.userContextFromSession(widget.session);
     if (user == null || !user.allowed) return;
-
-    final has = await login.hasEnrollment(role: user.role, userDbId: user.userDbId);
+    final has =
+        await login.hasEnrollment(role: user.role, userDbId: user.userDbId);
     if (has || !mounted) return;
 
+    final t = context.tokens;
     final enable = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.fingerprint),
-            SizedBox(width: 8),
-            Expanded(child: Text('Enable fingerprint login?')),
-          ],
-        ),
-        content: const Text(
-          'Use your device fingerprint or Face ID to sign in faster next time. '
-          'You can also set this later under Profile or Settings.',
-        ),
+        icon: Icon(Icons.fingerprint, size: 40, color: t.primary),
+        title:
+            Text(ctx.ct('comms.bio.promptTitle'), textAlign: TextAlign.center),
+        content:
+            Text(ctx.ct('comms.bio.promptText'), textAlign: TextAlign.center),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not now')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Enable')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(ctx.ct('comms.bio.notNow'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(ctx.ct('comms.bio.enableShort'))),
         ],
       ),
     );
-
     if (enable != true || !mounted) return;
 
     try {
       await login.enrollFromSession(widget.session);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Fingerprint login enabled')),
-      );
+      if (mounted) {
+        AppFeedback.toast(context, context.t('biometric.registered'),
+            tone: BadgeTone.success);
+      }
     } on BiometricLoginFailure catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        AppFeedback.toast(
+            context, '${context.t('biometric.registerFailed')}: ${e.message}',
+            tone: BadgeTone.alert);
       }
     }
   }

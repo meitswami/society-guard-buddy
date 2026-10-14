@@ -6,7 +6,7 @@ import '../core/theme/kutumbika_colors.dart';
 class PlatformBranding {
   const PlatformBranding({
     this.appName = 'Kutumbika',
-    this.tagline = '— parivaar jaisi society —',
+    this.tagline = 'Parivaar Jaisi Society',
     this.logoUrl,
     this.primaryColor = KutumbikaColors.primary,
     this.primaryDarkColor = KutumbikaColors.primaryDark,
@@ -26,6 +26,17 @@ class PlatformBranding {
       );
 
   static PlatformBranding defaults() => const PlatformBranding();
+
+  /// Same name / logo / tagline with the colours replaced (the theme feeds the web palette).
+  PlatformBranding withColors({required Color primary, required Color primaryDark, required Color background}) =>
+      PlatformBranding(
+        appName: appName,
+        tagline: tagline,
+        logoUrl: logoUrl,
+        primaryColor: primary,
+        primaryDarkColor: primaryDark,
+        backgroundColor: background,
+      );
 
   factory PlatformBranding.fromJson(Map<String, dynamic> json) {
     return PlatformBranding(

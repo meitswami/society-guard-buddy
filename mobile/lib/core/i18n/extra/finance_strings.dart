@@ -1,0 +1,91 @@
+/// Finance module labels reused across sub-tabs (web hard-codes these in English).
+/// Merged into `kExtraStrings` by the lead; the finance module also reads it directly.
+const Map<String, Map<String, String>> kFinanceStrings = {
+  'fin.title': {'en': 'Finance Management', 'hi': 'वित्त प्रबंधन'},
+  'fin.tab.create': {'en': 'Create', 'hi': 'बनाएँ'},
+  'fin.tab.record': {'en': 'Record', 'hi': 'दर्ज करें'},
+  'fin.tab.maintenance': {'en': 'Receipt type', 'hi': 'रसीद प्रकार'},
+  'fin.tab.createPayment': {'en': 'Payment type', 'hi': 'भुगतान प्रकार'},
+  'fin.tab.payments': {'en': 'Record receipt', 'hi': 'रसीद दर्ज करें'},
+  'fin.tab.recordPayment': {'en': 'Record payment', 'hi': 'भुगतान दर्ज करें'},
+  'fin.tab.receipts': {'en': 'Transactions', 'hi': 'लेन-देन'},
+  'fin.tab.totals': {'en': 'Totals', 'hi': 'कुल योग'},
+  'fin.tab.reminders': {'en': 'Reminders', 'hi': 'अनुस्मारक'},
+  'fin.tab.hideReminders': {'en': 'Hide reminders', 'hi': 'अनुस्मारक छिपाएँ'},
+  'fin.status.all': {'en': 'All', 'hi': 'सभी'},
+  'fin.status.pending': {'en': 'pending', 'hi': 'लंबित'},
+  'fin.status.verified': {'en': 'verified', 'hi': 'सत्यापित'},
+  'fin.status.rejected': {'en': 'rejected', 'hi': 'अस्वीकृत'},
+  'fin.status.unpaid': {'en': 'Unpaid', 'hi': 'अदत्त'},
+  'fin.method.cash': {'en': 'Cash', 'hi': 'नकद'},
+  'fin.method.upi': {'en': 'UPI', 'hi': 'यूपीआई'},
+  'fin.method.razorpay': {'en': 'Razorpay (Online)', 'hi': 'रेज़रपे (ऑनलाइन)'},
+  'fin.method.bank_transfer': {'en': 'Bank transfer', 'hi': 'बैंक ट्रांसफ़र'},
+  'fin.method.cheque': {'en': 'Cheque', 'hi': 'चेक'},
+  'fin.method.other': {'en': 'Other', 'hi': 'अन्य'},
+  'fin.mode.society_pool': {
+    'en': 'Society pool (distribute to flats later)',
+    'hi': 'सोसाइटी पूल (बाद में फ्लैटों में बाँटें)'
+  },
+  'fin.mode.flats_only': {
+    'en': 'Direct to selected flats (default — per-flat amount)',
+    'hi': 'चयनित फ्लैटों में सीधे (डिफ़ॉल्ट — प्रति फ्लैट राशि)',
+  },
+  'fin.mode.flats_plus_outsider': {
+    'en': 'Selected flats + outsider share',
+    'hi': 'चयनित फ्लैट + बाहरी हिस्सा'
+  },
+  'fin.mode.outsider_only': {
+    'en': 'Outsider only (split across selected flats now)',
+    'hi': 'केवल बाहरी (अभी चयनित फ्लैटों में बाँटें)',
+  },
+  'fin.dest.current_month_maintenance': {
+    'en': 'Current month maintenance / collections',
+    'hi': 'चालू माह रखरखाव / संग्रह',
+  },
+  'fin.dest.corpus': {
+    'en': 'Corpus / sinking fund',
+    'hi': 'कॉर्पस / सिंकिंग निधि'
+  },
+  'fin.dest.separate_entry': {
+    'en': 'Separate ledger entry (expense-style, no flat posting)',
+    'hi': 'अलग खाता प्रविष्टि (व्यय जैसी, फ्लैट पर पोस्ट नहीं)',
+  },
+  'fin.freq.monthly': {'en': 'Monthly', 'hi': 'मासिक'},
+  'fin.freq.quarterly': {'en': 'Quarterly', 'hi': 'त्रैमासिक'},
+  'fin.freq.yearly': {'en': 'Yearly', 'hi': 'वार्षिक'},
+  'fin.freq.one-time': {'en': 'One-time', 'hi': 'एक बार'},
+  'fin.edit': {'en': 'Edit', 'hi': 'संपादित करें'},
+  'fin.delete': {'en': 'Delete', 'hi': 'हटाएँ'},
+  'fin.cancel': {'en': 'Cancel', 'hi': 'रद्द करें'},
+  'fin.cancelEdit': {'en': 'Cancel edit', 'hi': 'संपादन रद्द करें'},
+  'fin.close': {'en': 'Close', 'hi': 'बंद करें'},
+  'fin.inUse': {'en': 'In use', 'hi': 'उपयोग में'},
+  'fin.saveChanges': {'en': 'Save changes', 'hi': 'बदलाव सहेजें'},
+  'fin.verify': {'en': 'Verify', 'hi': 'सत्यापित करें'},
+  'fin.reject': {'en': 'Reject', 'hi': 'अस्वीकार करें'},
+  'fin.cash': {'en': 'Cash', 'hi': 'नकद'},
+  'fin.bankUpi': {'en': 'Bank / UPI', 'hi': 'बैंक / यूपीआई'},
+  'fin.other': {'en': 'Other', 'hi': 'अन्य'},
+  'fin.total': {'en': 'Total', 'hi': 'कुल'},
+  'fin.entries': {'en': 'Entries', 'hi': 'प्रविष्टियाँ'},
+  'fin.billingDate': {
+    'en': 'Billing / transaction date',
+    'hi': 'बिलिंग / लेन-देन तिथि'
+  },
+  'fin.majorHead': {
+    'en': 'Major head (category)',
+    'hi': 'मुख्य शीर्ष (श्रेणी)'
+  },
+  'fin.unknownCharge': {'en': 'Unknown charge', 'hi': 'अज्ञात शुल्क'},
+  'fin.exportStatement': {'en': 'Export statement', 'hi': 'विवरण निर्यात करें'},
+  'fin.shareWhatsApp': {
+    'en': 'Share on WhatsApp',
+    'hi': 'व्हाट्सऐप पर साझा करें'
+  },
+  'fin.distribute': {
+    'en': 'Distribute equally to all flats',
+    'hi': 'सभी फ्लैटों में बराबर बाँटें'
+  },
+  'fin.distributing': {'en': 'Distributing…', 'hi': 'बाँटा जा रहा है…'},
+};

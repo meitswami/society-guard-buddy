@@ -1,110 +1,63 @@
 # Kutumbika Mobile (Flutter)
 
+Native **Android** (and later **iOS**) app for Kutumbika. It replaces the AppMySite PWA wrapper on the Play Store.
+The **web app stays unchanged** in the repo root (`src/`, React + Vite) and remains the reference design: the Flutter
+screens copy its mobile layout, colours, copy (Hindi default + English) and behaviour.
 
+Both clients use the **same Supabase backend**: PostgREST, Storage, Realtime and Edge Functions.
 
-Native **Android & iOS** hybrid apps for Kutumbika. The existing **web app stays unchanged** in the repo root (`src/`, Vite, React).
+## Layout
 
-
-
-## Architecture
-
-
-
-| Layer | Path | Notes |
-
-|-------|------|-------|
-
-| Web (unchanged) | `/` | React + Vite + Capacitor WebView option |
-
-| Mobile (new) | `/mobile` | Flutter + `supabase_flutter` |
-
-
-
-Both clients talk to the **same Supabase backend** (PostgREST + Edge Functions). Branding (logo + colors) is managed from **Superadmin → Settings → Mobile app branding** and stored in `platform_branding`. Society logos upload from **Superadmin → Societies**.
-
-
+| Path | What |
+|------|------|
+| `lib/core/theme/` | `AppTokens`: the web `src/index.css` design tokens (light + dark). `KutumbikaTheme` builds Material from them |
+| `lib/core/i18n/` | `context.t('web.key')`, `context.tr(en, hi)`. Strings in `assets/i18n/translations.json` come from the web `translations.ts` |
+| `lib/core/ui/` | UI kit mirroring the web components: `PageContainer`, `PageHeader`, `CardSection`, `AppButton`, `AppTextField` (CAPS-entry mode), `DescriptiveStatCard`, `StatusBadge`, `AppFeedback` (SweetAlert-style dialogs / toasts), `ScrollableBottomNav`, `LanguageToggle`, `ThemeToggle` |
+| `lib/core/export/` | PDF (Hindi-capable fonts), Excel, CSV, share sheet, WhatsApp, print |
+| `lib/core/prefs/` | Theme / language / CAPS-entry preferences (same keys as the web localStorage) |
+| `lib/features/<area>/` | Role shells and feature modules: `admin/*`, `gate/` + `guard/`, `kiosk/`, `resident/`, `governance/`, `comms/`, `auth/`, `public/`, `superadmin/` |
+| `lib/features/admin/core/` | `AdminTab`, `AdminModuleContext`, navigation/search/quick-access (port of `adminNavigation.ts`) and the module registry |
+| `tool/sync_translations.mjs` | Regenerates `assets/i18n/translations.json` from the web strings |
 
 ## First-time setup
 
-
-
-1. Install [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.5+).
-
-2. From this folder:
-
-
-
 ```bash
-
+# Flutter 3.47.x (CI uses 3.47.5)
 cd mobile
-
-flutter create . --project-name kutumbika_mobile --org app.kutumbika
-
-cp .env.example .env
-
-# Fill SUPABASE_URL, SUPABASE_ANON_KEY, and FIREBASE_* (same as web)
-
+cp .env.example .env          # SUPABASE_URL, SUPABASE_ANON_KEY, FIREBASE_*, optional WEB_APP_URL
 flutter pub get
-
 flutter run
-
 ```
 
+After changing web strings (`src/i18n/translations.ts`), run this from the repo root: `node mobile/tool/sync_translations.mjs`.
 
+Native Firebase (phone OTP on Android, FCM push) needs `android/app/google-services.json`. See
+[docs/mobile/FIREBASE-NATIVE-SETUP.md](../docs/mobile/FIREBASE-NATIVE-SETUP.md).
 
-3. For **native push**, add Firebase platform files — see [docs/mobile/FIREBASE-NATIVE-SETUP.md](../docs/mobile/FIREBASE-NATIVE-SETUP.md).
-
-
-
-4. Apply the `platform_branding` migration on Supabase before testing dynamic logo/colors.
-
-
-
-## Build for stores
-
-
+## Checks
 
 ```bash
-
-flutter build apk --release
-
-flutter build appbundle --release
-
-flutter build ios --release   # macOS + Xcode
-
+flutter analyze --no-fatal-infos
+flutter test
 ```
 
+## Builds & release
 
+CI (`.github/workflows/android.yml`) runs analyze, tests, a signed APK and an AAB on every push that touches `mobile/`.
+A manual run can upload to the Play **internal** track. The full guide covers replacing the AppMySite listing, the
+upload key, version codes, Firebase SHA fingerprints and the store listing:
+**[docs/mobile/PLAY-STORE-RELEASE.md](../docs/mobile/PLAY-STORE-RELEASE.md)**.
 
-## What's built
+```bash
+flutter build apk --release
+flutter build appbundle --release -PappId=<play package name>
+flutter build ios --release      # later: macOS + Xcode
+```
 
+## Parity status
 
-
-- Kutumbika orange theme + **dynamic branding** from `platform_branding`
-
-- **Login** — society, role, password + Firebase OTP (resident/guard)
-
-- **Session restore** — shared `sgb_app_session_v1` key with web
-
-- **Resident** — home, alerts, approvals, passes, directory, payments, profile, family, vehicles, feedback, polls, elections, meetings, committee, emergency
-
-- **Guard** — dashboard, entry (photos), visitors, quick entry, delivery, blacklist, emergency, pass OTP verify, settings (biometric lock)
-
-- **Admin** — overview, broadcast, residents/guards CRUD, **flats & members**
-
-- **FCM** — token registration; foreground notifications on native
-
-- **Biometric** — fingerprint/Face ID app lock + quick login (`local_auth` + secure storage)
-
-
-
-See [docs/mobile/PARITY-ROADMAP.md](../docs/mobile/PARITY-ROADMAP.md) for full parity status.
-
-
+See [docs/mobile/PARITY-ROADMAP.md](../docs/mobile/PARITY-ROADMAP.md).
 
 ## API reference
 
-
-
 See [docs/mobile/API-STRATEGY.md](../docs/mobile/API-STRATEGY.md).
-

@@ -7,14 +7,15 @@ interface Props {
   societyName: string;
   now: Date;
   attachVideo: (el: HTMLVideoElement | null) => void;
-  faceDetection: boolean;
+  /** One-line camera / face-detection status for the guard, with an optional retry. */
+  status: { text: string; tone: 'ok' | 'warn' | 'error'; onRetry?: () => void; retryLabel?: string };
   onTap: () => void;
 }
 
 const TIPS = ['idleTip1', 'idleTip2', 'idleTip3'] as const;
 
 /** Idle attract screen; a small live camera bubble keeps face detection running. */
-const KioskScreensaver = ({ lang, societyName, now, attachVideo, faceDetection, onTap }: Props) => {
+const KioskScreensaver = ({ lang, societyName, now, attachVideo, status, onTap }: Props) => {
   const [tip, setTip] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTip((i) => (i + 1) % TIPS.length), 4500);
@@ -57,15 +58,35 @@ const KioskScreensaver = ({ lang, societyName, now, attachVideo, faceDetection, 
         </p>
       </div>
 
-      <div className="absolute bottom-6 right-6 flex items-center gap-2">
-        {faceDetection && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
+      {/* Bottom-left: app wrappers (e.g. AppMySite) float their own button bottom-right. */}
+      <div className="absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-4 right-24 flex items-center gap-3 text-left">
         <video
           ref={attachVideo}
           muted
           playsInline
           autoPlay
-          className="w-20 h-20 rounded-full object-cover border-2 border-white/30 -scale-x-100"
+          className="w-20 h-20 flex-shrink-0 rounded-full object-cover border-2 border-white/30 bg-black/40 -scale-x-100"
         />
+        <div className="min-w-0 flex flex-col items-start gap-1.5">
+          <span className="flex items-center gap-1.5 text-xs leading-snug">
+            <span
+              className={`w-2 h-2 flex-shrink-0 rounded-full ${
+                status.tone === 'ok' ? 'bg-emerald-400 animate-pulse' : status.tone === 'warn' ? 'bg-amber-400' : 'bg-red-400'
+              }`}
+            />
+            <span className={status.tone === 'error' ? 'text-red-200' : 'text-white/70'}>{status.text}</span>
+          </span>
+          {status.onRetry && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); status.onRetry?.(); }}
+              className="px-3 py-1 rounded-lg bg-white/15 text-xs font-semibold"
+            >
+              {status.retryLabel}
+            </span>
+          )}
+        </div>
       </div>
     </button>
   );

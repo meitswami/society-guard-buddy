@@ -11,6 +11,12 @@ import '../models/session_models.dart';
 const _androidChannelId = 'kutumbika_alerts';
 const _androidChannelName = 'Kutumbika alerts';
 
+/// Visitor-at-gate approvals: loudest channel with the doorbell sound
+/// (`res/raw/visitor_bell.wav`). The `send-push-notification` Edge Function targets it with
+/// `kind: visitor_approval`. Android fixes a channel's sound when it is first created.
+const kVisitorChannelId = 'visitor_approvals';
+const _visitorChannelName = 'Visitor at gate';
+
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await FirebaseBootstrap.init();
@@ -24,7 +30,7 @@ class PushNotificationService {
   static final AudioPlayer _alertPlayer = AudioPlayer();
 
   static Future<void> ensureBackgroundHandler() async {
-    if (!Env.isFirebaseConfigured) return;
+    if (!FirebaseBootstrap.isReady) return;
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   }
 
@@ -38,16 +44,27 @@ class PushNotificationService {
     );
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(
-            const AndroidNotificationChannel(
-              _androidChannelId,
-              _androidChannelName,
-              importance: Importance.high,
-            ),
-          );
+      final android = _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _androidChannelId,
+          _androidChannelName,
+          importance: Importance.high,
+        ),
+      );
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          kVisitorChannelId,
+          _visitorChannelName,
+          description: 'A visitor at the gate is waiting for your approval',
+          importance: Importance.max,
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound('visitor_bell'),
+          enableVibration: true,
+        ),
+      );
+      await android?.requestNotificationsPermission();
     }
   }
 
@@ -63,7 +80,7 @@ class PushNotificationService {
   }
 
   Future<void> initForegroundListener() async {
-    if (_foregroundListenerAttached || !Env.isFirebaseConfigured) return;
+    if (_foregroundListenerAttached || !FirebaseBootstrap.isReady) return;
     _foregroundListenerAttached = true;
 
     if (!kIsWeb) {
@@ -74,6 +91,10 @@ class PushNotificationService {
       final title = message.notification?.title ?? 'Kutumbika';
       final body = message.notification?.body ?? '';
       debugPrint('[FCM] $title: $body');
+
+      // The open resident app already shows the approval card and rings (realtime), so a
+      // second banner + sound for the same visitor is skipped.
+      if (message.data['kind'] == 'visitor_approval') return;
 
       await _playSocietyAlert(message);
 
@@ -97,7 +118,7 @@ class PushNotificationService {
   }
 
   Future<void> registerForSession(AppSessionState session) async {
-    if (!Env.isFirebaseConfigured) return;
+    if (!FirebaseBootstrap.isReady) return;
 
     try {
       final messaging = FirebaseMessaging.instance;

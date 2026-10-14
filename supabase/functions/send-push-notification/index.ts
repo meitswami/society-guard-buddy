@@ -44,6 +44,9 @@ async function getFcmAccessToken(sa: ServiceAccount): Promise<string> {
   return json.access_token as string;
 }
 
+/** Visitor-at-gate approvals ring loudly on phones (Android channel + bundled sound). */
+const VISITOR_KIND = "visitor_approval";
+
 async function sendFcmToToken(
   accessToken: string,
   projectId: string,
@@ -52,14 +55,33 @@ async function sendFcmToToken(
   body: string,
   imageUrl?: string,
   dataPayload?: Record<string, string>,
+  kind?: string,
 ): Promise<{ ok: boolean; status: number; body: string }> {
   const data: Record<string, string> = {
     ...(dataPayload ?? {}),
   };
+  const visitor = kind === VISITOR_KIND;
   const message: Record<string, unknown> = {
     token: deviceToken,
     notification: { title, body },
     data,
+    // Native apps (Flutter): deliver immediately, even in Doze; visitor approvals use the
+    // "Visitor at gate" channel with the doorbell sound and expire with the 2-minute wait.
+    android: {
+      priority: "HIGH",
+      ...(visitor ? { ttl: "120s" } : {}),
+      notification: {
+        channel_id: visitor ? "visitor_approvals" : "kutumbika_alerts",
+        sound: visitor ? "visitor_bell" : "default",
+        notification_priority: visitor ? "PRIORITY_MAX" : "PRIORITY_HIGH",
+        visibility: "PUBLIC",
+        default_vibrate_timings: true,
+      },
+    },
+    apns: {
+      headers: { "apns-priority": "10" },
+      payload: { aps: { sound: visitor ? "visitor_bell.caf" : "default" } },
+    },
   };
   if (imageUrl) {
     message.webpush = {
@@ -106,6 +128,8 @@ serve(async (req) => {
       society_id,
       sound_key,
       sound_custom_url,
+      kind,
+      data: extraData,
     } = await req.json();
 
     if (!title || !message) {
@@ -177,6 +201,12 @@ serve(async (req) => {
         sound_key: sk,
         sound_custom_url: scu,
       };
+      if (typeof kind === "string" && kind) fcmData.kind = kind;
+      if (extraData && typeof extraData === "object") {
+        for (const [k, v] of Object.entries(extraData as Record<string, unknown>)) {
+          if (v !== null && v !== undefined) fcmData[k] = String(v);
+        }
+      }
       const firstImage = Array.isArray(media_items)
         ? media_items.find((m: { kind?: string; url?: string }) => m?.kind === "image" && m?.url)
         : undefined;
@@ -188,7 +218,16 @@ serve(async (req) => {
       let sent = 0;
       const errors: string[] = [];
       for (const tok of tokens) {
-        const r = await sendFcmToToken(accessToken, sa.project_id, tok, title, message, imageUrl, fcmData);
+        const r = await sendFcmToToken(
+          accessToken,
+          sa.project_id,
+          tok,
+          title,
+          message,
+          imageUrl,
+          fcmData,
+          typeof kind === "string" ? kind : undefined,
+        );
         if (r.ok) sent++;
         else if (r.status === 404 || r.body.includes("NOT_FOUND") || r.body.includes("registration-token")) {
           await supabase.from("fcm_web_tokens").delete().eq("token", tok);

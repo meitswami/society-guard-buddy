@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/firebase/firebase_bootstrap.dart';
+import 'core/i18n/i18n.dart';
+import 'core/prefs/app_prefs.dart';
 import 'core/supabase/supabase_bootstrap.dart';
 import 'services/push_notification_service.dart';
 
@@ -20,6 +22,8 @@ Future<void> main() async {
   await Future.wait([
     SupabaseBootstrap.init(),
     FirebaseBootstrap.init(),
+    AppPrefs.init(),
+    TranslationsStore.load(),
   ]);
   await PushNotificationService.ensureBackgroundHandler();
 
