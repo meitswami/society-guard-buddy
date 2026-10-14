@@ -6,7 +6,7 @@ name: Android app (Flutter)
 # Secrets (Settings → Secrets and variables → Actions):
 #   ANDROID_KEYSTORE_BASE64   base64 of the upload keystore (.jks)       — release signing
 #   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
-#   GOOGLE_SERVICES_JSON      base64 of android/app/google-services.json — Firebase OTP + push
+#   GOOGLE_SERVICES_JSON      android/app/google-services.json, pasted as-is or base64 — Firebase OTP + push
 #   APP_ENV                   optional full contents of mobile/.env (defaults to .env.example)
 #   PLAY_SERVICE_ACCOUNT_JSON optional Play Console service account JSON  — publishing
 # Variables:
@@ -64,8 +64,18 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
-            echo "google-services.json written"
+            # Accept the file pasted as-is (JSON) or base64-encoded.
+            if printf '%s' "$GOOGLE_SERVICES_JSON" | grep -q '^[[:space:]]*{'; then
+              printf '%s\n' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            else
+              printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+            fi
+            PKG="${ANDROID_APPLICATION_ID:-app.kutumbika.kutumbika_mobile}"
+            if ! grep -q "\"package_name\": *\"$PKG\"" android/app/google-services.json; then
+              echo "::error::google-services.json has no Android app for package $PKG. In Firebase add an Android app with exactly this package name (and set the ANDROID_APPLICATION_ID variable to the Play package), then download the file again."
+              exit 1
+            fi
+            echo "google-services.json written for $PKG"
           else
             echo "::warning::GOOGLE_SERVICES_JSON secret not set — build has no native Firebase (phone OTP/push)."
           fi

@@ -19,7 +19,7 @@ Before this change, visitor approvals reached residents only while their app was
    Check that the secret `FIREBASE_SERVICE_ACCOUNT_JSON` is set (Edge Functions → Secrets).
 3. **Android app**: the build must include `google-services.json` for the Play package name:
    - Firebase console → project `kutumbika-5ce7d` → Add app → Android → `app.kutumbikaparivaarjaisi.android`.
-   - Download the file, base64 it and save it as the GitHub secret `GOOGLE_SERVICES_JSON`.
+   - Download `google-services.json`, open it in Notepad, copy everything and save it as the GitHub secret `GOOGLE_SERVICES_JSON` (base64 also works). Set the GitHub variable `ANDROID_APPLICATION_ID` to `app.kutumbikaparivaarjaisi.android`.
    - Without this file the app cannot get a push token. It then logs "Firebase did not start" in Admin → Notifications → Push health check.
 
 ## Test
