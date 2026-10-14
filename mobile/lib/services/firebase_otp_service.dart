@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-import '../core/config/env.dart';
 import '../core/firebase/firebase_bootstrap.dart';
 
 class FirebaseOtpFailure implements Exception {
@@ -35,7 +34,7 @@ class FirebaseOtpService {
   int _generation = 0;
   bool _consumed = false;
 
-  bool get isAvailable => Env.isFirebaseConfigured;
+  bool get isAvailable => FirebaseBootstrap.isReady;
 
   /// True after a code was sent and before it was used.
   bool get hasPendingCode => !_consumed && (_verificationId != null || _webConfirmation != null);
@@ -171,7 +170,7 @@ class FirebaseOtpService {
   }
 
   static Future<void> signOutQuietly() async {
-    if (!Env.isFirebaseConfigured) return;
+    if (!FirebaseBootstrap.isReady) return;
     try {
       await FirebaseAuth.instance.signOut();
     } catch (_) {}

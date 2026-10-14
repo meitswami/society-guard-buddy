@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/config/env.dart';
+import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/format/formatters.dart';
 import '../../../models/session_models.dart';
 import '../../../services/push_notification_service.dart';
@@ -100,14 +100,14 @@ class PushHealthCheck {
     final adminId = session.admin.id;
     final adminName = session.admin.name;
     final societyId = session.societyId;
-    final firebase = Env.isFirebaseConfigured;
+    final firebase = FirebaseBootstrap.isReady;
     try {
       if (!firebase) {
-        issues.add('Env config: missing Firebase keys in the app .env');
+        issues.add('Firebase is not set up in this app build (google-services.json missing)');
         step('Environment', false,
-            'Missing Firebase API key / project / app id in the app .env');
+            'Firebase did not start: the build needs android/app/google-services.json for push');
       } else {
-        ok.add('Env config: Firebase keys present');
+        ok.add('Firebase: running');
         step('Environment', true, 'Firebase project + app id found');
       }
 

@@ -19,6 +19,11 @@ abstract final class Env {
 
   static String get firebaseVapidKey => _get('FIREBASE_VAPID_KEY');
 
+  /// Firebase app ids of the Android / iOS apps (only needed when the build has no
+  /// `google-services.json` / `GoogleService-Info.plist`).
+  static String get firebaseAndroidAppId => _get('FIREBASE_ANDROID_APP_ID');
+  static String get firebaseIosAppId => _get('FIREBASE_IOS_APP_ID');
+
   /// Public URL of the web app (legal pages, signup, deep links). Optional.
   static String get webAppUrl {
     final v = _get('WEB_APP_URL');
