@@ -14,10 +14,11 @@ class NavItem<T> {
   final int badge;
 }
 
-/// Web `BottomNav`: horizontally scrollable tab bar with arrow hints when it overflows,
-/// active tab in primary, and the copyright footer line underneath.
+/// Web `BottomNav`: horizontally scrollable tab bar with arrow hints when it overflows and
+/// the active tab highlighted. The app hides the web's copyright line (`showFooter`) so the
+/// tabs get that space: taller targets, bigger icons and labels.
 class ScrollableBottomNav<T> extends StatefulWidget {
-  const ScrollableBottomNav({super.key, required this.items, required this.active, required this.onTap, this.showFooter = true});
+  const ScrollableBottomNav({super.key, required this.items, required this.active, required this.onTap, this.showFooter = false});
 
   final List<NavItem<T>> items;
   final T active;
@@ -77,12 +78,12 @@ class _ScrollableBottomNavState<T> extends State<ScrollableBottomNav<T>> {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: 60,
+              height: 70,
               child: LayoutBuilder(
                 builder: (context, c) {
                   WidgetsBinding.instance.addPostFrameCallback((_) => _update());
-                  final minItem = 68.0;
-                  final itemWidth = (c.maxWidth / widget.items.length).clamp(minItem, 140.0);
+                  const minItem = 80.0;
+                  final itemWidth = (c.maxWidth / widget.items.length).clamp(minItem, 150.0);
                   return Stack(
                     children: [
                       ListView(
@@ -94,8 +95,8 @@ class _ScrollableBottomNavState<T> extends State<ScrollableBottomNav<T>> {
                             SizedBox(width: itemWidth, child: _NavButton(item: item, active: item.id == widget.active, onTap: () => widget.onTap(item.id))),
                         ],
                       ),
-                      if (_left) Positioned(left: 0, top: 14, child: _Arrow(icon: Icons.chevron_left, onTap: () => _step(-1))),
-                      if (_right) Positioned(right: 0, top: 14, child: _Arrow(icon: Icons.chevron_right, onTap: () => _step(1))),
+                      if (_left) Positioned(left: 0, top: 18, child: _Arrow(icon: Icons.chevron_left, onTap: () => _step(-1))),
+                      if (_right) Positioned(right: 0, top: 18, child: _Arrow(icon: Icons.chevron_right, onTap: () => _step(1))),
                     ],
                   );
                 },
@@ -124,25 +125,40 @@ class _NavButton<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final color = active ? t.primary : t.mutedForeground;
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Badge(
-            isLabelVisible: item.badge > 0,
-            label: Text(item.badge > 99 ? '99+' : '${item.badge}'),
-            backgroundColor: t.destructive,
-            child: Icon(item.icon, size: 20, color: color),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+      child: Material(
+        color: active ? AppTokens.tint(t.primary, 0.10) : Colors.transparent,
+        borderRadius: BorderRadius.circular(AppTokens.radius),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppTokens.radius),
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Badge(
+                isLabelVisible: item.badge > 0,
+                label: Text(item.badge > 99 ? '99+' : '${item.badge}'),
+                backgroundColor: t.destructive,
+                child: Icon(item.icon, size: 24, color: color),
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                      height: 1.1,
+                      color: color),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            item.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, height: 1.1, color: color),
-          ),
-        ],
+        ),
       ),
     );
   }

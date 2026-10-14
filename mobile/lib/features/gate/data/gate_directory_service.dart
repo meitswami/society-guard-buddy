@@ -7,7 +7,7 @@ class GateDirectoryService {
 
   /// Columns of `members` the gate screens use (ID-proof images are not downloaded).
   static const memberColumns =
-      'id, flat_id, name, phone, relation, photo, is_primary, household_group';
+      'id, flat_id, name, phone, relation, is_primary, household_group';
 
   /// Flat ids per `in` filter (keeps the request URL short for large societies).
   static const _chunk = 150;

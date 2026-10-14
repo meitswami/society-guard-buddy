@@ -446,13 +446,16 @@ class _EmergencyAlertFormState extends State<EmergencyAlertForm> {
                       Icon(Icons.send,
                           size: 16, color: t.destructiveForeground),
                     const SizedBox(width: 8),
-                    Text(
-                      _sending
-                          ? context.ct('comms.emergency.sending')
-                          : context.ct('comms.emergency.send'),
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: t.destructiveForeground),
+                    Flexible(
+                      child: Text(
+                        _sending
+                            ? context.ct('comms.emergency.sending')
+                            : context.ct('comms.emergency.send'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: t.destructiveForeground),
+                      ),
                     ),
                   ],
                 ),

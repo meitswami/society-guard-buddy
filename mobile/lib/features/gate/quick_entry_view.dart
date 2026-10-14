@@ -1,3 +1,4 @@
+import '../../core/media/lazy_photos.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -58,8 +59,14 @@ class _QuickEntryViewState extends State<QuickEntryView> {
   Future<void> _quickLog(QuickRow row) async {
     setState(() => _busy.add(row.key));
     try {
+      var source = row.visitor;
+      if (source.visitorPhotos.isEmpty) {
+        // Photos are not downloaded with the gate data; copy the known photo into the entry.
+        final photo = await _lazyPhoto(row);
+        if (photo != null) source = source.copyWith(visitorPhotos: [photo]);
+      }
       await _store.addVisitor(buildQuickEntry(
-          source: row.visitor,
+          source: source,
           guardId: widget.actor.actorId,
           guardName: widget.actor.actorName));
       if (mounted) _flash('${row.visitor.name} ${context.t('quick.loggedIn')}');
@@ -196,10 +203,17 @@ class _QuickCard extends StatelessWidget {
     return CardSection(
       child: Row(
         children: [
-          GatePhoto(
-              src: v.visitorPhotos.isEmpty ? null : v.visitorPhotos.first,
-              size: 40,
-              fallbackText: v.name),
+          if (v.visitorPhotos.isEmpty)
+            FutureBuilder<String?>(
+              future: _lazyPhoto(row),
+              builder: (context, snap) =>
+                  GatePhoto(src: snap.data, size: 40, fallbackText: v.name),
+            )
+          else
+            GatePhoto(
+                src: v.visitorPhotos.isEmpty ? null : v.visitorPhotos.first,
+                size: 40,
+                fallbackText: v.name),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -263,4 +277,16 @@ class _QuickCard extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Photo of a quick-entry row, fetched on demand: a registered staff member's face photo
+/// (`staff-<memberId>`), else the photo of the visitor's latest visit.
+Future<String?> _lazyPhoto(QuickRow row) {
+  if (row.isStaff && row.key.startsWith('staff-')) {
+    return LazyPhotoLoader.members.get(row.key.substring('staff-'.length));
+  }
+  final id = row.visitor.id;
+  if (id.isEmpty || id.startsWith('member-')) return Future.value(null);
+  return LazyPhotoLoader.visitors.get(id);
 }

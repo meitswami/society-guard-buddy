@@ -39,6 +39,9 @@ class _MemberFormPageState extends State<MemberFormPage> {
   late MemberFormState _f;
   List<MemberDocDraft> _docs = [];
   bool _loadingExtras = false;
+
+  /// Editing: photos are fetched with the extras; saving before they arrive would erase them.
+  bool _photosLoaded = false;
   bool _saving = false;
 
   late final TextEditingController _name,
@@ -96,6 +99,14 @@ class _MemberFormPageState extends State<MemberFormPage> {
       if (!mounted) return;
       setState(() {
         _docs = data.docs;
+        final ph = data.photos;
+        String s(Object? x) => x is String ? x : '';
+        if (ph != null) {
+          if (_f.photo.isEmpty) _f.photo = s(ph['photo']);
+          if (_f.idPhotoFront.isEmpty) _f.idPhotoFront = s(ph['id_photo_front']);
+          if (_f.idPhotoBack.isEmpty) _f.idPhotoBack = s(ph['id_photo_back']);
+        }
+        _photosLoaded = true;
         final v = data.vehicle;
         if (v != null) {
           _f.vehicleCategory = v['vehicle_type']?.toString() ?? '';
@@ -130,6 +141,15 @@ class _MemberFormPageState extends State<MemberFormPage> {
       widget.flatMembers.where((m) => m.isPrimary).firstOrNull;
 
   Future<void> _save() async {
+    if (widget.editing != null && !_photosLoaded) {
+      AppFeedback.toast(
+          context,
+          context.tr('Member details are still loading. Please try again.',
+              'सदस्य का विवरण लोड हो रहा है। कृपया फिर से कोशिश करें।'),
+          tone: BadgeTone.alert);
+      if (!_loadingExtras) _loadExtras();
+      return;
+    }
     _sync();
     final issue =
         validateMemberForm(form: _f, docs: _docs, editing: widget.editing);

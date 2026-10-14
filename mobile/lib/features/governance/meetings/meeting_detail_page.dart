@@ -1994,6 +1994,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
                 PersonAvatar(
                     name: a.displayName,
                     photo: a.memberId == null ? null : photoById[a.memberId],
+                    memberId: a.memberId,
                     size: AvatarSize.xs),
                 const SizedBox(width: 8),
                 Expanded(

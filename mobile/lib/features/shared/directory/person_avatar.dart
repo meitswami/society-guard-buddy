@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/media/lazy_photos.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../utils/member_photo.dart';
 
@@ -23,16 +24,32 @@ class PersonAvatar extends StatelessWidget {
       {super.key,
       required this.name,
       this.photo,
+      this.memberId,
       this.size = PersonAvatarSize.md,
       this.onTap});
 
   final String name;
   final String? photo;
+
+  /// When [photo] is not loaded yet, fetch `members.photo` for this id on demand
+  /// (society-wide lists do not download photos up front).
+  final String? memberId;
   final PersonAvatarSize size;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final id = memberId;
+    if ((photo ?? '').trim().isEmpty && id != null && id.isNotEmpty) {
+      final loader = LazyPhotoLoader.members;
+      if (loader.isCached(id)) {
+        return PersonAvatar(name: name, photo: loader.cached(id), size: size, onTap: onTap);
+      }
+      return FutureBuilder<String?>(
+        future: loader.get(id),
+        builder: (context, snap) => PersonAvatar(name: name, photo: snap.data, size: size, onTap: onTap),
+      );
+    }
     final t = context.tokens;
     final trimmed = name.trim();
     final initial =
@@ -79,12 +96,14 @@ class PersonPhotoSide extends StatelessWidget {
     super.key,
     required this.name,
     this.photo,
+    this.memberId,
     this.size = PersonAvatarSize.md,
     required this.child,
   });
 
   final String name;
   final String? photo;
+  final String? memberId;
   final PersonAvatarSize size;
   final Widget child;
 
@@ -93,7 +112,7 @@ class PersonPhotoSide extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PersonAvatar(name: name, photo: photo, size: size),
+        PersonAvatar(name: name, photo: photo, memberId: memberId, size: size),
         const SizedBox(width: 10),
         Expanded(child: child),
       ],

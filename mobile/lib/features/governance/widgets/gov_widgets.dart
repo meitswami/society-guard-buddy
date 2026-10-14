@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/media/lazy_photos.dart';
 import '../../../core/ui/ui.dart';
 
 /// `members.photo` / roster photos: data URLs or http(s) URLs.
@@ -42,14 +43,26 @@ double _avatarPx(AvatarSize s) => switch (s) {
 /// Web `PersonAvatar`: circular face photo with an initial fallback.
 class PersonAvatar extends StatelessWidget {
   const PersonAvatar(
-      {super.key, required this.name, this.photo, this.size = AvatarSize.md});
+      {super.key, required this.name, this.photo, this.memberId, this.size = AvatarSize.md});
 
   final String name;
   final String? photo;
+
+  /// When [photo] is missing, fetch `members.photo` for this id on demand.
+  final String? memberId;
   final AvatarSize size;
 
   @override
   Widget build(BuildContext context) {
+    final id = memberId;
+    if ((photo ?? '').trim().isEmpty && id != null && id.isNotEmpty) {
+      final loader = LazyPhotoLoader.members;
+      if (loader.isCached(id)) return PersonAvatar(name: name, photo: loader.cached(id), size: size);
+      return FutureBuilder<String?>(
+        future: loader.get(id),
+        builder: (context, snap) => PersonAvatar(name: name, photo: snap.data, size: size),
+      );
+    }
     final t = context.tokens;
     final px = _avatarPx(size);
     final provider = govPhotoProvider(photo);

@@ -131,12 +131,15 @@ class PillChoice extends StatelessWidget {
                 Icon(icon, size: 14, color: selected ? t.primaryForeground : t.secondaryForeground),
                 const SizedBox(width: 6),
               ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: selected ? t.primaryForeground : t.secondaryForeground,
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: selected ? t.primaryForeground : t.secondaryForeground,
+                  ),
                 ),
               ),
             ],

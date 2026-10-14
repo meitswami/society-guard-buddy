@@ -29,10 +29,11 @@ class VisitorEntry {
 
 /// `visitors` table access — same queries as web `useStore` (`loadVisitors`, `addVisitor`, `markExit`).
 class VisitorService {
-  /// Every column the gate screens read. `document_photo` / `vehicle_photo` are never shown by
-  /// the guard screens, so they are not downloaded with the full society log.
+  /// Every column the gate screens read. Photo columns (`visitor_photos`, `document_photo`,
+  /// `vehicle_photo`) are not downloaded with the full society log — base64 photos made it
+  /// tens of MB; `LazyPhotoLoader.visitors` fetches a photo when a row actually shows it.
   static const listColumns =
-      'id, society_id, name, phone, document_type, document_number, visitor_photos, '
+      'id, society_id, name, phone, document_type, document_number, '
       'flat_number, purpose, entry_time, exit_time, guard_id, guard_name, category, company, vehicle_number, '
       'vehicle_entry_time, vehicle_exit_time, is_blacklisted';
 

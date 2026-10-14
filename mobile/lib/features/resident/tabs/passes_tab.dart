@@ -239,9 +239,12 @@ class _ResidentPassesTabState extends State<ResidentPassesTab> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
-                        Text(p.otpCode,
-                            style: AppText.mono(context, size: 18, weight: FontWeight.w600, color: t.primary)
-                                .copyWith(letterSpacing: 4)),
+                        Flexible(
+                          child: Text(p.otpCode,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.mono(context, size: 18, weight: FontWeight.w600, color: t.primary)
+                                  .copyWith(letterSpacing: 4)),
+                        ),
                         if (p.isActive)
                           IconButton(
                             visualDensity: VisualDensity.compact,

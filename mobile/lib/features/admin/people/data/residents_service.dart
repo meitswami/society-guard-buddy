@@ -1,3 +1,4 @@
+import '../../../../core/media/lazy_photos.dart';
 import '../../../../core/supabase/db.dart';
 import '../../../../utils/member_categories.dart';
 import '../../../../utils/password_generator.dart';
@@ -33,10 +34,13 @@ class ResidentsSnapshot {
 
 /// Member being edited: documents + linked staff vehicle (web `editMember`).
 class MemberEditData {
-  const MemberEditData({required this.docs, this.vehicle});
+  const MemberEditData({required this.docs, this.vehicle, this.photos});
 
   final List<MemberDocDraft> docs;
   final Map<String, dynamic>? vehicle;
+
+  /// `photo`, `id_photo_front`, `id_photo_back` of the member (lists load without them).
+  final Map<String, dynamic>? photos;
 }
 
 /// Outcome of saving a member.
@@ -168,6 +172,11 @@ class ResidentsService {
 
   /// Web `editMember` extra loads (documents ordered by creation, linked vehicle).
   Future<MemberEditData> loadMemberEditData(String memberId) async {
+    final photos = await db
+        .from('members')
+        .select('photo, id_photo_front, id_photo_back')
+        .eq('id', memberId)
+        .maybeSingle();
     final docs = rowsOf(await db
         .from('member_documents')
         .select('doc_kind, doc_type, front_url, back_url')
@@ -184,7 +193,9 @@ class ResidentsService {
       vehicle = null;
     }
     return MemberEditData(
-        docs: docs.map(MemberDocDraft.fromJson).toList(), vehicle: vehicle);
+        docs: docs.map(MemberDocDraft.fromJson).toList(),
+        vehicle: vehicle,
+        photos: photos);
   }
 
   Future<String?> _vehicleIdForMember(String memberId) async {
@@ -279,6 +290,9 @@ class ResidentsService {
     if (docRows.isNotEmpty) await db.from('member_documents').insert(docRows);
     await propagateMemberPhoto(
         memberId, form.photo.isEmpty ? null : form.photo);
+    LazyPhotoLoader.members.put(memberId, form.photo);
+    LazyPhotoLoader.memberIdFront.put(memberId, form.idPhotoFront);
+    LazyPhotoLoader.memberIdBack.put(memberId, form.idPhotoBack);
 
     if (isPrimary) {
       await db.from('flats').update(

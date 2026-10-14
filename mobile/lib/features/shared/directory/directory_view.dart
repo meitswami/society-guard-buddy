@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/export/export_kit.dart';
 import '../../../core/ui/ui.dart';
+import '../../../core/media/lazy_photos.dart';
 import '../../../utils/member_photo.dart';
 import '../../../utils/phone_utils.dart';
 import 'directory_models.dart';
@@ -357,8 +358,6 @@ class _DirectoryViewState extends State<DirectoryView> {
     final v = e.latest;
     final key = 'visitor:${v.phone}';
     final expanded = _expandedId == key;
-    final photo = v.visitorPhotos.isNotEmpty ? v.visitorPhotos.first : null;
-    final provider = memberPhotoProvider(photo);
     return CardSection(
       padding: EdgeInsets.zero,
       child: Column(
@@ -370,30 +369,7 @@ class _DirectoryViewState extends State<DirectoryView> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                        color: t.secondary, shape: BoxShape.circle),
-                    clipBehavior: Clip.antiAlias,
-                    alignment: Alignment.center,
-                    child: provider != null
-                        ? Image(
-                            image: provider,
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
-                            gaplessPlayback: true)
-                        : Text(
-                            v.name.isEmpty
-                                ? '?'
-                                : v.name.characters.first.toUpperCase(),
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: t.mutedForeground),
-                          ),
-                  ),
+                  _VisitorThumb(visitor: v),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -751,6 +727,7 @@ class _MemberTile extends StatelessWidget {
           PersonAvatar(
               name: member.name,
               photo: member.photo,
+              memberId: member.id,
               size: PersonAvatarSize.xs),
           const SizedBox(width: 8),
           Expanded(
@@ -859,5 +836,40 @@ class _MiniAction extends StatelessWidget {
             child: Icon(icon, size: 15, color: color)),
       ),
     );
+  }
+}
+
+
+/// Visitor face thumbnail; the photo is fetched on demand (lists do not download photos).
+class _VisitorThumb extends StatelessWidget {
+  const _VisitorThumb({required this.visitor});
+
+  final DirectoryVisitor visitor;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final known = visitor.visitorPhotos.isNotEmpty ? visitor.visitorPhotos.first : null;
+    Widget box(String? photo) {
+      final provider = memberPhotoProvider(photo);
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(color: t.secondary, shape: BoxShape.circle),
+        clipBehavior: Clip.antiAlias,
+        alignment: Alignment.center,
+        child: provider != null
+            ? Image(image: provider, width: 40, height: 40, fit: BoxFit.cover, gaplessPlayback: true)
+            : Text(
+                visitor.name.isEmpty ? '?' : visitor.name.characters.first.toUpperCase(),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: t.mutedForeground),
+              ),
+      );
+    }
+
+    if (known != null) return box(known);
+    final loader = LazyPhotoLoader.visitors;
+    if (loader.isCached(visitor.id)) return box(loader.cached(visitor.id));
+    return FutureBuilder<String?>(future: loader.get(visitor.id), builder: (_, snap) => box(snap.data));
   }
 }

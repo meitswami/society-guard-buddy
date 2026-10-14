@@ -41,6 +41,18 @@ class DirectoryData {
   static const empty = DirectoryData(flats: [], members: [], vehicles: []);
 }
 
+/// Member columns for society-wide lists: everything except the base64 photo columns
+/// (`photo`, `id_photo_front`, `id_photo_back`), which `LazyPhotoLoader` fetches on demand.
+const kMemberListColumns =
+    'id, flat_id, name, phone, relation, age, gender, is_primary, created_at, household_group, '
+    'whatsapp_phone, email, notify_whatsapp, notify_email, spouse_name, police_verification, '
+    'date_joining, date_leave, election_disqualified_until';
+
+/// Vehicle columns for lists (no `vehicle_photo`).
+const kVehicleListColumns =
+    'id, society_id, flat_id, flat_number, member_id, resident_name, vehicle_number, vehicle_type, '
+    'vehicle_color, vehicle_display_name, created_at';
+
 /// Loads the society directory the same way as the web store
 /// (`loadFlats` / `loadMembers` / `loadResidentVehicles` / `loadVisitors`) and the resident
 /// dashboard (`loadDirectory`).
@@ -58,7 +70,7 @@ class DirectoryService {
 
   /// Members of the given flats, primary first (web `loadMembers`).
   Future<List<PeopleMember>> loadMembers(List<String> flatIds,
-      {String columns = '*'}) async {
+      {String columns = kMemberListColumns}) async {
     if (!dbReady || flatIds.isEmpty) return const [];
     final rows = await selectInChunks(
       table: 'members',
@@ -82,7 +94,7 @@ class DirectoryService {
     if (!dbReady) return const [];
     final rows = await db
         .from('resident_vehicles')
-        .select('*')
+        .select(kVehicleListColumns)
         .eq('society_id', societyId);
     return rowsOf(rows).map(PeopleVehicle.fromJson).toList();
   }
@@ -93,7 +105,7 @@ class DirectoryService {
     final rows = await db
         .from('visitors')
         .select(
-          'id, name, phone, visitor_photos, flat_number, category, document_type, document_number, purpose, vehicle_number, entry_time',
+          'id, name, phone, flat_number, category, document_type, document_number, purpose, vehicle_number, entry_time',
         )
         .eq('society_id', societyId)
         .order('entry_time', ascending: false)
@@ -128,10 +140,10 @@ class DirectoryService {
     final results = await Future.wait<Object>([
       loadMembers(flatIds,
           columns:
-              'id, flat_id, name, phone, relation, age, gender, photo, is_primary, created_at'),
+              'id, flat_id, name, phone, relation, age, gender, is_primary, created_at'),
       selectInChunks(
           table: 'resident_vehicles',
-          columns: '*',
+          columns: kVehicleListColumns,
           column: 'flat_id',
           ids: flatIds),
     ]);

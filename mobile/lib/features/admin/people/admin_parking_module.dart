@@ -247,13 +247,18 @@ class _AdminParkingModuleState extends State<AdminParkingModule> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(children: [
-                            Text(s.spaceNumber,
-                                style: AppText.mono(context,
-                                    size: 14, weight: FontWeight.w700)),
+                            Flexible(
+                              child: Text(s.spaceNumber,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppText.mono(context,
+                                      size: 14, weight: FontWeight.w700)),
+                            ),
                             const SizedBox(width: 8),
-                            TagChip(s.spaceType,
-                                color: t.primary,
-                                background: AppTokens.tint(t.primary, 0.1)),
+                            Flexible(
+                              child: TagChip(s.spaceType,
+                                  color: t.primary,
+                                  background: AppTokens.tint(t.primary, 0.1)),
+                            ),
                           ]),
                           Text(
                             '${context.t('common.flat')} ${s.allocatedFlatNumber ?? ''} · ${s.allocatedVehicleNumber ?? context.tr('No vehicle', 'कोई वाहन नहीं')}',

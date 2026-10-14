@@ -312,7 +312,11 @@ class _SmallButton extends StatelessWidget {
                 children: [
                   Icon(icon, size: 12, color: t.secondaryForeground),
                   const SizedBox(width: 4),
-                  Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.secondaryForeground)),
+                  Flexible(
+                    child: Text(label,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.secondaryForeground)),
+                  ),
                 ],
               ),
             ),

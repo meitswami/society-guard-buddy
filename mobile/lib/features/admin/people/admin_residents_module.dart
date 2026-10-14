@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/export/export_kit.dart';
+import '../../../core/media/lazy_photos.dart';
 import '../../../core/ui/ui.dart';
 import '../../../utils/member_categories.dart';
 import '../../../utils/society_flat_layout.dart' show floorLabelFromFlatNumber;
 import '../../shared/directory/directory_search.dart';
+import '../../shared/directory/directory_service.dart' show selectInChunks;
 import '../../shared/directory/directory_widgets.dart';
 import '../../shared/directory/person_avatar.dart';
 import '../core/admin_module.dart';
@@ -413,8 +415,17 @@ class _AdminResidentsModuleState extends State<AdminResidentsModule> {
               lh.warning!, 'आधिकारिक सोसाइटी लेटरहेड कॉन्फ़िगर नहीं है।'),
           tone: BadgeTone.warning);
     }
+    // The list loads without photos; the PDF needs them, so fetch full rows now.
+    final full = await selectInChunks(
+        table: 'members',
+        columns: '*',
+        column: 'id',
+        ids: _snap.members.map((m) => m.id).toList(),
+        chunk: 20);
+    final byId = {for (final r in full) '${r['id']}': PeopleMember.fromJson(r)};
+    final members = [for (final m in _snap.members) byId[m.id] ?? m];
     final bytes = await buildResidentsDirectoryPdf(
-        flats: _snap.flats, members: _snap.members, letterhead: lh);
+        flats: _snap.flats, members: members, letterhead: lh);
     return (residentsDirectoryPdfFilename(name), bytes);
   }
 
@@ -652,7 +663,8 @@ class _AdminResidentsModuleState extends State<AdminResidentsModule> {
               child: Row(children: [
                 PersonAvatar(
                     name: primary?.name ?? flat.ownerName ?? flat.flatNumber,
-                    photo: primary?.photo),
+                    photo: primary?.photo,
+                    memberId: primary?.id),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -971,7 +983,7 @@ class _AdminResidentsModuleState extends State<AdminResidentsModule> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PersonAvatar(name: m.name, photo: m.photo, size: PersonAvatarSize.xs),
+          PersonAvatar(name: m.name, photo: m.photo, memberId: m.id, size: PersonAvatarSize.xs),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -994,16 +1006,7 @@ class _AdminResidentsModuleState extends State<AdminResidentsModule> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(memberDetailLine(m), style: AppText.tiny(context)),
-                if (m.idPhotoFront != null || m.idPhotoBack != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Wrap(spacing: 4, children: [
-                      if (m.idPhotoFront != null)
-                        ImageThumb(src: m.idPhotoFront!, width: 56, height: 36),
-                      if (m.idPhotoBack != null)
-                        ImageThumb(src: m.idPhotoBack!, width: 56, height: 36),
-                    ]),
-                  ),
+                _LazyIdThumbs(memberId: m.id),
               ],
             ),
           ),
@@ -1157,6 +1160,36 @@ class _TintButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+
+/// Photo ID front/back thumbnails, fetched on demand (the list does not download them).
+class _LazyIdThumbs extends StatelessWidget {
+  const _LazyIdThumbs({required this.memberId});
+
+  final String memberId;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<String?>>(
+      future: Future.wait([
+        LazyPhotoLoader.memberIdFront.get(memberId),
+        LazyPhotoLoader.memberIdBack.get(memberId),
+      ]),
+      builder: (context, snap) {
+        final front = snap.data?[0];
+        final back = snap.data?[1];
+        if (front == null && back == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Wrap(spacing: 4, children: [
+            if (front != null) ImageThumb(src: front, width: 56, height: 36),
+            if (back != null) ImageThumb(src: back, width: 56, height: 36),
+          ]),
+        );
+      },
     );
   }
 }

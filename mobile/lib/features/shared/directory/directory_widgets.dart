@@ -192,7 +192,10 @@ class NameHitChips extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   PersonAvatar(
-                      name: m.name, photo: m.photo, size: PersonAvatarSize.xs),
+                      name: m.name,
+                      photo: m.photo,
+                      memberId: m.id,
+                      size: PersonAvatarSize.xs),
                   const SizedBox(width: 6),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 112),

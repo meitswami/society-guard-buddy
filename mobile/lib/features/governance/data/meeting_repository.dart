@@ -40,7 +40,7 @@ class MeetingRepository {
     final mems = rowsOf(
       await db
           .from('members')
-          .select('id, name, flat_id, photo')
+          .select('id, name, flat_id')
           .inFilter('flat_id', flatNum.keys.toList()),
     );
     return mems

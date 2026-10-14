@@ -133,6 +133,7 @@ Future<List<String>?> showMemberPickerSheet(
                             PersonAvatar(
                                 name: m.name,
                                 photo: m.photo,
+                                memberId: m.id,
                                 size: AvatarSize.xs),
                             const SizedBox(width: 6),
                             Expanded(
